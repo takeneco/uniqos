@@ -13,7 +13,7 @@ OBJS = bios.o loadfat.o loadkern.o phase2.o
 all: phase2.bin
 
 phase2.bin : $(OBJS)
-	$(LD) -nostdlib -static -Ttext=0x7e00 -T boot2.ld $^ -o $@
+	$(LD) -nostdlib -static -Ttext=0x7e00 -T phase2.ld $^ -o $@
 
 phase2.o : phase2.S
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $^ -o $@

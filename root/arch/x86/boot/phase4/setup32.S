@@ -13,7 +13,8 @@
 
 .globl _start
 
-.section .text
+//.section .text
+.section .entry
 
 _start:
 	movw  $2*8, %ax

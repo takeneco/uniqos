@@ -1,16 +1,18 @@
 # FILE : arch/x86/boot/phase3/Makefile
-# VER  : 0.0.4
-# LAST : 2009-05-25
+# VER  : 0.0.5
+# LAST : 2009-06-18
 # (C) Kato.T 2008-2009
 #
-# １６ビット起動処理をコンパイルする Makefile
+# １６ビット起動処理をコンパイルする Makefile。
 
 CFLAGS += -fno-exceptions -fno-rtti -march=i486 -Os
 CPPFLAGS += -I../../../../include -I../include
 
+OBJS = bios.o phase3.o setup16.o
+
 all : phase3.bin
 
-phase3.bin : phase3.o setup16.o bios.o
+phase3.bin : $(OBJS)
 	$(LD) -nostdlib -static -T phase3.ld $^ -o $@
 
 phase3.o : phase3.S
@@ -24,6 +26,6 @@ bios.o : bios.S
 
 clean:
 	$(RM) phase3.bin 
-	$(RM) phase3.o setup16.o bios.o
+	$(RM) $(OBJS)
 
 .PHONY: all clean

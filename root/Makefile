@@ -25,7 +25,7 @@ $(PUTIMG) $(MKFDIMG):
 	$(MAKE) -C tools
 
 clean:
-	$(MAKE) -C $(ARCH)
+	$(MAKE) -C $(ARCH) clean
 	$(MAKE) -C tools clean
 
 distclean: clean

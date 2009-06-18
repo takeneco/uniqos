@@ -58,12 +58,12 @@ static void putu64(_u8* dest, _u64 n)
 
 extern "C" void _int21h()
 {
-	native_outb(0x61, 0x0020);
-	_u8* vram = (_u8*)0xb8000;
-	vram[0] = 'Z';
-	vram[1] = 0x0f;
-	native_outb('A', 0x03f8);
-	native_outb('B', 0x03f8);
+//	native_outb(0x61, 0x0020);
+//	_u8* vram = (_u8*)0xb8000;
+//	vram[0] = 'Z';
+//	vram[1] = 0x0f;
+//	native_outb('A', 0x03f8);
+//	native_outb('B', 0x03f8);
 }
 
 extern "C" void _int23h()
@@ -297,8 +297,8 @@ void setup_main()
 
 	// 割り込み設定
 	// ここで異常終了
-//	native_outb(0x00, 0x03f9);
-	native_outb(0x0f, 0x03f9);
+	native_outb(0x00, 0x03f9);
+//	native_outb(0x0f, 0x03f9);
 for(;;)native_hlt();
 
 //	native_outb('A', 0x03f8);

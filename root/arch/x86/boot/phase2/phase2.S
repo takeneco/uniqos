@@ -12,7 +12,7 @@
 
 .code16gcc
 
-.section .text
+.section .entry
 
 .global _start
 

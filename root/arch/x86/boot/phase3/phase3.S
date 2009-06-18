@@ -24,7 +24,8 @@ PARAM_DISP_HEIGHT = 0x008
 PARAM_DISP_VRAM   = 0x00c
 PARAM_KEYB_LEDS   = 0x010
 
-.section .text
+//.section .text
+.section .entry
 
 .globl _start
 

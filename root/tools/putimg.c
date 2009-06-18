@@ -72,7 +72,7 @@ int main(int _argc, const char *_argv[])
 		ssize_t len;
 		len = read(srcfd, buf, sizeof buf);
 		write(destfd, buf, len);
-		if (len < sizeof buf) {
+		if (len < (ssize_t)sizeof buf) {
 			break;
 		}
 	}

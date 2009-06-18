@@ -19,8 +19,8 @@ movejump.bin : movejump.o
 movejump.o : movejump.S
 	$(CC) -c $(CPPFLAGS) $(CFLGAS) -march=i486 $< -o $@
 
-setup32.bin: setup32.o main.o inthandler.o
-	$(LD) -nostdlib -static -Ttext=0x200000 -T main.ld $^ -o $@
+setup32.bin: inthandler.o main.o setup32.o
+	$(LD) -nostdlib -static -Ttext=0x200000 -T setup32.ld $^ -o $@
 
 setup32.o: setup32.S
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -march=i486 -Os $< -o $@

@@ -63,7 +63,6 @@ loadsuccess:
 	// ロード済みセクタ数 -> (0x7c00 - 4)
 	movw  $18, %ax
 	pushw %ax
-
 	jmp   PHASE2_ADDR
 
 // 文字列を表示する

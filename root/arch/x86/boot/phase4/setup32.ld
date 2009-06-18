@@ -1,9 +1,9 @@
-/* FILE : arch/x86/boot/phase3/phase3.ld
- * VER  : 0.0.2
+/* FILE : arch/x86/boot/phase4/setup32.ld
+ * VAR  : 0.0.2
  * LAST : 2009-06-18
  * (C) Kato.T 2009
  *
- * phase3 のリンクスクリプト。
+ * phase4 のリンカスクリプト。
  */
 
 OUTPUT_FORMAT(binary)
@@ -15,5 +15,4 @@ SECTIONS {
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	.bss : { *(.bss) }
-	phase3_end = .;
 }
