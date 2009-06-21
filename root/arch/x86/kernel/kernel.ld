@@ -1,9 +1,9 @@
-/* FILE : arch/x86/boot/phase4/setup32.ld
- * VAR  : 0.0.2
- * LAST : 2009-06-18
+/* FILE : arch/x86/kernel/kernel.ld
+ * VAR  : 0.0.1
+ * LAST : 2009-06-21
  * (C) Kato.T 2009
  *
- * phase4 のリンカスクリプト。
+ * カーネル本体のリンカスクリプト。
  */
 
 OUTPUT_FORMAT(binary)

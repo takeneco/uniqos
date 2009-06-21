@@ -187,8 +187,7 @@ start_setup:
 
 	// カーネルから phase3 を引いたサイズ -> %ecx
 	popl  %ecx
-	subl  %ecx, phase3_end
-//	ljmpl $1*8, $0x50000
+	subl  $phase3_end, %ecx
 	// phase4 の先頭アドレス
 	movl  $PHASE4_ADDR + phase3_end, %ebx
 	ljmpl $1*8, $PHASE4_ADDR + phase3_end

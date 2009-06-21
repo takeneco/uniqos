@@ -5,7 +5,7 @@
 #
 # x86固有のブート処理をコンパイルする Makefile
 
-all : rootboot.bin
+all : phases
 
 phases :
 	$(MAKE) -C phase1
@@ -13,14 +13,10 @@ phases :
 	$(MAKE) -C phase3
 	$(MAKE) -C phase4
 
-rootboot.bin : phases
-	cat phase3/phase3.bin phase4/phase4.bin > $@
-
 clean :
 	$(MAKE) -C phase1 clean
 	$(MAKE) -C phase2 clean
 	$(MAKE) -C phase3 clean
 	$(MAKE) -C phase4 clean
-	$(RM) rootboot.bin
 
 .PHONY: all phases clean

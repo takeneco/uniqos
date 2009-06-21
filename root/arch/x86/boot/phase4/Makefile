@@ -1,7 +1,7 @@
 # FILE : arch/x86/boot/phase4/Makefile
-# VER  : 0.0.4
-# LAST : 2009-05-31
-# (C)  : Kato.T 2008-2009
+# VER  : 0.0.5
+# LAST : 2009-06-21
+# (C) Kato.T 2008-2009
 #
 # ３２ビット起動処理をコンパイルする Makefile
 
@@ -10,13 +10,13 @@ CPPFLAGS += -I../../../../include -I../../include -I../include
 
 all : phase4.bin
 
-phase4.bin : movejump.bin setup32.bin
-	cat movejump.bin setup32.bin > phase4.bin
+phase4.bin : mvjmp.bin setup32.bin
+	cat mvjmp.bin setup32.bin > phase4.bin
 
-movejump.bin : movejump.o
-	$(LD) -nostdlib -static -T movejump.ld $^ -o $@
+mvjmp.bin : mvjmp.o
+	$(LD) -nostdlib -static -T mvjmp.ld $^ -o $@
 
-movejump.o : movejump.S
+mvjmp.o : mvjmp.S
 	$(CC) -c $(CPPFLAGS) $(CFLGAS) -march=i486 $< -o $@
 
 setup32.bin: inthandler.o main.o setup32.o
@@ -32,8 +32,8 @@ main.o: main.cpp
 	$(CXX) -c $(CPPFLAGS) $(CFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
 
 clean:
-	$(RM) movejump.bin setup32.bin phase4.bin
-	$(RM) movejump.o inthandler.o setup32.o main.o
+	$(RM) mvjmp.bin setup32.bin phase4.bin
+	$(RM) mvjmp.o inthandler.o setup32.o main.o
 
 .PHONY: all clean
 

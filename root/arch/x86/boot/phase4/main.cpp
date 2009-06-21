@@ -299,7 +299,6 @@ void setup_main()
 	// ここで異常終了
 	native_outb(0x00, 0x03f9);
 //	native_outb(0x0f, 0x03f9);
-for(;;)native_hlt();
 
 //	native_outb('A', 0x03f8);
 //	native_outb('B', 0x03f8);
@@ -316,12 +315,12 @@ for(;;)native_hlt();
 	}
 // acpi_get_mem end
 
-	for (;;) {
+//	for (;;) {
 		native_outb('A', 0x03f8);
 		native_outb('B', 0x03f8);
-		native_hlt();
+//		native_hlt();
 
 		putu64(console(0, 11), *(_u64*)0x100000);
-	}
+//	}
 }
 

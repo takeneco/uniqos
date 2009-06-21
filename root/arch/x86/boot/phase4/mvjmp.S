@@ -24,6 +24,10 @@ MOVETO = 0x200000
 .section .text
 
 _start:
+	movw  $2*8, %ax
+	movw  %ax, %ds
+	movw  %ax, %es
+
 	// phase4 から phase4(movejump) を引いた長さ -> %ecx
 	subl  $(_end - _start), %ecx
 	pushl %ecx
@@ -35,10 +39,9 @@ _start:
 	movl  $MOVETO, %edi
 	rep
 	movsb
-
 	popl  %ecx
 
-	jmp   MOVETO
+	ljmpl $1*8, $MOVETO
 
 // (%esi)を16進文字として(%edi), 2(%edi)に書く
 // 1(%edi), 3(%edi)は$0x0fとしておく

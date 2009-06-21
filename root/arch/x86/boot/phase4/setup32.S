@@ -1,7 +1,7 @@
 /* FILE : arch/x86/boot/phase4/setup32.S
- * VER  : 0.0.2
- * LAST : 2009-04-15
- * (C)  : Kato.T 2009
+ * VER  : 0.0.3
+ * LAST : 2009-06-21
+ * (C) Kato.T 2009
  *
  * 32ビットプロテクトモード移行後の
  * カーネル自身のセットアップ
@@ -13,7 +13,6 @@
 
 .globl _start
 
-//.section .text
 .section .entry
 
 _start:
@@ -42,11 +41,7 @@ _start:
 	addl  $4, %edi
 	call  print
 
-	incl  %esi
-	addl  $4, %edi
-	call  print
-
-	jmp   setup_main
+	call  setup_main
 
 idle:
 	hlt
