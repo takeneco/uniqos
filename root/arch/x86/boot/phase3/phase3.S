@@ -18,13 +18,7 @@
 
 #include "boot.h"
 
-PARAM_DISP_DEPTH  = 0x000
-PARAM_DISP_WIDTH  = 0x004
-PARAM_DISP_HEIGHT = 0x008
-PARAM_DISP_VRAM   = 0x00c
-PARAM_KEYB_LEDS   = 0x010
 
-//.section .text
 .section .entry
 
 .globl _start
@@ -172,8 +166,8 @@ start_setup:
 	int   $0x16
 	movl  %eax, %es:PARAM_KEYB_LEDS // キーボードの LED
 
-	pushl $0x100
-	pushl $0x2000
+	pushl $PARAM_MEMMAP
+	pushl $PH3_TO_PH4_PARAM_SEG
 	calll acpi_get_memmap
 	addw  $8, %sp
 
@@ -185,13 +179,13 @@ start_setup:
 	jmp   1f
 1:
 
-	// カーネルから phase3 を引いたサイズ -> %ecx
+	// カーネルのサイズ
 	popl  %ecx
+	// カーネルから phase3 を引いたサイズ -> %ecx
 	subl  $phase3_end, %ecx
-	// phase4 の先頭アドレス
+	// phase4 の先頭アドレス -> %ebx
 	movl  $PHASE4_ADDR + phase3_end, %ebx
 	ljmpl $1*8, $PHASE4_ADDR + phase3_end
-//	ljmpl $1*8, $phase4 + 0x30000
 
 	.align 16
 boot_gdt:

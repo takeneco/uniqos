@@ -46,52 +46,54 @@ block_copy_gdt_dest:
 	.word 0, 0
 	.word 0, 0, 0, 0, 0, 0, 0, 0, 0
 
-// acpi_get_memmap(_u32 srcseg, _u32 srcmem)
-// 最初は handle を 0 として呼び出す。
-// 戻り値が 0 でなければ、戻り値を handle として再度呼び出すことで
-// メモリマップの続きを取得できる。
+// acpi_get_memmap(_u32 destseg, _u32 destmem)
+// ACPI経由で destseg:destmem にメモリマップを書き込む
+// %eax でメモリマップの件数を返す。
+// エラーの場合は %eax = 0xffffffff となる。
 acpi_get_memmap:
 	pushl %ebx
 	pushl %ecx
 	pushl %edx
 	pushw %di
+	pushw %si
 
 	xorl  %ebx, %ebx
-	movw  0x12(%esp), %ax
+	movw  0x14(%esp), %ax
 	movw  %ax, %es
-	movw  0x16(%esp), %ax
+	movw  0x18(%esp), %ax
 	movw  %ax, %di
 
-1:	// loop
-	movl  $24, %ecx
-	movl  $0x0000e820, %eax
+	xorw  %si, %si
+1:
+	movl  $24, %ecx         // sizeof buffer
+	movl  $0x0000e820, %eax // function
 	movl  $0x534d4150, %edx // 'SMAP'
 	int   $0x15
 
-	jc    3f   // error
+	jc    3f                // error
+//	testl $0x534d4150, %eax
+//	jne   3f                // if (%eax != 'SMAP') { goto error; }
 	testl %ebx, %ebx
-	jz    2f   // end
+	jz    2f                // end
 	addw  $24, %di
-	jmp   1b   // loop
+	incw  %si
+	jmp   1b
 
-2:	// end
+2:	// success end
+	xorl  %eax, %eax
+	movw  %si, %ax
+	jmp   4f
+3:	// error end
+	movl  $0xffffffff, %eax
+4:
+	popw  %si
 	popw  %di
 	popl  %edx
 	popl  %ecx
 	popl  %ebx
-	xorl  %eax, %eax
-	ret
-3:	// error
-	movl  $0xffffffff, %eax
 	ret
 
 /*
-loop:
-	hlt
-	movw $test, %si
-	call display
-	jmp   loop
-
 // 文字列を表示する
 // %si : 表示する文字列のポインタ
 // %si, %ax, %bx は破壊される
@@ -105,8 +107,4 @@ display:
 	jmp   display
 end_display:
 	ret
-
-test:
-	.ascii "xxxx"
-	.byte 0
 */

@@ -18,10 +18,17 @@
 // ブートローダ
 #define PHASE2_ADDR 0x7e00
 
-// カーネルの先頭64KiBを読み込むセグメント
+// カーネルの先頭64KiBを読み込むセグメント(phase3)
 #define PHASE3_SEG 0x3000
 
 #define PH3_TO_PH4_PARAM_SEG 0x8000
+#define PARAM_DISP_DEPTH      0x0000
+#define PARAM_DISP_WIDTH      0x0004
+#define PARAM_DISP_HEIGHT     0x0008
+#define PARAM_DISP_VRAM       0x000c
+#define PARAM_KEYB_LEDS       0x0010
+#define PARAM_MEMMAP_COUNT    0x0014
+#define PARAM_MEMMAP          0x0100
 
 // カーネルの読み込み先アドレス
 #define PHASE4_ADDR 0x100000
