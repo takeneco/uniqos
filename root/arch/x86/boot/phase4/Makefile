@@ -6,6 +6,7 @@
 # ３２ビット起動処理をコンパイルする Makefile
 
 CFLAGS += -fno-exceptions -fno-rtti
+CXXFLAGS = $(CFLAGS)
 CPPFLAGS += -I../../../../include -I../../include -I../include
 
 all : phase4.bin
@@ -19,23 +20,24 @@ mvjmp.bin : mvjmp.o
 mvjmp.o : mvjmp.S
 	$(CC) -c $(CPPFLAGS) $(CFLGAS) -march=i486 $< -o $@
 
-setup32.bin: inthandler.o main.o setup32.o
+setup32.bin : inthandler.o main.o memmgr.o setup32.o
 	$(LD) -nostdlib -static -Ttext=0x200000 -T setup32.ld $^ -o $@
 
-setup32.o: setup32.S
+setup32.o : setup32.S
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -march=i486 -Os $< -o $@
 
-inthandler.o: inthandler.S
+inthandler.o : inthandler.S
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) -march=i486 -Os $< -o $@
 
-main.o: main.cpp
-	$(CXX) -c $(CPPFLAGS) $(CFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
+main.o : main.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
+
+memmgr.o : memmgr.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
 
 clean:
 	$(RM) mvjmp.bin setup32.bin phase4.bin
-	$(RM) mvjmp.o inthandler.o setup32.o main.o
+	$(RM) mvjmp.o inthandler.o main.o memmgr.o setup32.o
 
 .PHONY: all clean
 
-%.o : %.S
-	$(CC) $(CFLAGS) $(CPPFLAGS) -c $^ -o $@

@@ -7,9 +7,6 @@
 
 ARCH = arch/x86
 
-PUTIMG = tools/putimg
-MKFDIMG = tools/mkfdimg
-
 CFLAGS += -pipe -Wall -W -fomit-frame-pointer
 
 export CFLAGS
@@ -18,11 +15,9 @@ all : $(ARCH)/fd1440.img
 
 # FAT12ヘッダの直後(0x3e)にブートセクタ bootsect.bin を挿入する。
 # ブートセクタの直後に boot2.bin を挿入する。
-$(ARCH)/fd1440.img : $(PUTIMG) $(MKFDIMG)
-	$(MAKE) -C $(ARCH) fd1440.img
-
-$(PUTIMG) $(MKFDIMG):
+$(ARCH)/fd1440.img :
 	$(MAKE) -C tools
+	$(MAKE) -C $(ARCH) fd1440.img
 
 clean:
 	$(MAKE) -C $(ARCH) clean

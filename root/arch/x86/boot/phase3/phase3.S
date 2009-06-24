@@ -170,6 +170,8 @@ start_setup:
 	pushl $PH3_TO_PH4_PARAM_SEG
 	calll acpi_get_memmap
 	addw  $8, %sp
+	// %eax != 0xffffffff でエラーチェックが必要
+	movl  %eax, %es:PARAM_MEMMAP_COUNT
 
 	lgdtl boot_gdtr
 	lidtl boot_idtr
@@ -178,7 +180,6 @@ start_setup:
 	movl  %eax, %cr0
 	jmp   1f
 1:
-
 	// カーネルのサイズ
 	popl  %ecx
 	// カーネルから phase3 を引いたサイズ -> %ecx

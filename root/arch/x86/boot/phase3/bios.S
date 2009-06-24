@@ -70,21 +70,21 @@ acpi_get_memmap:
 	movl  $0x534d4150, %edx // 'SMAP'
 	int   $0x15
 
-	jc    3f                // error
+	jc    2f                // error
 //	testl $0x534d4150, %eax
-//	jne   3f                // if (%eax != 'SMAP') { goto error; }
+//	jne   2f                // if (%eax != 'SMAP') { goto error; }
 	testl %ebx, %ebx
-	jz    2f                // end
+	jz    3f                // success end
 	addw  $24, %di
 	incw  %si
 	jmp   1b
 
-2:	// success end
+2:	// error end
+	movl  $0xffffffff, %eax
+	jmp   4f
+3:	// success end
 	xorl  %eax, %eax
 	movw  %si, %ax
-	jmp   4f
-3:	// error end
-	movl  $0xffffffff, %eax
 4:
 	popw  %si
 	popw  %di
