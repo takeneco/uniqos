@@ -7,7 +7,7 @@
 #ifndef _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
 #define _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
 
-#include "types.hpp"
+#include "btypes.hpp"
 #include "fat.hpp"
 
 asm (".code16gcc");

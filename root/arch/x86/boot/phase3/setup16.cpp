@@ -6,7 +6,7 @@
  * phase3 から呼び出す処理。
  */
 
-#include "types.hpp"
+#include "btypes.hpp"
 #include "boot.h"
 
 asm (".code16gcc");

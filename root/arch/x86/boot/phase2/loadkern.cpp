@@ -6,7 +6,7 @@
  * カーネルをメモリに読み込む。
  */
 
-#include "types.hpp"
+#include "btypes.hpp"
 #include "loadfat.hpp"
 
 #include "boot.h"

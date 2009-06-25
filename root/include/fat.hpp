@@ -8,7 +8,7 @@
 #ifndef _INCLUDE_FAT_HPP_
 #define _INCLUDE_FAT_HPP_
 
-#include "types.hpp"
+#include "btypes.hpp"
 
 struct fat_header {
 	__u8  jmp_opcode[3];

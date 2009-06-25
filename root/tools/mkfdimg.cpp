@@ -14,7 +14,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include "cmdparse.h"
-#include "types.hpp"
+#include "btypes.hpp"
 #include "fat.hpp"
 
 const off_t IMG_LENGTH = 1024 * 1440;

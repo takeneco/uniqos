@@ -33,7 +33,7 @@ main.o : main.cpp
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
 
 memmgr.o : memmgr.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common $< -o $@
 
 clean:
 	$(RM) mvjmp.bin setup32.bin phase4.bin
