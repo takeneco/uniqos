@@ -13,7 +13,7 @@
 struct memmap_entry {
 	memmap_entry* prev;
 	memmap_entry* next;
-	_u64 start;
+	_u64 head;
 	_u64 bytes; // bytes == 0 ならば未使用のインスタンス。
 };
 
@@ -124,7 +124,7 @@ static void memmap_add_entry(const acpi_memmap* raw)
 	if (ent == NULL)
 		return;
 
-	ent->start = raw->base;
+	ent->head = raw->base;
 	ent->bytes = raw->length;
 
 	ent->next = free_list;
@@ -149,6 +149,46 @@ static void memmap_import()
 }
 
 /**
+ * メモリ空間を free_list から取り除く。
+ * @param from 取り除くメモリの先頭アドレス。
+ * @param to 取り除くメモリの終端アドレス。
+ */
+static void memmap_reserve(_u64 r_head, _u64 r_tail)
+{
+	r_tail += 1;
+
+	memmap_entry* ent;
+	for (ent = free_list; ent; ent = ent->next) {
+		_u64 e_head = ent->head;
+		_u64 e_tail = e_head + ent->bytes;
+
+		if (e_head < r_head && r_tail < e_tail) {
+			memmap_entry* ent2 = memmap_new_entry();
+			ent2->head = r_tail;
+			ent2->bytes = e_tail - r_tail;
+			memmap_insert_to(&free_list, ent2);
+
+			ent->bytes = r_head - e_head;
+			break;
+		}
+
+		if (r_head <= e_head && e_head <= r_tail) {
+			e_head = r_tail;
+		}
+		if (r_head <= e_tail && e_tail <= r_tail) {
+			e_tail = r_head;
+		}
+		if (e_head >= e_tail) {
+			memmap_remove_from(&free_list, ent);
+			ent->bytes = 0;
+		} else {
+			ent->head = e_head;
+			ent->bytes = e_tail - e_head;
+		}
+	}
+}
+
+/**
  * memmgr を初期化する。
  */
 void memmgr_init()
@@ -156,6 +196,9 @@ void memmgr_init()
 	memmap_buf_init();
 
 	memmap_import();
+
+	// 先頭の３ＭＢを予約領域とする。
+	memmap_reserve(0x00000000, 0x00300000);
 }
 
 /**
@@ -169,7 +212,6 @@ void memmgr_init()
  */
 void* memmgr_alloc(size_t size)
 {
-	memmap_entry* prev = NULL;
 	memmap_entry* ent;
 
 	for (ent = free_list; ent; ent = ent->next) {
@@ -182,19 +224,19 @@ void* memmgr_alloc(size_t size)
 
 	_u64 addr;
 	if (ent->bytes == size) {
-		addr = ent->start;
+		addr = ent->head;
 		memmap_remove_from(&free_list, ent);
 		memmap_insert_to(&nofree_list, ent);
 	} else {
 		memmap_entry* newent = memmap_new_entry();
 		if (newent == NULL)
 			return NULL;
-		addr = ent->start;
-		newent->start = ent->start;
+		newent->head = ent->head;
 		newent->bytes = size;
 		memmap_insert_to(&nofree_list, newent);
+		addr = newent->head;
 
-		ent->start += size;
+		ent->head += size;
 		ent->bytes -= size;
 	}
 
