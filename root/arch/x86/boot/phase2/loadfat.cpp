@@ -81,7 +81,7 @@ int disk_info::read_secs(
  * @param dev ドライブ番号
  * @param raw FATヘッダへのポインタ
  */
-fat_info::fat_info(int dev, __u8* raw)
+fat_info::fat_info(int dev, _u8* raw)
 	: head(raw)
 {
 	const fat_header* p = reinterpret_cast<fat_header*>(raw);
@@ -117,7 +117,7 @@ fat_info::fat_info(int dev, __u8* raw)
  */
 int fat_info::next_clu(int prev) const
 {
-	const __u8* fat = head
+	const _u8* fat = head
 		+ bytes_per_sec * reserved_secs;
 	const int p1 = (prev >> 1) * 3;
 	const int p2 = prev & 1;

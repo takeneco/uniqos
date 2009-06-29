@@ -1,7 +1,7 @@
 /* FILE : arch/x86/boot/phase2/loadfat.hpp
- * VER  : 0.0.2
- * LAST : 2009-05-17
- * (C) T.Kato 2009
+ * VER  : 0.0.3
+ * LAST : 2009-06-29
+ * (C) Kato.T 2009
  */
 
 #ifndef _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
@@ -26,8 +26,8 @@ protected:
 
 public:
 	void set_params(int d, int bps, int sph, int hpc);
-	int read_secs(__u16 start, __u16 count,
-		__u16 dsegm, __u16 daddr) const;
+	int read_secs(_u16 start, _u16 count,
+		_u16 dsegm, _u16 daddr) const;
 };
 
 inline void disk_info::set_params(int d, int bps, int sph, int hpc) {
@@ -43,7 +43,7 @@ inline void disk_info::set_params(int d, int bps, int sph, int hpc) {
 
 class fat_info : public disk_info
 {
-	__u8* head;
+	_u8* head;
 	int secs_per_clu;
 	int reserved_secs;
 	int fats;
@@ -55,7 +55,7 @@ class fat_info : public disk_info
 
 	dir_entry* rootents();
 public:
-	fat_info(int dev, __u8* raw);
+	fat_info(int dev, _u8* raw);
 
 	dir_entry* find_from_dir(const char name[]);
 	int next_clu(int prev) const;

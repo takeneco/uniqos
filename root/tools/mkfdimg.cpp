@@ -114,7 +114,7 @@ result::stype write_header(int imgfd, const struct fat_params* params)
  */
 result::stype write_sig(int imgfd)
 {
-	__u8 sig[2] = { 0x55, 0xaa };
+	_u8 sig[2] = { 0x55, 0xaa };
 
 	lseek(imgfd, 510, SEEK_SET);
 

@@ -4,6 +4,7 @@
  * (C) Kato.T 2009
  *
  * 初期化処理で使用する簡単なメモリ管理の実装。
+ * 4GB以下のメモリを管理する。
  */
 
 #include <cstddef>
@@ -13,8 +14,8 @@
 struct memmap_entry {
 	memmap_entry* prev;
 	memmap_entry* next;
-	_u64 head;
-	_u64 bytes; // bytes == 0 ならば未使用のインスタンス。
+	_u32 head;
+	_u32 bytes; // bytes == 0 ならば未使用のインスタンス。
 };
 
 struct acpi_memmap {
@@ -55,45 +56,47 @@ static void memmap_buf_init()
 	free_list = nofree_list = NULL;
 
 	for (int i = 0; i < memmap_buf_count; i++) {
-		memmap_buf[i].bytes = 0ULL;
+		memmap_buf[i].bytes = 0;
 	}
 }
 
 /**
  * memmap_buf 配列から未使用の memmap_entry を探す。
  * @return 未使用の memmap_entry へのポインタを返す。
- * @return 未使用エントリがない場合は null を返す。
+ * @return 未使用エントリがない場合は NULL を返す。
  */
 static memmap_entry* memmap_new_entry()
 {
 	memmap_entry* p = memmap_buf;
 
 	for (int i = 0; i < memmap_buf_count; i++) {
-		if (p[i].bytes == 0ULL) {
+		if (p[i].bytes == 0) {
 			return &p[i];
 		}
 	}
-	return 0;
+	return NULL;
 }
 
 /**
  * リストに memmap_entry を追加する。
- * @param list memmap_entry のリスト。
- * @param ent 追加するエントリへのポインタ。
+ * @param list memmap_entry のリストへのポインタ。
+ * @param ent  追加するエントリへのポインタ。
  */
 static void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
 {
 	if (!list || !ent)
 		return;
 
+	ent->prev = NULL;
 	ent->next = *list;
+	(*list)->prev = ent;
 	*list = ent;
 }
 
 /**
  * memap_entry のリストからエントリを取り除く
- * @param list memmap_entry のリスト。
- * @param ent 取り除くエントリへのポインタ。
+ * @param list memmap_entry のリストへのポインタ。
+ * @param ent  取り除くエントリへのポインタ。
  */
 static void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
 {
@@ -117,7 +120,10 @@ static void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
  */
 static void memmap_add_entry(const acpi_memmap* raw)
 {
-	if (raw->length == 0ULL)
+	// 32ビットで扱えないアドレスは無視する。
+	if (raw->base >= 0x00000000ffffffffULL)
+		return;
+	if (raw->length == 0)
 		return;
 
 	memmap_entry* ent = memmap_new_entry();
@@ -125,10 +131,12 @@ static void memmap_add_entry(const acpi_memmap* raw)
 		return;
 
 	ent->head = raw->base;
-	ent->bytes = raw->length;
+	if ((raw->base + raw->length) > 0x00000000ffffffffULL)
+		ent->bytes = 0xffffffff;
+	else
+		ent->bytes = raw->length;
 
-	ent->next = free_list;
-	free_list = ent;
+	memmap_insert_to(&free_list, ent);
 }
 
 /**
@@ -150,8 +158,8 @@ static void memmap_import()
 
 /**
  * メモリ空間を free_list から取り除く。
- * @param from 取り除くメモリの先頭アドレス。
- * @param to 取り除くメモリの終端アドレス。
+ * @param r_head 取り除くメモリの先頭アドレス。
+ * @param r_tail 取り除くメモリの終端アドレス。
  */
 static void memmap_reserve(_u64 r_head, _u64 r_tail)
 {
@@ -159,8 +167,8 @@ static void memmap_reserve(_u64 r_head, _u64 r_tail)
 
 	memmap_entry* ent;
 	for (ent = free_list; ent; ent = ent->next) {
-		_u64 e_head = ent->head;
-		_u64 e_tail = e_head + ent->bytes;
+		_u32 e_head = ent->head;
+		_u32 e_tail = e_head + ent->bytes;
 
 		if (e_head < r_head && r_tail < e_tail) {
 			memmap_entry* ent2 = memmap_new_entry();
@@ -198,22 +206,18 @@ void memmgr_init()
 	memmap_import();
 
 	// 先頭の３ＭＢを予約領域とする。
-	memmap_reserve(0x00000000, 0x00300000);
+	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
+	memmap_reserve(0x00000000, 0x002fffff);
 }
 
 /**
  * メモリを確保する。
  * @param size 必要なメモリのサイズ。
  * @return 確保したメモリの先頭アドレスを返す。
- *
- * エラーの場合は NULL を返すが、NULL 相当の番地のメモリを
- * 確保することもあるので、エラーは無視して使う。
- * 先頭3MBは回避する必要がある。
  */
 void* memmgr_alloc(size_t size)
 {
 	memmap_entry* ent;
-
 	for (ent = free_list; ent; ent = ent->next) {
 		if (ent->bytes >= size)
 			break;
@@ -222,7 +226,7 @@ void* memmgr_alloc(size_t size)
 	if (!ent)
 		return NULL;
 
-	_u64 addr;
+	_u32 addr;
 	if (ent->bytes == size) {
 		addr = ent->head;
 		memmap_remove_from(&free_list, ent);
@@ -241,5 +245,59 @@ void* memmgr_alloc(size_t size)
 	}
 
 	return reinterpret_cast<void*>(addr);
+}
+
+/**
+ * メモリを解放する。
+ * @param p 解放するメモリの先頭アドレス。
+ */
+void memmgr_free(void* p)
+{
+	// 割り当て済みリストから p を探す。
+
+	_u32 head = reinterpret_cast<_u32>(p);
+	memmap_entry* ent;
+	for (ent = nofree_list; ent; ent = ent->next) {
+		if (ent->head == head) {
+			memmap_remove_from(&nofree_list, ent);
+			break;
+		}
+	}
+
+	if (!ent)
+		return;
+
+	// 空きリストから p の次のアドレスを探す。
+	// p と p の次のアドレスを結合して ent とする。
+
+	_u32 tail = head + ent->bytes;
+	memmap_entry* ent2;
+	for (ent2 = free_list; ent2; ent2 = ent2->next) {
+		if (ent2->head == tail) {
+			ent2->head = head;
+			ent2->bytes += ent->bytes;
+			memmap_remove_from(&free_list, ent2);
+			ent->bytes = 0;
+			ent = ent2;
+			break;
+		}
+	}
+
+	// 空きリストから p の前のアドレスを探す。
+	// p と p の前のアドレスを結合する。
+
+	head = ent->head;
+	for (ent2 = free_list; ent2; ent2 = ent2->next) {
+		if ((ent2->head + ent2->bytes) == head) {
+			ent2->bytes += ent->bytes;
+			ent->bytes = 0;
+			ent = NULL;
+			break;
+		}
+	}
+
+	if (ent) {
+		memmap_insert_to(&free_list, ent);
+	}
 }
 

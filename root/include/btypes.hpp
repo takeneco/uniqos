@@ -1,15 +1,14 @@
 /* FILE : btypes.hpp
- * VER  : 0.0.7
- * LAST : 2009-06-02
+ * VER  : 0.0.8
+ * LAST : 2009-06-29
  * (C) Kato.T 2008-2009
  *
- * 共通で使う型・関数など
+ * 共通で使う型・関数など。
  */
 
-#ifndef _BTYPES_H
-#define _BTYPES_H
+#ifndef _BTYPES_HPP
+#define _BTYPES_HPP
 
-typedef unsigned char      __u8;
 typedef   signed char      _s8;
 typedef unsigned char      _u8;
 typedef unsigned short     __u16;
@@ -101,6 +100,13 @@ static inline _u32 le32_to_cpu(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
 	return _combine32(x4, x3, x2, x1);
 }
 
+static inline _ucpu down_align(_ucpu base, _ucpu value) {
+	return value & ~(base - 1);
+}
+static inline _ucpu up_align(_ucpu base, _ucpu value) {
+	return (value + base - 1) & ~(base - 1);
+}
+
 // NULL
 const class {
 public:
@@ -128,4 +134,4 @@ namespace result {
 	inline bool isfail(type t) { return t < 0; }
 }
 
-#endif // _BTYPES_H
+#endif // _BTYPES_HPP
