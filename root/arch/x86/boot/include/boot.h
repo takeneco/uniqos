@@ -1,8 +1,11 @@
-/* FILE : arch/x86/boot/include/boot.hpp
- * VER  : 0.0.2
- * LAST : 2009-05-18
- * (C) Kato.T 2009
+/** @file   arch/x86/boot/include/boot.hpp
+ * @version 0.0.2
+ *
+ * 各ブートフェーズで使用するメモリアドレスの定義。
  */
+
+// (C) Kato.T 2009
+// 2009-07-01
 
 #ifndef _ARCH_X86_BOOT_INCLUDE_BOOT_H
 #define _ARCH_X86_BOOT_INCLUDE_BOOT_H
@@ -21,16 +24,19 @@
 // カーネルの先頭64KiBを読み込むセグメント(phase3)
 #define PHASE3_SEG 0x3000
 
-#define PH3_TO_PH4_PARAM_SEG 0x8000
-#define PARAM_DISP_DEPTH      0x0000
-#define PARAM_DISP_WIDTH      0x0004
-#define PARAM_DISP_HEIGHT     0x0008
-#define PARAM_DISP_VRAM       0x000c
-#define PARAM_KEYB_LEDS       0x0010
-#define PARAM_MEMMAP_COUNT    0x0014
-#define PARAM_MEMMAP          0x0100
+#define PH3_4_PARAM_SEG      0x8000
+#define PH3_4_DISP_DEPTH      0x0000
+#define PH3_4_DISP_WIDTH      0x0004
+#define PH3_4_DISP_HEIGHT     0x0008
+#define PH3_4_DISP_VRAM       0x000c
+#define PH3_4_KEYB_LEDS       0x0010
+#define PH3_4_MEMMAP_COUNT    0x0014
+#define PH3_4_DISP_CURCOL     0x0018
+#define PH3_4_DISP_CURROW     0x001c
+#define PH3_4_MEMMAP          0x0100
 
 // カーネルの読み込み先アドレス
 #define PHASE4_ADDR 0x100000
 
 #endif // _ARCH_X86_BOOT_INCLUDE_BOOT_H
+

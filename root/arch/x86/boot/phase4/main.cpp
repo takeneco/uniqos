@@ -65,11 +65,27 @@ extern "C" void _int21h()
 extern "C" void _int23h()
 {
 	putu64((_u8*)0xb8060, 0x8888);
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putu32(5000);
+	cons.putu32x(0xdeadbeaf);
 }
 
 extern "C" void _int24h()
 {
 	putu64((_u8*)0xb8090, 0x8888);
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putc('Z');
+	cons.putu32(5000);
+	cons.putu32x(0xdeadbeaf);
 }
 
 // グローバルディスクリプタテーブルのエントリ (_u64)
@@ -210,7 +226,7 @@ void memtest()
 
 void setup_main()
 {
-	_u32* param = reinterpret_cast<_u32*>(PH3_TO_PH4_PARAM_SEG << 4);
+	_u32* param = reinterpret_cast<_u32*>(PH3_4_PARAM_SEG << 4);
 	_u8* vram = reinterpret_cast<_u8*>(param[3]);
 	vram = (_u8*)0xb8000;
 	vram[12] = 'O';

@@ -18,7 +18,10 @@ class console
 	int   cury;
 public:
 	void init(int w, int h, _u32 vram_addr);
-	void putc(char ch);
+	console* putc(char ch);
+	console* puts(const char* str);
+	console* putu32(_u32 n);
+	console* putu32x(_u32 n);
 };
 
 #endif  // _ARCH_X86_BOOT_PHASE4_PHASE4_HPP

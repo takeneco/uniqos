@@ -12,6 +12,7 @@
  * phase4 へ渡すパラメータ：
  *  %ebx : phase4 の先頭アドレス
  *  %ecx : カーネルから phase3 を引いたサイズ
+ *  メモリ(PH3_4_PARAM_SEG) : BIOS/ACPI から取得したパラメータ
  */
 
 .code16
@@ -151,27 +152,37 @@ start_setup:
 
 	calll setup16
 
-	movw  $PH3_TO_PH4_PARAM_SEG, %ax
+	movw  $PH3_4_PARAM_SEG, %ax
 	movw  %ax, %es
-	movl  $8, %es:PARAM_DISP_DEPTH    // ビット深度
-//	movl  $320, %es:PARAM_DISP_WIDTH  // 画面の幅
-	movl  $80, %es:PARAM_DISP_WIDTH
-//	movl  $200, %es:PARAM_DISP_HEIGHT // 画面の高さ
-	movl  $25, %es:PARAM_DISP_HEIGHT
-//	movl  $0x000a0000, %es:PARAM_DISP_VRAM // VRAM
-	movl  $0x0000b800, %es:PARAM_DISP_VRAM
+	movl  $8, %es:PH3_4_DISP_DEPTH    // ビット深度(グラフィックモード)
+//	movl  $320, %es:PH3_4_DISP_WIDTH  // 画面の幅
+	movl  $80, %es:PH3_4_DISP_WIDTH
+//	movl  $200, %es:PH3_4_DISP_HEIGHT // 画面の高さ
+	movl  $25, %es:PH3_4_DISP_HEIGHT
+//	movl  $0x000a0000, %es:PH3_4_DISP_VRAM // VRAM
+	movl  $0x0000b800, %es:PH3_4_DISP_VRAM
 
 	xorl  %eax, %eax
 	movb  $0x02, %ah
 	int   $0x16
-	movl  %eax, %es:PARAM_KEYB_LEDS // キーボードの LED
+	movl  %eax, %es:PH3_4_KEYB_LEDS // キーボードの LED
 
-	pushl $PARAM_MEMMAP
-	pushl $PH3_TO_PH4_PARAM_SEG
+	// テキストモードのカーソル位置を取得する。
+	movb  $0x03, %ah
+	xorb  %bh, %bh
+	int   $0x10
+	xorl  %eax, %eax
+	movb  %dl, %al
+	movl  %eax, %es:PH3_4_DISP_CURCOL
+	movb  %dh, %al
+	movl  %eax, %es:PH3_4_DISP_CURROW
+
+	pushl $PH3_4_MEMMAP
+	pushl $PH3_4_PARAM_SEG
 	calll acpi_get_memmap
 	addw  $8, %sp
 	// %eax != 0xffffffff でエラーチェックが必要
-	movl  %eax, %es:PARAM_MEMMAP_COUNT
+	movl  %eax, %es:PH3_4_MEMMAP_COUNT
 
 	lgdtl boot_gdtr
 	lidtl boot_idtr

@@ -9,6 +9,24 @@
  *
  * 主要な編集履歴
  */
+/** @file ファイルの相対パス
+ * @author Kato.T
+ * @version
+ * @brief 説明
+ * @see 参照先
+ * @attention 注意事項
+ * @note 覚え書き
+ * @todo
+ */
+/**
+ * @param [in,out] 変数名 説明
+ * @return 戻り値の説明
+ * @return 戻り値 戻り値の意味
+ * @post 事後条件
+ * @pre 事前条件
+ * @see 参照先
+ * @todo
+ */
 -----
 /* FILE : filename.cpp - sample code
  * VER  : 1.0.0
