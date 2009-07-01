@@ -20,7 +20,7 @@ mvjmp.bin : mvjmp.o
 mvjmp.o : mvjmp.S
 	$(CC) -c $(CPPFLAGS) $(CFLGAS) -march=i486 $< -o $@
 
-setup32.bin : inthandler.o main.o memmgr.o setup32.o
+setup32.bin : console.o inthandler.o main.o memmgr.o setup32.o
 	$(LD) -nostdlib -static -Ttext=0x200000 -T setup32.ld $^ -o $@
 
 setup32.o : setup32.S
@@ -35,9 +35,12 @@ main.o : main.cpp
 memmgr.o : memmgr.cpp
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common $< -o $@
 
+console.o : console.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common $< -o $@
+
 clean:
 	$(RM) mvjmp.bin setup32.bin phase4.bin
-	$(RM) mvjmp.o inthandler.o main.o memmgr.o setup32.o
+	$(RM) mvjmp.o console.o inthandler.o main.o memmgr.o setup32.o
 
 .PHONY: all clean
 

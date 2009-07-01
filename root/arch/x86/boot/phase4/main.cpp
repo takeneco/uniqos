@@ -8,15 +8,11 @@
 
 #include "asmfunc.hpp"
 #include "boot.h"
-
-struct mem_entry {
-	struct mem_entry* next;
-	_u32 addr;
-	_u32 len;
-};
+#include "phase4.hpp"
 
 _u32 console_width;
 _u32 console_height;
+console cons;
 
 extern "C" void setup_main(void);
 
@@ -223,6 +219,8 @@ void setup_main()
 	console_width = param[1];
 	console_height = param[2];
 
+	cons.init(param[1], param[2], 0xb8000);
+
 	load_gdt();
 	load_idt();
 
@@ -297,13 +295,21 @@ void setup_main()
 
 	// 割り込み設定
 	// ここで異常終了
-	native_outb(0x00, 0x03f9);
-//	native_outb(0x0f, 0x03f9);
+//	native_outb(0x00, 0x03f9);
+	native_outb(0x0f, 0x03f9);
 
 //	native_outb('A', 0x03f8);
 //	native_outb('B', 0x03f8);
 
 	memtest();
+
+	cons.putc('A');
+	cons.putc('B');
+	cons.putc('C');
+	cons.putc('\n');
+	cons.putc('D');
+	cons.putc('E');
+	cons.putc('F');
 
 // acpi_get_mem start
 	_u32 handle;
