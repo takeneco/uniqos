@@ -9,15 +9,18 @@
  *
  * 主要な編集履歴
  */
-/** @file ファイルの相対パス
- * @author Kato.T
- * @version
- * @brief 説明
- * @see 参照先
+/** @file     ファイルの相対パス
+ * @version   ファイルバージョン
+ * @date      最終編集日
+ * @author    Kato.T
+ * @brief     説明
+ * @see       参照先
  * @attention 注意事項
- * @note 覚え書き
+ * @note      覚え書き
  * @todo
  */
+// (C) Kato.T 2009
+
 /**
  * @param [in,out] 変数名 説明
  * @return 戻り値の説明

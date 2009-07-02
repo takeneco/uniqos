@@ -10,8 +10,6 @@
 #include "boot.h"
 #include "phase4.hpp"
 
-_u32 console_width;
-_u32 console_height;
 console cons;
 
 extern "C" void setup_main(void);
@@ -19,12 +17,6 @@ extern "C" void setup_main(void);
 extern "C" void _int21_handler(void);
 extern "C" void _int23_handler(void);
 extern "C" void _int24_handler(void);
-
-static _u8* console(int col, int row)
-{
-	_u8* p = reinterpret_cast<_u8*>(0xb8000);
-	return p + (console_width * row + col) * 2;
-}
 
 static void putu8(_u8* dest, _u8 c)
 {
@@ -86,6 +78,14 @@ extern "C" void _int24h()
 	cons.putc('Z');
 	cons.putu32(5000);
 	cons.putu32x(0xdeadbeaf);
+	
+	native_outb(0x64, 0x0200);
+
+	cons.puts("com1int:")->putu32x(native_inb(0x03fa))->putc('\n');
+	cons.puts("com1sta:")->putu32x(native_inb(0x03fd))->putc('\n');
+	cons.puts("com1dat:")->putu32x(native_inb(0x03f8))->putc('\n');
+	cons.puts("com1dat:")->putu32x(native_inb(0x03f8))->putc('\n');
+	cons.puts("com1ien:")->putu32x(native_inb(0x03f9))->putc('\n');
 }
 
 // グローバルディスクリプタテーブルのエントリ (_u64)
@@ -168,7 +168,6 @@ void load_idt()
 	init_gdtidt_ptr(&idtptr, sizeof idt, idt);
 	native_lidt(&idtptr);
 
-putu64((_u8*)0xb8000, (_u64)idt);
 putu64((_u8*)0xb8030, (_u64)_int21_handler);
 putu64((_u8*)0xb8100, idt[0x24]);
 putu64((_u8*)0xb8130, *(_u64*)&idtptr);
@@ -220,23 +219,25 @@ void memtest()
 	}
 
 	native_set_cr0(cr0);
-
-	putu64((_u8*)0xb8090, p);
 }
 
 void setup_main()
 {
-	_u32* param = reinterpret_cast<_u32*>(PH3_4_PARAM_SEG << 4);
-	_u8* vram = reinterpret_cast<_u8*>(param[3]);
-	vram = (_u8*)0xb8000;
-	vram[12] = 'O';
-	vram[13] = 0x0f;
+	_u8* param = reinterpret_cast<_u8*>(PH3_4_PARAM_SEG << 4);
 
-	console_width = param[1];
-	console_height = param[2];
+	cons.init(
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_WIDTH]),
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_HEIGHT]),
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_VRAM]));
+	cons.set_cur(
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURROW]),
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURCOL]));
 
-	cons.init(param[1], param[2], 0xb8000);
-
+	_u32 x = 
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURROW]),
+	y = 
+		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURCOL]);
+	cons.putu32(x)->putc(' ')->putu32(y)->putc(' ');
 	load_gdt();
 	load_idt();
 
@@ -319,30 +320,24 @@ void setup_main()
 
 	memtest();
 
-	cons.putc('A');
-	cons.putc('B');
-	cons.putc('C');
-	cons.putc('\n');
-	cons.putc('D');
-	cons.putc('E');
 	cons.putc('F');
-
-// acpi_get_mem start
-	_u32 handle;
-	for (int i = 0; i < 10; i++) {
-		_u8 *p = (_u8*)0xb8200;
-		putu64(p + i * 120, *(_u64*)(0x80100 + i * 3 * 8));
-		putu64(p + i * 120 + 40, *(_u64*)(0x80100 + i * 3 * 8 + 8));
-		putu64(p + i * 120 + 80, *(_u64*)(0x80100 + i * 3 * 8 + 16));
-	}
-// acpi_get_mem end
 
 //	for (;;) {
 		native_outb('A', 0x03f8);
 		native_outb('B', 0x03f8);
 //		native_hlt();
-
-		putu64(console(0, 11), *(_u64*)0x100000);
 //	}
+
+/*
+	int z = native_inb(0x03f8);
+	cons.puts("com1data:")->putu32(z)->putc('\n');
+	for (;;) {
+		int y = native_inb(0x03f8);
+		if (z != y) {
+		cons.puts("com1data:")->putu32(y)->putc('\n');
+		z = y;
+		}
+	}
+*/
 }
 

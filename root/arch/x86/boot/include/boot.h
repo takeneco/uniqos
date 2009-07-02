@@ -31,8 +31,8 @@
 #define PH3_4_DISP_VRAM       0x000c
 #define PH3_4_KEYB_LEDS       0x0010
 #define PH3_4_MEMMAP_COUNT    0x0014
-#define PH3_4_DISP_CURCOL     0x0018
-#define PH3_4_DISP_CURROW     0x001c
+#define PH3_4_DISP_CURROW     0x0018
+#define PH3_4_DISP_CURCOL     0x001c
 #define PH3_4_MEMMAP          0x0100
 
 // カーネルの読み込み先アドレス

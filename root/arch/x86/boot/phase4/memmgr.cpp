@@ -145,9 +145,9 @@ static void memmap_add_entry(const acpi_memmap* raw)
 static void memmap_import()
 {
 	const _u32 memmap_count
-		= *reinterpret_cast<_u32*>(PARAM_MEMMAP_COUNT);
+		= *reinterpret_cast<_u32*>(PH3_4_MEMMAP_COUNT);
 	const acpi_memmap* rawmap
-		= reinterpret_cast<acpi_memmap*>(PARAM_MEMMAP);
+		= reinterpret_cast<acpi_memmap*>(PH3_4_MEMMAP);
 
 	for (int i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {

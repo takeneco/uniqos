@@ -160,7 +160,7 @@ start_setup:
 //	movl  $200, %es:PH3_4_DISP_HEIGHT // 画面の高さ
 	movl  $25, %es:PH3_4_DISP_HEIGHT
 //	movl  $0x000a0000, %es:PH3_4_DISP_VRAM // VRAM
-	movl  $0x0000b800, %es:PH3_4_DISP_VRAM
+	movl  $0x000b8000, %es:PH3_4_DISP_VRAM
 
 	xorl  %eax, %eax
 	movb  $0x02, %ah
