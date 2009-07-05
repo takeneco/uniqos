@@ -8,7 +8,11 @@
  */
 // (C) Kato.T 2009
 
+#include <cstddef>
 #include "phase4.hpp"
+
+
+void* memcpy(void*, const void*, std::size_t);
 
 /**
  * console クラスを初期化する。
@@ -37,6 +41,11 @@ console* console::putc(char ch)
 	if (ch == '\n') {
 		cur_col = 0;
 		cur_row++;
+		if (cur_row == height) {
+			memcpy(&vram[0], &vram[width * 2],
+				width * (height - 1) * 2);
+			cur_row--;
+		}
 	} else {
 		const int cur = (width * cur_row + cur_col) * 2;
 		vram[cur] = ch;
@@ -45,6 +54,11 @@ console* console::putc(char ch)
 		if (++cur_col == width) {
 			cur_col = 0;
 			cur_row++;
+			if (cur_row == height) {
+				memcpy(&vram[0], &vram[width * 2],
+					width * (height - 1) * 2);
+				cur_row--;
+			}
 		}
 	}
 
