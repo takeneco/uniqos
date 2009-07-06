@@ -1,7 +1,7 @@
 /**
  * @file    arch/x86/boot/phase4/console.c
- * @version 0.0.1
- * @date    2009-07-02
+ * @version 0.0.2
+ * @date    2009-07-06
  * @author  Kato.T
  *
  * 簡単なテキストコンソール画面出力。
@@ -12,7 +12,26 @@
 #include "phase4.hpp"
 
 
-void* memcpy(void*, const void*, std::size_t);
+/**
+ * スクロールする。
+ *
+ * @param n スクロールする行数。
+ */
+void console::roll(unsigned int n)
+{
+	if (n > height)
+		n = height;
+
+	memcpy(&vram[0], &vram[width * 2 * n],
+		width * (height - n) * 2);
+
+	char* space = &vram[width * (height - n) * 2];
+	const int space_size = width * n * 2;
+	for (int i = 0; i < space_size; i += 2) {
+		space[i] = ' ';
+		space[i + 1] = 0x00;
+	}
+}
 
 /**
  * console クラスを初期化する。
@@ -42,8 +61,7 @@ console* console::putc(char ch)
 		cur_col = 0;
 		cur_row++;
 		if (cur_row == height) {
-			memcpy(&vram[0], &vram[width * 2],
-				width * (height - 1) * 2);
+			roll(1);
 			cur_row--;
 		}
 	} else {
@@ -55,8 +73,7 @@ console* console::putc(char ch)
 			cur_col = 0;
 			cur_row++;
 			if (cur_row == height) {
-				memcpy(&vram[0], &vram[width * 2],
-					width * (height - 1) * 2);
+				roll(1);
 				cur_row--;
 			}
 		}

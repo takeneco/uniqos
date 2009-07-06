@@ -1,11 +1,13 @@
-/* FILE : arch/x86/boot/phase4/memmgr.cpp
- * VER  : 0.0.2
- * LAST : 2009-06-25
- * (C) Kato.T 2009
+/**
+ * @file    arch/x86/boot/phase4/memmgr.cpp
+ * @version 0.0.2
+ * @date    2009-06-25
+ * @author  Kato.T
  *
  * 初期化処理で使用する簡単なメモリ管理の実装。
  * 4GB以下のメモリを管理する。
  */
+// (C) Kato.T 2009
 
 #include <cstddef>
 #include "btypes.hpp"

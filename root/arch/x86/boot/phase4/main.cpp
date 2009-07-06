@@ -71,20 +71,7 @@ extern "C" void _int23h()
 
 extern "C" void _int24h()
 {
-	putu64((_u8*)0xb8090, 0x8888);
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putu32(5000);
-	cons.putu32x(0xdeadbeaf);
-	
 	native_outb(0x64, 0x0020);
-
-	// FIFO コントロール
-	native_outb(0xca, 0x03fa);
 
 	cons.puts("com1int:")->putu32x(native_inb(0x03fa))->putc('\n');
 	cons.puts("com1sta:")->putu32x(native_inb(0x03fd))->putc('\n');
@@ -331,7 +318,7 @@ void setup_main()
 	native_outb(0x0b, 0x03fc);
 
 	// FIFO コントロール
-	native_outb(0xc8, 0x03fa);
+	native_outb(0xc9, 0x03fa);
 
 	// 割り込み設定
 	// ここで異常終了
@@ -339,26 +326,23 @@ void setup_main()
 	native_outb(0x0f, 0x03f9);
 
 //	native_outb('A', 0x03f8);
-//	native_outb('B', 0x03f8);
+	native_outb('B', 0x03f8);
 
 	memtest();
 
 	cons.putc('F');
 
-//	for (;;) {
-		native_outb('A', 0x03f8);
-		native_outb('B', 0x03f8);
-//		native_hlt();
-//	}
-
 	int z = native_inb(0x03f8);
-	cons.puts("com1data:")->putu32(z)->putc('\n');
 	for (;;) {
+/*
 		int y = native_inb(0x03f8);
 		if (z != y) {
-			dump();
+//			dump();
 		z = y;
 		}
+*/
+		native_hlt();
+		dump();
 	}
 }
 
