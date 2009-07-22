@@ -1,7 +1,7 @@
 /**
  * @file    arch/x86/boot/phase4/memmgr.cpp
- * @version 0.0.2
- * @date    2009-06-25
+ * @version 0.0.3
+ * @date    2009-07-22
  * @author  Kato.T
  *
  * 初期化処理で使用する簡単なメモリ管理の実装。
@@ -37,18 +37,26 @@ struct acpi_memmap {
 
 // 作業エリア
 // 作業エリアの開始アドレスは NULL 禁止。
-memmap_entry* memmap_buf
+static memmap_entry* memmap_buf
 	= reinterpret_cast<memmap_entry*>(0x50000);
 
 // 作業エリアのサイズ = 0x10000 bytes
-const int memmap_buf_count
+static const int memmap_buf_count
 	= 0x10000 / sizeof(memmap_entry);
 
 // 空き領域リスト
-memmap_entry* free_list;
+static memmap_entry* free_list;
 
 // 割り当て済み領域リスト
-memmap_entry* nofree_list;
+static memmap_entry* nofree_list;
+
+/**
+ * プラス方向 align
+ */
+static inline _u32 up_align(_u32 x)
+{
+	return (x + 15) & 0xfffffff0;
+}
 
 /**
  * 作業エリアを初期化する。
@@ -132,11 +140,11 @@ static void memmap_add_entry(const acpi_memmap* raw)
 	if (ent == NULL)
 		return;
 
-	ent->head = raw->base;
+	ent->head = up_align(raw->base);
 	if ((raw->base + raw->length) > 0x00000000ffffffffULL)
-		ent->bytes = 0xffffffff;
+		ent->bytes = 0xffffffff - ent->head;
 	else
-		ent->bytes = raw->length;
+		ent->bytes = raw->base + raw->length - ent->head;
 
 	memmap_insert_to(&free_list, ent);
 }
@@ -146,10 +154,10 @@ static void memmap_add_entry(const acpi_memmap* raw)
  */
 static void memmap_import()
 {
-	const _u32 memmap_count
-		= *reinterpret_cast<_u32*>(PH3_4_MEMMAP_COUNT);
-	const acpi_memmap* rawmap
-		= reinterpret_cast<acpi_memmap*>(PH3_4_MEMMAP);
+	const _u32 memmap_count = *reinterpret_cast<_u32*>
+		((PH3_4_PARAM_SEG << 4) + PH3_4_MEMMAP_COUNT);
+	const acpi_memmap* rawmap = reinterpret_cast<acpi_memmap*>
+		((PH3_4_PARAM_SEG << 4) + PH3_4_MEMMAP);
 
 	for (int i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
@@ -213,12 +221,14 @@ void memmgr_init()
 }
 
 /**
- * メモリを確保する。
+ * メモリを割り当てる。
  * @param size 必要なメモリのサイズ。
  * @return 確保したメモリの先頭アドレスを返す。
  */
 void* memmgr_alloc(size_t size)
 {
+	size = up_align(size);
+
 	memmap_entry* ent;
 	for (ent = free_list; ent; ent = ent->next) {
 		if (ent->bytes >= size)
@@ -303,3 +313,12 @@ void memmgr_free(void* p)
 	}
 }
 
+void* operator new(std::size_t s)
+{
+	return memmgr_alloc(s);
+}
+
+void operator delete(void* p)
+{
+	memmgr_free(p);
+}

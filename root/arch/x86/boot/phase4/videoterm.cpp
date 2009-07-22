@@ -1,7 +1,7 @@
 /**
- * @file    arch/x86/boot/phase4/console.c
- * @version 0.0.2
- * @date    2009-07-06
+ * @file    arch/x86/boot/phase4/videoterm.c
+ * @version 0.0.3
+ * @date    2009-07-22
  * @author  Kato.T
  *
  * 簡単なテキストコンソール画面出力。
@@ -17,7 +17,7 @@
  *
  * @param n スクロールする行数。
  */
-void console::roll(unsigned int n)
+void video_term::roll(unsigned int n)
 {
 	if (n > height)
 		n = height;
@@ -34,14 +34,14 @@ void console::roll(unsigned int n)
 }
 
 /**
- * console クラスを初期化する。
+ * video_term クラスを初期化する。
  *
  * @param w コンソールの横幅（半角文字数）。
  * @param h コンソールの縦幅。
  *
  * @vram_addr VRAM の先頭アドレス。
  */
-void console::init(int w, int h, _u32 vram_addr)
+void video_term::init(int w, int h, _u32 vram_addr)
 {
 	width = w;
 	height = h;
@@ -51,11 +51,11 @@ void console::init(int w, int h, _u32 vram_addr)
 }
 
 /**
- * コンソールへ１文字出力する。
+ * １文字出力する。
  *
  * @param ch 出力する文字。
  */
-console* console::putc(char ch)
+void video_term::putc(char ch)
 {
 	if (ch == '\n') {
 		cur_col = 0;
@@ -78,8 +78,6 @@ console* console::putc(char ch)
 			}
 		}
 	}
-
-	return this;
 }
 
 /**
@@ -87,7 +85,7 @@ console* console::putc(char ch)
  *
  * @param str ヌル終端文字列。
  */
-console* console::puts(const char* str)
+video_term* video_term::puts(const char* str)
 {
 	while (*str) {
 		putc(*str++);
@@ -103,7 +101,7 @@ const char base_number[] = "0123456789abcdefghijklmnopqrstuvwxyz";
  *
  * @param n 符号なし整数値。
  */
-console* console::putu32(_u32 n)
+video_term* video_term::putu32(_u32 n)
 {
 	if (n == 0) {
 		putc('0');
@@ -128,7 +126,7 @@ console* console::putu32(_u32 n)
  *
  * @param n 符号なし整数値。
  */
-console* console::putu32x(_u32 n)
+video_term* video_term::putu32x(_u32 n)
 {
 	for (int shift = 32 - 4; shift >= 0; shift -= 4) {
 		const int x = (n >> shift) & 0x0000000f;
@@ -143,7 +141,7 @@ console* console::putu32x(_u32 n)
  *
  * @param n 符号なし整数値。
  */
-console* console::putu64x(_u64 n)
+video_term* video_term::putu64x(_u64 n)
 {
 	for (int shift = 64 - 4; shift >= 0; shift -= 4) {
 		const int x = static_cast<int>(n >> shift) & 0x0000000f;

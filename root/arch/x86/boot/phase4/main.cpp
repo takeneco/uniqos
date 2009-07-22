@@ -12,7 +12,8 @@
 #include "boot.h"
 #include "phase4.hpp"
 
-console cons;
+video_term* cons;
+com_term com1;
 
 extern "C" void setup_main(void);
 
@@ -59,25 +60,17 @@ extern "C" void _int21h()
 extern "C" void _int23h()
 {
 	putu64((_u8*)0xb8060, 0x8888);
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putc('Z');
-	cons.putu32(5000);
-	cons.putu32x(0xdeadbeaf);
+	cons->putc('Z');
 }
 
 extern "C" void _int24h()
 {
 	native_outb(0x64, 0x0020);
 
-	cons.puts("com1int:")->putu32x(native_inb(0x03fa))->putc('\n');
-	cons.puts("com1sta:")->putu32x(native_inb(0x03fd))->putc('\n');
-	cons.puts("com1dat:")->putu32x(native_inb(0x03f8))->putc('\n');
-	cons.puts("com1dat:")->putu32x(native_inb(0x03f8))->putc('\n');
-	cons.puts("com1ien:")->putu32x(native_inb(0x03f9))->putc('\n');
+	cons->puts("com1:int=")->putu32x(native_inb(0x03fa))
+	->puts(",sta=")->putu32x(native_inb(0x03fd))
+	->puts(",dat=")->putu32x(native_inb(0x03f8))
+	->puts(",ien=")->putu32x(native_inb(0x03f9))->putc('\n');
 }
 
 // グローバルディスクリプタテーブルのエントリ (_u64)
@@ -214,37 +207,22 @@ void memtest()
 }
 
 
-void dump()
-{
-	cons.puts("receive    = ")->putu32x(native_inb(0x03f8))->putc('\n');
-	cons.puts("int enable = ")->putu32x(native_inb(0x03f9))->putc('\n');
-	cons.puts("int id     = ")->putu32x(native_inb(0x03fa))->putc('\n');
-	cons.puts("line ctrl  = ")->putu32x(native_inb(0x03fb))->putc('\n');
-	cons.puts("modem ctrl = ")->putu32x(native_inb(0x03fc))->putc('\n');
-	cons.puts("line stat  = ")->putu32x(native_inb(0x03fd))->putc('\n');
-	cons.puts("modem stat = ")->putu32x(native_inb(0x03fe))->putc('\n');
-	cons.putc('\n');
-}
-
-
-
 void setup_main()
 {
+	memmgr_init();
+
 	_u8* param = reinterpret_cast<_u8*>(PH3_4_PARAM_SEG << 4);
 
-	cons.init(
+	cons = new video_term;
+
+	cons->init(
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_WIDTH]),
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_HEIGHT]),
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_VRAM]));
-	cons.set_cur(
+	cons->set_cur(
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURROW]),
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURCOL]));
 
-	_u32 x = 
-		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURROW]),
-	y = 
-		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURCOL]);
-	cons.putu32(x)->putc(' ')->putu32(y)->putc(' ');
 	load_gdt();
 	load_idt();
 
@@ -303,46 +281,26 @@ void setup_main()
 	wait_KBC_sendready();
 	native_outb(0xf4, 0x0060);
 
-	// 通信スピードの設定開始
-	native_outb(0x80, 0x03fb);
-
-	// 通信スピード 300[bps]
-	native_outb(0x80, 0x03f8);
-	native_outb(0x01, 0x03f9);
-
-	// 通信スピード設定終了
-	// 8ビット送受信開始
-	native_outb(0x03, 0x03fb);
-
-	// 制御ピン設定
-	native_outb(0x0b, 0x03fc);
-
-	// FIFO コントロール
-	native_outb(0xc9, 0x03fa);
-
 	// 割り込み設定
 	// ここで異常終了
 //	native_outb(0x00, 0x03f9);
 	native_outb(0x0f, 0x03f9);
 
-//	native_outb('A', 0x03f8);
-	native_outb('B', 0x03f8);
-
 	memtest();
 
-	cons.putc('F');
+	term_chain tc;
+	tc.init();
+
+	com_term* ct = new com_term;
+	ct->init(com_term::COM1_BASE, com_term::COM1_IRQ);
+
+	tc.add_term(ct);
+
+	tc.puts("This is a test message.");
 
 	int z = native_inb(0x03f8);
 	for (;;) {
-/*
-		int y = native_inb(0x03f8);
-		if (z != y) {
-//			dump();
-		z = y;
-		}
-*/
 		native_hlt();
-		dump();
 	}
 }
 

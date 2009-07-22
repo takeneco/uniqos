@@ -8,6 +8,8 @@
 
 #include <cstddef>
 
+#include "phase4.hpp"
+
 /**
  * memcpy()
  * memmove() のような動作が必要。
@@ -17,9 +19,24 @@ void* memcpy(void* dest, const void* src, std::size_t n)
 	char* d = reinterpret_cast<char*>(dest);
 	const char* s = reinterpret_cast<const char*>(src);
 
-	for (int i = 0; i < n; i++) {
-		*d++ = *s++;
+	if (dest < src) {
+		for (int i = 0; i < n; i++) {
+			d[i] = s[i];
+		}
+	}
+	else {
+		for (int i = n - 1; i >= 0; i--) {
+			d[i] = s[i];
+		}
 	}
 
 	return dest;
 }
+
+#ifdef __GNUC__
+
+extern "C" void __cxa_pure_virtual()
+{
+}
+
+#endif  // __GNUC__
