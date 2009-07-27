@@ -1,16 +1,28 @@
-/** @file   arch/x86/boot/include/boot.hpp
+/**
+ * @file    arch/x86/boot/include/boot.hpp
  * @version 0.0.2
- *
- * 各ブートフェーズで使用するメモリアドレスの定義。
+ * @date    2009-07-26
+ * @author  Kato.T
+ * @brief   各ブートフェーズで使用するメモリアドレスの定義。
  */
-
 // (C) Kato.T 2009
-// 2009-07-01
 
 #ifndef _ARCH_X86_BOOT_INCLUDE_BOOT_H
 #define _ARCH_X86_BOOT_INCLUDE_BOOT_H
 
 // 各フェーズの読み込み先アドレス
+
+/**
+ * @page x86-boot x86のブート処理
+ * @section memmap メモリマップ
+ * @subsection phase1 phase 1
+ * - 0x00000-0x07bff スタック領域
+ *   - 0x07bfc       phase1 がディスクから読み込んだセクタ数。
+ *                   phase1 から phase2 へ渡すパラメータ。
+ *   - 0x07bfe       BIOS のブートドライブ番号。
+ *                   phase1 から phase2 へ渡すパラメータ。
+ * - 0x07c00-0x07dff 実行アドレス
+ */
 
 // ブートセクタ
 #define PHASE1_ADDR 0x7c00
@@ -37,6 +49,9 @@
 
 // カーネルの読み込み先アドレス
 #define PHASE4_ADDR 0x100000
+
+#define PH4_MEMMAP_BUF  0x50000
+#define PH4_VIDEOTERM   0x60000
 
 #endif // _ARCH_X86_BOOT_INCLUDE_BOOT_H
 

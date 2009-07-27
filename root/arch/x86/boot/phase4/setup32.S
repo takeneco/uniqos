@@ -1,11 +1,14 @@
-/* FILE : arch/x86/boot/phase4/setup32.S
- * VER  : 0.0.3
- * LAST : 2009-06-21
- * (C) Kato.T 2009
+/**
+ * @file    arch/x86/boot/phase4/setup32.S
+ * @version 0.0.3
+ * @date    2009-06-21
+ * @author  Kato.T
+ * @brief   32ビットプロテクトモード移行後のカーネル自身のセットアップ。
  *
- * 32ビットプロテクトモード移行後の
- * カーネル自身のセットアップ。
+ * phase4(mvjmp) から渡されるパラメータ：
+ *  %ecx : phase4(setup32) からカーネルの終わりまでの長さ。
  */
+// (C) Kato.T 2009
 
 .code32
 
@@ -37,9 +40,13 @@ _start:
 	addl  $4, %edi
 	call  print
 
-	incl  %esi
-	addl  $4, %edi
-	call  print
+	// 圧縮カーネルのサイズ
+	subl  $phase4_end - _start, %ecx
+	pushl %ecx
+
+	// 圧縮カーネルの先頭アドレス
+	movl  $phase4_end, %eax
+	pushl %eax
 
 	call  setup_main
 
@@ -70,3 +77,4 @@ print:
 
 print_base:
 	.ascii "0123456789abcdefghijklmnopqrstuvwxyz"
+

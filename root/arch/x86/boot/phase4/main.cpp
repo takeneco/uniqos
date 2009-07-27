@@ -9,13 +9,10 @@
 // (C) Kato.T 2009
 
 #include "asmfunc.hpp"
-#include "boot.h"
 #include "phase4.hpp"
 
-video_term* cons;
-com_term com1;
 
-extern "C" void setup_main(void);
+extern "C" void setup_main(_u8* ker_src, _u32 ker_dest);
 
 extern "C" void _int21_handler(void);
 extern "C" void _int23_handler(void);
@@ -49,25 +46,18 @@ static void putu64(_u8* dest, _u64 n)
 
 extern "C" void _int21h()
 {
-//	native_outb(0x61, 0x0020);
-//	_u8* vram = (_u8*)0xb8000;
-//	vram[0] = 'Z';
-//	vram[1] = 0x0f;
-//	native_outb('A', 0x03f8);
-//	native_outb('B', 0x03f8);
 }
 
 extern "C" void _int23h()
 {
-	putu64((_u8*)0xb8060, 0x8888);
-	cons->putc('Z');
 }
 
 extern "C" void _int24h()
 {
 	native_outb(0x64, 0x0020);
 
-	cons->puts("com1:int=")->putu32x(native_inb(0x03fa))
+	get_video_term()
+	->puts("com1:int=")->putu32x(native_inb(0x03fa))
 	->puts(",sta=")->putu32x(native_inb(0x03fd))
 	->puts(",dat=")->putu32x(native_inb(0x03f8))
 	->puts(",ien=")->putu32x(native_inb(0x03f9))->putc('\n');
@@ -137,12 +127,15 @@ static void load_gdt()
 #define IDT_DPL2 (2 << 13)
 #define IDT_DPL3 (3 << 13)
 
-void load_idt()
+void load_idt(memmgr* mm)
 {
-	static _u64 idt[256];
+	const int idt_len = 256;
+
+	// 確保したまま、解放しない。
+	_u64* idt = new(mm) _u64[idt_len];
 	gdtidt_ptr idtptr;
 
-	for (int i = 0; i < 256; i++) {
+	for (int i = 0; i < idt_len; i++) {
 		idt[i] = 0ULL;
 	}
 	idt[0x21] = IDT_ENTRY(_int21_handler, 1 * 8, IDT_MINFLAGS | IDT_DPL0);
@@ -150,12 +143,8 @@ void load_idt()
 	idt[0x23] = IDT_ENTRY(_int23_handler, 1 * 8, IDT_MINFLAGS | IDT_DPL0);
 	idt[0x24] = IDT_ENTRY(_int24_handler, 1 * 8, IDT_MINFLAGS | IDT_DPL0);
 
-	init_gdtidt_ptr(&idtptr, sizeof idt, idt);
+	init_gdtidt_ptr(&idtptr, sizeof *idt * idt_len, idt);
 	native_lidt(&idtptr);
-
-putu64((_u8*)0xb8030, (_u64)_int21_handler);
-putu64((_u8*)0xb8100, idt[0x24]);
-putu64((_u8*)0xb8130, *(_u64*)&idtptr);
 }
 
 void wait_KBC_sendready()
@@ -206,14 +195,16 @@ void memtest()
 	native_set_cr0(cr0);
 }
 
-
-void setup_main()
+void setup_main(_u8* ker_src, _u32 ker_size)
 {
-	memmgr_init();
+	memmgr mm;
+
+	memmgr_init(&mm);
 
 	_u8* param = reinterpret_cast<_u8*>(PH3_4_PARAM_SEG << 4);
 
-	cons = new video_term;
+	video_term* cons = new(&mm) video_term;
+	set_video_term(cons);
 
 	cons->init(
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_WIDTH]),
@@ -224,7 +215,7 @@ void setup_main()
 		*reinterpret_cast<_u32*>(&param[PH3_4_DISP_CURCOL]));
 
 	load_gdt();
-	load_idt();
+	load_idt(&mm);
 
 	// PICの初期化
 	enum {
@@ -282,7 +273,6 @@ void setup_main()
 	native_outb(0xf4, 0x0060);
 
 	// 割り込み設定
-	// ここで異常終了
 //	native_outb(0x00, 0x03f9);
 	native_outb(0x0f, 0x03f9);
 
@@ -291,7 +281,7 @@ void setup_main()
 	term_chain tc;
 	tc.init();
 
-	com_term* ct = new com_term;
+	com_term* ct = new(&mm) com_term;
 	ct->init(com_term::COM1_BASE, com_term::COM1_IRQ);
 
 	tc.add_term(ct);
@@ -299,6 +289,11 @@ void setup_main()
 	tc.puts("This is a test message.");
 
 	int z = native_inb(0x03f8);
+
+	_u8* ker_dest = reinterpret_cast<_u8*>(0x100000);
+	lzma_decode(&mm, ker_src, ker_size, ker_dest, 0x100000);
+
+	cons->putu64x(*(_u64*)ker_dest);
 	for (;;) {
 		native_hlt();
 	}

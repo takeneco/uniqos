@@ -1,10 +1,9 @@
 /**
  * @file    arch/x86/boot/phase4/phase4.hpp
- * @version 0.0.3
- * @date    2009-07-22
+ * @version 0.0.4
+ * @date    2009-07-28
  * @author  Kato.T
- *
- * phase4 で使用する機能の宣言。
+ * @brief   phase4 で使用する機能の宣言。
  */
 // (C) Kato.T 2009
 
@@ -12,7 +11,29 @@
 #define _ARCH_X86_BOOT_PHASE4_PHASE4_HPP
 
 #include <cstddef>
+
 #include "btypes.hpp"
+#include "boot.h"
+
+
+// メモリ管理
+struct memmap_entry;
+struct memmgr
+{
+	// 空き領域リスト
+	memmap_entry* free_list;
+
+	// 割り当て済み領域リスト
+	memmap_entry* nofree_list;
+};
+
+void  memmgr_init(memmgr* mm);
+void* memmgr_alloc(memmgr* mm, size_t size);
+void  memmgr_free(memmgr* mm, void* p);
+void* operator new(std::size_t s, memmgr*);
+void* operator new[](std::size_t s, memmgr*);
+void  operator delete(void* p, memmgr*);
+void  operator delete[](void* p, memmgr*);
 
 
 /**
@@ -53,18 +74,7 @@ class com_term : public outterm
 {
 	_u16 base_port;
 	_u16 irq;
-
-	/// 出力バッファ
-	char data_buf[256];
-
-	// buf 中の未出力データの先頭と終端
-	int data_head;
-	int data_tail;
-
-	// 出力先バッファのサイズ
 	int out_buf_size;
-
-	// 出力先バッファの空き
 	int out_buf_left;
 
 	/* static */ int next_data(int ptr);
@@ -107,12 +117,23 @@ public:
 	video_term* putu64x(_u64 n);
 };
 
+inline void set_video_term(video_term* p) {
+	*reinterpret_cast<video_term**>(PH4_VIDEOTERM) = p;
+}
+inline video_term* get_video_term() {
+	return *reinterpret_cast<video_term**>(PH4_VIDEOTERM);
+}
 
 void* memcpy(void* dest, const void* src, std::size_t n);
 
-void  memmgr_init();
-void* operator new(std::size_t s);
-void  operator delete(void* p);
+// lzma wrapper
+
+bool lzma_decode(
+	memmgr*     mm,
+	_u8*        src,
+	std::size_t src_len,
+	_u8*        dest,
+	std::size_t dest_len);
 
 
 #endif  // _ARCH_X86_BOOT_PHASE4_PHASE4_HPP

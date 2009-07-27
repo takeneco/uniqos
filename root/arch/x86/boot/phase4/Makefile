@@ -5,12 +5,12 @@
 #
 # ３２ビット起動処理をコンパイルする Makefile
 
-CFLAGS += -fno-exceptions -fno-rtti -fno-common -Os -march=i486
-CXXFLAGS = $(CFLAGS)
+CFLAGS += -fno-exceptions -fno-common -Os -march=i486
+CXXFLAGS = $(CFLAGS) -fno-rtti
 CPPFLAGS += -I../../../../include -I../../include -I../include
 
-OBJS = \
- comterm.o inthandler.o main.o memmgr.o setup32.o \
+OBJS = LzmaDec.o \
+ comterm.o inthandler.o lzmadecwrap.o main.o memmgr.o setup32.o \
  termchain.o util.o videoterm.o
 
 all : phase4.bin
@@ -23,6 +23,12 @@ mvjmp.bin : mvjmp.o
 
 setup32.bin : $(OBJS)
 	$(LD) -nostdlib -static -Ttext=0x200000 -T setup32.ld $^ -o $@
+
+lzmadecwrap.o : lzmadecwrap.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I../../../../contrib/lzma/C $< -o $@
+
+LzmaDec.o : ../../../../contrib/lzma/C/LzmaDec.c
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.o : %.cpp
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

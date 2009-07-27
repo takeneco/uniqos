@@ -17,7 +17,7 @@ PHASE1 = boot/phase1/bootsect.bin
 PHASE2 = boot/phase2/phase2.bin
 PHASE3 = boot/phase3/phase3.bin
 PHASE4 = boot/phase4/phase4.bin
-KERNEL = kernel/kernel.bin
+KERNEL = kernel/kernel.bin.lzma
 
 all : fd1440.img
 

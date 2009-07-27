@@ -28,38 +28,6 @@ enum PORT {
 
 
 /**
- * data_head か data_tail を data_buf 上で１つ進めたときの位置を返す。
- *
- * @param ptr data_head か data_tail。
- * @return ptr で指定したインデックスを１つ進めた位置。
- */
-int com_term::next_data(int ptr)
-{
-	int next_ptr = ptr + 1;
-	if (next_ptr >= sizeof data_buf) {
-		next_ptr = 0;
-	}
-
-	return next_ptr;
-}
-
-/**
- * data_buf のデータを送信する。
- */
-void com_term::tx_buf()
-{
-	while (out_buf_left > 0) {
-		if (data_head == data_tail) {
-			break;
-		}
-		native_outb(data_buf[data_head],
-			base_port + TRANSMIT_DATA);
-		data_head = next_data(data_head);
-		out_buf_left--;
-	}
-}
-
-/**
  * com_term クラスを初期化する。
  *
  * @param port ベースポート。
@@ -68,7 +36,6 @@ void com_term::init(_u16 dev_port, _u16 pic_irq)
 {
 	base_port = dev_port;
 	irq = pic_irq;
-	data_head = data_tail = 0;
 
 	// 通信スピードの設定開始
 	native_outb(0x80, base_port + LINE_CTRL);
@@ -120,18 +87,5 @@ void com_term::putc(char ch)
  */
 void com_term::on_interrupt()
 {
-	const _u8 iid = native_inb(base_port + INT_ID);
-
-	if ((iid & 1) == 0) {
-		// 割り込みなし
-		return;
-	}
-
-	if ((iid & 0x0e) == 0x02) {
-		// Tx FIFO empty
-
-		out_buf_left = out_buf_size;
-		tx_buf();
-	}
 }
 

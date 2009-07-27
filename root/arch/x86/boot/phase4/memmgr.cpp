@@ -1,7 +1,7 @@
 /**
  * @file    arch/x86/boot/phase4/memmgr.cpp
- * @version 0.0.3
- * @date    2009-07-22
+ * @version 0.0.4
+ * @date    2009-07-26
  * @author  Kato.T
  *
  * 初期化処理で使用する簡単なメモリ管理の実装。
@@ -12,6 +12,8 @@
 #include <cstddef>
 #include "btypes.hpp"
 #include "boot.h"
+#include "phase4.hpp"
+
 
 struct memmap_entry {
 	memmap_entry* prev;
@@ -37,18 +39,12 @@ struct acpi_memmap {
 
 // 作業エリア
 // 作業エリアの開始アドレスは NULL 禁止。
-static memmap_entry* memmap_buf
-	= reinterpret_cast<memmap_entry*>(0x50000);
+static memmap_entry* const memmap_buf
+	= reinterpret_cast<memmap_entry*>(PH4_MEMMAP_BUF);
 
 // 作業エリアのサイズ = 0x10000 bytes
 static const int memmap_buf_count
 	= 0x10000 / sizeof(memmap_entry);
-
-// 空き領域リスト
-static memmap_entry* free_list;
-
-// 割り当て済み領域リスト
-static memmap_entry* nofree_list;
 
 /**
  * プラス方向 align
@@ -63,8 +59,6 @@ static inline _u32 up_align(_u32 x)
  */
 static void memmap_buf_init()
 {
-	free_list = nofree_list = NULL;
-
 	for (int i = 0; i < memmap_buf_count; i++) {
 		memmap_buf[i].bytes = 0;
 	}
@@ -128,7 +122,7 @@ static void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
  * ACPI のメモリマップを free_list へ追加する。
  * @param raw ACPI が出力したメモリマップのエントリ
  */
-static void memmap_add_entry(const acpi_memmap* raw)
+static void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
 {
 	// 32ビットで扱えないアドレスは無視する。
 	if (raw->base >= 0x00000000ffffffffULL)
@@ -146,13 +140,13 @@ static void memmap_add_entry(const acpi_memmap* raw)
 	else
 		ent->bytes = raw->base + raw->length - ent->head;
 
-	memmap_insert_to(&free_list, ent);
+	memmap_insert_to(&mm->free_list, ent);
 }
 
 /**
  * phase3 が ACPI で取得したメモリマップを取り込む。
  */
-static void memmap_import()
+static void memmap_import(memmgr* mm)
 {
 	const _u32 memmap_count = *reinterpret_cast<_u32*>
 		((PH3_4_PARAM_SEG << 4) + PH3_4_MEMMAP_COUNT);
@@ -161,22 +155,22 @@ static void memmap_import()
 
 	for (int i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
-			memmap_add_entry(&rawmap[i]);
+			memmap_add_entry(mm, &rawmap[i]);
 		}
 	}
 }
 
 /**
- * メモリ空間を free_list から取り除く。
+ * メモリ空間を memmgr->free_list から取り除く。
  * @param r_head 取り除くメモリの先頭アドレス。
  * @param r_tail 取り除くメモリの終端アドレス。
  */
-static void memmap_reserve(_u64 r_head, _u64 r_tail)
+static void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
 {
 	r_tail += 1;
 
 	memmap_entry* ent;
-	for (ent = free_list; ent; ent = ent->next) {
+	for (ent = mm->free_list; ent; ent = ent->next) {
 		_u32 e_head = ent->head;
 		_u32 e_tail = e_head + ent->bytes;
 
@@ -184,7 +178,7 @@ static void memmap_reserve(_u64 r_head, _u64 r_tail)
 			memmap_entry* ent2 = memmap_new_entry();
 			ent2->head = r_tail;
 			ent2->bytes = e_tail - r_tail;
-			memmap_insert_to(&free_list, ent2);
+			memmap_insert_to(&mm->free_list, ent2);
 
 			ent->bytes = r_head - e_head;
 			break;
@@ -197,7 +191,7 @@ static void memmap_reserve(_u64 r_head, _u64 r_tail)
 			e_tail = r_head;
 		}
 		if (e_head >= e_tail) {
-			memmap_remove_from(&free_list, ent);
+			memmap_remove_from(&mm->free_list, ent);
 			ent->bytes = 0;
 		} else {
 			ent->head = e_head;
@@ -209,15 +203,17 @@ static void memmap_reserve(_u64 r_head, _u64 r_tail)
 /**
  * memmgr を初期化する。
  */
-void memmgr_init()
+void memmgr_init(memmgr* mm)
 {
+	mm->free_list = mm->nofree_list = NULL;
+
 	memmap_buf_init();
 
-	memmap_import();
+	memmap_import(mm);
 
 	// 先頭の３ＭＢを予約領域とする。
 	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
-	memmap_reserve(0x00000000, 0x002fffff);
+	memmap_reserve(mm, 0x00000000, 0x002fffff);
 }
 
 /**
@@ -225,12 +221,12 @@ void memmgr_init()
  * @param size 必要なメモリのサイズ。
  * @return 確保したメモリの先頭アドレスを返す。
  */
-void* memmgr_alloc(size_t size)
+void* memmgr_alloc(memmgr* mm, std::size_t size)
 {
 	size = up_align(size);
 
 	memmap_entry* ent;
-	for (ent = free_list; ent; ent = ent->next) {
+	for (ent = mm->free_list; ent; ent = ent->next) {
 		if (ent->bytes >= size)
 			break;
 	}
@@ -241,15 +237,15 @@ void* memmgr_alloc(size_t size)
 	_u32 addr;
 	if (ent->bytes == size) {
 		addr = ent->head;
-		memmap_remove_from(&free_list, ent);
-		memmap_insert_to(&nofree_list, ent);
+		memmap_remove_from(&mm->free_list, ent);
+		memmap_insert_to(&mm->nofree_list, ent);
 	} else {
 		memmap_entry* newent = memmap_new_entry();
 		if (newent == NULL)
 			return NULL;
 		newent->head = ent->head;
 		newent->bytes = size;
-		memmap_insert_to(&nofree_list, newent);
+		memmap_insert_to(&mm->nofree_list, newent);
 		addr = newent->head;
 
 		ent->head += size;
@@ -263,15 +259,15 @@ void* memmgr_alloc(size_t size)
  * メモリを解放する。
  * @param p 解放するメモリの先頭アドレス。
  */
-void memmgr_free(void* p)
+void memmgr_free(memmgr* mm, void* p)
 {
 	// 割り当て済みリストから p を探す。
 
 	_u32 head = reinterpret_cast<_u32>(p);
 	memmap_entry* ent;
-	for (ent = nofree_list; ent; ent = ent->next) {
+	for (ent = mm->nofree_list; ent; ent = ent->next) {
 		if (ent->head == head) {
-			memmap_remove_from(&nofree_list, ent);
+			memmap_remove_from(&mm->nofree_list, ent);
 			break;
 		}
 	}
@@ -284,11 +280,11 @@ void memmgr_free(void* p)
 
 	_u32 tail = head + ent->bytes;
 	memmap_entry* ent2;
-	for (ent2 = free_list; ent2; ent2 = ent2->next) {
+	for (ent2 = mm->free_list; ent2; ent2 = ent2->next) {
 		if (ent2->head == tail) {
 			ent2->head = head;
 			ent2->bytes += ent->bytes;
-			memmap_remove_from(&free_list, ent2);
+			memmap_remove_from(&mm->free_list, ent2);
 			ent->bytes = 0;
 			ent = ent2;
 			break;
@@ -299,7 +295,7 @@ void memmgr_free(void* p)
 	// p と p の前のアドレスを結合する。
 
 	head = ent->head;
-	for (ent2 = free_list; ent2; ent2 = ent2->next) {
+	for (ent2 = mm->free_list; ent2; ent2 = ent2->next) {
 		if ((ent2->head + ent2->bytes) == head) {
 			ent2->bytes += ent->bytes;
 			ent->bytes = 0;
@@ -309,16 +305,34 @@ void memmgr_free(void* p)
 	}
 
 	if (ent) {
-		memmap_insert_to(&free_list, ent);
+		memmap_insert_to(&mm->free_list, ent);
 	}
 }
 
-void* operator new(std::size_t s)
+void* operator new(std::size_t s, memmgr* mm)
 {
-	return memmgr_alloc(s);
+	void* p1 = memmgr_alloc(mm, s + sizeof (memmgr*));
+	memmgr** p2 = reinterpret_cast<memmgr**>(p1);
+	*p2 = mm;
+	return p2 + 1;
+}
+
+void* operator new[](std::size_t s, memmgr* mm)
+{
+	void* p1 = memmgr_alloc(mm, s + sizeof (memmgr*));
+	memmgr** p2 = reinterpret_cast<memmgr**>(p1);
+	*p2 = mm;
+	return p2 + 1;
 }
 
 void operator delete(void* p)
 {
-	memmgr_free(p);
+	memmgr** p1 = reinterpret_cast<memmgr**>(p);
+	memmgr_free(p1[-1], p);
+}
+
+void operator delete[](void* p)
+{
+	memmgr** p1 = reinterpret_cast<memmgr**>(p);
+	memmgr_free(p1[-1], p);
 }
