@@ -48,10 +48,13 @@
 #define PH3_4_MEMMAP          0x0100
 
 // カーネルの読み込み先アドレス
-#define PHASE4_ADDR 0x100000
+#define PHASE4_ADDR         0x100000
 
-#define PH4_MEMMAP_BUF  0x50000
-#define PH4_VIDEOTERM   0x60000
+#define PH4_MEMMAP_BUF       0x50000
+#define PH4_VIDEOTERM        0x60000
+
+// 最終的なカーネルの実行アドレス
+#define KERNEL_FINAL_ADDR   0x100000
 
 #endif // _ARCH_X86_BOOT_INCLUDE_BOOT_H
 

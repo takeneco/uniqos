@@ -13,7 +13,7 @@
 
 asm (".code16gcc");
 
-extern "C" _u32 load_kernel();
+extern "C" _u32 load_kernel(_u32);
 extern "C" int bios_block_copy(_u32, _u32, _u32);
 extern "C" _u32 acpi_get_memmap(_u32, _u16, _u16);
 
@@ -78,8 +78,10 @@ void keyboard_and_reboot()
  * カーネルをメモリに読み込む
  * @return カーネルのサイズを返す。
  */
-_u32 load_kernel()
+_u32 load_kernel(_u32 x)
 {
+	bios_put16_b16((_u16)x);
+
 	static const char couldnot_load[] =
 		"Could not load kernel ROOTCORE.BIN from disk.\r\n";
 	static const char copy_failed[] =
@@ -132,8 +134,10 @@ _u32 load_kernel()
 
 		// カーネルの先頭64KiBを PHASE4_ADDR へも転送する。
 		_u32 dest = PHASE4_ADDR;
-		if (bios_block_copy(PHASE3_SEG << 4, dest, 0x8000)) {
+		int r = bios_block_copy(PHASE3_SEG << 4, dest, 0x8000);
+		if (r != 0) {
 			bios_putstr(copy_failed);
+			bios_put8_b16(static_cast<_u8>(r & 0xff));
 			keyboard_and_reboot();
 		}
 		dest += 0x8000;

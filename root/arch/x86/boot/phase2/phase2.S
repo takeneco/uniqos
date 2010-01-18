@@ -17,6 +17,21 @@
 .global _start
 
 _start:
+a20enable:
+        movw  $0x2401, %ax
+        int   $0x15
+//	testl %eax, %eax
+//	jnz   a20enable
+	pushl %eax
+
+	call  wait_kbc
+	movb  $0xd1, %al
+	outb  %al, $0x64
+	call  wait_kbc
+	movb  $0xdf, %al
+	outb  %al, $0x60
+	call  wait_kbc
+
 	// loadkern.cpp を呼び出す。
 	call  load_kernel
 
@@ -28,6 +43,14 @@ _start:
 	 */
 	movl  %eax, %ecx
 	jmp   $PHASE3_SEG, $0
+
+wait_kbc:
+	inb   $0x64, %al
+	andb  $0x02, %al
+	inb   $0x60, %al
+	// andb の結果が 0 ならループ終了する。
+	jnz   wait_kbc
+	ret
 
 /*
 // 文字列を表示する

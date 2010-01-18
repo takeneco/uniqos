@@ -5,8 +5,11 @@
 #
 # カーネル読み込みまでの処理をコンパイルする Makefile
 
+BASEDIR=../../../..
+
 CFLAGS += -march=i486 -Os -fno-exceptions -fno-rtti
-CPPFLAGS += -I../../../../include -I../include
+CPPFLAGS += -I../include \
+	-I../../../../include
 
 OBJS = bios.o loadfat.o loadkern.o phase2.o
 

@@ -25,16 +25,20 @@ bios_block_copy:
 	movw  %ax, %si
 	movl  0x24(%esp), %edx
 	movl  %edx, block_copy_gdt_src
-	movw  $0x93, block_copy_gdt_src+3
+	movb  $0x93, block_copy_gdt_src+3
 	movl  0x28(%esp), %edx
 	movl  %edx, block_copy_gdt_dest
-	movw  $0x93, block_copy_gdt_dest+3
+	movb  $0x93, block_copy_gdt_dest+3
 	movl  0x2c(%esp), %ecx
 	movl  $0x00008700, %eax
 	int   $0x15
+	jc    1f
+	xorl  %eax, %eax
+1:
 	movl  %eax, 0x1c(%esp)
 	popa
 	ret
+.align 8
 block_copy_gdt:
 	.word 0, 0, 0, 0, 0, 0, 0, 0
 	.word 0xffff
