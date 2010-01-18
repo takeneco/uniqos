@@ -18,6 +18,7 @@
  * メモリブロックを1MiB越えのアドレスへ転送する。
  */
 bios_block_copy:
+	xorl  %eax, %eax
 	pusha
 	movw  %ds, %ax
 	movw  %ax, %es
@@ -35,6 +36,7 @@ bios_block_copy:
 	movl  %eax, 0x1c(%esp)
 	popa
 	ret
+.align 8
 block_copy_gdt:
 	.word 0, 0, 0, 0, 0, 0, 0, 0
 	.word 0xffff

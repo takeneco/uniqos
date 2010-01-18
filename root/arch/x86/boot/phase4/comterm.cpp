@@ -9,7 +9,7 @@
 // (C) Kato.T 2009
 
 #include <cstddef>
-#include "asmfunc.hpp"
+#include "native.hpp"
 #include "phase4.hpp"
 
 enum PORT {

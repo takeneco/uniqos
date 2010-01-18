@@ -1,28 +1,48 @@
-/* FILE : btypes.hpp
- * VER  : 0.0.8
- * LAST : 2009-06-29
- * (C) Kato.T 2008-2009
- *
- * 共通で使う型・関数など。
+/**
+ * @file    btypes.hpp
+ * @version 0.0.9
+ * @date    2009-08-02
+ * @author  Kato.T
+ * @brief   共通で使う型・関数など。
  */
+// (C) Kato.T 2008-2009
 
-#ifndef _BTYPES_HPP
-#define _BTYPES_HPP
+#ifndef BTYPES_HPP
+#define BTYPES_HPP
+
+#if defined ARCH_X86
+
+#  define ARCH_LE
 
 typedef   signed char      _s8;
 typedef unsigned char      _u8;
-typedef unsigned short     __u16;
 typedef   signed short     _s16;
 typedef unsigned short     _u16;
-typedef unsigned long      __u32;
 typedef   signed long      _s32;
 typedef unsigned long      _u32;
-typedef unsigned long long __u64;
-typedef   signed long      _s64;
+typedef   signed long long _s64;
 typedef unsigned long long _u64;
 
 typedef _u32 _ucpu;
 typedef _s32 _scpu;
+
+#elif defined ARCH_X86_64
+
+#  define ARCH_LE
+
+typedef   signed char      _s8;
+typedef unsigned char      _u8;
+typedef   signed short     _s16;
+typedef unsigned short     _u16;
+typedef   signed int       _s32;
+typedef unsigned int       _u32;
+typedef   signed long      _s64;
+typedef unsigned long      _u64;
+
+typedef _u64 _ucpu;
+typedef _s64 _scpu;
+
+#endif  // ARCH_*
 
 static inline _u16 _swap16(_u16 x) {
 	return (x >> 8) | (x << 8);
@@ -50,7 +70,8 @@ static inline _u32 _combine32(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
 		static_cast<_u32>(x3) << 8 | static_cast<_u32>(x4);
 }
 
-/// for little endian
+#if defined ARCH_LE
+
 static inline _u16 cpu_to_be16(_u16 x) {
 	return _swap16(x);
 }
@@ -100,6 +121,10 @@ static inline _u32 le32_to_cpu(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
 	return _combine32(x4, x3, x2, x1);
 }
 
+#elif defined ARCH_BE
+
+#endif  // ARCH_LE or ARCH_BE
+
 static inline _ucpu down_align(_ucpu base, _ucpu value) {
 	return value & ~(base - 1);
 }
@@ -116,7 +141,46 @@ private:
 	void operator&() const;
 } null = {};
 
-/// エラー番号
+/*-------------------------------------------------------------------
+ * リスト構造
+ *-------------------------------------------------------------------*/
+
+/**
+ * @brief 双方向リストの要素。
+ */
+class bilist_elm
+{
+public:
+	bilist_elm* prev;
+	bilist_elm* next;
+
+	bilist_elm();
+};
+
+inline bilist_elm::bilist_elm()
+: prev(null), next(null)
+{}
+
+/**
+ * @brief 双方向リスト。
+ */
+class bilist
+{
+public:
+	bilist_elm* head;
+	bilist_elm* tail;
+
+	bilist();
+};
+
+inline bilist::bilist()
+: head(null), tail(null)
+{}
+
+/*-------------------------------------------------------------------
+ * エラーコード
+ *-------------------------------------------------------------------*/
+
 namespace result {
 	// 0以上なら成功
 	// 0未満なら失敗
@@ -134,4 +198,4 @@ namespace result {
 	inline bool isfail(type t) { return t < 0; }
 }
 
-#endif // _BTYPES_HPP
+#endif  // BTYPES_HPP

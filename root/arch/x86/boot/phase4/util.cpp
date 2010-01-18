@@ -14,7 +14,7 @@
  * memcpy()
  * memmove() のような動作が必要。
  */
-void* memcpy(void* dest, const void* src, std::size_t n)
+extern "C" void* memcpy(void* dest, const void* src, std::size_t n)
 {
 	char* d = reinterpret_cast<char*>(dest);
 	const char* s = reinterpret_cast<const char*>(src);

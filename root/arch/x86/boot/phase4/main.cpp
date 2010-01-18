@@ -8,7 +8,7 @@
  */
 // (C) Kato.T 2009
 
-#include "asmfunc.hpp"
+#include "native.hpp"
 #include "phase4.hpp"
 
 
@@ -290,12 +290,14 @@ void setup_main(_u8* ker_src, _u32 ker_size)
 
 	int z = native_inb(0x03f8);
 
-	_u8* ker_dest = reinterpret_cast<_u8*>(0x100000);
+	_u8* ker_dest = reinterpret_cast<_u8*>(KERNEL_FINAL_ADDR);
 	lzma_decode(&mm, ker_src, ker_size, ker_dest, 0x100000);
 
 	cons->putu64x(*(_u64*)ker_dest);
+/*
 	for (;;) {
 		native_hlt();
 	}
+*/
 }
 

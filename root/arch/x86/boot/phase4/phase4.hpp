@@ -124,7 +124,7 @@ inline video_term* get_video_term() {
 	return *reinterpret_cast<video_term**>(PH4_VIDEOTERM);
 }
 
-void* memcpy(void* dest, const void* src, std::size_t n);
+extern "C" void* memcpy(void* dest, const void* src, std::size_t n);
 
 // lzma wrapper
 

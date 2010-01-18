@@ -1,18 +1,21 @@
-/* FILE : arch/x86/kernel/start32.S
- * VER  : 0.0.1
- * LAST : 2009-06-21
- * (C) Kato.T 2009
- *
- * カーネル本体の先頭部分。
+/**
+ * @file    arch/x86/kernel/start32.S
+ * @version 0.0.2
+ * @date    2009-08-03
+ * @author  Kato.T
+ * @brief   カーネル本体の先頭部分。
  */
+// (C) Kato.T 2009
 
 .code32
 
 .globl _start
 
-.section .text
+.section .text.entry
 
 _start:
+	call  init
+idle:
 	hlt
-	jmp   _start
+	jmp   idle
 

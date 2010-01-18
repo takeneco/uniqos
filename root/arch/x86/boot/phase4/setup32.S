@@ -32,13 +32,9 @@ _start:
 	movl  $0xb8010, %edi
 	call  print
 
-//	incl  %esi
-//	addl  $4, %edi
-//	call  print
-
-	incl  %esi
-	addl  $4, %edi
-	call  print
+	//incl  %esi
+	//addl  $4, %edi
+	//call  print
 
 	// 圧縮カーネルのサイズ
 	subl  $phase4_end - _start, %ecx
@@ -50,6 +46,7 @@ _start:
 
 	call  setup_main
 
+	jmp  KERNEL_FINAL_ADDR
 idle:
 	hlt
 	jmp idle
