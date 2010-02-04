@@ -118,6 +118,6 @@ extern "C" void init()
 
 	extern int kern_head_addr, kern_tail_addr;
 	kt
-	->puts("kern_head_addr = ")->put32x((_u32)&kern_head_addr)->putc('\n')
-	->puts("kern_tail_addr = ")->put32x((_u32)&kern_tail_addr)->putc('\n');
+	->puts("kern_head_addr = ")->put64x((_u64)&kern_head_addr)->putc('\n')
+	->puts("kern_tail_addr = ")->put64x((_u64)&kern_tail_addr)->putc('\n');
 }

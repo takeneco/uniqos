@@ -1,13 +1,13 @@
 # @file    kernel/Makefile
 # @version 0.0.1
-# @date    2009-08-02
 # @author  Kato.T
 # @brief   カーネルの Makefile
-# (C) Kato.T 2008-2009
+
+# (C) Kato.T 2008-2010
 
 BASEDIR=..
 
-CFLAGS += -fno-exceptions -fno-common -O3 -march=i686
+CFLAGS += -fno-exceptions -fno-common
 CXXFLAGS = $(CFLAGS) -fno-rtti
 CPPFLAGS += -I../include \
 	-I../arch/$(ARCH)/include
