@@ -12,7 +12,7 @@ CXXFLAGS += -Os -fno-exceptions -fno-rtti -m32
 CPPFLAGS += -I../include \
 	-I../../../../include
 
-OBJS = bios.o bootldr.o loadfat.o loadkern.o
+OBJS = tr.o bootldr.o loadfat.o loadkern.o
 
 all: bootldr.bin
 

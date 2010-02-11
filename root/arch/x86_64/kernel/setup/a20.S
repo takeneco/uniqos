@@ -8,7 +8,7 @@
 
 .code16
 
-#include "boot.h"
+//#include "boot.h"
 
 .globl a20_test_mem, a20_test_bios, a20_open_bios
 .section .text

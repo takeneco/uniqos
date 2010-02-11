@@ -9,7 +9,7 @@
 
 .code32
 
-.globl _start
+//.globl _start
 
 .section .text.entry
 

@@ -149,11 +149,11 @@ result::stype write_fats(int imgfd, fat_params* params)
 	return result::OK;
 }
 
-static const struct opt_style optstyle_reversed[] = {
+const struct opt_style optstyle_reversed[] = {
 	{ OPTSTYLE_NEXT, "-r" },
 	OPT_STYLE_NULL
 };
-static const struct opt_type cmd_option[] = {
+const struct opt_type cmd_option[] = {
 	{ optstyle_reversed },
 	OPT_TYPE_NULL
 };

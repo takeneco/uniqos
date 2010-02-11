@@ -89,6 +89,7 @@ void ktty_x86::roll(unsigned int n)
 
 void ktty_x86::init()
 {
+/*
 	_u8* param = reinterpret_cast<_u8*>(PH3_4_PARAM_SEG << 4);
 
 	width = *reinterpret_cast<_u32*>(&param[PH3_4_DISP_WIDTH]);
@@ -97,6 +98,7 @@ void ktty_x86::init()
 	vram = reinterpret_cast<_u8*>(vram_addr);
 
 	cur_row = cur_col = 0;
+*/
 }
 
 /**

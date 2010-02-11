@@ -1,10 +1,9 @@
-# @file    arch/x86/kernel/Makefile
-# @version 0.0.2
-# @date    2009-07-26
+# @file    arch/x86_64/kernel/Makefile
+# @version 0.0.0.1
 # @author  Kato.T
-# @brief   ¥«¡¼¥Í¥ëËÜÂÎ¤Î Makefile
+# @brief   ã‚«ãƒ¼ãƒãƒ«æœ¬ä½“ã® Makefile
 #
-# (C) Kato.T 2009
+# (C) Kato.T 2010
 
 LZMA = lzma
 
@@ -15,10 +14,13 @@ CPPFLAGS = $(CFLAGS)
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
-OBJS = ktty_x86.o start32.o
+OBJS = entry.o ktty_x86.o start32.o
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
-all : kernel.bin.lzma
+all : kernel.bin.lzma setup
+
+setup :
+	$(MAKE) -C $@
 
 kernel.bin.lzma : kernel.bin
 	$(LZMA) -c $^ > $@
@@ -26,15 +28,16 @@ kernel.bin.lzma : kernel.bin
 kernel.bin : $(OBJS)
 	$(LD) -nostdlib -static -T kernel.ld $^ -o $@
 
-start32.o : start32.S
-	$(CC) -c $(CPPFLAGS) $(CFLGAS) $< -o $@
+%.o : %.S
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.o : %.cpp
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 clean:
+	$(MAKE) -C setup $@
 	$(RM) kernel.bin kernel.bin.lzma
 	$(RM) $(OBJS)
 
-.PHONY: all clean
+.PHONY: all clean setup
 

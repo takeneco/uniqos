@@ -15,4 +15,5 @@ SECTIONS {
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	/*.bss : { *(.bss) }*/
+	kern_body = .;
 }

@@ -15,7 +15,7 @@ export CFLAGS
 ROOT = root.bin
 BOOTSECT = boot/bootsect/bootsect.bin
 BOOTLDR  = boot/bootldr/bootldr.bin
-SETUP = boot/setup/setup.bin
+SETUP = kernel/setup/setup.bin
 #PHASE4 = boot/phase4/phase4.bin
 KERNEL = kernel/kernel.bin.lzma
 
@@ -28,14 +28,15 @@ fd1440.img : KERNEL
 	$(MKFDIMG) -r 7 $@
 	$(PUTIMG) -t 0x3e $(BOOTSECT) $@
 	$(PUTIMG) -t 0x0200 $(BOOTLDR) $@
-	mcopy -i $@ root.bin ::ROOTCORE.BIN
+	mcopy -i $@ $(ROOT) ::ROOTCORE.BIN
 
 BOOT :
 	$(MAKE) -C boot
 
 KERNEL : BOOT
 	$(MAKE) -C kernel
-	cat $(SETUP) $(KERNEL) > $(ROOT)
+	#cat $(SETUP) $(KERNEL) > $(ROOT)
+	cat $(SETUP) kernel/kernel.bin > $(ROOT)
 
 clean:
 	$(MAKE) -C boot clean

@@ -1,6 +1,6 @@
 /**
  * @file    arch/x86_64/boot/bootldr/loadkern.cpp
- * @version 0.0.0.1
+ * @version 0.0.0.2
  * @author  Kato.T
  * @brief   カーネルをメモリに読み込む。
  */
@@ -13,16 +13,21 @@
 
 asm (".code16gcc");
 
-extern "C" _u32 load_kernel(_u32);
-extern "C" int bios_block_copy(_u32 src_addr, _u32 dest_addr, _u32 words);
-extern "C" _u32 acpi_get_memmap(_u32, _u16, _u16);
+extern "C" unsigned long load_kernel(unsigned long);
+extern "C" int bios_block_copy(
+	unsigned long src_addr,
+	unsigned long dest_addr,
+	unsigned long words);
+extern "C" void work_to_setup();
+
+namespace {
 
 /**
  * BIOS で 1 文字を表示する。
  * @param ch 表示する文字。
  * @param col 表示色。
  */
-static inline void bios_putch(char ch, _u8 col=15)
+inline void bios_putch(char ch, _u8 col=15)
 {
 	const _u16 b = col;
 	asm volatile ("int $0x10" : : "a" (0x0e00 | ch), "b" (b));
@@ -33,21 +38,21 @@ static inline void bios_putch(char ch, _u8 col=15)
  * @param str 表示するヌル終端文字列。
  * @param col 表示色。
  */
-static void bios_putstr(const char* str, _u8 col=15)
+void bios_putstr(const char* str, _u8 col=15)
 {
 	while (*str) {
 		bios_putch(*str++, col);
 	}
 }
 
-static const char chbase[] = "0123456789abcdef";
+const char chbase[] = "0123456789abcdef";
 
 /**
  * ８ビット整数を１６進で表示する。
  * @param x 表示する整数。
  * @param col 表示色。
  */
-static void bios_put8_b16(_u8 x, _u8 col=15)
+void bios_put8_b16(_u8 x, _u8 col=15)
 {
 	bios_putch(chbase[x >> 4], col);
 	bios_putch(chbase[x & 0xf], col);
@@ -58,7 +63,7 @@ static void bios_put8_b16(_u8 x, _u8 col=15)
  * @param x 表示する整数。
  * @param col 表示色。
  */
-static void bios_put16_b16(_u16 x, _u8 col=15)
+void bios_put16_b16(_u16 x, _u8 col=15)
 {
 	bios_putch(chbase[(x >>12) & 0xf], col);
 	bios_putch(chbase[(x >> 8) & 0xf], col);
@@ -74,11 +79,13 @@ void keyboard_and_reboot()
 	asm volatile("int $0x16; int $0x19" : : "a"(0));
 }
 
+} /* end namespace */
+
 /**
  * カーネルをメモリに読み込む
  * @return カーネルのサイズを返す。
  */
-_u32 load_kernel(_u32 x)
+unsigned long load_kernel(unsigned long x)
 {
 	bios_put16_b16((_u16)x);
 
@@ -95,7 +102,7 @@ _u32 load_kernel(_u32 x)
 	const _u16 loaded_secs
 		= *reinterpret_cast<_u16*>(BOOTSECT_LOADED_SECS);
 
-	_u32 kern_size = 0;
+	unsigned long kern_size = 0;
 
 	// FAT12 ヘッダが BOOTSECT_ADR から始まる。
 	fat_info fatinfo(boot_drive, reinterpret_cast<_u8*>(BOOTSECT_ADR));
@@ -122,16 +129,19 @@ _u32 load_kernel(_u32 x)
 		int clu = le16_to_cpu(ker_ent->start[0], ker_ent->start[1]);
 
 		// カーネルの先頭64KiBを SETUP_SEG:0 へ読み込む。
-		int is_error = fatinfo.read_to_segment(&clu, SETUP_SEG);
+		int is_error = fatinfo.read_to_segment(&clu, BOOTLDR_WORK_SEG);
+		work_to_setup();
 		if (is_error) {
 			bios_putstr(couldnot_load);
 			keyboard_and_reboot();
 		}
 
 		// カーネルの先頭64KiBを KERNEL_FINAL_ADR へも転送する。
-		_u32 dest = KERNEL_FINAL_ADR;
-		const _u32 block_size = 0x10000;
-		int r = bios_block_copy(SETUP_SEG << 4, dest, block_size / 2);
+		unsigned long dest = KERNEL_FINAL_ADR;
+		const unsigned long block_size = 0x10000;
+		int r = bios_block_copy(
+			static_cast<unsigned long>(BOOTLDR_WORK_SEG) << 4,
+			dest, block_size / 2);
 		if (r != 0) {
 			bios_putstr(copy_failed);
 			bios_put8_b16(static_cast<_u8>(r & 0xff));
@@ -142,7 +152,7 @@ _u32 load_kernel(_u32 x)
 		kern_size = le32_to_cpu(
 			ker_ent->size[0], ker_ent->size[1],
 			ker_ent->size[2], ker_ent->size[3]);
-		_u32 loaded = block_size;
+		unsigned long loaded = block_size;
 
 		while (clu < 0x0ff8 && loaded < kern_size) {
 			is_error = fatinfo.read_to_segment(&clu, BOOTLDR_WORK_SEG);
@@ -151,7 +161,8 @@ _u32 load_kernel(_u32 x)
 				keyboard_and_reboot();
 			}
 			is_error = bios_block_copy(
-				BOOTLDR_WORK_SEG << 4, dest, block_size / 2);
+				static_cast<unsigned long>(BOOTLDR_WORK_SEG) << 4,
+				dest, block_size / 2);
 			if (is_error != 0) {
 				bios_putstr(couldnot_load);
 				keyboard_and_reboot();

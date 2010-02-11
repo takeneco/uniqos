@@ -1,6 +1,6 @@
 /**
  * @file    arch/x86_64/boot/bootsect/bootsect.S
- * @version 0.0.0.1
+ * @version 0.0.0.2
  * @author  Kato.T
  * @brief   Boot sector.
  */
@@ -15,11 +15,12 @@
 .global _start
 
 _start:
+	cld
 	xorw  %ax, %ax
-	movw  %ax, %ss
-	movw  $BOOTSECT_ADR, %sp
 	movw  %ax, %ds
 	movw  %ax, %es
+	movw  %ax, %ss
+	movw  $BOOTSECT_ADR, %sp
 
 	// ブートドライブ番号(%dl)を保存する -> (BOOTSECT_ADR - 2)
 	xorb  %dh, %dh
@@ -28,8 +29,7 @@ _start:
 	movw  $loading_msg, %si
 	call  display
 
-	/* すでに 0x7c00(BOOTSECT_ADR)-0x7dff に先頭の 1 セクタが
-	 * 読み込まれている。
+	/* すでに 0x7c00 以降に先頭の 1 セクタが読み込まれている。
 	 * その続きの 17 セクタ(FD１周分)を 0x7e00 以降に読み込む。
 	 */
 
@@ -43,10 +43,11 @@ load:
 	//           セクタ番号は 1 から始まる
 	// %dh     : ヘッド
 	// %dl     : ドライブ
-	movw  $BOOTSECT_ADR + 0x0200, %bx
+	movw  $BOOTLDR_ADR, %bx
 	movw  $0x0211, %ax
 	movw  $0x0002, %cx
-	xorw  %dx, %dx
+	// ブートしたドライブから読み出す。
+	//xorw  %dx, %dx
 	int   $0x13
 
 	jnc   load_success
@@ -65,17 +66,6 @@ load_success:
 	// ロード済みセクタ数 -> (0x7c00 - 4)
 	movw  $18, %ax
 	pushw %ax
-
-/* BOOTLDR_SEG:BOOTLDR_ADR == 0x07e00 ならば以下の処理は不要。
-
-	// ブートローダを BOOTLDR_SEG:BOOTLDR_ADR へ転送する。
-	movw  $BOOTSECT_ADR + 0x0200, %si
-	movw  $BOOTLDR_SEG, %ax
-	movw  %ax, %es
-	movw  $BOOTLDR_ADDR, %di
-	movw  $512 * 17 / 2, %cx
-	rep movsw
-*/
 
 	ljmp  $BOOTLDR_SEG, $BOOTLDR_ADR
 

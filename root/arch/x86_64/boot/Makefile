@@ -10,11 +10,9 @@ all : phases
 phases :
 	$(MAKE) -C bootsect
 	$(MAKE) -C bootldr
-	$(MAKE) -C setup
 
 clean :
-	$(MAKE) -C bootsect clean
-	$(MAKE) -C bootldr clean
-	$(MAKE) -C setup clean
+	$(MAKE) -C bootsect $@
+	$(MAKE) -C bootldr $@
 
 .PHONY: all phases clean

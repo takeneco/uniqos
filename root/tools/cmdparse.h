@@ -33,7 +33,7 @@ enum opt_style_param {
 struct opt_style {
 	enum opt_style_param style;
 	/* オプション指定文字列 */
-	char *match;
+	const char *match;
 };
 
 /* 同じ意味を持つオプションのセット

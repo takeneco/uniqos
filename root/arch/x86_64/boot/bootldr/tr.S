@@ -1,8 +1,8 @@
 /**
- * @file    arch/x86_64/boot/bootldr/bios.S
- * @version 0.0.0.1
+ * @file    arch/x86_64/boot/bootldr/tr.S
+ * @version 0.0.0.2
  * @author  Kato.T
- * @brief   BIOS funcs.
+ * @brief   Translate funcs.
  */
 // (C) T.Kato 2010
 
@@ -10,32 +10,51 @@
 
 .section .text
 
-.global bios_block_copy, acpi_get_memmap
+.globl bios_block_copy, work_to_setup
+
+#include "boot.h"
 
 /**
  * int bios_block_copy(_u32 src, _u32 dest, _u32 words)
  * メモリブロックを1MiB越えのアドレスへ転送する。
  */
 bios_block_copy:
-	pusha
-	movw  %ds, %ax
+	pushl %ecx
+	pushl %esi
+/*
+	movw  $block_copy_gdt, %si
+	movw  %ss, %ax
 	movw  %ax, %es
-	movw  $block_copy_gdt, %ax
-	movw  %ax, %si
-	movl  0x24(%esp), %edx
-	movl  %edx, block_copy_gdt_src
+	leaw  -48(%esp), %di
+	movw  $24, %cx
+	rep movsw
+	leaw  -48(%esp), %si
+	movl  12(%esp), %edx
+	movl  %edx, 0x12(%si)
+	movb  $0x93, 0x15(%si)
+	movl  16(%esp), %edx
+	movl  %edx, 0x1a(%si)
+	movb  $0x93, 0x1d(%si)
+*/
+	pushw %cs
+	popw  %es
+	movw  $block_copy_gdt, %si
+	movl  12(%esp), %eax
+	movl  %eax, block_copy_gdt_src
 	movb  $0x93, block_copy_gdt_src+3
-	movl  0x28(%esp), %edx
-	movl  %edx, block_copy_gdt_dest
+	movl  16(%esp), %eax
+	movl  %eax, block_copy_gdt_dest
 	movb  $0x93, block_copy_gdt_dest+3
-	movl  0x2c(%esp), %ecx
+
+	movl  20(%esp), %ecx
 	movl  $0x00008700, %eax
 	int   $0x15
-	jc    1f
-	xorl  %eax, %eax
+	jnc   1f
+	orw   $0x8000, %ax
 1:
-	movl  %eax, 0x1c(%esp)
-	popa
+//	movl  %eax, 0x1c(%esp)
+	popl  %esi
+	popl  %ecx
 	ret
 .align 8
 block_copy_gdt:
@@ -48,6 +67,24 @@ block_copy_gdt_src:
 block_copy_gdt_dest:
 	.word 0, 0
 	.word 0, 0, 0, 0, 0, 0, 0, 0, 0
+
+/**
+ * 作業アドレスからセットアップアドレスへ転送する。
+ */
+work_to_setup:
+	pusha
+	push  %ds
+	movw  $BOOTLDR_WORK_SEG, %ax
+	movw  %ax, %ds
+	movw  $0, %si
+	movw  $SETUP_SEG, %ax
+	movw  %ax, %es
+	movw  $SETUP_ADR, %di
+	movw  $SETUP_MAXSIZE / 2, %cx
+	rep movsw
+	pop   %ds
+	popa
+	ret
 
 /*
 // acpi_get_memmap(_u32 handle, _u16 srcseg, _u16 srcmem)

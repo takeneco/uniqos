@@ -1,21 +1,21 @@
-# @file    arch/x86_64/boot/phase3/Makefile
-# @version 0.0.0.1
+# @file    arch/x86_64/kernel/setup/Makefile
+# @version 0.0.0.2
 # @author  Kato.T
-# @brief   ３２ビット起動処理をコンパイルする Makefile。
+# @brief   カーネル自身をセットアップするMakefile。
 
-# (C) Kato.T 2008-2009
+# (C) Kato.T 2010
 
 CFLAGS += -fno-exceptions -fno-common -fno-rtti -Os
 CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os 
 CPPFLAGS += -I../../../../include -I../include
 
-OLD_OBJS = bios.o setup16.o setup32.o
+OLD_OBJS = setup16.o setup32.o
 OBJS = a20.o setup.o
 
 all : setup.bin
 
 setup.bin : $(OBJS)
-	$(LD) -nostdlib -static -Ttext=0x0000 -T setup.ld $^ -o $@
+	$(LD) -nostdlib -static -Ttext=0x1000 -T setup.ld $^ -o $@
 
 setup16.o : setup16.cpp
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@

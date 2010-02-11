@@ -26,8 +26,9 @@
 #define BOOTLDR_WORK_SEG   0x2000
 
 // カーネルの先頭64KiBを読み込むアドレス
-#define SETUP_SEG          0x1000
-#define SETUP_ADR           0x0000
+#define SETUP_SEG          0x0000
+#define SETUP_ADR           0x1000
+#define SETUP_MAXSIZE       0x6000
 
 // Stack address : 0x20000-0x30000
 #define SETUP_STACK_ADR    0x30000

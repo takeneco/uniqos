@@ -4,7 +4,7 @@
  * @author  Kato.T
  * @brief   カーネル本体のリンカスクリプト。
  */
-/* (C) Kato.T 2009 */
+/* (C) Kato.T 2009-2010 */
 
 OUTPUT_FORMAT(binary)
 OUTPUT_ARCH(i386:x86-64)
