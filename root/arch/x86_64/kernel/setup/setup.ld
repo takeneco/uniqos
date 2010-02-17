@@ -11,6 +11,7 @@ OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
 
 SECTIONS {
+	. = 0x1000;
 	.text : { *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }

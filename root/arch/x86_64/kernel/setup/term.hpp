@@ -1,21 +1,19 @@
 /**
- * @file    arch/x86/boot/phase4/phase4.hpp
- * @version 0.0.4
- * @date    2009-07-28
+ * @file    arch/x86_64/kernel/setup/term.hpp
+ * @version 0.0.0.1
  * @author  Kato.T
- * @brief   phase4 で使用する機能の宣言。
+ * @brief   カーネルセットアップ中のメッセージ出力先。
  */
-// (C) Kato.T 2009
+// (C) Kato.T 2010
 
-#ifndef _ARCH_X86_BOOT_PHASE4_PHASE4_HPP
-#define _ARCH_X86_BOOT_PHASE4_PHASE4_HPP
+#ifndef _ARCH_X86_64_KERNEL_SETUP_TERM_HPP
+#define _ARCH_X86_64_KERNEL_SETUP_TERM_HPP
 
 #include <cstddef>
 
 #include "btypes.hpp"
-#include "boot.h"
 
-
+/*
 // メモリ管理
 struct memmap_entry;
 struct memmgr
@@ -34,23 +32,20 @@ void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);
 void  operator delete(void* p, memmgr*);
 void  operator delete[](void* p, memmgr*);
-
+*/
 
 /**
- * 出力専用端末の基本クラス。
+ * @brief  Output terminal base class.
  */
 class outterm
 {
 public:
 	outterm* next;
-
-public:
-
-	virtual void putc(char ch) = 0;
+	virtual void putc(char c) = 0;
 };
 
 /**
- * 複数の outterm へテキストを同時出力する。
+ * @brief  複数の outterm へテキストを同時出力する。
  */
 class term_chain
 {
@@ -58,9 +53,10 @@ class term_chain
 public:
 	void init();
 	void add_term(outterm* term);
-	term_chain* putc(char ch);
+	term_chain* putc(char c);
 	term_chain* puts(const char* str);
 	term_chain* putu32(_u32 n);
+	term_chain* putu64(_u64 n);
 	term_chain* putu8x(_u8 n);
 	term_chain* putu16x(_u16 n);
 	term_chain* putu32x(_u32 n);
@@ -81,7 +77,7 @@ class com_term : public outterm
 	void tx_buf();
 public:
 	void init(_u16 dev_port, _u16 pic_irq);
-	virtual void putc(char ch);
+	virtual void putc(char c);
 	void on_interrupt();
 
 public:
@@ -96,7 +92,7 @@ public:
 
 
 /**
- * テキストモード画面出力
+ * @brief  Video term.
  */
 class video_term : public outterm
 {
@@ -106,17 +102,14 @@ class video_term : public outterm
 	int   cur_row;
 	int   cur_col;
 
-	void roll(unsigned int n);
+	void roll(int n);
 public:
-	void init(int w, int h, _u32 vram_addr);
+	void init(int w, int h, _u64 vram_addr);
 	void set_cur(int row, int col) { cur_row = row; cur_col = col; }
-	virtual void putc(char ch);
-	video_term* puts(const char* str);
-	video_term* putu32(_u32 n);
-	video_term* putu32x(_u32 n);
-	video_term* putu64x(_u64 n);
+	virtual void putc(char c);
 };
 
+/*
 inline void set_video_term(video_term* p) {
 	*reinterpret_cast<video_term**>(PH4_VIDEOTERM) = p;
 }
@@ -134,7 +127,7 @@ bool lzma_decode(
 	std::size_t src_len,
 	_u8*        dest,
 	std::size_t dest_len);
+*/
 
-
-#endif  // _ARCH_X86_BOOT_PHASE4_PHASE4_HPP
+#endif  // Include guard.
 

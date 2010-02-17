@@ -1,63 +1,50 @@
 /**
- * @file    arch/x86/boot/phase4/memmgr.cpp
- * @version 0.0.4
- * @date    2009-07-26
+ * @file    arch/x86_64/kernel/setup/memmgr.cpp
+ * @version 0.0.0.1
  * @author  Kato.T
  *
  * 初期化処理で使用する簡単なメモリ管理の実装。
  * 4GB以下のメモリを管理する。
  */
-// (C) Kato.T 2009
+// (C) Kato.T 2010
 
 #include <cstddef>
-#include "btypes.hpp"
-#include "boot.h"
-#include "phase4.hpp"
 
+#include "setup.h"
+#include "btypes.hpp"
+#include "mem.hpp"
+
+
+namespace {
 
 struct memmap_entry {
 	memmap_entry* prev;
 	memmap_entry* next;
-	_u32 head;
-	_u32 bytes; // bytes == 0 ならば未使用のインスタンス。
-};
-
-struct acpi_memmap {
-	enum type_value {
-		MEMORY = 1,
-		RESERVED = 2,
-		ACPI = 3,
-		NVS = 4,
-		UNUSUABLE = 5
-	};
-	_u64 base;
-	_u64 length;
-	_u32 type;
-	_u32 attr;
+	_u64 head;
+	_u64 bytes; // If bytes == 0, not used.
 };
 
 
-// 作業エリア
-// 作業エリアの開始アドレスは NULL 禁止。
-static memmap_entry* const memmap_buf
-	= reinterpret_cast<memmap_entry*>(PH4_MEMMAP_BUF);
+// Work area.
+memmap_entry* const memmap_buf
+	= reinterpret_cast<memmap_entry*>(MEMMGR_MEMMAP_ADR);
 
-// 作業エリアのサイズ = 0x10000 bytes
-static const int memmap_buf_count
-	= 0x10000 / sizeof(memmap_entry);
+// Size of work area.
+const int memmap_buf_count
+	= MEMMGR_MEMMAP_SIZE / sizeof (memmap_entry);
 
 /**
  * プラス方向 align
  */
-static inline _u32 up_align(_u32 x)
+inline _u32 up_align(_u32 x)
 {
 	return (x + 15) & 0xfffffff0;
 }
 
 /**
- * 作業エリアを初期化する。
+ * @brief  Init work area.
  */
-static void memmap_buf_init()
+void memmap_buf_init()
 {
 	for (int i = 0; i < memmap_buf_count; i++) {
 		memmap_buf[i].bytes = 0;
@@ -65,11 +52,11 @@ static void memmap_buf_init()
 }
 
 /**
- * memmap_buf 配列から未使用の memmap_entry を探す。
+ * @brief  memmap_buf 配列から未使用の memmap_entry を探す。
  * @return 未使用の memmap_entry へのポインタを返す。
  * @return 未使用エントリがない場合は NULL を返す。
  */
-static memmap_entry* memmap_new_entry()
+memmap_entry* memmap_new_entry()
 {
 	memmap_entry* p = memmap_buf;
 
@@ -199,6 +186,8 @@ static void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
 		}
 	}
 }
+
+}  // End of anonymous namespace
 
 /**
  * memmgr を初期化する。

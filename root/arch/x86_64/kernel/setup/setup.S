@@ -287,5 +287,7 @@ start64:
 
 	rep movsb
 
+	call prekernel
+
 	jmp KERNEL_FINAL_ADR
 

@@ -10,15 +10,15 @@ CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os
 CPPFLAGS += -I../../../../include -I../include
 
 OLD_OBJS = setup16.o setup32.o
-OBJS = a20.o setup.o
+OBJS = a20.o memops.o prekern.o setup.o termchain.o videoterm.o
 
 all : setup.bin
 
 setup.bin : $(OBJS)
-	$(LD) -nostdlib -static -Ttext=0x1000 -T setup.ld $^ -o $@
+	$(LD) -nostdlib -static -T setup.ld $^ -o $@
 
-setup16.o : setup16.cpp
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+%.o : %.cpp
+	$(CC) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 %.o : %.S
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@

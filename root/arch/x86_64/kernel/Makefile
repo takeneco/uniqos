@@ -14,7 +14,7 @@ CPPFLAGS = $(CFLAGS)
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
-OBJS = entry.o ktty_x86.o start32.o
+OBJS = entry.o ktty_x86.o 
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 all : kernel.bin.lzma setup

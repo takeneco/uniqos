@@ -2,6 +2,8 @@
  * @file    arch/x86_64/kernel/entry.S
  * @version 0.0.0.1
  * @author  Kato.T
+ *
+ * @brief   Kernel head module.
  */
 // (C) Kato.T 2010
 

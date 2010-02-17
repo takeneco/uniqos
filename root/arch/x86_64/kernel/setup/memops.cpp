@@ -1,23 +1,26 @@
 /**
- * @file    arch/x86/boot/phase4/util.cpp
- * @version 0.0.1
- * @date    2009-07-06
+ * @file    arch/x86_64/kernel/setup/memops.cpp
+ * @version 0.0.0.1
  * @author  Kato.T
  */
-// (C) Kato.T 2009
+// (C) Kato.T 2009-2010
 
 #include <cstddef>
 
-#include "phase4.hpp"
+#include "mem.hpp"
 
 /**
- * memcpy()
- * memmove() のような動作が必要。
+ * @brief  Like memmove().
+ * @param dest Destination addr.
+ * @param src  Source addr.
+ * @param size Copy bytes.
+ * @return Always return dest.
  */
-extern "C" void* memcpy(void* dest, const void* src, std::size_t n)
+void* memory_move(void* dest, const void* src, std::size_t size)
 {
 	char* d = reinterpret_cast<char*>(dest);
 	const char* s = reinterpret_cast<const char*>(src);
+	int n = static_cast<int>(size);
 
 	if (dest < src) {
 		for (int i = 0; i < n; i++) {
