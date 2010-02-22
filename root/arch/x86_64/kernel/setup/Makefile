@@ -10,7 +10,7 @@ CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os
 CPPFLAGS += -I../../../../include -I../include
 
 OLD_OBJS = setup16.o setup32.o
-OBJS = a20.o memops.o prekern.o setup.o termchain.o videoterm.o
+OBJS = a20.o memmgr.o memops.o prekern.o setup.o termchain.o videoterm.o
 
 all : setup.bin
 

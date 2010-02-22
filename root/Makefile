@@ -40,7 +40,9 @@ fd1440 :
 clean:
 	$(MAKE) -C arch/$(ARCH) $@
 	$(MAKE) -C kernel $@
-	$(MAKE) -C tools $@
+
+cleanall: clean
+	$(MAKE) -C tools clean
 
 distclean: clean
 	$(RM) fd1440.img
@@ -51,5 +53,5 @@ envecho:
 	@echo MAKE=$(MAKE)
 	@echo RM=$(RM)
 
-.PHONY: all clean distclean envtest fd1440
+.PHONY: all clean cleanall distclean envtest fd1440
 

@@ -237,7 +237,7 @@ start32:
 	movl  $KERN_PML4_ADR, %ebx
 	movl  %ebx, %edi
 	xorl  %eax, %eax
-	movl  $(512*8*2/4), %ecx
+	movl  $(512*8*3/4), %ecx
 	rep stosl
 
 	// PML4

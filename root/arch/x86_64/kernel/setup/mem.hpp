@@ -11,27 +11,34 @@
 
 #include <cstddef>
 
+#include "setup.h"
 #include "btypes.hpp"
 
-/*
-struct memmap_entry;
+
+struct memmap_entry
+{
+	memmap_entry* prev;
+	memmap_entry* next;
+	_u64 head;
+	_u64 bytes; // If bytes == 0, not used.
+};
+
 struct memmgr
 {
-	// ç©ºãé ˜åŸŸãƒªã‚¹ãƒˆ
+	/// ¶õ¤­ÎÎ°è¥ê¥¹¥È
 	memmap_entry* free_list;
 
-	// å‰²ã‚Šå½“ã¦æ¸ˆã¿é ˜åŸŸãƒªã‚¹ãƒˆ
+	/// ³ä¤êÅö¤ÆºÑ¤ßÎÎ°è¥ê¥¹¥È
 	memmap_entry* nofree_list;
 };
 
 void  memmgr_init(memmgr* mm);
-void* memmgr_alloc(memmgr* mm, size_t size);
+void* memmgr_alloc(memmgr* mm, std::size_t size);
 void  memmgr_free(memmgr* mm, void* p);
 void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);
 void  operator delete(void* p, memmgr*);
 void  operator delete[](void* p, memmgr*);
-*/
 
 /*
 inline void set_video_term(video_term* p) {
@@ -58,7 +65,6 @@ struct acpi_memmap {
 	_u32 attr;
 };
 
-
 /*
 // lzma wrapper
 
@@ -69,6 +75,13 @@ bool lzma_decode(
 	_u8*        dest,
 	std::size_t dest_len);
 */
+
+template<class T> inline T setup_data(_u64 off) {
+	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
+}
+template<class T> inline T* setup_ptr(_u64 off) {
+	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
+}
 
 #endif  // Include guard.
 

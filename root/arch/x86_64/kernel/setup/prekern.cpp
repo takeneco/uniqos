@@ -7,19 +7,12 @@
  */
 // (C) Kato.T 2010
 
-#include "setup.h"
 #include "mem.hpp"
 #include "term.hpp"
 
 
 namespace {
 
-template<class T> inline T setup_data(_u64 off) {
-	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
-template<class T> inline T* setup_ptr(_u64 off) {
-	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
 
 const char* acpi_memtype(int type)
 {
@@ -77,6 +70,13 @@ extern "C" int prekernel()
 		->puts(acpi_memtype(type))
 		->putc('\n');
 	}
+
+	memmgr mm;
+	memmgr_init(&mm);
+	tc.puts("mem inited\n");
+
+	void* p = memmgr_alloc(&mm, 16);
+	tc.puts("mem = ")->putu64x((_u64)p)->putc('\n');
 
 	return 0;
 }

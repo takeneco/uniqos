@@ -2,28 +2,22 @@
  * @file    arch/x86_64/kernel/setup/memmgr.cpp
  * @version 0.0.0.1
  * @author  Kato.T
+ * @brief   Easy memory management implement using setup.
  *
- * 初期化処理で使用する簡単なメモリ管理の実装。
- * 4GB以下のメモリを管理する。
+ * setup.S が設定するページテーブルは1GBまでなので、
+ * 1GBまでのメモリを管理する。
  */
 // (C) Kato.T 2010
 
 #include <cstddef>
 
-#include "setup.h"
 #include "btypes.hpp"
 #include "mem.hpp"
 
 
 namespace {
 
-struct memmap_entry {
-	memmap_entry* prev;
-	memmap_entry* next;
-	_u64 head;
-	_u64 bytes; // If bytes == 0, not used.
-};
-
+const std::size_t MEMORY_MAX = 0x3fffffff; /* 1GB */
 
 // Work area.
 memmap_entry* const memmap_buf
@@ -34,15 +28,15 @@ const int memmap_buf_count
 	= MEMMGR_MEMMAP_SIZE / sizeof (memmap_entry);
 
 /**
- * プラス方向 align
+ * @brief  16 bytes memory up align.
  */
-inline _u32 up_align(_u32 x)
+inline _u64 up_align(_u64 x)
 {
-	return (x + 15) & 0xfffffff0;
+	return (x + 15) & 0xfffffffffffffff0;
 }
 
 /**
- * @brief  Init work area.
+ * @brief  Initialize work area.
  */
 void memmap_buf_init()
 {
@@ -52,9 +46,10 @@ void memmap_buf_init()
 }
 
 /**
- * @brief  memmap_buf 配列から未使用の memmap_entry を探す。
- * @return 未使用の memmap_entry へのポインタを返す。
- * @return 未使用エントリがない場合は NULL を返す。
+ * @brief  Search unused memmap_entry from memmap_buf.
+ * @return  If unused memmap_entry found, this func return ptr
+ * @return  to unused memmap_entry.
+ * @return  If unused memmap_entry not found, this func return NULL.
  */
 memmap_entry* memmap_new_entry()
 {
@@ -69,11 +64,11 @@ memmap_entry* memmap_new_entry()
 }
 
 /**
- * リストに memmap_entry を追加する。
- * @param list memmap_entry のリストへのポインタ。
- * @param ent  追加するエントリへのポインタ。
+ * @brief  Add memmap_entry to chain.
+ * @param list Ptr to memmap_entry chain ptr.
+ * @param ent  Ptr to memmap_entry adds.
  */
-static void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
+void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
 {
 	if (!list || !ent)
 		return;
@@ -85,11 +80,11 @@ static void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
 }
 
 /**
- * memap_entry のリストからエントリを取り除く
- * @param list memmap_entry のリストへのポインタ。
- * @param ent  取り除くエントリへのポインタ。
+ * @brief  Remove memmap_entry from chain.
+ * @param list Ptr to memmap_entry chain ptr.
+ * @param ent  Ptr to memmap_entry removes.
  */
-static void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
+void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
 {
 	if (!list || !ent)
 		return;
@@ -106,15 +101,16 @@ static void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
 }
 
 /**
- * ACPI のメモリマップを free_list へ追加する。
- * @param raw ACPI が出力したメモリマップのエントリ
+ * @brief  Add free memory info to free_list from acpi_memmap.
+ *
+ * Excludes addr bigger than MEMORY_MAX.
  */
-static void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
+void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
 {
-	// 32ビットで扱えないアドレスは無視する。
-	if (raw->base >= 0x00000000ffffffffULL)
-		return;
 	if (raw->length == 0)
+		return;
+
+	if (raw->base > MEMORY_MAX)
 		return;
 
 	memmap_entry* ent = memmap_new_entry();
@@ -122,8 +118,9 @@ static void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
 		return;
 
 	ent->head = up_align(raw->base);
-	if ((raw->base + raw->length) > 0x00000000ffffffffULL)
-		ent->bytes = 0xffffffff - ent->head;
+
+	if ((raw->base + raw->length) > MEMORY_MAX)
+		ent->bytes = MEMORY_MAX - ent->head;
 	else
 		ent->bytes = raw->base + raw->length - ent->head;
 
@@ -131,16 +128,14 @@ static void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
 }
 
 /**
- * phase3 が ACPI で取得したメモリマップを取り込む。
+ * @brief  Import memory map by ACPI in real mode.
  */
-static void memmap_import(memmgr* mm)
+void memmap_import(memmgr* mm)
 {
-	const _u32 memmap_count = *reinterpret_cast<_u32*>
-		((PH3_4_PARAM_SEG << 4) + PH3_4_MEMMAP_COUNT);
-	const acpi_memmap* rawmap = reinterpret_cast<acpi_memmap*>
-		((PH3_4_PARAM_SEG << 4) + PH3_4_MEMMAP);
+	const acpi_memmap* rawmap = setup_ptr<acpi_memmap>(SETUP_MEMMAP);
+	const _u32 memmap_count = setup_data<_u32>(SETUP_MEMMAP_COUNT);
 
-	for (int i = 0; i < memmap_count; i++) {
+	for (_u32 i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
 			memmap_add_entry(mm, &rawmap[i]);
 		}
@@ -152,7 +147,7 @@ static void memmap_import(memmgr* mm)
  * @param r_head 取り除くメモリの先頭アドレス。
  * @param r_tail 取り除くメモリの終端アドレス。
  */
-static void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
+void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
 {
 	r_tail += 1;
 
@@ -190,7 +185,7 @@ static void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
 }  // End of anonymous namespace
 
 /**
- * memmgr を初期化する。
+ * @brief  Initialize memmgr.
  */
 void memmgr_init(memmgr* mm)
 {
@@ -206,9 +201,10 @@ void memmgr_init(memmgr* mm)
 }
 
 /**
- * メモリを割り当てる。
- * @param size 必要なメモリのサイズ。
- * @return 確保したメモリの先頭アドレスを返す。
+ * @brief  Allocate memory.
+ * @param size Memory bytes.
+ * @return If succeeds, this func returns allocated memory ptr.
+ * @return If fails, this func returns NULL.
  */
 void* memmgr_alloc(memmgr* mm, std::size_t size)
 {
@@ -223,7 +219,7 @@ void* memmgr_alloc(memmgr* mm, std::size_t size)
 	if (!ent)
 		return NULL;
 
-	_u32 addr;
+	_u64 addr;
 	if (ent->bytes == size) {
 		addr = ent->head;
 		memmap_remove_from(&mm->free_list, ent);
@@ -245,14 +241,14 @@ void* memmgr_alloc(memmgr* mm, std::size_t size)
 }
 
 /**
- * メモリを解放する。
- * @param p 解放するメモリの先頭アドレス。
+ * @brief  Free memory.
+ * @param p Ptr to memory frees.
  */
 void memmgr_free(memmgr* mm, void* p)
 {
 	// 割り当て済みリストから p を探す。
 
-	_ucpu head = reinterpret_cast<_ucpu>(p);
+	_u64 head = reinterpret_cast<_u64>(p);
 	memmap_entry* ent;
 	for (ent = mm->nofree_list; ent; ent = ent->next) {
 		if (ent->head == head) {
