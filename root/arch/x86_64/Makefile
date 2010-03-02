@@ -22,8 +22,8 @@ KERNEL = kernel/kernel.bin.lzma
 all : fd1440.img
 
 # FAT12ヘッダの直後(0x3e)にブートセクタ bootsect.bin を挿入する。
-# ブートセクタの直後に phase2.bin を挿入する。
-# bootsect.bin と phase2.bin のために先頭６セクタを予約領域とする。
+# ブートセクタの直後に bootldr.bin を挿入する。
+# bootsect.bin と bootldr.bin のために先頭７セクタを予約領域とする。
 fd1440.img : KERNEL
 	$(MKFDIMG) -r 7 $@
 	$(PUTIMG) -t 0x3e $(BOOTSECT) $@

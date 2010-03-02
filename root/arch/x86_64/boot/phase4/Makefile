@@ -19,12 +19,6 @@ phase4.bin : mvjmp.bin setup32.bin
 mvjmp.bin : mvjmp.o
 	$(LD) -nostdlib -static -T mvjmp.ld $^ -o $@
 
-lzmadecwrap.o : lzmadecwrap.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I../../../../contrib/lzma/C $< -o $@
-
-LzmaDec.o : ../../../../contrib/lzma/C/LzmaDec.c
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
-
 %.o : %.cpp
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 

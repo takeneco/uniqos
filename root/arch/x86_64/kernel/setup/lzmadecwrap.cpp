@@ -1,18 +1,19 @@
 /**
- * @file    arch/x86/boot/phase4/lzmadecwrap.cpp
- * @version 0.0.1
- * @date    2009-07-28
+ * @file    arch/x86_86/kernel/setup/lzmadecwrap.cpp
+ * @version 0.0.0.1
  * @author  Kato.T
  * @brief   LZMA decode wrapper.
  */
-// (C) Kato.T 2009
+// (C) Kato.T 2009-2010
 
 extern "C" {
 #include "LzmaDec.h"
 }
 
-#include "phase4.hpp"
+#include "mem.hpp"
 
+
+namespace {
 
 const std::size_t LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
 
@@ -33,6 +34,8 @@ static void lzma_free(void* p, void* address)
 
 	memmgr_free(alloc->mm, p);
 }
+
+}  // End of anonymous namespace.
 
 bool lzma_decode(
 	memmgr*     mm,

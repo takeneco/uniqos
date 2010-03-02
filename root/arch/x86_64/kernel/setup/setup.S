@@ -1,7 +1,8 @@
 /**
  * @file    arch/x86_64/kernel/setup/setup.S
- * @version 0.0.0.1
  * @author  Kato.T
+ *
+ * (C) Kato Takeshi 2009-2010
  *
  * 16ビットリアルモードの間に実行する、
  * カーネル自身のセットアップ。
@@ -14,7 +15,6 @@
  *  %ecx : カーネルから phase3 を引いたサイズ
  *  メモリ(PH3_4_PARAM_SEG) : BIOS/ACPI から取得したパラメータ
  */
-// (C) Kato.T 2009-2010
 
 #include "setup.h"
 
@@ -113,8 +113,8 @@ _start:
 	// phase4 の先頭アドレス -> %ebx
 	//movl  $PHASE4_ADDR + phase3_end, %ebx
 
-	lgdtl boot_gdtr32
-	lidtl boot_idtr32
+	lgdtl setup_gdtr
+	lidtl setup_idtr
 	movl  %cr0, %eax
 	orl   $0x00000001, %eax
 	movl  %eax, %cr0
@@ -122,7 +122,7 @@ _start:
 	ljmpl $2*8, $start32
 
 	.align 16
-boot_gdt32:
+setup_gdt:
 	// 3.4.3(p.3-12)
 	.byte 0, 0, 0, 0, 0, 0, 0, 0
 	// base  0x00000000
@@ -137,10 +137,10 @@ boot_gdt32:
 	.word 0xffff, 0x0000, 0x9200, 0x00cf
 
 	.align 4
-boot_gdtr32:
+setup_gdtr:
 	.short 8*4 - 1
-	.long boot_gdt32 + 0x00000
-boot_idtr32:
+	.long setup_gdt + 0x00000
+setup_idtr:
 	.short 0
 	.long 0
 
@@ -234,7 +234,7 @@ start32:
 
 	// Create Page Map
 
-	movl  $KERN_PML4_ADR, %ebx
+	movl  $SETUP_PML4_ADR, %ebx
 	movl  %ebx, %edi
 	xorl  %eax, %eax
 	movl  $(512*8*3/4), %ecx
@@ -244,6 +244,15 @@ start32:
 	leal  0x1007(%ebx), %eax
 	movl  %eax, (%ebx)
 
+	leal  8*256(%ebx), %edi
+	movl  $KERN_CONST_PDPTE + 0x0183, %eax
+	movl  $256, %ecx
+1:	movl  %eax, (%edi)
+	movl  $0, 4(%edi)
+	addl  $8, %edi
+	addl  $0x00200000, %eax
+	loop  1b
+
 	// PDP
 	leal  0x1000(%ebx), %edi
 	leal  0x2007(%ebx), %eax
@@ -252,7 +261,10 @@ start32:
 	// PDE
 	leal  0x2000(%ebx), %edi
 	movl  $0 + 0x183, %eax
-	movl  $512, %ecx
+	// 16MiB
+	movl  $8, %ecx
+	//// 1GiB
+	//movl  $512, %ecx
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi
@@ -282,12 +294,25 @@ start32:
 
 start64:
 .code64
-	movq  $(KERNEL_FINAL_ADR + kern_body - _start), %rsi
-	movq  $KERNEL_FINAL_ADR, %rdi
+	movq  $SETUP_KERN_ADR, %rsi
+	addq  $(kern_body - _start), %rsi
+	movq  $SETUP_KERN_ADR, %rdi
+	rep movsb
+
+	call prekernel 
+	movq $SETUP_KERN_ADR, %rax
+	jmp *%rax
+/*
+	movq  $SETUP_KERN_ADR, %rsi
+	addq  $(kern_body - _start), %rsi
+	movq  $KERNEL_FINAL_ADDR, %rdi
 
 	rep movsb
 
 	call prekernel
 
-	jmp KERNEL_FINAL_ADR
-
+	//movq $KERNEL_FINAL_ADDR, %rax
+	movq $SETUP_KERN_ADR, %rax
+	addq  $(kern_body - _start), %rax
+	jmp *%rax
+*/
