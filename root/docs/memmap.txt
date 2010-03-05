@@ -2,3 +2,7 @@
 00030000 - 0003ffff : カーネルパラメータ
 00040000 - 0004ffff : セットアッププログラム
 
+0000|000000000000 - 0000|7fffffffffff : User program.
+ffff|800000000000 - ffff|ffffbfffffff : Undefined
+ffff|ffffc0000000 - ffff|ffffffdfffff : Kernel body (1GiB - 2MiB).
+ffff|ffffffe00000 - ffff|ffffffffffff : Kernel stack (2MiB).

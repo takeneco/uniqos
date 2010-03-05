@@ -1,9 +1,10 @@
-/* @file    arch/x86_64/include/pagetable.hpp
- * @version 0.0.0.1
+/**
+ * @file    arch/x86_64/include/pagetable.hpp
  * @author  Kato Takeshi
  * @brief   64bit paging table ops.
+ *
+ * (C) Kato Takeshi 2010
  */
-// (C) Kato.T 2010
 
 #ifndef _ARCH_X86_64_INCLUDE_PAGETABLE_HPP
 #define _ARCH_X86_64_INCLUDE_PAGETABLE_HPP
@@ -18,6 +19,7 @@ class pte
 	typedef _u64 type;
 	type e;
 
+public:
 	enum flags {
 		P    = 1 << 0,  ///< Page exist if set.
 		RW   = 1 << 1,  ///< Writable if set.
@@ -31,9 +33,8 @@ class pte
 		G    = 1 << 8,  ///< Global page if set.
 	};
 
-public:
 	void set(type a, type f) {
-		e = (a 0x000000fffffff000) | f;
+		e = (a | 0x000000fffffff000) | f;
 	}
 	type get() {
 		return e;

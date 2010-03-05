@@ -25,15 +25,15 @@ struct memmap_entry
 
 struct memmgr
 {
-	/// ¶õ¤­ÎÎ°è¥ê¥¹¥È
+	/// ç©ºãé ˜åŸŸãƒªã‚¹ãƒˆ
 	memmap_entry* free_list;
 
-	/// ³ä¤êÅö¤ÆºÑ¤ßÎÎ°è¥ê¥¹¥È
+	/// å‰²ã‚Šå½“ã¦æ¸ˆã¿é ˜åŸŸãƒªã‚¹ãƒˆ
 	memmap_entry* nofree_list;
 };
 
 void  memmgr_init(memmgr* mm);
-void* memmgr_alloc(memmgr* mm, std::size_t size);
+void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align = 8);
 void  memmgr_free(memmgr* mm, void* p);
 void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);

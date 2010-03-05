@@ -1,13 +1,10 @@
 /**
  * @file    arch/x86_64/kernel/setup/memmgr.cpp
- * @version 0.0.0.1
- * @author  Kato.T
+ * @author  Kato Takeshi
  * @brief   Easy memory management implement using setup.
  *
- * setup.S が設定するページテーブルは1GBまでなので、
- * 1GBまでのメモリを管理する。
+ * (C) Kato Takeshi 2010
  */
-// (C) Kato.T 2010
 
 #include <cstddef>
 
@@ -27,13 +24,6 @@ memmap_entry* const memmap_buf
 const int memmap_buf_count
 	= MEMMGR_MEMMAP_SIZE / sizeof (memmap_entry);
 
-/**
- * @brief  16 bytes memory up align.
- */
-inline _u64 up_align(_u64 x)
-{
-	return (x + 15) & 0xfffffffffffffff0;
-}
 
 /**
  * @brief  Initialize work area.
@@ -70,8 +60,9 @@ memmap_entry* memmap_new_entry()
  */
 void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
 {
-	if (!list || !ent)
+	if (list == NULL || ent == NULL) {
 		return;
+	}
 
 	ent->prev = NULL;
 	ent->next = *list;
@@ -86,8 +77,9 @@ void memmap_insert_to(memmap_entry** list, memmap_entry* ent)
  */
 void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
 {
-	if (!list || !ent)
+	if (list == NULL || ent == NULL) {
 		return;
+	}
 
 	if (ent->prev == NULL) {
 		*list = ent->next;
@@ -107,17 +99,20 @@ void memmap_remove_from(memmap_entry** list, memmap_entry* ent)
  */
 void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
 {
-	if (raw->length == 0)
+	if (raw->length == 0) {
 		return;
+	}
 
-	if (raw->base > MEMORY_MAX)
+	if (raw->base > MEMORY_MAX) {
 		return;
+	}
 
 	memmap_entry* ent = memmap_new_entry();
-	if (ent == NULL)
+	if (ent == NULL) {
 		return;
+	}
 
-	ent->head = up_align(raw->base);
+	ent->head = raw->base;
 
 	if ((raw->base + raw->length) > MEMORY_MAX)
 		ent->bytes = MEMORY_MAX - ent->head;
@@ -195,49 +190,60 @@ void memmgr_init(memmgr* mm)
 
 	memmap_import(mm);
 
-	// 先頭の３ＭＢを予約領域とする。
+	// 先頭の16MiBを予約領域とする。
 	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
-	memmap_reserve(mm, 0x00000000, 0x002fffff);
+	memmap_reserve(mm, 0x00000000, MEMMGR_RESERVED_PHADR);
 }
 
 /**
  * @brief  Allocate memory.
  * @param size Memory bytes.
- * @return If succeeds, this func returns allocated memory ptr.
+ * @param align Memory aliments. Must to be 2^n.
+ *              If align == 256, then return address is "0x....00".
+ * @return If succeeds, this func returns allocated memory address ptr.
  * @return If fails, this func returns NULL.
  */
-void* memmgr_alloc(memmgr* mm, std::size_t size)
+void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align)
 {
-	size = up_align(size);
-
 	memmap_entry* ent;
 	for (ent = mm->free_list; ent; ent = ent->next) {
-		if (ent->bytes >= size)
-			break;
+		_u64 align_gap = up_align(align, ent->head) - ent->head;
+		if ((ent->bytes - align_gap) < size)
+			continue;
+
+		_u64 addr;
+		if (ent->bytes == size) {
+			addr = ent->head;
+			memmap_remove_from(&mm->free_list, ent);
+			memmap_insert_to(&mm->nofree_list, ent);
+		} else {
+			memmap_entry* newent = memmap_new_entry();
+			if (newent == NULL)
+				continue;
+			if (align_gap != 0) {
+				newent->head = ent->head;
+				newent->bytes = align_gap;
+				memmap_entry* newent2 = memmap_new_entry();
+				if (newent2 == NULL) {
+					newent->bytes = 0;
+					continue;
+				}
+				newent = newent2;
+				ent->head += align_gap;
+				ent->bytes -= align_gap;
+			}
+			addr = newent->head = ent->head;
+			newent->bytes = size;
+			memmap_insert_to(&mm->nofree_list, newent);
+
+			ent->head += size;
+			ent->bytes -= size;
+		}
+
+		return reinterpret_cast<void*>(addr);
 	}
 
-	if (!ent)
-		return NULL;
-
-	_u64 addr;
-	if (ent->bytes == size) {
-		addr = ent->head;
-		memmap_remove_from(&mm->free_list, ent);
-		memmap_insert_to(&mm->nofree_list, ent);
-	} else {
-		memmap_entry* newent = memmap_new_entry();
-		if (newent == NULL)
-			return NULL;
-		newent->head = ent->head;
-		newent->bytes = size;
-		memmap_insert_to(&mm->nofree_list, newent);
-		addr = newent->head;
-
-		ent->head += size;
-		ent->bytes -= size;
-	}
-
-	return reinterpret_cast<void*>(addr);
+	return NULL;
 }
 
 /**

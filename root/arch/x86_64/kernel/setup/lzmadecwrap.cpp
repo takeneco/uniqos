@@ -37,6 +37,13 @@ static void lzma_free(void* p, void* address)
 
 }  // End of anonymous namespace.
 
+_u64 lzma_decode_size(const _u8* src)
+{
+	const _u8* p = src + LZMA_PROPS_SIZE;
+
+	return le64_to_cpu(p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+}
+
 bool lzma_decode(
 	memmgr*     mm,
 	_u8*        src,

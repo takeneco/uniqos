@@ -245,7 +245,7 @@ start32:
 	movl  %eax, (%ebx)
 
 	leal  8*256(%ebx), %edi
-	movl  $KERN_CONST_PDPTE + 0x0183, %eax
+	movl  $KERN_PDPTE_PHADR + 0x0183, %eax
 	movl  $256, %ecx
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
@@ -261,8 +261,8 @@ start32:
 	// PDE
 	leal  0x2000(%ebx), %edi
 	movl  $0 + 0x183, %eax
-	// 16MiB
-	movl  $8, %ecx
+	// 32MiB
+	movl  $16, %ecx
 	//// 1GiB
 	//movl  $512, %ecx
 1:	movl  %eax, (%edi)
@@ -299,7 +299,9 @@ start64:
 	movq  $SETUP_KERN_ADR, %rdi
 	rep movsb
 
+	pushq %rax  // Kernel size.
 	call prekernel 
+
 	movq $SETUP_KERN_ADR, %rax
 	jmp *%rax
 /*

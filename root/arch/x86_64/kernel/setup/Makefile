@@ -7,7 +7,7 @@
 
 CFLAGS += -fno-exceptions -fno-common -fno-rtti -Os
 CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os 
-CPPFLAGS += -I../../../../include -I../include
+CPPFLAGS += -I../../../../include -I../../include -I../include
 
 OLD_OBJS = setup16.o setup32.o
 OBJS = a20.o memmgr.o memops.o \

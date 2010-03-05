@@ -1,13 +1,13 @@
 /**
  * @file    arch/x86_64/kernel/setup/prekern.cpp
- * @version 0.0.0.1
  * @author  Kato.T
- *
  * @brief   Kernel extend phase before execute.
+ *
+ * (C) Kato Takeshi 2010
  */
-// (C) Kato.T 2010
 
 #include "mem.hpp"
+#include "pagetable.hpp"
 #include "term.hpp"
 
 
@@ -29,7 +29,7 @@ const char* acpi_memtype(int type)
 
 }  // End of anonymous namespace
 
-extern "C" int prekernel()
+extern "C" int prekernel(_u64 kern_size, _u8* compressed_kern)
 {
 	video_term vt;
 	vt.init(
@@ -75,8 +75,36 @@ extern "C" int prekernel()
 	memmgr_init(&mm);
 	tc.puts("mem inited\n");
 
-	void* p = memmgr_alloc(&mm, 16);
+	void* p2 = memmgr_alloc(&mm, 16);
+	tc.puts("mem = ")->putu64x((_u64)p2)->putc('\n');
+
+	arch::pte* pdpte = reinterpret_cast<arch::pte*>(KERN_PDPTE_PHADR);
+	_u64 pde_adr = KERN_PDE_PHADR;
+
+	pdpte[255].set(pde_adr,
+		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
+
+	// Kernel text body
+
+	arch::pte* pde = reinterpret_cast<arch::pte*>(pde_adr);
+	void* p = memmgr_alloc(&mm, 0x200000, 0x200000);
+	// 0x....ffffc0000000
+	pde[0].set(reinterpret_cast<_u64>(p),
+		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
+
+	// Kernel stack memory
+
+	p = memmgr_alloc(&mm, 0x200000, 0x200000);
+	// 0x....ffffffe00000
+	pde[255].set(reinterpret_cast<_u64>(p),
+		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
+
+	pde_adr += 8 * 512;
+
+	p = memmgr_alloc(&mm, 16);
 	tc.puts("mem = ")->putu64x((_u64)p)->putc('\n');
+
+	asm ("invlpg " TOSTR(KERN_FINAL_ADR));
 
 	return 0;
 }
