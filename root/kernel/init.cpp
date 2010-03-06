@@ -36,12 +36,12 @@ void pcnet32_init(int bus, int dev, ktty* kt)
 
 	_u16 ioaddr = (_u16)(pci_regs[4] & 0xfffc);
 
-	kt->puts("\npcnet32 port = ")->put16x(ioaddr)->putc('\n');
+//	kt->puts("\npcnet32 port = ")->put16x(ioaddr)->putc('\n');
 	// resest
 	native_inw(ioaddr + 0x14);
 
 	native_outw(0, ioaddr + 0x12);
-	int tmp = native_inw(ioaddr + 0x10) & 0xffff;
+/*	int tmp = native_inw(ioaddr + 0x10) & 0xffff;
 	native_outw(88, ioaddr + 0x12);
 	if (tmp == 4 && native_inw(ioaddr + 0x12) == 88) {
 		kt->puts("pcnet32 init ok\n");
@@ -55,6 +55,7 @@ void pcnet32_init(int bus, int dev, ktty* kt)
 	native_outw(89, ioaddr + 0x12);
 	chver |= native_inw(ioaddr + 0x10) << 16;
 	kt->puts("pcnet32 chip ver = ")->put32x(chver)->putc('\n');
+*/
 }
 
 extern "C" void init()
@@ -68,6 +69,7 @@ extern "C" void init()
 	int pci0 = native_inl(0x0cfc);
 	kt->put32x(pci0);
 */
+/*
 	int pcnet32_dev = -1, pcnet32_bus = -1;
 
 	for (int bus = 0; bus < 3; bus++) {
@@ -120,4 +122,5 @@ extern "C" void init()
 	kt
 	->puts("kern_head_addr = ")->put64x((_u64)&kern_head_addr)->putc('\n')
 	->puts("kern_tail_addr = ")->put64x((_u64)&kern_tail_addr)->putc('\n');
+*/
 }

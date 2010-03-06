@@ -1,6 +1,6 @@
 /**
  * @file    arch/x86_64/kernel/setup/prekern.cpp
- * @author  Kato.T
+ * @author  Kato Takeshi
  * @brief   Kernel extend phase before execute.
  *
  * (C) Kato Takeshi 2010
@@ -9,10 +9,13 @@
 #include "mem.hpp"
 #include "pagetable.hpp"
 #include "term.hpp"
+#include "lzmadecwrap.hpp"
 
+
+extern char setup_body;
+extern char kern_body;
 
 namespace {
-
 
 const char* acpi_memtype(int type)
 {
@@ -29,7 +32,7 @@ const char* acpi_memtype(int type)
 
 }  // End of anonymous namespace
 
-extern "C" int prekernel(_u64 kern_size, _u8* compressed_kern)
+extern "C" int prekernel()
 {
 	video_term vt;
 	vt.init(
@@ -75,36 +78,52 @@ extern "C" int prekernel(_u64 kern_size, _u8* compressed_kern)
 	memmgr_init(&mm);
 	tc.puts("mem inited\n");
 
-	void* p2 = memmgr_alloc(&mm, 16);
-	tc.puts("mem = ")->putu64x((_u64)p2)->putc('\n');
-
-	arch::pte* pdpte = reinterpret_cast<arch::pte*>(KERN_PDPTE_PHADR);
+	// pdpte_base[512 *   0] -> 0x....800.........
+	// pdpte_base[512 *   1] -> 0x....808.........
+	// pdpte_base[512 * 254] -> 0x....ff0.........
+	// pdpte_base[512 * 255] -> 0x....ff8.........
+	arch::pte* pdpte_base = reinterpret_cast<arch::pte*>(KERN_PDPTE_PHADR);
 	_u64 pde_adr = KERN_PDE_PHADR;
 
-	pdpte[255].set(pde_adr,
-		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
+	arch::pte* pdpte = &pdpte_base[512 * 255];
+
+	// pdpte_base[512 * 255 + 511] -> 0x....ffffc.......
+	pdpte[511].set(pde_adr,
+		arch::pte::P | arch::pte::RW);
 
 	// Kernel text body
 
 	arch::pte* pde = reinterpret_cast<arch::pte*>(pde_adr);
-	void* p = memmgr_alloc(&mm, 0x200000, 0x200000);
-	// 0x....ffffc0000000
-	pde[0].set(reinterpret_cast<_u64>(p),
+	char* p1 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
+	// 0x....ffffc00.....
+	pde[0].set(reinterpret_cast<_u64>(p1),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	// Kernel stack memory
 
-	p = memmgr_alloc(&mm, 0x200000, 0x200000);
-	// 0x....ffffffe00000
-	pde[255].set(reinterpret_cast<_u64>(p),
+	char* p2 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
+	// 0x....ffffffe.....
+	pde[255].set(reinterpret_cast<_u64>(p2),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	pde_adr += 8 * 512;
 
-	p = memmgr_alloc(&mm, 16);
-	tc.puts("mem = ")->putu64x((_u64)p)->putc('\n');
-
 	asm ("invlpg " TOSTR(KERN_FINAL_ADR));
+
+	unsigned int setup_size = &kern_body - &setup_body;
+	unsigned int kern_size = setup_data<_u32>(SETUP_KERNFILE_SIZE);
+	kern_size -= setup_size;
+
+	_u8* kern_src = reinterpret_cast<_u8*>(SETUP_KERN_ADR + setup_size);
+
+	_u64 kern_ext_size = lzma_decode_size(kern_src);
+	tc.putu64x(kern_ext_size)->putc('\n');
+
+	char* kern_dest = (char*)KERN_FINAL_ADR;
+	tc.puts("kern_dest = ")->putu64x((_u64)kern_dest)->putc('\n');
+	for (_u64 i = 0; i < kern_size; i++) {
+		kern_dest[i] = kern_src[i];
+	}
 
 	return 0;
 }

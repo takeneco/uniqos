@@ -1,10 +1,10 @@
 /**
  * @file    arch/x86_86/kernel/setup/lzmadecwrap.cpp
- * @version 0.0.0.1
- * @author  Kato.T
+ * @author  Kato Takeshi
  * @brief   LZMA decode wrapper.
+ *
+ * (C) Kato Takeshi 2009-2010
  */
-// (C) Kato.T 2009-2010
 
 extern "C" {
 #include "LzmaDec.h"
@@ -21,21 +21,22 @@ struct ex_alloc : ISzAlloc {
 	memmgr* mm;
 };
 
-static void* lzma_alloc(void* p, std::size_t size)
+void* lzma_alloc(void* p, std::size_t size)
 {
 	ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
 
 	return memmgr_alloc(alloc->mm, size);
 }
 
-static void lzma_free(void* p, void* address)
+void lzma_free(void* p, void* address)
 {
 	ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
 
-	memmgr_free(alloc->mm, p);
+	memmgr_free(alloc->mm, address);
 }
 
 }  // End of anonymous namespace.
+
 
 _u64 lzma_decode_size(const _u8* src)
 {

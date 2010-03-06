@@ -1,10 +1,10 @@
 /**
  * @file    arch/x86_64/boot/setup/setup.ld
- * @version 0.0.0.1
- * @author  Kato.T
+ * @author  Kato Takeshi
  * @brief   setup のリンカスクリプト。
+ *
+ * (C) Kato Takeshi 2010
  */
-/* (C) Kato.T 2010 */
 
 OUTPUT_FORMAT(binary)
 OUTPUT_ARCH(i386:x86-64)
@@ -12,6 +12,7 @@ ENTRY(_start)
 
 SECTIONS {
 	. = 0x1000;
+	setup_body = .;
 	.text : { *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }

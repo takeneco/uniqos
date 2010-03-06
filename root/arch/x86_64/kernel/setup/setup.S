@@ -1,19 +1,16 @@
 /**
- * @file    arch/x86_64/kernel/setup/setup.S
- * @author  Kato.T
+ * @file   arch/x86_64/kernel/setup/setup.S
+ * @author Kato Takeshi
+ * @brief  カーネル自身のセットアップ。
  *
  * (C) Kato Takeshi 2009-2010
  *
- * 16ビットリアルモードの間に実行する、
- * カーネル自身のセットアップ。
- * 起動アドレスを変える場合は、lgdtrのポインタを変える必要がある。
+ * - 16bit real mode から始まり、32bit protect mode を経由して
+ *   64bit long mode へ移行する。
+ * - Create minimum paging table, and jump kernel body.
  *
- * phase2 から渡されるパラメータ：
+ * Bootloader から渡されるパラメータ
  *  %ecx : カーネルのサイズ
- * phase4 へ渡すパラメータ：
- *  %ebx : phase4 の先頭アドレス
- *  %ecx : カーネルから phase3 を引いたサイズ
- *  メモリ(PH3_4_PARAM_SEG) : BIOS/ACPI から取得したパラメータ
  */
 
 #include "setup.h"
@@ -45,7 +42,7 @@ _start:
 	outb  %al, $0xa1
 	cli
 
-	// A20 はブートローダが開くのでここは不要。
+	// A20 はブートローダが開くので本当はここは不要。
 	call  a20_test_bios
 	movw  %ax, %si
 	call  display
@@ -101,17 +98,14 @@ _start:
 	movb  %dh, %al
 	movl  %eax, %es:SETUP_DISP_CURROW
 
+	// kernel file size
+	popl  %eax
+	movl  %eax, %es:SETUP_KERNFILE_SIZE
+
 	movw  $SETUP_MEMMAP, %di
 	call  acpi_get_memmap
 	// %eax != 0xffffffff でエラーチェックが必要
 	movl  %eax, %es:SETUP_MEMMAP_COUNT
-
-	// カーネルのサイズ
-	popl  %ecx
-	// カーネルから phase3 を引いたサイズ -> %ecx
-	//subl  $phase3_end, %ecx
-	// phase4 の先頭アドレス -> %ebx
-	//movl  $PHASE4_ADDR + phase3_end, %ebx
 
 	lgdtl setup_gdtr
 	lidtl setup_idtr
@@ -139,7 +133,7 @@ setup_gdt:
 	.align 4
 setup_gdtr:
 	.short 8*4 - 1
-	.long setup_gdt + 0x00000
+	.long setup_gdt
 setup_idtr:
 	.short 0
 	.long 0
@@ -175,15 +169,8 @@ acpi_get_memmap:
 	pushl %ebx
 	pushl %ecx
 	pushl %edx
-//	pushw %di
 	pushw %si
-/*
-	xorl  %ebx, %ebx
-	movw  0x14(%esp), %ax
-	movw  %ax, %es
-	movw  0x18(%esp), %ax
-	movw  %ax, %di
-*/
+
 	xorw  %si, %si
 1:
 	movl  $24, %ecx         // sizeof buffer
@@ -208,7 +195,6 @@ acpi_get_memmap:
 	movw  %si, %ax
 4:
 	popw  %si
-//	popw  %di
 	popl  %edx
 	popl  %ecx
 	popl  %ebx
@@ -224,9 +210,6 @@ start32:
 	movw  %ax, %gs
 	movw  %ax, %ss
 	movl  $SETUP_STACK_ADR, %esp
-
-	// kernel size
-	pushl %ecx
 
 	// Enable PAE
 	movl  $0x00000020, %eax
@@ -245,12 +228,12 @@ start32:
 	movl  %eax, (%ebx)
 
 	leal  8*256(%ebx), %edi
-	movl  $KERN_PDPTE_PHADR + 0x0183, %eax
+	movl  $KERN_PDPTE_PHADR + 0x0003, %eax
 	movl  $256, %ecx
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi
-	addl  $0x00200000, %eax
+	addl  $0x1000, %eax
 	loop  1b
 
 	// PDP
@@ -280,9 +263,6 @@ start32:
 	orw   $0x0100, %ax       // Long Mode Enable bit
 	wrmsr
 
-	// kernel size
-	popl  %ecx
-
 	// Enable paging and protect mode.
 	movl  $0x80000001, %eax
 	movl  %eax, %cr0
@@ -294,27 +274,11 @@ start32:
 
 start64:
 .code64
-	movq  $SETUP_KERN_ADR, %rsi
-	addq  $(kern_body - _start), %rsi
-	movq  $SETUP_KERN_ADR, %rdi
-	rep movsb
-
-	pushq %rax  // Kernel size.
 	call prekernel 
 
-	movq $SETUP_KERN_ADR, %rax
+1:hlt
+jmp 1b
+
+	movq  $KERN_FINAL_ADR, %rax
 	jmp *%rax
-/*
-	movq  $SETUP_KERN_ADR, %rsi
-	addq  $(kern_body - _start), %rsi
-	movq  $KERNEL_FINAL_ADDR, %rdi
 
-	rep movsb
-
-	call prekernel
-
-	//movq $KERNEL_FINAL_ADDR, %rax
-	movq $SETUP_KERN_ADR, %rax
-	addq  $(kern_body - _start), %rax
-	jmp *%rax
-*/

@@ -35,8 +35,7 @@ BOOT :
 
 KERNEL : BOOT
 	$(MAKE) -C kernel
-	#cat $(SETUP) $(KERNEL) > $(ROOT)
-	cat $(SETUP) kernel/kernel.bin > $(ROOT)
+	cat $(SETUP) $(KERNEL) > $(ROOT)
 
 clean:
 	$(MAKE) -C boot clean

@@ -34,7 +34,8 @@ public:
 	};
 
 	void set(type a, type f) {
-		e = (a | 0x000000fffffff000) | f;
+		//e = (a & 0x000000fffffff000) | f;
+		e = a | f;
 	}
 	type get() {
 		return e;
