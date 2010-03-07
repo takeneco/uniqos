@@ -1,11 +1,11 @@
 /**
- * @file    arch/x86_64/boot/bootldr/loadfat.cpp
- * @version 0.0.0.1
- * @author  Kato.T
- * @brief   CHS 経由のディスクアクセスで FAT からファイルを読み込む。
- *          FAT12専用。
+ * @file   arch/x86_64/boot/bootldr/loadfat.cpp
+ * @author Kato Takeshi
+ * @brief  CHS 経由のディスクアクセスで FAT からファイルを読み込む。
+ *         FAT12専用。
+ *
+ * (C) Kato Takeshi 2010
  */
-// (C) Kato.T 2010
 
 #include "loadfat.hpp"
 
@@ -16,8 +16,9 @@ asm (".code16gcc");
  */
 
 /**
- * INT 13h からセクタ単位でディスクを読み込む。
- * @param block ブロック番号(中でCHSにマップする)。
+ * @brief  INT 13h からセクタ単位でディスクを読み込む。
+ *
+ * @param start ブロック番号(中でCHSにマップする)。
  * @param count 読み込むセクタ数。
  * @param dsegm 読み込み先セグメント。
  * @param daddr 読み込み先アドレス。
@@ -27,7 +28,10 @@ asm (".code16gcc");
  * 読み込み先は dsegm:daddr になる。
  */
 int disk_info::read_secs(
-	_u16 start, _u16 count, _u16 dsegm, _u16 daddr) const
+	unsigned short start,
+	unsigned short count,
+	unsigned short dsegm,
+	unsigned short daddr) const
 {
 	_u8  sect = start % secs_per_head;
 	_u16 track = start / secs_per_head;
@@ -81,7 +85,7 @@ int disk_info::read_secs(
  * @param dev ドライブ番号
  * @param raw FATヘッダへのポインタ
  */
-fat_info::fat_info(int dev, _u8* raw)
+fat_info::fat_info(int dev, unsigned char* raw)
 	: head(raw)
 {
 	const fat_header* p = reinterpret_cast<fat_header*>(raw);
@@ -117,7 +121,7 @@ fat_info::fat_info(int dev, _u8* raw)
  */
 int fat_info::next_clu(int prev) const
 {
-	const _u8* fat = head
+	const unsigned char* fat = head
 		+ bytes_per_sec * reserved_secs;
 	const int p1 = (prev >> 1) * 3;
 	const int p2 = prev & 1;

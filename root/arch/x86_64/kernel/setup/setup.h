@@ -52,17 +52,14 @@
 #define KERN_EXTTMP_SIZE        0x00100000
 
 /// Kernel constantly use paging table.
-#define KERN_PDPTE_PHADR        0x01000000
-#define KERN_PDE_PHADR          0x01100000
+#define KERN_PDPTE_PADR          0x01000000
+#define KERN_PDE_PADR            0x01100000
 
-#define MEMMGR_RESERVED_PHADR   0x011fffff
-
-/// Finally kernel execute phisical address.
-#define KERN_FINAL_PADR         0x01200000
+#define MEMMGR_RESERVED_PADR     0x011fffff
 
 /// Finally kernel execute virtual address.
-#define KERN_FINAL_ADR  0xffffffffc0000000
-#define KERN_FINAL_SIZE 0x0000000040000000
+#define KERN_FINAL_VADR  0xffffffffc0000000
+#define KERN_FINAL_SIZE  0x0000000040000000
 
 
 #endif  // Include guard.

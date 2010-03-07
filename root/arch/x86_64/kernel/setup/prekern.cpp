@@ -12,25 +12,52 @@
 #include "lzmadecwrap.hpp"
 
 
-extern char setup_body;
-extern char kern_body;
+extern char setup_body_start;
+extern char kern_body_start;
+
+term_chain* debug_tc;
 
 namespace {
 
-const char* acpi_memtype(int type)
-{
-	const static char* type_name[] = {
-		"unknown", "memory", "reserved", "acpi", "nvs", "unusuable" };
+	const char* acpi_memtype(int type)
+	{
+		const static char* type_name[] = {
+			"unknown", "memory", "reserved",
+			"acpi", "nvs", "unusuable" };
 
-	if (1 <= type && type <= 5) {
-		return type_name[type];
+		if (1 <= type && type <= 5) {
+			return type_name[type];
+		}
+		else {
+			return type_name[0];
+		}
 	}
-	else {
-		return type_name[0];
+
+	void kern_extract(memmgr* mm)
+	{
+		const _u32 setup_size = &kern_body_start - &setup_body_start;
+
+		_u8* const comp_kern_src =
+			reinterpret_cast<_u8*>(SETUP_KERN_ADR + setup_size);
+
+		const _u32 comp_kern_size =
+			setup_data<_u32>(SETUP_KERNFILE_SIZE) - setup_size;
+
+		const _u32 ext_kern_size = lzma_decode_size(comp_kern_src);
+
+		_u8* const ext_kern_dest =
+			reinterpret_cast<_u8*>(KERN_FINAL_VADR);
+
+		bool r = lzma_decode(mm, comp_kern_src, comp_kern_size,
+			ext_kern_dest, ext_kern_size);
+
+		if (debug_tc) {
+			debug_tc->puts("lzma_decode : ")->putu8x(r)->putc('\n');
+		}
 	}
-}
 
 }  // End of anonymous namespace
+
 
 extern "C" int prekernel()
 {
@@ -45,6 +72,8 @@ extern "C" int prekernel()
 
 	term_chain tc;
 	tc.add_term(&vt);
+
+	debug_tc = &tc;
 
 	tc.puts("DISPLAY : ")
 	->putu64(setup_data<_u32>(SETUP_DISP_WIDTH))
@@ -76,14 +105,13 @@ extern "C" int prekernel()
 
 	memmgr mm;
 	memmgr_init(&mm);
-	tc.puts("mem inited\n");
 
 	// pdpte_base[512 *   0] -> 0x....800.........
 	// pdpte_base[512 *   1] -> 0x....808.........
 	// pdpte_base[512 * 254] -> 0x....ff0.........
 	// pdpte_base[512 * 255] -> 0x....ff8.........
-	arch::pte* pdpte_base = reinterpret_cast<arch::pte*>(KERN_PDPTE_PHADR);
-	_u64 pde_adr = KERN_PDE_PHADR;
+	arch::pte* pdpte_base = reinterpret_cast<arch::pte*>(KERN_PDPTE_PADR);
+	_u64 pde_adr = KERN_PDE_PADR;
 
 	arch::pte* pdpte = &pdpte_base[512 * 255];
 
@@ -99,6 +127,8 @@ extern "C" int prekernel()
 	pde[0].set(reinterpret_cast<_u64>(p1),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
+	kern_extract(&mm);
+
 	// Kernel stack memory
 
 	char* p2 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
@@ -108,22 +138,16 @@ extern "C" int prekernel()
 
 	pde_adr += 8 * 512;
 
-	asm ("invlpg " TOSTR(KERN_FINAL_ADR));
+	asm ("invlpg " TOSTR(KERN_FINAL_VADR));
 
-	unsigned int setup_size = &kern_body - &setup_body;
-	unsigned int kern_size = setup_data<_u32>(SETUP_KERNFILE_SIZE);
-	kern_size -= setup_size;
-
-	_u8* kern_src = reinterpret_cast<_u8*>(SETUP_KERN_ADR + setup_size);
-
-	_u64 kern_ext_size = lzma_decode_size(kern_src);
-	tc.putu64x(kern_ext_size)->putc('\n');
-
+	/*
 	char* kern_dest = (char*)KERN_FINAL_ADR;
 	tc.puts("kern_dest = ")->putu64x((_u64)kern_dest)->putc('\n');
 	for (_u64 i = 0; i < kern_size; i++) {
 		kern_dest[i] = kern_src[i];
 	}
+	*/
 
 	return 0;
 }
+

@@ -276,9 +276,6 @@ start64:
 .code64
 	call prekernel 
 
-1:hlt
-jmp 1b
-
-	movq  $KERN_FINAL_ADR, %rax
+	movq  $KERN_FINAL_VADR, %rax
 	jmp *%rax
 

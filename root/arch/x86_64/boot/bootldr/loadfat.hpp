@@ -1,14 +1,16 @@
-/* @file    arch/x86_64/boot/phase2/loadfat.hpp
- * @version 0.0.1
- * @author  Kato.T
+/**
+ * @file    arch/x86_64/boot/bootldr/loadfat.hpp
+ * @author  Kato Takeshi
+ *
+ * (C) Kato Takeshi 2010
  */
-// (C) Kato.T 2010
 
-#ifndef _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
-#define _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
+#ifndef _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HPP_
+#define _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HPP_
 
 #include "btypes.hpp"
 #include "fat.hpp"
+
 
 asm (".code16gcc");
 
@@ -26,7 +28,7 @@ protected:
 
 public:
 	void set_params(int d, int bps, int sph, int hpc);
-	int read_secs(_u16 start, _u16 count,
+	int read_secs(unsigned short start, unsigned short count,
 		_u16 dsegm, _u16 daddr) const;
 };
 
@@ -43,7 +45,7 @@ inline void disk_info::set_params(int d, int bps, int sph, int hpc) {
 
 class fat_info : public disk_info
 {
-	_u8* head;
+	unsigned char* head;
 	int secs_per_clu;
 	int reserved_secs;
 	int fats;
@@ -55,7 +57,7 @@ class fat_info : public disk_info
 
 	dir_entry* rootents();
 public:
-	fat_info(int dev, _u8* raw);
+	fat_info(int dev, unsigned char* raw);
 
 	dir_entry* find_from_dir(const char name[]);
 	int next_clu(int prev) const;
@@ -81,4 +83,4 @@ inline dir_entry* fat_info::rootents() {
 	return reinterpret_cast<dir_entry*>(head + rootents_offset);
 }
 
-#endif // _ARCH_X86_BOOT_PHASE2_LOADFAT_HPP_
+#endif  // Include guard.

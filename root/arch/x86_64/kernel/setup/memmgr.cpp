@@ -192,7 +192,7 @@ void memmgr_init(memmgr* mm)
 
 	// 先頭の16MiBを予約領域とする。
 	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
-	memmap_reserve(mm, 0x00000000, MEMMGR_RESERVED_PHADR);
+	memmap_reserve(mm, 0x00000000, MEMMGR_RESERVED_PADR);
 }
 
 /**

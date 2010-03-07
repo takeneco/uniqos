@@ -13,27 +13,49 @@ extern "C" {
 #include "mem.hpp"
 
 
+#include "term.hpp"
+extern term_chain* debug_tc;
+
+
 namespace {
 
-const std::size_t LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
+	const std::size_t LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
 
-struct ex_alloc : ISzAlloc {
-	memmgr* mm;
-};
+	struct ex_alloc : ISzAlloc {
+		memmgr* mm;
+	};
 
-void* lzma_alloc(void* p, std::size_t size)
-{
-	ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
+	void* lzma_alloc(void* p, std::size_t size)
+	{
+		ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
 
-	return memmgr_alloc(alloc->mm, size);
-}
+		void* r = memmgr_alloc(alloc->mm, size);
 
-void lzma_free(void* p, void* address)
-{
-	ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
+		if (debug_tc != NULL) {
+			debug_tc
+				->puts("lzma_alloc : size = ")
+				->putu64(size)
+				->puts(", return ")
+				->putu64x(reinterpret_cast<_u64>(r))
+				->putc('\n');
+		}
 
-	memmgr_free(alloc->mm, address);
-}
+		return r;
+	}
+
+	void lzma_free(void* p, void* addr)
+	{
+		if (debug_tc != NULL) {
+			debug_tc
+				->puts("lzma_free : addr = ")
+				->putu64x(reinterpret_cast<_u64>(addr))
+				->putc('\n');
+		}
+
+		ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
+
+		memmgr_free(alloc->mm, addr);
+	}
 
 }  // End of anonymous namespace.
 

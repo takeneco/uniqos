@@ -55,7 +55,6 @@ public:
 	void add_term(outterm* term);
 	term_chain* putc(char c);
 	term_chain* puts(const char* str);
-	term_chain* putu32(_u32 n);
 	term_chain* putu64(_u64 n);
 	term_chain* putu8x(_u8 n);
 	term_chain* putu16x(_u16 n);

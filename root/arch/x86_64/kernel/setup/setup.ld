@@ -12,10 +12,10 @@ ENTRY(_start)
 
 SECTIONS {
 	. = 0x1000;
-	setup_body = .;
+	setup_body_start = .;
 	.text : { *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	/*.bss : { *(.bss) }*/
-	kern_body = .;
+	kern_body_start = .;
 }

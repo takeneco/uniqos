@@ -1,7 +1,7 @@
 /**
  * @file    arch/x86_64/kernel/setup/lzmadecwrap.hpp
  * @author  Kato Takeshi
- * @brief   Memory ops.
+ * @brief   LZMA library decode wrapper.
  *
  * (C) Kato Takeshi 2010
  */
