@@ -1,14 +1,12 @@
 /**
  * @file    arch/x86_64/kernel/setup/termchain.cpp
- * @version 0.0.0.1
- * @author  Kato.T
- *
+ * @author  Kato Takeshi
  * @brief   複数の outterm へ同時にテキスト出力する。
+ *
+ * (C) Kato.T 2009-2010
  */
-// (C) Kato.T 2009-2010
 
-#include <cstddef>
-#include "term.hpp"
+#include "term.hh"
 
 
 /**

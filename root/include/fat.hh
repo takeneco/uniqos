@@ -1,15 +1,14 @@
-/* FILE : include/fat.hpp
- * VER  : 0.0.2
- * LAST : 2009-06-29
- * (C) Kato.T 2009
+/* @file   include/fat.hh
+ * @author Kato Takeshi
+ * @brief  FATファイルシステムのヘッダ情報。
  *
- * FATファイルシステムのヘッダ情報。
+ * (C) Kato Takeshi 2009
  */
 
-#ifndef _INCLUDE_FAT_HPP_
-#define _INCLUDE_FAT_HPP_
+#ifndef _INCLUDE_FAT_HH_
+#define _INCLUDE_FAT_HH_
 
-#include "btypes.hpp"
+#include "btypes.hh"
 
 struct fat_header {
 	_u8  jmp_opcode[3];
@@ -49,4 +48,4 @@ struct dir_entry {
 	_u8 size[4];
 };
 
-#endif // _INCLUDE_FAT_HPP_
+#endif  // Include guard.

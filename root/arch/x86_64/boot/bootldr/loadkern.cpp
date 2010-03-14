@@ -6,8 +6,8 @@
  */
 // (C) Kato.T 2010
 
-#include "btypes.hpp"
-#include "loadfat.hpp"
+#include "btypes.hh"
+#include "loadfat.hh"
 
 #include "boot.h"
 

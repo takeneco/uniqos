@@ -1,21 +1,15 @@
-/**
- * @file    arch/x86_64/kernel/setup/videoterm.cpp
- * @version 0.0.0.1
- * @author  Kato.T
- *
- * @brief   Output only video term.
- */
-// (C) Kato.T 2009-2010
+// @file    arch/x86_64/kernel/setup/videoterm.cc
+// @author  Kato Takeshi
+// @brief   Output only video term.
+//
+// (C) 2009-2010 Kato Takeshi.
 
-#include <cstddef>
-#include "mem.hpp"
-#include "term.hpp"
+#include "mem.hh"
+#include "term.hh"
 
 
-/**
- * @brief  Scroll.
- * @param n  Scroll rows.
- */
+// @brief  Scroll.
+// @param n  Scroll rows.
 void video_term::roll(int n)
 {
 	if (n < 0)
@@ -35,12 +29,11 @@ void video_term::roll(int n)
 	}
 }
 
-/**
- * @brief  Initialize.
- * @param w         Console width chars.
- * @param h         Console height chars.
- * @param vram_addr VRAM head address.
- */
+
+// @brief  Initialize.
+// @param w         Console width chars.
+// @param h         Console height chars.
+// @param vram_addr VRAM head address.
 void video_term::init(int w, int h, _u64 vram_addr)
 {
 	width = w;
@@ -50,10 +43,9 @@ void video_term::init(int w, int h, _u64 vram_addr)
 	cur_row = cur_col = 0;
 }
 
-/**
- * @brief  Output 1 charcter.
- * @param c  Character.
- */
+
+// @brief  Output 1 charcter.
+// @param c  Character.
 void video_term::putc(char c)
 {
 	if (c == '\n') {

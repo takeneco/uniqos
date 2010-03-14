@@ -1,14 +1,10 @@
-/**
- * @file    arch/x86_64/kernel/setup/memmgr.cpp
- * @author  Kato Takeshi
- * @brief   Easy memory management implement using setup.
- *
- * (C) Kato Takeshi 2010
- */
+// @file    arch/x86_64/kernel/setup/memmgr.cpp
+// @author  Kato Takeshi
+// @brief   Easy memory management implement using setup.
+//
+// (C) 2010 Kato Takeshi.
 
-#include <cstddef>
-
-#include "mem.hpp"
+#include "mem.hh"
 
 
 namespace {

@@ -19,6 +19,8 @@ typedef   signed long      _s32;
 typedef unsigned long      _u32;
 typedef   signed long long _s64;
 typedef unsigned long long _u64;
+typedef   signed long long _smax;
+typedef unsigned long long _umax;
 
 typedef _u32 _ucpu;
 typedef _s32 _scpu;
@@ -35,6 +37,8 @@ typedef   signed int       _s32;
 typedef unsigned int       _u32;
 typedef   signed long      _s64;
 typedef unsigned long      _u64;
+typedef   signed long      _smax;
+typedef unsigned long      _umax;
 
 typedef _u64 _ucpu;
 typedef _s64 _scpu;
@@ -258,6 +262,46 @@ namespace result {
 	inline bool isok(type t) { return t >= 0; }
 	inline bool isfail(type t) { return t < 0; }
 }
+
+/**
+ * @brief  Cause of error identification.
+ */
+namespace cause
+{
+	enum stype {
+		OK = 0,
+		FAIL = 1,
+		NO_MEMORY = 2,
+		INVALID_PARAMS = 3,
+		INVALID_OPERATION = 4,
+		UNKNOWN = 1000,
+	};
+
+	typedef _u32 type;
+	inline bool isOk(type x) { return x == OK; }
+	inline bool isFail(type x) { return x != OK; }
+}
+
+/**
+ * @brief  Log information.
+ */
+namespace log
+{
+	enum level {
+		EMERGENCY = 0,
+		ALERT,
+		CRITICAL,
+		ERROR,
+		NOTICE,
+		INFO,
+		DEBUG,
+	};
+
+	typedef _u32 type;
+	inline bool isHeavy(type x, type base) { return (x & 0x0f) <= base; }
+	inline bool isLight(type x, type base) { return (x & 0x0f) >= base; }
+}
+
 
 #define __TOSTR(x) #x
 #define TOSTR(x) __TOSTR(x)

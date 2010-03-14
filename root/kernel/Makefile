@@ -1,11 +1,12 @@
 # @file    kernel/Makefile
-# @version 0.0.1
-# @author  Kato.T
-# @brief   カーネルの Makefile
-
+# @author  Kato Takeshi
+# @brief   CPU not depends kernel part Makefile.
+#
 # (C) Kato.T 2008-2010
 
-BASEDIR=..
+
+ROOT = ..
+include $(ROOT)/$(MAKE_DEFAULTS)
 
 CFLAGS += -fno-exceptions -fno-common
 CXXFLAGS = $(CFLAGS) -fno-rtti
@@ -13,7 +14,8 @@ CPPFLAGS += -I../include \
 	-I../arch/$(ARCH)/include
 
 OBJLIST = objects.txt
-OBJS = init.o ktty.o
+OBJS = kout.o
+#OBJS = init.o
 
 all : $(OBJS)
 	echo $(OBJS) > objects.txt
@@ -24,7 +26,7 @@ lzmadecwrap.o : lzmadecwrap.cpp
 LzmaDec.o : ../contrib/lzma/C/LzmaDec.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-%.o : %.cpp
+%.o : %.cc
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 %.o : %.S

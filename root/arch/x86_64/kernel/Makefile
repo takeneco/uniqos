@@ -5,11 +5,13 @@
 #
 # (C) Kato.T 2010
 
+
+-include ../../../$(MAKE_DEFAULTS)
+
 LZMA = lzma
 
-CFLAGS += -fno-exceptions -fno-rtti -O3 \
-	-I../../../include
-CPPFLAGS = $(CFLAGS)
+CFLAGS += -fno-exceptions -O3
+CPPFLAGS = -I../../../include
 
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
@@ -32,6 +34,9 @@ kernel.bin : $(OBJS)
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 %.o : %.cpp
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+
+%.o : %.cc
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 clean:

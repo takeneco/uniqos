@@ -1,15 +1,13 @@
-/**
- * @file    arch/x86_64/boot/bootldr/loadfat.hpp
- * @author  Kato Takeshi
- *
- * (C) Kato Takeshi 2010
- */
+// @file   arch/x86_64/boot/bootldr/loadfat.hh
+// @author Kato Takeshi
+//
+// (C) Kato Takeshi 2010
 
-#ifndef _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HPP_
-#define _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HPP_
+#ifndef _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
+#define _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
 
-#include "btypes.hpp"
-#include "fat.hpp"
+#include "btypes.hh"
+#include "fat.hh"
 
 
 asm (".code16gcc");

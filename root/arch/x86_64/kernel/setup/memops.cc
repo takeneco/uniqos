@@ -1,21 +1,18 @@
-/**
- * @file    arch/x86_64/kernel/setup/memops.cpp
- * @version 0.0.0.1
- * @author  Kato.T
- */
-// (C) Kato.T 2009-2010
+// @file    arch/x86_64/kernel/setup/memops.cc
+// @author  Kato Takeshi
+//
+// (C) 2009-2010 Kato Takeshi.
 
 #include <cstddef>
 
-#include "mem.hpp"
+#include "mem.hh"
 
-/**
- * @brief  Like memmove().
- * @param dest Destination addr.
- * @param src  Source addr.
- * @param size Copy bytes.
- * @return Always return dest.
- */
+
+// @brief  Like memmove().
+// @param dest Destination addr.
+// @param src  Source addr.
+// @param size Copy bytes.
+// @return Always return dest.
 void* memory_move(void* dest, const void* src, std::size_t size)
 {
 	char* d = reinterpret_cast<char*>(dest);

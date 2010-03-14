@@ -1,15 +1,12 @@
-/**
- * @file    arch/x86_64/kernel/setup/prekern.cpp
- * @author  Kato Takeshi
- * @brief   Kernel extend phase before execute.
- *
- * (C) Kato Takeshi 2010
- */
+// @file    arch/x86_64/kernel/setup/prekern.cc
+// @author  Kato Takeshi
+// @brief   Kernel extend phase before execute.
+//
+// (C) 2010 Kato Takeshi.
 
-#include "mem.hpp"
-#include "pagetable.hpp"
-#include "term.hpp"
-#include "lzmadecwrap.hpp"
+#include "lzmadecwrap.hh"
+#include "pagetable.hh"
+#include "term.hh"
 
 
 extern char setup_body_start;

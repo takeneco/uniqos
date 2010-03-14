@@ -1,42 +1,19 @@
-/**
- * @file    arch/x86_64/kernel/setup/term.hpp
- * @version 0.0.0.1
- * @author  Kato.T
- * @brief   カーネルセットアップ中のメッセージ出力先。
- */
-// (C) Kato.T 2010
+// @file    arch/x86_64/kernel/setup/term.hh
+// @author  Kato Takeshi
+// @brief   カーネルセットアップ中のメッセージ出力先。
+//
+// (C) 2010 Kato Takeshi.
 
-#ifndef _ARCH_X86_64_KERNEL_SETUP_TERM_HPP
-#define _ARCH_X86_64_KERNEL_SETUP_TERM_HPP
+#ifndef _ARCH_X86_64_KERNEL_SETUP_TERM_HH_
+#define _ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 
 #include <cstddef>
 
 #include "btypes.hh"
 
-/*
-// メモリ管理
-struct memmap_entry;
-struct memmgr
-{
-	// 空き領域リスト
-	memmap_entry* free_list;
 
-	// 割り当て済み領域リスト
-	memmap_entry* nofree_list;
-};
+// @brief  Output terminal base class.
 
-void  memmgr_init(memmgr* mm);
-void* memmgr_alloc(memmgr* mm, size_t size);
-void  memmgr_free(memmgr* mm, void* p);
-void* operator new(std::size_t s, memmgr*);
-void* operator new[](std::size_t s, memmgr*);
-void  operator delete(void* p, memmgr*);
-void  operator delete[](void* p, memmgr*);
-*/
-
-/**
- * @brief  Output terminal base class.
- */
 class outterm
 {
 public:
@@ -44,9 +21,9 @@ public:
 	virtual void putc(char c) = 0;
 };
 
-/**
- * @brief  複数の outterm へテキストを同時出力する。
- */
+
+// @brief  複数の outterm へテキストを同時出力する。
+
 class term_chain
 {
 	outterm* terms;
@@ -62,9 +39,9 @@ public:
 	term_chain* putu64x(_u64 n);
 };
 
-/**
- * 出力用シリアル端末。
- */
+
+// @brief  Output only kernel serial term.
+
 class com_term : public outterm
 {
 	_u16 base_port;
@@ -90,9 +67,8 @@ public:
 };
 
 
-/**
- * @brief  Video term.
- */
+// @brief  Output only kernel video term.
+
 class video_term : public outterm
 {
 	int   width;
@@ -105,6 +81,7 @@ class video_term : public outterm
 public:
 	void init(int w, int h, _u64 vram_addr);
 	void set_cur(int row, int col) { cur_row = row; cur_col = col; }
+	void get_cur(int* row, int* col) { *row = cur_row; *col = cur_col; }
 	virtual void putc(char c);
 };
 
@@ -118,14 +95,6 @@ inline video_term* get_video_term() {
 
 extern "C" void* memcpy(void* dest, const void* src, std::size_t n);
 
-// lzma wrapper
-
-bool lzma_decode(
-	memmgr*     mm,
-	_u8*        src,
-	std::size_t src_len,
-	_u8*        dest,
-	std::size_t dest_len);
 */
 
 #endif  // Include guard.

@@ -1,14 +1,15 @@
-/* @file    arch/x86_64/include/native.hpp
- * @version 0.0.0.1
- * @author  Kato.T
+/* @file    arch/x86_64/include/native.hh
+ * @author  Kato Takeshi
  * @brief   C言語から呼び出すアセンブラ命令
+ *
+ * (C) Kato Takeshi 2010
  */
-// (C) T.Kato 2010
 
-#ifndef _ARCH_X86_64_INCLUDE_NATIVE_HPP
-#define _ARCH_X86_64_INCLUDE_NATIVE_HPP
+#ifndef _ARCH_X86_64_INCLUDE_NATIVE_HH
+#define _ARCH_X86_64_INCLUDE_NATIVE_HH
 
-#include "btypes.hpp"
+#include "btypes.hh"
+
 
 static inline void native_hlt() {
 	asm volatile ("hlt");
@@ -109,37 +110,14 @@ struct gidt_ptr64 {
 	}
 };
 
-/**
- * gidt_ptr64 を初期化する。
- */
-/*
-inline void init_gidt_ptr64(gidt_ptr64* gidt, _u16 len, const void* table)
-{
-	gidt->len = len - 1;
-	const _u64 p = reinterpret_cast<_u64>(table);
-	gidt->ptr[0] = static_cast<_u16>(p);
-	gidt->ptr[1] = static_cast<_u16>(p >> 16);
-	gidt->ptr[2] = static_cast<_u16>(p >> 32);
-	gidt->ptr[3] = static_cast<_u16>(p >> 48);
-}
-*/
-
-// GDT
-
-/**
- * @brief lgdt を実行する。
- */
+// @brief lgdt を実行する。
 inline void native_lgdt(gidt_ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
 }
 
-// IDT
-
-/**
- * @brief lidt を実行する。
- */
+// @brief lidt を実行する。
 inline void native_lidt(gidt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
 
-#endif // _ARCH_X86_64_INCLUDE_NATIVE_HPP
+#endif  // Include guard.

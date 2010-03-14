@@ -1,13 +1,11 @@
-/**
- * @file   arch/x86_64/boot/bootldr/loadfat.cpp
- * @author Kato Takeshi
- * @brief  CHS 経由のディスクアクセスで FAT からファイルを読み込む。
- *         FAT12専用。
- *
- * (C) Kato Takeshi 2010
- */
+// @file   arch/x86_64/boot/bootldr/loadfat.cc
+// @author Kato Takeshi
+// @brief  CHS 経由のディスクアクセスで FAT からファイルを読み込む。
+//         FAT12専用。
+//
+// (C) Kato Takeshi 2010
 
-#include "loadfat.hpp"
+#include "loadfat.hh"
 
 asm (".code16gcc");
 
@@ -33,30 +31,30 @@ int disk_info::read_secs(
 	unsigned short dsegm,
 	unsigned short daddr) const
 {
-	_u8  sect = start % secs_per_head;
-	_u16 track = start / secs_per_head;
-	_u16 to = daddr;
+	unsigned char sect = start % secs_per_head;
+	unsigned short track = start / secs_per_head;
+	unsigned short to = daddr;
 
 	asm volatile ("movw %%ax, %%es" : : "a" (dsegm));
 
 	while (count > 0) {
-		_u16 head = track % heads_per_cil;
-		_u16 cilin = track / heads_per_cil;
+		unsigned short head = track % heads_per_cil;
+		unsigned short cilin = track / heads_per_cil;
 
-		_u8 num = count;
+		unsigned char num = count;
 		if (num > (secs_per_head - sect))
 			num = secs_per_head - sect;
 
 		count -= num;
 
-		_u16 a;
+		unsigned short a;
 		// 失敗しても８回繰り返す
 		for (int i = 0; i < 8; i++) {
 			a = 0x0200 | num;
-			const _u16 c = (cilin & 0x00ff) << 8
+			const unsigned short c = (cilin & 0x00ff) << 8
 				| (cilin & 0x0300) >> 2
 				| (sect + 1);
-			const _u16 d = head << 8 | dev;
+			const unsigned short d = head << 8 | dev;
 
 			asm volatile ("int $0x13" :
 				"=a" (a) :

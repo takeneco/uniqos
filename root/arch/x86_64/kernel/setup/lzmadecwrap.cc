@@ -6,14 +6,16 @@
  * (C) Kato Takeshi 2009-2010
  */
 
+#include "lzmadecwrap.hh"
+
 extern "C" {
 #include "LzmaDec.h"
 }
 
-#include "mem.hpp"
+#include "mem.hh"
 
 
-#include "term.hpp"
+#include "term.hh"
 extern term_chain* debug_tc;
 
 

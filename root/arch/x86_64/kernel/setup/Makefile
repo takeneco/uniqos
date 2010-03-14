@@ -2,27 +2,33 @@
 # @author  Kato Takeshi
 # @brief   カーネル自身をセットアップするMakefile。
 #
-# (C) Kato Takeshi 2010
+# (C) 2010 Kato Takeshi.
+
+
+ROOT = ../../../..
+MAKE_DEFAULTS ?= make.defaults
+include $(ROOT)/$(MAKE_DEFAULTS)
 
 CFLAGS += -fno-exceptions -fno-common -Os
 CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os 
-CPPFLAGS += -I../../../../include -I../../include -I../include
+CPPFLAGS += -I../include
 
 OBJS = LzmaDec.o a20.o lzmadecwrap.o memmgr.o memops.o \
  prekern.o setup.o termchain.o videoterm.o
+
 
 all : setup.bin
 
 setup.bin : $(OBJS)
 	$(LD) -nostdlib -static -T setup.ld $^ -o $@
 
-lzmadecwrap.o : lzmadecwrap.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I../../../../external/lzma/C $< -o $@
+lzmadecwrap.o : lzmadecwrap.cc
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -I$(ROOT)/external/lzma/C $< -o $@
 
 LzmaDec.o : ../../../../external/lzma/C/LzmaDec.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
-%.o : %.cpp
+%.o : %.cc
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 %.o : %.S

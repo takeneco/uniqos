@@ -7,7 +7,7 @@
 
 BASEDIR=../../../..
 
-CFLAGS += -Os -fno-exceptions -fno-rtti -m32
+CFLAGS += -Os -fno-exceptions -m32
 CXXFLAGS += -Os -fno-exceptions -fno-rtti -m32
 CPPFLAGS += -I../include \
 	-I../../../../include
@@ -19,8 +19,8 @@ all: bootldr.bin
 bootldr.bin : $(OBJS)
 	$(LD) -nostdlib -static -Ttext=0x7e00 -T bootldr.ld $^ -o $@
 
-%.o : %.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common -nostdinc -nostdinc++ $< -o $@
+%.o : %.cc
+	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) -fno-common $< -o $@
 
 %.o : %.S
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $^ -o $@

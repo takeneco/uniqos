@@ -1,13 +1,14 @@
-// @file   arch/x86_64/include/pagetable.hpp
+// @file   arch/x86_64/include/pagetable.hh
 // @author Kato Takeshi
 // @brief  64bit paging table ops.
 //
-// (C) Kato Takeshi 2010
+// (C) 2010 Kato Takeshi.
 
-#ifndef _ARCH_X86_64_INCLUDE_PAGETABLE_HPP
-#define _ARCH_X86_64_INCLUDE_PAGETABLE_HPP
+#ifndef _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
+#define _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
 #include "btypes.hh"
+
 
 namespace arch {
 

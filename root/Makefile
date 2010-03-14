@@ -1,11 +1,13 @@
 # @file    Makefile
-# @version 0.0.0.4
+# @author  Kato Takeshi
 # @brief   全体をコンパイルする。
-
-# (C) T.Kato 2008-2010
+#
+# (C) Kato Takeshi 2008-2010
 
 ARCH = x86_64
 #ARCH = x86
+
+export MAKE_DEFAULTS = make.defaults
 
 CC  = x86_64-pc-linux-gnu-gcc
 CXX = x86_64-pc-linux-gnu-g++
