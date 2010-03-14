@@ -11,7 +11,7 @@
 
 #include <cstddef>
 
-#include "btypes.hpp"
+#include "btypes.hh"
 
 /*
 // メモリ管理

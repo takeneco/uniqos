@@ -33,7 +33,7 @@ namespace {
 		}
 	}
 
-	void kern_extract(memmgr* mm)
+	bool kern_extract(memmgr* mm)
 	{
 		const _u32 setup_size = &kern_body_start - &setup_body_start;
 
@@ -48,17 +48,18 @@ namespace {
 		_u8* const ext_kern_dest =
 			reinterpret_cast<_u8*>(KERN_FINAL_VADR);
 
-		bool r = lzma_decode(mm, comp_kern_src, comp_kern_size,
+		return lzma_decode(mm, comp_kern_src, comp_kern_size,
 			ext_kern_dest, ext_kern_size);
-
-		if (debug_tc) {
-			debug_tc->puts("lzma_decode : ")->putu8x(r)->putc('\n');
-		}
 	}
 
 }  // End of anonymous namespace
 
 
+/**
+ * @brief  Create memory map, Kernel body extract, etc...
+ * @retval 0     Succeeds. Kernel body exectable.
+ * @retval other Fails.
+ */
 extern "C" int prekernel()
 {
 	video_term vt;
@@ -87,7 +88,7 @@ extern "C" int prekernel()
 		setup_ptr<const acpi_memmap>(SETUP_MEMMAP);
 	const int memmaps = setup_data<_u32>(SETUP_MEMMAP_COUNT);
 	if (memmaps < 0) {
-		return 0;
+		return -1;
 	}
 	for (int i = 0; i < memmaps; i++) {
 		const _u64 base = memmap_buf[i].base;
@@ -127,7 +128,9 @@ extern "C" int prekernel()
 	pde[0].set(reinterpret_cast<_u64>(p1),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
-	kern_extract(&mm);
+	if (kern_extract(&mm) == false) {
+		return -1;
+	}
 
 	// Kernel stack memory
 
@@ -139,14 +142,6 @@ extern "C" int prekernel()
 	pde_adr += 8 * 512;
 
 	asm ("invlpg " TOSTR(KERN_FINAL_VADR));
-
-	/*
-	char* kern_dest = (char*)KERN_FINAL_ADR;
-	tc.puts("kern_dest = ")->putu64x((_u64)kern_dest)->putc('\n');
-	for (_u64 i = 0; i < kern_size; i++) {
-		kern_dest[i] = kern_src[i];
-	}
-	*/
 
 	return 0;
 }

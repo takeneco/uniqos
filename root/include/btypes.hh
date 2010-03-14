@@ -1,14 +1,11 @@
-/**
- * @file    btypes.hpp
- * @version 0.0.0.10
- * @author  Kato Takeshi
- * @brief   共通で使う型・関数など。
- *
- * (C) Kato Takeshi 2008-2010
- */
+// @file    btypes.hh
+// @author  Kato Takeshi
+// @brief   共通で使う型・関数など。
+//
+// (C) Kato Takeshi 2008-2010
 
-#ifndef BTYPES_HPP
-#define BTYPES_HPP
+#ifndef BTYPES_HH_
+#define BTYPES_HH_
 
 #if defined ARCH_X86
 
@@ -265,4 +262,4 @@ namespace result {
 #define __TOSTR(x) #x
 #define TOSTR(x) __TOSTR(x)
 
-#endif  // BTYPES_HPP
+#endif  // BTYPES_HH_

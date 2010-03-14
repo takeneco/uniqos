@@ -89,18 +89,30 @@ static inline _u16 get_gs() {
  * GDT/IDT
  */
 
-/**
- * @brief Global/Interrupt Descriptor Table
- * アライメント調整を防ぐために ptr を分割した。
- */
+// @brief Global/Interrupt Descriptor Table register.
+//
+// アライメント調整を防ぐために ptr を分割した。
 struct gidt_ptr64 {
-	_u16 len;
+	_u16 length;
 	_u16 ptr[4];
+
+	void init(
+		_u16 len,          ///< sizeof gdt/idt table
+		const void* table) ///< Ptr to gdt/idt table
+	{
+		length = len - 1;
+		const _u64 p = reinterpret_cast<_u64>(table);
+		ptr[0] = static_cast<_u16>(p);
+		ptr[1] = static_cast<_u16>(p >> 16);
+		ptr[2] = static_cast<_u16>(p >> 32);
+		ptr[3] = static_cast<_u16>(p >> 48);
+	}
 };
 
 /**
  * gidt_ptr64 を初期化する。
  */
+/*
 inline void init_gidt_ptr64(gidt_ptr64* gidt, _u16 len, const void* table)
 {
 	gidt->len = len - 1;
@@ -110,6 +122,7 @@ inline void init_gidt_ptr64(gidt_ptr64* gidt, _u16 len, const void* table)
 	gidt->ptr[2] = static_cast<_u16>(p >> 32);
 	gidt->ptr[3] = static_cast<_u16>(p >> 48);
 }
+*/
 
 // GDT
 

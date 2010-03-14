@@ -7,7 +7,7 @@
  */
 // (C) Kato.T 2009
 
-#include "btypes.hpp"
+#include "btypes.hh"
 #include "ktty.hpp"
 
 #include "../boot/include/boot.h"

@@ -12,7 +12,7 @@
 #include <cstddef>
 
 #include "setup.h"
-#include "btypes.hpp"
+#include "btypes.hh"
 
 
 struct memmap_entry

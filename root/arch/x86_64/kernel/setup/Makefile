@@ -4,7 +4,7 @@
 #
 # (C) Kato Takeshi 2010
 
-CFLAGS += -fno-exceptions -fno-common -fno-rtti -Os
+CFLAGS += -fno-exceptions -fno-common -Os
 CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os 
 CPPFLAGS += -I../../../../include -I../../include -I../include
 

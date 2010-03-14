@@ -1,17 +1,14 @@
-/**
- * @file    include/ktty.hpp
- * @version 0.0.9
- * @date    2009-08-02
- * @author  Kato.T
- * @brief   カーネルメッセージの出力先。
- */
-// (C) Kato.T 2008-2009
+// @file    include/ktty.hpp
+// @author  Kato Takeshi
+// @brief   カーネルメッセージの出力先。
+//
+// (C) Kato Takeshi 2008-2010
 
-#ifndef KTTY_HPP
-#define KTTY_HPP
+#ifndef KTTY_HH_
+#define KTTY_HH_
 
 #include <cstddef>
-#include "btypes.hpp"
+#include "btypes.hh"
 
 
 class ktty
@@ -30,4 +27,4 @@ public:
 
 ktty* create_ktty();
 
-#endif  // KTTY_HPP
+#endif  // Include guard.

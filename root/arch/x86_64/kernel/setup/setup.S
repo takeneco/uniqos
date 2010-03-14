@@ -228,7 +228,7 @@ start32:
 	movl  %eax, (%ebx)
 
 	leal  8*256(%ebx), %edi
-	movl  $KERN_PDPTE_PHADR + 0x0003, %eax
+	movl  $KERN_PDPTE_PADR + 0x0003, %eax
 	movl  $256, %ecx
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
@@ -275,7 +275,12 @@ start32:
 start64:
 .code64
 	call prekernel 
+	test %eax, %eax
+	jnz  freeze
 
 	movq  $KERN_FINAL_VADR, %rax
 	jmp *%rax
 
+freeze:
+	hlt
+	jmp freeze
