@@ -8,7 +8,7 @@
 // (C) Kato.T 2009
 
 #include "btypes.hh"
-#include "ktty.hpp"
+#include "kout.hh"
 
 #include "../boot/include/boot.h"
 
@@ -43,7 +43,7 @@ extern "C" void __cxa_pure_virtual()
 /**
  * 暫定でディスプレイ出力する。
  */
-class ktty_x86 : public ktty
+class ktty_x86 : public kern_output
 {
 	_u32 width;
 	_u32 height;
@@ -55,16 +55,19 @@ class ktty_x86 : public ktty
 
 public:
 	ktty_x86() {}
-	void* operator new(std::size_t size);
+	virtual ~ktty_x86() {}
+//	void* operator new(std::size_t size);
 	void init();
-	virtual ktty* putc(char ch);
+	virtual kern_output* putc(char ch);
 };
 
+/*
 void* ktty_x86::operator new(std::size_t size)
 {
 	size = size;
 	return reinterpret_cast<void*>(0x70000);
 }
+*/
 
 /**
  * スクロールする。
@@ -106,7 +109,7 @@ void ktty_x86::init()
  *
  * @param ch 出力する文字。
  */
-ktty* ktty_x86::putc(char ch)
+kern_output* ktty_x86::putc(char ch)
 {
 	if (ch == '\n') {
 		cur_col = 0;
@@ -210,10 +213,13 @@ ktty_x86* ktty_x86::putu64x(_u64 n)
 	return this;
 }
 */
-ktty* create_ktty()
+kern_output* create_ktty()
 {
+/*
 	ktty_x86* p = new ktty_x86;
 	p->init();
 
 	return p;
+*/
+	return NULL;
 }

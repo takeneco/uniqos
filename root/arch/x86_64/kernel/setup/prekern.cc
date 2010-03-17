@@ -38,7 +38,7 @@ namespace {
 			reinterpret_cast<_u8*>(SETUP_KERN_ADR + setup_size);
 
 		const _u32 comp_kern_size =
-			setup_data<_u32>(SETUP_KERNFILE_SIZE) - setup_size;
+			setup_get_data<_u32>(SETUP_KERNFILE_SIZE) - setup_size;
 
 		const _u32 ext_kern_size = lzma_decode_size(comp_kern_src);
 
@@ -61,12 +61,12 @@ extern "C" int prekernel()
 {
 	video_term vt;
 	vt.init(
-		setup_data<_u32>(SETUP_DISP_WIDTH),
-		setup_data<_u32>(SETUP_DISP_HEIGHT),
-		setup_data<_u32>(SETUP_DISP_VRAM));
+		setup_get_data<_u32>(SETUP_DISP_WIDTH),
+		setup_get_data<_u32>(SETUP_DISP_HEIGHT),
+		setup_get_data<_u32>(SETUP_DISP_VRAM));
 	vt.set_cur(
-		setup_data<_u32>(SETUP_DISP_CURROW),
-		setup_data<_u32>(SETUP_DISP_CURCOL));
+		setup_get_data<_u32>(SETUP_DISP_CURROW),
+		setup_get_data<_u32>(SETUP_DISP_CURCOL));
 
 	term_chain tc;
 	tc.add_term(&vt);
@@ -74,16 +74,16 @@ extern "C" int prekernel()
 	debug_tc = &tc;
 
 	tc.puts("DISPLAY : ")
-	->putu64(setup_data<_u32>(SETUP_DISP_WIDTH))
+	->putu64(setup_get_data<_u32>(SETUP_DISP_WIDTH))
 	->putc('x')
-	->putu64(setup_data<_u32>(SETUP_DISP_HEIGHT))
+	->putu64(setup_get_data<_u32>(SETUP_DISP_HEIGHT))
 	->putc('\n');
 
 	tc.puts("Memorymap by ACPI : \n");
 
 	const acpi_memmap* memmap_buf =
-		setup_ptr<const acpi_memmap>(SETUP_MEMMAP);
-	const int memmaps = setup_data<_u32>(SETUP_MEMMAP_COUNT);
+		setup_get_ptr<const acpi_memmap>(SETUP_MEMMAP);
+	const int memmaps = setup_get_data<_u32>(SETUP_MEMMAP_COUNT);
 	if (memmaps < 0) {
 		return -1;
 	}
@@ -139,6 +139,11 @@ extern "C" int prekernel()
 	pde_adr += 8 * 512;
 
 	asm ("invlpg " TOSTR(KERN_FINAL_VADR));
+
+	int currow, curcol;
+	vt.get_cur(&currow, &curcol);
+	setup_set_data<_u32>(SETUP_DISP_CURROW, currow);
+	setup_set_data<_u32>(SETUP_DISP_CURCOL, curcol);
 
 	return 0;
 }

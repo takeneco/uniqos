@@ -1,18 +1,19 @@
 # @file    arch/x86_64/boot/bootldr/Makefile
-# @version 0.0.0.1
-# @author  Kato.T
+# @author  Kato Takeshi
 # @brief   カーネル読み込みまでの処理をコンパイルする Makefile。
+#
+# (C) 2010 Kato Takeshi.
 
-# (C) Kato.T 2010
+ROOT = ../../../..
+MAKE_DEFAULTS ?= make.defaults
+-include $(ROOT)/$(MAKE_DEFAULTS)
 
-BASEDIR=../../../..
-
-CFLAGS += -Os -fno-exceptions -m32
-CXXFLAGS += -Os -fno-exceptions -fno-rtti -m32
-CPPFLAGS += -I../include \
-	-I../../../../include
+CFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions -m32
+CXXFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions -fno-rtti -m32
+CPPFLAGS = -DARCH_W32 -DARCH_LE -I../include -I$(ROOT)/include
 
 OBJS = tr.o bootldr.o loadfat.o loadkern.o
+
 
 all: bootldr.bin
 

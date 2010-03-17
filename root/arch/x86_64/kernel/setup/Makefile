@@ -9,8 +9,8 @@ ROOT = ../../../..
 MAKE_DEFAULTS ?= make.defaults
 include $(ROOT)/$(MAKE_DEFAULTS)
 
-CFLAGS += -fno-exceptions -fno-common -Os
-CXXFLAGS += -fno-exceptions -fno-common -fno-rtti -Os 
+CFLAGS += -fno-exceptions -Os
+CXXFLAGS += -fno-exceptions -fno-rtti -Os 
 CPPFLAGS += -I../include
 
 OBJS = LzmaDec.o a20.o lzmadecwrap.o memmgr.o memops.o \

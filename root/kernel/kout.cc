@@ -2,12 +2,16 @@
 // @author  Kato Takeshi
 // @brief   Kernel message output destination.
 //
-// (C) Kato Takeshi 2009-2010
+// (C) 2009-2010 Kato Takeshi.
 
 #include "kout.hh"
 
 
+namespace {
+
 static const char base_number[] = "0123456789abcdef";
+
+}
 
 void kern_output::putux(_u64 n, int bits)
 {
@@ -44,7 +48,7 @@ kern_output* kern_output::putud(_u64 n)
 	}
 
 	bool notzero = false;
-	for (_u64 div = 10000000000000000000ULL; div > 0; div /= 10) {
+	for (_u64 div = _u64cast(10000000000000000000); div > 0; div /= 10) {
 		const _u64 x = n / div;
 		if (x != 0 || notzero) {
 			putc(base_number[x]);
@@ -56,28 +60,28 @@ kern_output* kern_output::putud(_u64 n)
 	return this;
 }
 
-kern_output* kern_output::putx(_u8 n)
+kern_output* kern_output::put8x(_u8 n)
 {
 	putux(n, 8);
 
 	return this;
 }
 
-kern_output* kern_output::putx(_u16 n)
+kern_output* kern_output::put16x(_u16 n)
 {
 	putux(n, 16);
 
 	return this;
 }
 
-kern_output* kern_output::putx(_u32 n)
+kern_output* kern_output::put32x(_u32 n)
 {
 	putux(n, 32);
 
 	return this;
 }
 
-kern_output* kern_output::putx(_u64 n)
+kern_output* kern_output::put64x(_u64 n)
 {
 	putux(n, 64);
 

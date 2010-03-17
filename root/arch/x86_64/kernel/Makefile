@@ -1,22 +1,25 @@
 # @file    arch/x86_64/kernel/Makefile
-# @version 0.0.0.1
-# @author  Kato.T
+# @author  Kato Takeshi
 # @brief   カーネル本体の Makefile
 #
-# (C) Kato.T 2010
+# (C) 2010 Kato Takeshi.
 
 
--include ../../../$(MAKE_DEFAULTS)
+ROOT = ../../..
+MAKE_DEFAULTS ?= make.defaults
+-include $(ROOT)/$(MAKE_DEFAULTS)
 
 LZMA = lzma
 
 CFLAGS += -fno-exceptions -O3
-CPPFLAGS = -I../../../include
+CXXFLAGS += -fno-exceptions -fno-rtti -O3
+CPPFLAGS +=
 
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
-OBJS = entry.o ktty_x86.o 
+#OBJS = entry.o ktty_x86.o 
+OBJS = entry.o
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 all : kernel.bin.lzma setup
@@ -32,9 +35,6 @@ kernel.bin : $(OBJS)
 
 %.o : %.S
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
-
-%.o : %.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 %.o : %.cc
 	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@

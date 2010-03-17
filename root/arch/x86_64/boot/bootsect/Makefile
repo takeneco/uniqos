@@ -1,11 +1,10 @@
 # @file    arch/x86_64/boot/bootsect/Makefile
-# @version 0.0.1
-# @author  Kato.T
+# @author  Kato Takeshi
 # @brief   ブートセクタのMakefile
+#
+# (C) 2010 Kato Takeshi
 
-# (C) Kato.T 2010
-
-CFLAGS += -Os -fno-exceptions -fno-rtti
+CFLAGS += -Os -fno-exceptions
 CPPFLAGS += -I../include
 
 all: bootsect.bin

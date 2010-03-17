@@ -2,14 +2,12 @@
 // @author  Kato Takeshi
 // @brief   共通で使う型・関数など。
 //
-// (C) Kato Takeshi 2008-2010
+// (C) 2008-2010 Kato Takeshi.
 
 #ifndef BTYPES_HH_
 #define BTYPES_HH_
 
-#if defined ARCH_X86
-
-#  define ARCH_LE
+#if defined ARCH_W32
 
 typedef   signed char      _s8;
 typedef unsigned char      _u8;
@@ -25,9 +23,9 @@ typedef unsigned long long _umax;
 typedef _u32 _ucpu;
 typedef _s32 _scpu;
 
-#elif defined ARCH_X86_64
+#  define _u64cast(n)  n ## ULL
 
-#  define ARCH_LE
+#elif defined ARCH_W64
 
 typedef   signed char      _s8;
 typedef unsigned char      _u8;
@@ -43,9 +41,10 @@ typedef unsigned long      _umax;
 typedef _u64 _ucpu;
 typedef _s64 _scpu;
 
-#endif  // ARCH_*
+#  define _u64cast(n)  n ## UL
 
-namespace {
+#endif  // ARCH_W*
+
 
 inline _u16 _swap16(_u16 x) {
 	return (x >> 8) | (x << 8);
@@ -74,12 +73,12 @@ inline _u32 _combine32(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
 }
 inline _u64 _swap64(_u64 x) {
 	return x << 56 | x >> 56 |
-		(x & 0x000000000000ff00L) << 40 |
-		(x & 0x00ff000000000000L) >> 40 |
-		(x & 0x0000000000ff0000L) << 24 |
-		(x & 0x0000ff0000000000L) >> 24 |
-		(x & 0x00000000ff000000L) <<  8 |
-		(x & 0x000000ff00000000L) >>  8;
+	    (x & _u64cast(0x000000000000ff00)) << 40 |
+	    (x & _u64cast(0x00ff000000000000)) >> 40 |
+	    (x & _u64cast(0x0000000000ff0000)) << 24 |
+	    (x & _u64cast(0x0000ff0000000000)) >> 24 |
+	    (x & _u64cast(0x00000000ff000000)) <<  8 |
+	    (x & _u64cast(0x000000ff00000000)) >>  8;
 }
 inline void _split64(_u64 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4,
 	_u8* y5, _u8* y6, _u8* y7, _u8* y8) {
@@ -95,14 +94,14 @@ inline void _split64(_u64 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4,
 inline _u64 _combine64(_u8 x1, _u8 x2, _u8 x3, _u8 x4,
 	_u8 x5, _u8 x6, _u8 x7, _u8 x8) {
 	return
-		static_cast<_u64>(x1) << 56 |
-		static_cast<_u64>(x2) << 48 |
-		static_cast<_u64>(x3) << 40 |
-		static_cast<_u64>(x4) << 32 |
-		static_cast<_u64>(x5) << 24 |
-		static_cast<_u64>(x6) << 16 |
-		static_cast<_u64>(x7) <<  8 |
-		static_cast<_u64>(x8);
+	    static_cast<_u64>(x1) << 56 |
+	    static_cast<_u64>(x2) << 48 |
+	    static_cast<_u64>(x3) << 40 |
+	    static_cast<_u64>(x4) << 32 |
+	    static_cast<_u64>(x5) << 24 |
+	    static_cast<_u64>(x6) << 16 |
+	    static_cast<_u64>(x7) <<  8 |
+	    static_cast<_u64>(x8);
 }
 
 #if defined ARCH_LE
@@ -186,6 +185,31 @@ inline _u64 le64_to_cpu(_u8 x0, _u8 x1, _u8 x2, _u8 x3,
 
 #elif defined ARCH_BE
 
+inline _u16 cpu_to_be16(_u16 x) {
+	return x;
+}
+inline _u16 be16_to_cpu(_u16 x) {
+	return x;
+}
+inline _u16 cpu_to_le16(_u16 x) {
+	return _swap16(x);
+}
+inline _u16 le16_to_cpu(_u16 x) {
+	return _swap16(x);
+}
+inline void cpu_to_be16(_u16 x, _u8* y1, _u8* y2) {
+	_split16(x, y2, y1);
+}
+inline _u16 be16_to_cpu(_u8 x1, _u8 x2) {
+	return _combine16(x2, x1);
+}
+inline void cpu_to_le16(_u16 x, _u8* y1, _u8* y2) {
+	_split16(x, y1, y2);
+}
+inline _u16 le16_to_cpu(_u8 x1, _u8 x2) {
+	return _combine16(x1, x2);
+}
+
 #endif  // ARCH_LE or ARCH_BE
 
 static inline _ucpu down_align(_ucpu base, _ucpu value) {
@@ -195,7 +219,6 @@ static inline _ucpu up_align(_ucpu base, _ucpu value) {
 	return (value + base - 1) & ~(base - 1);
 }
 
-}  // End of anonymous namespace
 
 // NULL
 const class {
@@ -278,8 +301,8 @@ namespace cause
 	};
 
 	typedef _u32 type;
-	inline bool isOk(type x) { return x == OK; }
-	inline bool isFail(type x) { return x != OK; }
+	inline bool IsOk(type x) { return x == OK; }
+	inline bool IsFail(type x) { return x != OK; }
 }
 
 /**
@@ -298,8 +321,8 @@ namespace log
 	};
 
 	typedef _u32 type;
-	inline bool isHeavy(type x, type base) { return (x & 0x0f) <= base; }
-	inline bool isLight(type x, type base) { return (x & 0x0f) >= base; }
+	inline bool IsHeavy(type x, type base) { return (x & 0x0f) <= base; }
+	inline bool IsLight(type x, type base) { return (x & 0x0f) >= base; }
 }
 
 

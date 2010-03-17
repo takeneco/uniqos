@@ -1,13 +1,11 @@
-/**
- * @file    arch/x86_64/kernel/setup/mem.hpp
- * @version 0.0.0.1
- * @author  Kato.T
- * @brief   Memory ops.
- */
-// (C) Kato.T 2010
+// @file    arch/x86_64/kernel/setup/mem.hh
+// @author  Kato Takeshi
+// @brief   Memory ops.
+//
+// (C) 2010 Kato Takeshi.
 
-#ifndef _ARCH_X86_64_KERNEL_SETUP_MEM_HPP
-#define _ARCH_X86_64_KERNEL_SETUP_MEM_HPP
+#ifndef _ARCH_X86_64_KERNEL_SETUP_MEM_HH_
+#define _ARCH_X86_64_KERNEL_SETUP_MEM_HH_
 
 #include <cstddef>
 
@@ -20,7 +18,7 @@ struct memmap_entry
 	memmap_entry* prev;
 	memmap_entry* next;
 	_u64 head;
-	_u64 bytes; // If bytes == 0, not used.
+	_u64 bytes;  ///< If bytes == 0, not used.
 };
 
 struct memmgr
@@ -65,23 +63,17 @@ struct acpi_memmap {
 	_u32 attr;
 };
 
-/*
-// lzma wrapper
 
-bool lzma_decode(
-	memmgr*     mm,
-	_u8*        src,
-	std::size_t src_len,
-	_u8*        dest,
-	std::size_t dest_len);
-*/
-
-template<class T> inline T setup_data(_u64 off) {
+template<class T> inline T setup_get_data(_u64 off) {
 	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
 }
-template<class T> inline T* setup_ptr(_u64 off) {
+template<class T> inline void setup_set_data(_u64 off, T val) {
+	*reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off) = val;
+}
+template<class T> inline T* setup_get_ptr(_u64 off) {
 	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
 }
+
 
 #endif  // Include guard.
 
