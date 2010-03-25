@@ -1,37 +1,34 @@
 // @file    include/kout.hh
 // @author  Kato Takeshi
 //
-// (C) Kato Takeshi 2008-2010
+// (C) 2008-2010 Kato Takeshi
 
-#ifndef KOUT_HH_
-#define KOUT_HH_
+#ifndef _INCLUDE_KOUT_HH_
+#define _INCLUDE_KOUT_HH_
 
-#include <cstddef>
-#include "btypes.hh"
+#include "fileif.hh"
 
 
 // @brief  Kernel message output destination.
 //
-class kern_output
+class KernOutput : public FileNodeInterface
 {
 	void putux(_umax n, int bits);
 
 protected:
-	kern_output() {}
+	KernOutput() {}
 
 public:
-	virtual ~kern_output() {}
+	KernOutput* PutC(char c);
+	KernOutput* PutStr(const char* str);
+	KernOutput* PutSDec(s64 n);
+	KernOutput* PutUDec(u64 n);
+	KernOutput* PutU8Hex(u8 n);
+	KernOutput* PutU16Hex(u16 n);
+	KernOutput* PutU32Hex(u32 n);
+	KernOutput* PutU64Hex(u64 n);
 
-	kern_output* puts(const char* str);
-	kern_output* putsd(_s64 n);
-	kern_output* putud(_u64 n);
-	kern_output* put8x(_u8 n);
-	kern_output* put16x(_u16 n);
-	kern_output* put32x(_u32 n);
-	kern_output* put64x(_u64 n);
-
-	virtual kern_output* putc(char c) =0;
-	virtual void sync();
+	virtual void Sync() {}
 };
 
 

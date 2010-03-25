@@ -1,16 +1,14 @@
-/**
- * @file    arch/x86_64/kernel/entry.S
- * @version 0.0.0.1
- * @author  Kato.T
- *
- * @brief   Kernel head module.
- */
-// (C) Kato.T 2010
+// @file    arch/x86_64/kernel/entry.S
+// @author  Kato Takeshi
+// @brief   Kernel entry point.
+//
+// (C) 2010 Kato Takeshi.
 
 .section .text.entry
 
 .globl _start
 
 _start:
+	call  KernInit
 1:hlt
 jmp 1b

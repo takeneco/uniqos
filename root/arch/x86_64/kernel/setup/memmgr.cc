@@ -5,6 +5,7 @@
 // (C) 2010 Kato Takeshi.
 
 #include "mem.hh"
+#include "access.hh"
 
 
 namespace {
@@ -122,10 +123,10 @@ void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
  */
 void memmap_import(memmgr* mm)
 {
-	const acpi_memmap* rawmap = setup_ptr<acpi_memmap>(SETUP_MEMMAP);
-	const _u32 memmap_count = setup_data<_u32>(SETUP_MEMMAP_COUNT);
+	const acpi_memmap* rawmap = SetupGetPtr<acpi_memmap>(SETUP_MEMMAP);
+	const u32 memmap_count = SetupGetValue<u32>(SETUP_MEMMAP_COUNT);
 
-	for (_u32 i = 0; i < memmap_count; i++) {
+	for (u32 i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
 			memmap_add_entry(mm, &rawmap[i]);
 		}
@@ -137,14 +138,14 @@ void memmap_import(memmgr* mm)
  * @param r_head 取り除くメモリの先頭アドレス。
  * @param r_tail 取り除くメモリの終端アドレス。
  */
-void memmap_reserve(memmgr* mm, _u64 r_head, _u64 r_tail)
+void memmap_reserve(memmgr* mm, u64 r_head, u64 r_tail)
 {
 	r_tail += 1;
 
 	memmap_entry* ent;
 	for (ent = mm->free_list; ent; ent = ent->next) {
-		_u32 e_head = ent->head;
-		_u32 e_tail = e_head + ent->bytes;
+		u32 e_head = ent->head;
+		u32 e_tail = e_head + ent->bytes;
 
 		if (e_head < r_head && r_tail < e_tail) {
 			memmap_entry* ent2 = memmap_new_entry();
@@ -202,11 +203,11 @@ void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align)
 {
 	memmap_entry* ent;
 	for (ent = mm->free_list; ent; ent = ent->next) {
-		_u64 align_gap = up_align(align, ent->head) - ent->head;
+		u64 align_gap = up_align(align, ent->head) - ent->head;
 		if ((ent->bytes - align_gap) < size)
 			continue;
 
-		_u64 addr;
+		u64 addr;
 		if (ent->bytes == size) {
 			addr = ent->head;
 			memmap_remove_from(&mm->free_list, ent);
@@ -249,7 +250,7 @@ void memmgr_free(memmgr* mm, void* p)
 {
 	// 割り当て済みリストから p を探す。
 
-	_u64 head = reinterpret_cast<_u64>(p);
+	u64 head = reinterpret_cast<u64>(p);
 	memmap_entry* ent;
 	for (ent = mm->nofree_list; ent; ent = ent->next) {
 		if (ent->head == head) {

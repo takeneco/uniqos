@@ -1,15 +1,16 @@
-/* @file    arch/x86_64/include/native.hh
- * @author  Kato Takeshi
- * @brief   C言語から呼び出すアセンブラ命令
- *
- * (C) Kato Takeshi 2010
- */
+// @file    arch/x86_64/include/native.hh
+// @author  Kato Takeshi
+// @brief   C言語から呼び出すアセンブラ命令
+//
+// (C) 2010 Kato Takeshi.
 
 #ifndef _ARCH_X86_64_INCLUDE_NATIVE_HH
 #define _ARCH_X86_64_INCLUDE_NATIVE_HH
 
 #include "btypes.hh"
 
+
+namespace arch {
 
 static inline void native_hlt() {
 	asm volatile ("hlt");
@@ -86,38 +87,38 @@ static inline _u16 get_gs() {
 	return gs;
 }
 
-/*
- * GDT/IDT
- */
-
 // @brief Global/Interrupt Descriptor Table register.
 //
 // アライメント調整を防ぐために ptr を分割した。
 struct gidt_ptr64 {
-	_u16 length;
-	_u16 ptr[4];
+	u16 length;
+	u16 ptr[4];
 
-	void init(
-		_u16 len,          ///< sizeof gdt/idt table
+	void Init(
+		u16 len,           ///< sizeof gdt/idt table
 		const void* table) ///< Ptr to gdt/idt table
 	{
 		length = len - 1;
-		const _u64 p = reinterpret_cast<_u64>(table);
-		ptr[0] = static_cast<_u16>(p);
-		ptr[1] = static_cast<_u16>(p >> 16);
-		ptr[2] = static_cast<_u16>(p >> 32);
-		ptr[3] = static_cast<_u16>(p >> 48);
+		const u64 p = reinterpret_cast<u64>(table);
+		ptr[0] = static_cast<u16>(p);
+		ptr[1] = static_cast<u16>(p >> 16);
+		ptr[2] = static_cast<u16>(p >> 32);
+		ptr[3] = static_cast<u16>(p >> 48);
 	}
 };
+typedef gidt_ptr64 GDT_Ptr64;
+typedef gidt_ptr64 IDT_Ptr64;
 
 // @brief lgdt を実行する。
-inline void native_lgdt(gidt_ptr64* ptr) {
+inline void NativeLGDT(GDT_Ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
 }
 
 // @brief lidt を実行する。
-inline void native_lidt(gidt_ptr64* ptr) {
+inline void NativeLIDT(IDT_Ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
+
+}  // namespace arch
 
 #endif  // Include guard.

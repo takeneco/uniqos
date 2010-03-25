@@ -4,6 +4,7 @@
 //
 // (C) 2010 Kato Takeshi.
 
+#include "access.hh"
 #include "lzmadecwrap.hh"
 #include "pagetable.hh"
 #include "term.hh"
@@ -32,18 +33,18 @@ namespace {
 
 	bool kern_extract(memmgr* mm)
 	{
-		const _u32 setup_size = &kern_body_start - &setup_body_start;
+		const u32 setup_size = &kern_body_start - &setup_body_start;
 
-		_u8* const comp_kern_src =
-			reinterpret_cast<_u8*>(SETUP_KERN_ADR + setup_size);
+		u8* const comp_kern_src =
+			reinterpret_cast<u8*>(SETUP_KERN_ADR + setup_size);
 
-		const _u32 comp_kern_size =
-			setup_get_data<_u32>(SETUP_KERNFILE_SIZE) - setup_size;
+		const u32 comp_kern_size =
+			SetupGetValue<u32>(SETUP_KERNFILE_SIZE) - setup_size;
 
-		const _u32 ext_kern_size = lzma_decode_size(comp_kern_src);
+		const u32 ext_kern_size = lzma_decode_size(comp_kern_src);
 
-		_u8* const ext_kern_dest =
-			reinterpret_cast<_u8*>(KERN_FINAL_VADR);
+		u8* const ext_kern_dest =
+			reinterpret_cast<u8*>(KERN_FINAL_VADR);
 
 		return lzma_decode(mm, comp_kern_src, comp_kern_size,
 			ext_kern_dest, ext_kern_size);
@@ -61,12 +62,12 @@ extern "C" int prekernel()
 {
 	video_term vt;
 	vt.init(
-		setup_get_data<_u32>(SETUP_DISP_WIDTH),
-		setup_get_data<_u32>(SETUP_DISP_HEIGHT),
-		setup_get_data<_u32>(SETUP_DISP_VRAM));
+		SetupGetValue<u32>(SETUP_DISP_WIDTH),
+		SetupGetValue<u32>(SETUP_DISP_HEIGHT),
+		SetupGetValue<u32>(SETUP_DISP_VRAM));
 	vt.set_cur(
-		setup_get_data<_u32>(SETUP_DISP_CURROW),
-		setup_get_data<_u32>(SETUP_DISP_CURCOL));
+		SetupGetValue<u32>(SETUP_DISP_CURROW),
+		SetupGetValue<u32>(SETUP_DISP_CURCOL));
 
 	term_chain tc;
 	tc.add_term(&vt);
@@ -74,23 +75,23 @@ extern "C" int prekernel()
 	debug_tc = &tc;
 
 	tc.puts("DISPLAY : ")
-	->putu64(setup_get_data<_u32>(SETUP_DISP_WIDTH))
+	->putu64(SetupGetValue<u32>(SETUP_DISP_WIDTH))
 	->putc('x')
-	->putu64(setup_get_data<_u32>(SETUP_DISP_HEIGHT))
+	->putu64(SetupGetValue<u32>(SETUP_DISP_HEIGHT))
 	->putc('\n');
 
 	tc.puts("Memorymap by ACPI : \n");
 
 	const acpi_memmap* memmap_buf =
-		setup_get_ptr<const acpi_memmap>(SETUP_MEMMAP);
-	const int memmaps = setup_get_data<_u32>(SETUP_MEMMAP_COUNT);
+		SetupGetPtr<const acpi_memmap>(SETUP_MEMMAP);
+	const int memmaps = SetupGetValue<u32>(SETUP_MEMMAP_COUNT);
 	if (memmaps < 0) {
 		return -1;
 	}
 	for (int i = 0; i < memmaps; i++) {
-		const _u64 base = memmap_buf[i].base;
-		const _u64 length = memmap_buf[i].length;
-		const _u32 type = memmap_buf[i].type;
+		const u64 base = memmap_buf[i].base;
+		const u64 length = memmap_buf[i].length;
+		const u32 type = memmap_buf[i].type;
 		tc.putu64(i)
 		->puts(" : ")
 		->putu64x(base)
@@ -109,7 +110,7 @@ extern "C" int prekernel()
 	// pdpte_base[512 * 254] -> 0x....ff0.........
 	// pdpte_base[512 * 255] -> 0x....ff8.........
 	arch::pte* pdpte_base = reinterpret_cast<arch::pte*>(KERN_PDPTE_PADR);
-	_u64 pde_adr = KERN_PDE_PADR;
+	u64 pde_adr = KERN_PDE_PADR;
 
 	arch::pte* pdpte = &pdpte_base[512 * 255];
 
@@ -122,7 +123,7 @@ extern "C" int prekernel()
 	arch::pte* pde = reinterpret_cast<arch::pte*>(pde_adr);
 	char* p1 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
 	// 0x....ffffc00.....
-	pde[0].set(reinterpret_cast<_u64>(p1),
+	pde[0].set(reinterpret_cast<u64>(p1),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	if (kern_extract(&mm) == false) {
@@ -133,7 +134,7 @@ extern "C" int prekernel()
 
 	char* p2 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
 	// 0x....ffffffe.....
-	pde[255].set(reinterpret_cast<_u64>(p2),
+	pde[255].set(reinterpret_cast<u64>(p2),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	pde_adr += 8 * 512;
@@ -142,8 +143,8 @@ extern "C" int prekernel()
 
 	int currow, curcol;
 	vt.get_cur(&currow, &curcol);
-	setup_set_data<_u32>(SETUP_DISP_CURROW, currow);
-	setup_set_data<_u32>(SETUP_DISP_CURCOL, curcol);
+	SetupSetValue<u32>(SETUP_DISP_CURROW, currow);
+	SetupSetValue<u32>(SETUP_DISP_CURCOL, curcol);
 
 	return 0;
 }

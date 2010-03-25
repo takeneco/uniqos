@@ -9,7 +9,6 @@
 
 #include <cstddef>
 
-#include "setup.h"
 #include "btypes.hh"
 
 
@@ -63,16 +62,6 @@ struct acpi_memmap {
 	_u32 attr;
 };
 
-
-template<class T> inline T setup_get_data(_u64 off) {
-	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
-template<class T> inline void setup_set_data(_u64 off, T val) {
-	*reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off) = val;
-}
-template<class T> inline T* setup_get_ptr(_u64 off) {
-	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
 
 
 #endif  // Include guard.

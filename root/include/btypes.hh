@@ -45,6 +45,19 @@ typedef _s64 _scpu;
 
 #endif  // ARCH_W*
 
+typedef _s8   s8;
+typedef _u8   u8;
+typedef _s16  s16;
+typedef _u16  u16;
+typedef _s32  s32;
+typedef _u32  u32;
+typedef _s64  s64;
+typedef _u64  u64;
+typedef _scpu scpu;
+typedef _ucpu ucpu;
+typedef _smax smax;
+typedef _umax umax;
+#define U64CAST(n) _u64cast(n)
 
 inline _u16 _swap16(_u16 x) {
 	return (x >> 8) | (x << 8);

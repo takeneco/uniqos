@@ -1,4 +1,4 @@
-// @file    arch/x86_64/kernel/setup/videoout.cc
+// @file    arch/x86_64/kernel/videoout.cc
 // @author  Kato Takeshi
 // @brief   Output only video destination.
 //
@@ -6,8 +6,7 @@
 
 #include "output.hh"
 
-#include "mem.hh"
-#include "term.hh"
+#include "string.hh"
 
 
 // @brief  Scroll.
@@ -20,8 +19,10 @@ void VideoOutput::roll(int n)
 	if (n > height)
 		n = height;
 
-	memory_move(&vram[0], &vram[width * 2 * n],
-		width * (height - n) * 2);
+	MemoryMove(width * (height - n) * 2,
+	    &vram[width * 2 * n], &vram[0]);
+	//memory_move(&vram[0], &vram[width * 2 * n],
+	//	width * (height - n) * 2);
 
 	char* space = &vram[width * (height - n) * 2];
 	const int space_size = width * n * 2;
@@ -31,24 +32,9 @@ void VideoOutput::roll(int n)
 	}
 }
 
-
-// @brief  Initialize.
-// @param w         Console width chars.
-// @param h         Console height chars.
-// @param vram_addr VRAM head address.
-void VideoOutput::Init(int w, int h, u64 vram_addr)
-{
-	width = w;
-	height = h;
-	vram = reinterpret_cast<char*>(vram_addr);
-
-	cur_row = cur_col = 0;
-}
-
-
 // @brief  Output 1 charcter.
-// @param c  Character.
-void VideoOutput::PutC(char c)
+//
+void VideoOutput::put(char c)
 {
 	if (c == '\n') {
 		cur_col = 0;
@@ -68,5 +54,38 @@ void VideoOutput::PutC(char c)
 		roll(1);
 		cur_row--;
 	}
+}
+
+
+// @brief  Initialize.
+// @param w         Console width chars.
+// @param h         Console height chars.
+// @param vram_addr VRAM head address.
+void VideoOutput::Init(int w, int h, u64 vram_addr)
+{
+	width = w;
+	height = h;
+	vram = reinterpret_cast<char*>(vram_addr);
+
+	cur_row = cur_col = 0;
+}
+
+
+int VideoOutput::Write(
+    IOVector* Vectors,
+    int       VectorCount,
+    ucpu      Offset)
+{
+	Offset = Offset;
+
+	for (int i1 = 0; i1 < VectorCount; i1++) {
+		const ucpu n = Vectors[i1].Bytes;
+		const char* addr = reinterpret_cast<char*>(Vectors[i1].Address);
+		for (ucpu i2 = 0; i2 < n; i2++) {
+			put(addr[i2]);
+		}
+	}
+
+	return cause::OK;
 }
 

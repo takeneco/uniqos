@@ -5,24 +5,26 @@
 // (C) Kato Takeshi 2010
 
 #include "btypes.hh"
+#include "native.hh"
+#include "output.hh"
 
 
 namespace {
 
 class gdte {
-	typedef _u64 type;
+	typedef u64 type;
 	type e;
 
 public:
 	enum {
-		XR  = 0xa << 40, ///< Exec and read.
-		S   = 1 << 44,  ///< System seg if set, Data seg if clear.
+		XR  = U64CAST(0xa) << 40, ///< Exec and read.
+		S   = U64CAST(1) << 44,  ///< System seg if set, Data seg if clear.
 		                ///< Always set in long mode.
-		P   = 1 << 47,  ///< Descriptor exist if set.
-		AVL = 1 << 52,  ///< Software useable.
-		L   = 1 << 53,  ///< Long mode if set.
-		D   = 1 << 54,  ///< If long mode, must be clear.
-		G   = 1 << 55,  ///< Limit scale 4096 times if set.
+		P   = U64CAST(1) << 47,  ///< Descriptor exist if set.
+		AVL = U64CAST(1) << 52,  ///< Software useable.
+		L   = U64CAST(1) << 53,  ///< Long mode if set.
+		D   = U64CAST(1) << 54,  ///< If long mode, must be clear.
+		G   = U64CAST(1) << 55,  ///< Limit scale 4096 times if set.
 	};
 
 	void set(type b, type m, type dpl, type f) {
@@ -39,23 +41,23 @@ public:
 	}
 };
 
+const gdte gdt[] = {
+	gdte(0),
+	gdte(0, 0xfffff, 0,
+		gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G),
+	gdte(0, 0xfffff, 3,
+		gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G),
+};
+
 }  // End of anonymous namespace
 
 
-extern "C" int cpu_init()
+int cpu_init()
 {
-	static const gdte gdt[] = {
-		gdte(0),
-		gdte(0, 0xfffff, 0,
-			gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
-		gdte(0, 0xfffff, 3,
-			gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
-	};
+	arch::GDT_Ptr64 gdtptr;
+	gdtptr.Init(sizeof gdt, gdt);
 
-	gidt_ptr64 gdtptr;
-	gdtptr.init(sizeof gdt, gdt);
-
-	native_lgdt(&gdtptr);
+	arch::NativeLGDT(&gdtptr);
 
 	return 0;
 }

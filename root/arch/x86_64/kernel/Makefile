@@ -18,8 +18,8 @@ CPPFLAGS +=
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
-#OBJS = entry.o ktty_x86.o 
-OBJS = entry.o
+#OBJS = ktty_x86.o 
+OBJS = entry.o kerninit.o setupdata.o videoout.o cpuinit.o
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 all : kernel.bin.lzma setup
