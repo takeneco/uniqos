@@ -11,15 +11,15 @@ MAKE_DEFAULTS ?= make.defaults
 
 LZMA = lzma
 
-CFLAGS += -fno-exceptions -O3
-CXXFLAGS += -fno-exceptions -fno-rtti -O3
+CFLAGS += -fno-exceptions
+CXXFLAGS += -fno-exceptions -fno-rtti
 CPPFLAGS +=
 
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
 #OBJS = ktty_x86.o 
-OBJS = entry.o kerninit.o setupdata.o videoout.o cpuinit.o
+OBJS = entry.o idt.o kerninit.o setupdata.o videoout.o cpuinit.o
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 all : kernel.bin.lzma setup

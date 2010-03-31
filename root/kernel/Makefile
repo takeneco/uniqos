@@ -7,12 +7,10 @@
 
 ROOT = ..
 MAKE_DEFAULTS ?= make.defaults
-include $(ROOT)/$(MAKE_DEFAULTS)
+-include $(ROOT)/$(MAKE_DEFAULTS)
 
-CFLAGS += -fno-exceptions -O3
-CXXFLAGS += -fno-exceptions -O3 -fno-rtti
-CPPFLAGS += -I../include \
-	-I../arch/$(ARCH)/include
+CFLAGS += -fno-exceptions
+CXXFLAGS += -fno-exceptions -fno-rtti
 
 OBJLIST = objects.txt
 OBJS = fileif.o kout.o string.o string.o

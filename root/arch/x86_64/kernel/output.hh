@@ -22,6 +22,9 @@ class VideoOutput : public KernOutput
 	int   cur_row;
 	int   cur_col;
 
+	char  vram_clone[80 * 25 * 2];
+	int   clone_cur_row;
+
 	void roll(int n);
 	void put(char c);
 public:

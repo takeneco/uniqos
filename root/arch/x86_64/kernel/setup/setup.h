@@ -24,37 +24,38 @@
  */
 
 // Stack address : 0x10000-0x1ffff
-#define SETUP_STACK_ADR            0x20000
+#define SETUP_STACK_ADR             0x20000
 
-#define SETUP_DATA_SEG             0x8000
-#define SETUP_DISP_DEPTH            0x0000
-#define SETUP_DISP_WIDTH            0x0004
-#define SETUP_DISP_HEIGHT           0x0008
-#define SETUP_DISP_VRAM             0x000c
-#define SETUP_KEYB_LEDS             0x0010
-#define SETUP_MEMMAP_COUNT          0x0014
-#define SETUP_DISP_CURROW           0x0018
-#define SETUP_DISP_CURCOL           0x001c
-#define SETUP_KERNFILE_SIZE         0x0020
-#define SETUP_MEMMAP                0x0100
+#define SETUP_DATA_SEG              0x8000
+#define SETUP_DISP_DEPTH             0x0000
+#define SETUP_DISP_WIDTH             0x0004
+#define SETUP_DISP_HEIGHT            0x0008
+#define SETUP_DISP_VRAM              0x000c
+#define SETUP_KEYB_LEDS              0x0010
+#define SETUP_MEMMAP_COUNT           0x0014
+#define SETUP_DISP_CURROW            0x0018
+#define SETUP_DISP_CURCOL            0x001c
+#define SETUP_KERNFILE_SIZE          0x0020
+#define SETUP_MEMMAP                 0x0100
 
-#define MEMMGR_MEMMAP_ADR          0x20000
-#define MEMMGR_MEMMAP_SIZE         0x10000
+#define MEMMGR_MEMMAP_ADR           0x20000
+#define MEMMGR_MEMMAP_SIZE          0x10000
 
 /// Full kernel load address by bootloader.
-#define SETUP_KERN_ADR            0x100000
+#define SETUP_KERN_ADR             0x100000
 
 /// Address tr table for setup.
-#define SETUP_PML4_ADR             0x30000
+#define SETUP_PML4_ADR              0x30000
 
 /// Kernel extract temporaly address.
-#define KERN_EXTTMP_ADR         0x00200000
-#define KERN_EXTTMP_SIZE        0x00100000
+#define KERN_EXTTMP_ADR          0x00200000
+#define KERN_EXTTMP_SIZE         0x00100000
 
 /// Kernel constantly use paging table.
 #define KERN_PDPTE_PADR          0x01000000
 #define KERN_PDE_PADR            0x01100000
 
+/// Reserved memory address from 0.
 #define MEMMGR_RESERVED_PADR     0x011fffff
 
 /// Finally kernel execute virtual address.

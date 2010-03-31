@@ -4,8 +4,8 @@
 #
 # (C) 2010 Kato Takeshi
 
-CFLAGS += -Os -fno-exceptions
-CPPFLAGS += -I../include
+CFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions
+CPPFLAGS = -I../include
 
 all: bootsect.bin
 

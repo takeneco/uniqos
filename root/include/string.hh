@@ -11,6 +11,7 @@
 
 
 void MemoryMove(ucpu Bytes, const void* Src, void* Dest);
+ucpu StringGetLengh(const char* Str);
 
 
 #endif  // Include guard.

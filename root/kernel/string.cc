@@ -21,3 +21,15 @@ void MemoryMove(ucpu Bytes, const void* Src, void* Dest)
 			d[i] = s[i];
 	}
 }
+
+ucpu StringGetLengh(const char* Str)
+{
+	if (!Str)
+		return 0;
+
+	ucpu len = 0;
+	while (Str[len])
+		len++;
+
+	return len;
+}

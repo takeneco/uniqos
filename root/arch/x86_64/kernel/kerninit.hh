@@ -8,6 +8,7 @@
 
 
 int cpu_init();
+int IDTInit();
 
 
 #endif  // Include guard.

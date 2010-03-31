@@ -1,12 +1,13 @@
-// @file   arch/x86_64/kernel/cpuinit.cpp
+// @file   arch/x86_64/kernel/cpuinit.cc
 // @author Kato Takeshi
 // @brief  Initialize GDT/IDT.
 //
-// (C) Kato Takeshi 2010
+// (C) 2010 Kato Takeshi.
+
+#include "kerninit.hh"
 
 #include "btypes.hh"
 #include "native.hh"
-#include "output.hh"
 
 
 namespace {
@@ -58,6 +59,8 @@ int cpu_init()
 	gdtptr.Init(sizeof gdt, gdt);
 
 	arch::NativeLGDT(&gdtptr);
+
+	IDTInit();
 
 	return 0;
 }

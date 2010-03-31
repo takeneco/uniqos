@@ -115,8 +115,10 @@ extern "C" int prekernel()
 	arch::pte* pdpte = &pdpte_base[512 * 255];
 
 	// pdpte_base[512 * 255 + 511] -> 0x....ffffc.......
-	pdpte[511].set(pde_adr,
-		arch::pte::P | arch::pte::RW);
+	//pdpte[511].set(pde_adr,
+	//	arch::pte::P | arch::pte::RW);
+	// 0x....ffffc.......
+	pdpte_base[0x1ffff].set(pde_adr, arch::pte::P | arch::pte::RW);
 
 	// Kernel text body
 
@@ -135,6 +137,11 @@ extern "C" int prekernel()
 	char* p2 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
 	// 0x....ffffffe.....
 	pde[255].set(reinterpret_cast<u64>(p2),
+		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
+
+	// test map
+	// 0x....ffffc02.....
+	pde[1].set(0,
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	pde_adr += 8 * 512;

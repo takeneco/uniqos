@@ -6,6 +6,7 @@
 
 #include "kout.hh"
 
+#include "string.hh"
 
 namespace {
 
@@ -38,9 +39,14 @@ KernOutput* KernOutput::PutC(char c)
 
 KernOutput* KernOutput::PutStr(const char* s)
 {
-	while (*s) {
-		PutC(*s++);
-	}
+	IOVector iov;
+
+	iov.Bytes = StringGetLengh(s);
+	iov.Address = s;
+
+	Write(&iov,
+		1,  // iov count
+		0); // offset
 
 	return this;
 }

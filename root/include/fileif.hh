@@ -12,8 +12,8 @@
 
 struct IOVector
 {
-	ucpu  Bytes;
-	void* Address;
+	ucpu        Bytes;
+	const void* Address;
 };
 
 
