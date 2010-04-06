@@ -59,8 +59,8 @@
 #define MEMMGR_RESERVED_PADR     0x011fffff
 
 /// Finally kernel execute virtual address.
-#define KERN_FINAL_VADR  0xffffffffc0000000
-#define KERN_FINAL_SIZE  0x0000000040000000
+#define KERN_FINAL_VADR  0xffffffff00000000
+#define KERN_FINAL_SIZE  0x0000000100000000
 
 
 #endif  // Include guard.

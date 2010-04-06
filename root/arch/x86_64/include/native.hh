@@ -94,7 +94,7 @@ struct gidt_ptr64 {
 	u16 length;
 	u16 ptr[4];
 
-	void Init(
+	void init(
 		u16 len,           ///< sizeof gdt/idt table
 		const void* table) ///< Ptr to gdt/idt table
 	{
@@ -106,16 +106,16 @@ struct gidt_ptr64 {
 		ptr[3] = static_cast<u16>(p >> 48);
 	}
 };
-typedef gidt_ptr64 GDT_Ptr64;
-typedef gidt_ptr64 IDT_Ptr64;
+typedef gidt_ptr64 gdt_ptr64;
+typedef gidt_ptr64 idt_ptr64;
 
 // @brief lgdt を実行する。
-inline void NativeLGDT(GDT_Ptr64* ptr) {
+inline void native_lgdt(gdt_ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
 }
 
 // @brief lidt を実行する。
-inline void NativeLIDT(IDT_Ptr64* ptr) {
+inline void native_lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
 

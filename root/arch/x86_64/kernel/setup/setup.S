@@ -278,6 +278,8 @@ start64:
 	test %eax, %eax
 	jnz  freeze
 
+	movq $0xfffffffffffffff0, %rsp
+
 	movq  $KERN_FINAL_VADR, %rax
 	jmp *%rax
 

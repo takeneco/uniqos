@@ -3,11 +3,12 @@
 00030000 - 0003ffff カーネルパラメータ
 00040000 - 0004ffff セットアッププログラム
 
+0000000000100000 - 0000000000101000 Interrupt Descriptor Table(IDT) (4KiB).
 0000000000000000 - 0000000000f00000 Reserved (16MiB).
 
  - Virtual memory -
 0000|000000000000 - 0000|7fffffffffff User program.
-ffff|800000000000 - ffff|ffff7fffffff Undefined.
-ffff|ffff80000000 - ffff|ffffbfffffff iomap (1GiB).
-ffff|ffffc0000000 - ffff|ffffffdfffff Kernel body (1GiB - 2MiB).
+ffff|800000000000 - ffff|fffdffffffff Undefined.
+ffff|fffe00000000 - ffff|fffeffffffff iomap (4GiB).
+ffff|ffff00000000 - ffff|ffffffdfffff Kernel body and modules (4GiB - 2MiB).
 ffff|ffffffe00000 - ffff|ffffffffffff Kernel stack (2MiB).

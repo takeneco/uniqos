@@ -11,10 +11,8 @@ CXX = x86_64-pc-linux-gnu-g++
 AS  = x86_64-pc-linux-gnu-as
 LD  = x86_64-pc-linux-gnu-ld
 
-#CFLAGS = -pipe -Wall -W -fomit-frame-pointer -fPIC
-CFLAGS = -pipe -Wall -W -fomit-frame-pointer -mcmodel=large -O3
-#CXXFLAGS = -pipe -Wall -W -fomit-frame-pointer -fPIC
-CXXFLAGS = -pipe -Wall -W -fomit-frame-pointer -mcmodel=large -O3
+CFLAGS = -pipe -Wall -W -fomit-frame-pointer -mcmodel=large -O3 -mno-sse
+CXXFLAGS = -pipe -Wall -W -fomit-frame-pointer -mcmodel=large -O3 -mno-sse
 
 CPPFLAGS = -I$(ROOT)/include -I$(ROOT)/arch/$(ARCH)/include 
 

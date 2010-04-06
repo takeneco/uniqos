@@ -3,9 +3,8 @@
 #
 # (C) 2008-2010 Kato Takeshi.
 
-export ARCH = x86_64
-#export ARCH = x86
 export MAKE_DEFAULTS = make.defaults
+include $(MAKE_DEFAULTS)
 
 all : fd1440
 

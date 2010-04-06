@@ -10,8 +10,9 @@
 #include "btypes.hh"
 
 
-void MemoryMove(ucpu Bytes, const void* Src, void* Dest);
-ucpu StringGetLengh(const char* Str);
+void memory_move(ucpu bytes, const void* src, void* dest);
+void memory_fill(ucpu bytes, u8 c, void* dest);
+ucpu string_get_length(const char* str);
 
 
 #endif  // Include guard.

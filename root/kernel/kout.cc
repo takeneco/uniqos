@@ -41,7 +41,7 @@ KernOutput* KernOutput::PutStr(const char* s)
 {
 	IOVector iov;
 
-	iov.Bytes = StringGetLengh(s);
+	iov.Bytes = string_get_length(s);
 	iov.Address = s;
 
 	Write(&iov,

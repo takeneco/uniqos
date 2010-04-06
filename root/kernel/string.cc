@@ -7,28 +7,36 @@
 #include "string.hh"
 
 
-void MemoryMove(ucpu Bytes, const void* Src, void* Dest)
+void memory_move(ucpu bytes, const void* src, void* dest)
 {
-	const char* s = reinterpret_cast<const char*>(Src);
-	char* d = reinterpret_cast<char*>(Dest);
+	const char* s = reinterpret_cast<const char*>(src);
+	char* d = reinterpret_cast<char*>(dest);
 
 	if (d < s) {
-		for (ucpu i = 0; i < Bytes; i++)
+		for (ucpu i = 0; i < bytes; i++)
 			d[i] = s[i];
 	} else {
-		ucpu i = Bytes;
+		ucpu i = bytes;
 		while (i--)
 			d[i] = s[i];
 	}
 }
 
-ucpu StringGetLengh(const char* Str)
+void memory_fill(ucpu bytes, u8 c, void* dest)
 {
-	if (!Str)
+	u8* d = reinterpret_cast<u8*>(dest);
+
+	for (ucpu i = 0; i < bytes; i++)
+		d[i] = c;
+}
+
+ucpu string_get_length(const char* str)
+{
+	if (!str)
 		return 0;
 
 	ucpu len = 0;
-	while (Str[len])
+	while (str[len])
 		len++;
 
 	return len;

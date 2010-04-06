@@ -105,6 +105,13 @@ void VideoOutput::Init(int w, int h, u64 vram_addr)
 
 	cur_row = cur_col = 0;
 	clone_cur_row = 0;
+/*
+	int n = sizeof vram_clone / sizeof vram_clone[0];
+	for (int i = 0; i < n; ) {
+		vram_clone[i++] = ' ';
+		vram_clone[i++] = 0;
+	}
+*/
 }
 
 

@@ -55,12 +55,10 @@ const gdte gdt[] = {
 
 int cpu_init()
 {
-	arch::GDT_Ptr64 gdtptr;
-	gdtptr.Init(sizeof gdt, gdt);
+	arch::gdt_ptr64 gdtptr;
+	gdtptr.init(sizeof gdt, gdt);
 
-	arch::NativeLGDT(&gdtptr);
-
-	IDTInit();
+	arch::native_lgdt(&gdtptr);
 
 	return 0;
 }

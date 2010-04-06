@@ -6,14 +6,15 @@
 
 #include "btypes.hh"
 #include "native.hh"
-
+#include "output.hh"
+#include "string.hh"
 
 namespace {
 
-class idte {
+class idte
+{
 	typedef u64 type;
 	type e[2];
-
 public:
 	void set(type offset, type seg, type ist, type dpl) {
 		e[0] = (offset & 0x000000000000ffff)       |
@@ -34,15 +35,21 @@ idte idt[256];
 
 }  // End of anonymous namespace
 
+extern KernOutput* kout;
 
-int IDTInit()
+void* IDTInit()
 {
-
-//	const int n = sizeof idt / sizeof idt[0];
-	const int n = 5;
-	for (int i = 0; i < n; i++) {
+	kout->PutStr("&idt = ")->PutU64Hex((u64)idt)->PutC('\n');
+	for (int i = 0; i < 1; i++) {
 		idt[i].disable();
 	}
+
+	memory_fill(sizeof idt, 0, idt);
+
+	arch::idt_ptr64 idtptr;
+	idtptr.init(sizeof idt, idt);
+
+	arch::native_lidt(&idtptr);
 
 	return 0;
 }

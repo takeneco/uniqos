@@ -1,22 +1,21 @@
-/**
- * @file    arch/x86_64/kernel/kernel.ld
- * @version 0.0.0.1
- * @author  Kato.T
+/* @file    arch/x86_64/kernel/kernel.ld
+ * @author  Kato Takeshi
  * @brief   カーネル本体のリンカスクリプト。
+ *
+ * (C) 2009-2010 Kato Takeshi.
  */
-/* (C) Kato.T 2009-2010 */
 
 OUTPUT_FORMAT(binary)
 OUTPUT_ARCH(i386:x86-64)
 ENTRY(_start)
 
 SECTIONS {
-	/*. = 0x100000;*/
-	. = 0xffffffffc0000000;
+	. = 0xffffffff00000000;
 	kern_head_addr = .;
 	.text : { *(.text.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
+	. = 0xffffffffffff8000;
 	.bss : { *(.bss) }
 	kern_tail_addr = .;
 }

@@ -112,13 +112,8 @@ extern "C" int prekernel()
 	arch::pte* pdpte_base = reinterpret_cast<arch::pte*>(KERN_PDPTE_PADR);
 	u64 pde_adr = KERN_PDE_PADR;
 
-	arch::pte* pdpte = &pdpte_base[512 * 255];
-
-	// pdpte_base[512 * 255 + 511] -> 0x....ffffc.......
-	//pdpte[511].set(pde_adr,
-	//	arch::pte::P | arch::pte::RW);
-	// 0x....ffffc.......
-	pdpte_base[0x1ffff].set(pde_adr, arch::pte::P | arch::pte::RW);
+	// pdpte_base[0x1fffc] -> 0x....ffff0.......
+	pdpte_base[0x1fffc].set(pde_adr, arch::pte::P | arch::pte::RW);
 
 	// Kernel text body
 
@@ -132,11 +127,17 @@ extern "C" int prekernel()
 		return -1;
 	}
 
+	pde_adr += 0x1000;
+
+	// pdpte_base[0x1ffff] -> 0x....ffffc.......
+	pdpte_base[0x1ffff].set(pde_adr, arch::pte::P | arch::pte::RW);
+
 	// Kernel stack memory
 
+	pde = reinterpret_cast<arch::pte*>(pde_adr);
 	char* p2 = (char*)memmgr_alloc(&mm, 0x200000, 0x200000);
 	// 0x....ffffffe.....
-	pde[255].set(reinterpret_cast<u64>(p2),
+	pde[511].set(reinterpret_cast<u64>(p2),
 		arch::pte::P | arch::pte::RW | arch::pte::PS | arch::pte::G);
 
 	// test map
