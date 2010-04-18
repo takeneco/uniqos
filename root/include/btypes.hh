@@ -7,6 +7,7 @@
 #ifndef BTYPES_HH_
 #define BTYPES_HH_
 
+
 #if defined ARCH_W32
 
 typedef   signed char      _s8;
@@ -237,46 +238,13 @@ static inline _ucpu up_align(_ucpu base, _ucpu value) {
 const class {
 public:
 	template<class T> operator T*() const { return 0; }
-//	template<class T, class U> operator T U::*() const { return 0; }
+	template<class T, class U> operator T U::*() const { return 0; }
 private:
 	void operator&() const;
 } null = {};
 
-/*-------------------------------------------------------------------
- * リスト構造
- *-------------------------------------------------------------------*/
-
-/**
- * @brief 双方向リストの要素。
- */
-class bilist_elm
-{
-public:
-	bilist_elm* prev;
-	bilist_elm* next;
-
-	bilist_elm();
-};
-
-inline bilist_elm::bilist_elm()
-: prev(null), next(null)
-{}
-
-/**
- * @brief 双方向リスト。
- */
-class bilist
-{
-public:
-	bilist_elm* head;
-	bilist_elm* tail;
-
-	bilist();
-};
-
-inline bilist::bilist()
-: head(null), tail(null)
-{}
+template<class T> const T& max(const T& x, const T& y) { return x >= y ? x : y; }
+template<class T> const T& min(const T& x, const T& y) { return x <= y ? x : y; }
 
 /*-------------------------------------------------------------------
  * エラーコード
@@ -342,4 +310,4 @@ namespace log
 #define __TOSTR(x) #x
 #define TOSTR(x) __TOSTR(x)
 
-#endif  // BTYPES_HH_
+#endif  // Include guards.

@@ -2,19 +2,19 @@
 // @author Kato Takeshi
 // @brief  DeviceInterface class implements.
 //
-// (C) Kato Takeshi 2010
+// (C) 2010 Kato Takeshi.
 
 #include "fileif.hh"
 
 
-int FileNodeInterface::Write(
-    IOVector* Vectors, 
-    int       VectorCount,
-    ucpu      Offset)
+int filenode_interface::write(
+    const io_vector* vectors, 
+    int              vector_count,
+    ucpu             offset)
 {
-	Vectors = Vectors;
-	VectorCount = VectorCount;
-	Offset = Offset;
+	vectors = vectors;
+	vector_count = vector_count;
+	offset = offset;
 
 	return cause::INVALID_OPERATION;
 }

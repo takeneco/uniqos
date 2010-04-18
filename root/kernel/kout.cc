@@ -15,7 +15,7 @@ static const char base_number[] = "0123456789abcdef";
 }
 
 
-void KernOutput::putux(u64 n, int bits)
+void kern_output::putux(u64 n, int bits)
 {
 	for (int shift = bits - 4; shift >= 0; shift -= 4) {
 		const int x = static_cast<int>(n >> shift) & 0x0000000f;
@@ -23,35 +23,48 @@ void KernOutput::putux(u64 n, int bits)
 	}
 }
 
-KernOutput* KernOutput::PutC(char c)
+kern_output* kern_output::PutC(char c)
 {
-	IOVector iov;
+	io_vector iov;
 
-	iov.Bytes = 1;
-	iov.Address = &c;
+	iov.bytes = 1;
+	iov.address = &c;
 
-	Write(&iov,
+	write(&iov,
 		1,  // iov count
 		0); // offset
 
 	return this;
 }
 
-KernOutput* KernOutput::PutStr(const char* s)
+kern_output* kern_output::PutStr(const char* s)
 {
-	IOVector iov;
+	char buf[32];
+	const int buf_size = sizeof buf;
+	io_vector iov;
 
-	iov.Bytes = string_get_length(s);
-	iov.Address = s;
+	iov.address = buf;
 
-	Write(&iov,
-		1,  // iov count
-		0); // offset
+	if (!s) {
+		static const char nullstr[] = "(nullstr)";
+		s = nullstr;
+	}
+
+	int left = string_get_length(s);
+	while (left > 0) {
+		iov.bytes = min(left, buf_size);
+		memory_move(iov.bytes, s, iov.address);
+		write(&iov,
+		    1,   // iov count
+		    0);  // offset
+		s += iov.bytes;
+		left -= iov.bytes;
+	}
 
 	return this;
 }
 
-KernOutput* KernOutput::PutSDec(s64 n)
+kern_output* kern_output::PutSDec(s64 n)
 {
 	if (n < 0) {
 		PutC('-');
@@ -61,7 +74,7 @@ KernOutput* KernOutput::PutSDec(s64 n)
 	return PutUDec(static_cast<u64>(n));
 }
 
-KernOutput* KernOutput::PutUDec(u64 n)
+kern_output* kern_output::PutUDec(u64 n)
 {
 	if (n == 0) {
 		PutC('0');
@@ -81,28 +94,28 @@ KernOutput* KernOutput::PutUDec(u64 n)
 	return this;
 }
 
-KernOutput* KernOutput::PutU8Hex(u8 n)
+kern_output* kern_output::PutU8Hex(u8 n)
 {
 	putux(n, 8);
 
 	return this;
 }
 
-KernOutput* KernOutput::PutU16Hex(u16 n)
+kern_output* kern_output::PutU16Hex(u16 n)
 {
 	putux(n, 16);
 
 	return this;
 }
 
-KernOutput* KernOutput::PutU32Hex(u32 n)
+kern_output* kern_output::PutU32Hex(u32 n)
 {
 	putux(n, 32);
 
 	return this;
 }
 
-KernOutput* KernOutput::PutU64Hex(u64 n)
+kern_output* kern_output::PutU64Hex(u64 n)
 {
 	putux(n, 64);
 

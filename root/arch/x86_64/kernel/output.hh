@@ -14,7 +14,7 @@
 
 // @brief  Output only kernel video term.
 
-class VideoOutput : public KernOutput
+class VideoOutput : public kern_output
 {
 	int   width;
 	int   height;
@@ -32,10 +32,36 @@ public:
 	void SetCur(int row, int col) { cur_row = row; cur_col = col; }
 	void GetCur(int* row, int* col) { *row = cur_row; *col = cur_col; }
 
-	virtual int Write(
-	    IOVector* Vectors,
-	    int       VectorCount,
-	    ucpu      Offset);
+	virtual int write(
+	    const io_vector* vectors,
+	    int              vector_count,
+	    ucpu             offset);
+};
+
+
+// @brief  Output only serial port term.
+
+class serial_output : public kern_output
+{
+	u16 base_port;
+	u16 pic_irq;
+	u16 out_buf_size;
+	u16 out_buf_left;
+public:
+	enum {
+		COM1_BASEPORT = 0x03f8,
+		COM2_BASEPORT = 0x02f8,
+
+		COM1_PICIRQ = 4,
+		COM2_PICIRQ = 3,
+	};
+
+	void init(u16 com_base_port, u16 com_pic_irq);
+
+	virtual int write(
+	    const io_vector* vectors,
+	    int              vector_count,
+	    ucpu             offset);
 };
 
 

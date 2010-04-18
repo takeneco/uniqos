@@ -10,28 +10,29 @@
 #include "btypes.hh"
 
 
-struct IOVector
+struct io_vector
 {
-	ucpu        Bytes;
-	const void* Address;
+	ucpu  bytes;
+	void* address;
 };
 
 
 // @brief  File node interface base class.
-class FileNodeInterface
+
+class filenode_interface
 {
 protected:
-	FileNodeInterface() {}
+	filenode_interface() {}
 
 private:
-	FileNodeInterface(const FileNodeInterface&);
-	void operator = (const FileNodeInterface&);
+	filenode_interface(const filenode_interface&);
+	void operator = (const filenode_interface&);
 
 public:
-	virtual int Write(
-	    IOVector* Vectors,
-	    int       VectorCount,
-	    ucpu      Offset);
+	virtual int write(
+	    const io_vector* vectors,
+	    int              vector_count,
+	    ucpu             offset);
 };
 
 

@@ -35,7 +35,7 @@ idte idt[256];
 
 }  // End of anonymous namespace
 
-extern KernOutput* kout;
+extern kern_output* kout;
 
 void* IDTInit()
 {

@@ -16,7 +16,7 @@ namespace {
 }  // End of anonymous namespace
 
 
-KernOutput* kout;
+kern_output* kout;
 extern int kern_tail_addr;
 
 
@@ -38,10 +38,10 @@ extern "C" int KernInit()
 	IDTInit();
 
 	char c = 'a';
-	IOVector v;
-	v.Bytes = 1;
-	v.Address = &c;
-	vo.Write(&v, 1, 0);
+	io_vector v;
+	v.bytes = 1;
+	v.address = &c;
+	vo.write(&v, 1, 0);
 
 	vo.PutStr("width=")->PutUDec(width)->
 	   PutStr(":height=")->PutUDec(height)->

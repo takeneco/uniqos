@@ -30,12 +30,12 @@ void memory_fill(ucpu bytes, u8 c, void* dest)
 		d[i] = c;
 }
 
-ucpu string_get_length(const char* str)
+int string_get_length(const char* str)
 {
 	if (!str)
 		return 0;
 
-	ucpu len = 0;
+	int len = 0;
 	while (str[len])
 		len++;
 
