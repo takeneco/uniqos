@@ -254,6 +254,11 @@ start32:
 	addl  $0x00200000, %eax
 	loop  1b
 
+	///// 32~34MiB == 0~2MiB
+	//movl  $0x183, (%edi)
+	//movl  $0, 4(%edi)
+	/////
+
 	// Set page table
 	movl  %ebx, %cr3
 
@@ -274,6 +279,12 @@ start32:
 
 start64:
 .code64
+	movw  $8, %ax
+	movw  %ax, %ds
+	movw  %ax, %es
+	movw  %ax, %fs
+	movw  %ax, %gs
+
 	call prekernel 
 	test %eax, %eax
 	jnz  freeze

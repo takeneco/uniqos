@@ -16,8 +16,8 @@ struct memmap_entry
 {
 	memmap_entry* prev;
 	memmap_entry* next;
-	_u64 head;
-	_u64 bytes;  ///< If bytes == 0, not used.
+	u64 head;
+	u64 bytes;  ///< If bytes == 0, not used.
 };
 
 struct memmgr
@@ -29,9 +29,16 @@ struct memmgr
 	memmap_entry* nofree_list;
 };
 
+struct memmgr_dumpdata
+{
+	u64 head;
+	u64 bytes;
+};
+
 void  memmgr_init(memmgr* mm);
 void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align = 8);
 void  memmgr_free(memmgr* mm, void* p);
+int   memmgr_dump(const memmgr* mm, memmgr_dumpdata* dumpto, int n);
 void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);
 void  operator delete(void* p, memmgr*);

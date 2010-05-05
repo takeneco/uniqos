@@ -10,12 +10,10 @@
 #include "btypes.hh"
 
 
-namespace arch {
-
-class pte
+class page_table_ent
 {
 	/// Page table entry type (PML4, PDPTE, PDE, PTE)
-	typedef _u64 type;
+	typedef u64 type;
 	type e;
 
 public:
@@ -45,13 +43,20 @@ public:
 	void clr_flags(type f) {
 		e &= ~f;
 	}
+	type test_flags(type f) const {
+		return e & f;
+	}
 	void set_addr(type a) {
 		e = (e & 0xffffff0000000fff) | a;
 	}
-	type get_addr() {
+	type get_addr() const {
 		return e & 0x000000fffffff000;
 	}
 };
+
+namespace arch {
+
+typedef page_table_ent pte;
 
 }  // End of namespace arch.
 

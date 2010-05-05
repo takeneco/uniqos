@@ -16,6 +16,7 @@ CPPFLAGS += -I../include
 OBJS = LzmaDec.o a20.o lzmadecwrap.o memmgr.o memops.o \
  prekern.o setup.o termchain.o videoterm.o
 
+OBJS += intr.o exception_handler.o
 
 all : setup.bin
 

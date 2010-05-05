@@ -37,6 +37,7 @@
 #define SETUP_DISP_CURCOL            0x001c
 #define SETUP_KERNFILE_SIZE          0x0020
 #define SETUP_MEMMAP                 0x0100
+#define SETUP_MEMMAP_DUMP            0x0400
 
 #define MEMMGR_MEMMAP_ADR           0x20000
 #define MEMMGR_MEMMAP_SIZE          0x10000

@@ -10,81 +10,105 @@
 #include "btypes.hh"
 
 
-namespace arch {
-
-static inline void native_hlt() {
+inline void native_hlt() {
 	asm volatile ("hlt");
 }
-static inline void native_outb(_u8 data, _u16 port) {
+inline void native_outb(u8 data, u16 port) {
 	asm volatile ("outb %0,%1" : : "a"(data), "dN"(port));
 }
-static inline void native_outw(_u16 data, _u16 port) {
+inline void native_outw(u16 data, u16 port) {
 	asm volatile ("outw %0,%1" : : "a"(data), "dN"(port));
 }
-static inline void native_outl(_u32 data, _u16 port) {
+inline void native_outl(u32 data, u16 port) {
 	asm volatile ("outl %0,%1" : : "a"(data), "dN"(port));
 }
-static inline _u8 native_inb(_u16 port) {
-	_u8 data;
+inline u8 native_inb(u16 port) {
+	u8 data;
 	asm volatile ("inb %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-static inline _u16 native_inw(_u16 port) {
-	_u16 data;
+inline u16 native_inw(u16 port) {
+	u16 data;
 	asm volatile ("inw %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-static inline _u32 native_inl(_u16 port) {
-	_u32 data;
+inline u32 native_inl(u16 port) {
+	u32 data;
 	asm volatile ("inl %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-static inline void native_cli() {
+inline void native_cli() {
 	asm volatile ("cli");
 }
-static inline void native_sti() {
+inline void native_sti() {
 	asm volatile ("sti");
 }
-static inline _u32 native_get_cr0_32() {
-	_u32 cr0;
+inline u32 native_get_cr0_32() {
+	u32 cr0;
 	asm volatile ("movl %%cr0, %0" : "=r" (cr0));
 	return cr0;
 }
-static inline void native_set_cr0_32(_u32 cr0) {
+inline void native_set_cr0_32(u32 cr0) {
 	asm volatile ("movl %0, %%cr0" : : "r" (cr0));
 }
-inline _u64 native_get_cr0_64() {
-	_u64 cr0;
+inline u64 native_get_cr0_64() {
+	u64 cr0;
 	asm volatile ("movq %%cr0, %0" : "=r" (cr0));
 	return cr0;
 }
-inline void native_set_cr0_64(_u64 cr0) {
+inline void native_set_cr0_64(u64 cr0) {
 	asm volatile ("movq %0, %%cr0" : : "r" (cr0));
+}
+inline u64 native_get_cr3() {
+	u64 cr3;
+	asm volatile ("movq %%cr3, %0" : "=r" (cr3));
+	return cr3;
+}
+inline void native_set_cr3(u64 cr3) {
+	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
 
 // セグメントレジスタの値を返す。
 // デバッグ用。
-static inline _u16 get_cs() {
-	_u16 cs;
+inline u16 get_cs() {
+	u16 cs;
 	asm volatile (
-		"movw %%cs, %%ax \n"
-		"movw %%ax, %0" : "=rm" (cs));
+	    "movw %%cs, %%ax \n"
+	    "movw %%ax, %0" : "=rm" (cs) : : "%ax");
 	return cs;
 }
-static inline _u16 get_ds() {
-	_u16 ds;
-	asm volatile ("movw %0, %%ds" : "=rm" (ds));
+inline u16 get_ds() {
+	u16 ds;
+	asm volatile (
+	    "movw %%ds, %%ax \n"
+	    "movw %%ax, %0" : "=rm" (ds) : : "%ax");
 	return ds;
 }
-static inline _u16 get_fs() {
-	_u16 fs;
-	asm volatile ("movw %0, %%fs" : "=rm" (fs));
+inline u16 get_fs() {
+	u16 fs;
+	asm volatile (
+	    "movw %%fs, %%ax \n"
+	    "movw %%ax, %0" : "=rm" (fs) : : "%ax");
 	return fs;
 }
-static inline _u16 get_gs() {
-	_u16 gs;
-	asm volatile ("movw %0, %%gs" : "=rm" (gs));
+inline u16 get_gs() {
+	u16 gs;
+	asm volatile (
+	    "movw %%gs, %%ax \n"
+	    "movw %%ax, %0" : "=rm" (gs) : : "%ax");
 	return gs;
+}
+inline u16 native_get_ss() {
+	u16 ss;
+	asm volatile (
+	    "movw %%ss, %%ax \n"
+	    "movw %%ax, %0" : "=rm" (ss) : : "%ax");
+	return ss;
+}
+inline void native_set_ss(u16 ss) {
+	asm volatile (
+	    "movw %0, %%ax \n"
+	    "movw %%ax, %%ss" : : "rm" (ss) : "%ax");
 }
 
 // @brief Global/Interrupt Descriptor Table register.
@@ -95,15 +119,14 @@ struct gidt_ptr64 {
 	u16 ptr[4];
 
 	void init(
-		u16 len,           ///< sizeof gdt/idt table
-		const void* table) ///< Ptr to gdt/idt table
+		u16 len,    ///< sizeof gdt/idt table
+		u64 table)  ///< Phisical address to gdt/idt table
 	{
 		length = len - 1;
-		const u64 p = reinterpret_cast<u64>(table);
-		ptr[0] = static_cast<u16>(p);
-		ptr[1] = static_cast<u16>(p >> 16);
-		ptr[2] = static_cast<u16>(p >> 32);
-		ptr[3] = static_cast<u16>(p >> 48);
+		ptr[0] = static_cast<u16>(table);
+		ptr[1] = static_cast<u16>(table >> 16);
+		ptr[2] = static_cast<u16>(table >> 32);
+		ptr[3] = static_cast<u16>(table >> 48);
 	}
 };
 typedef gidt_ptr64 gdt_ptr64;
@@ -119,6 +142,5 @@ inline void native_lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
 
-}  // namespace arch
 
 #endif  // Include guard.

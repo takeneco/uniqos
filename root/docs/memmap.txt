@@ -8,7 +8,8 @@
 
  - Virtual memory -
 0000|000000000000 - 0000|7fffffffffff User program.
-ffff|800000000000 - ffff|fffdffffffff Undefined.
+ffff|800000000000 - ffff|80ffffffffff Phisical memory map (1TiB).
+ffff|810000000000 - ffff|fffdffffffff Undefined.
 ffff|fffe00000000 - ffff|fffeffffffff iomap (4GiB).
 ffff|ffff00000000 - ffff|ffffffdfffff Kernel body and modules (4GiB - 2MiB).
 ffff|ffffffe00000 - ffff|ffffffffffff Kernel stack (2MiB).

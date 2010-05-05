@@ -1,6 +1,6 @@
 // @file    arch/x86_64/kernel/setup/memmgr.cpp
 // @author  Kato Takeshi
-// @brief   Easy memory management implement using setup.
+// @brief   Easy memory management implement used by setup.
 //
 // (C) 2010 Kato Takeshi.
 
@@ -123,8 +123,8 @@ void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
  */
 void memmap_import(memmgr* mm)
 {
-	const acpi_memmap* rawmap = SetupGetPtr<acpi_memmap>(SETUP_MEMMAP);
-	const u32 memmap_count = SetupGetValue<u32>(SETUP_MEMMAP_COUNT);
+	const acpi_memmap* rawmap = setup_get_ptr<acpi_memmap>(SETUP_MEMMAP);
+	const u32 memmap_count = setup_get_value<u32>(SETUP_MEMMAP_COUNT);
 
 	for (u32 i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
@@ -294,6 +294,23 @@ void memmgr_free(memmgr* mm, void* p)
 	if (ent) {
 		memmap_insert_to(&mm->free_list, ent);
 	}
+}
+
+// @brief  空きメモリアドレスをカーネルに渡すためにメモリ上へ出力する。
+// @param[out] dumpto  Ptr to destination.
+// @param[in] n        dumpto entries.
+// @return  Dumped number.
+int memmgr_dump(const memmgr* mm, memmgr_dumpdata* dumpto, int n)
+{
+	const memmap_entry* ent = mm->free_list;
+	int i;
+	for (i = 0; ent && i < n; i++) {
+		dumpto->head = ent->head;
+		dumpto->bytes = ent->bytes;
+		ent = ent->next;
+	}
+
+	return i;
 }
 
 void* operator new(std::size_t s, memmgr* mm)

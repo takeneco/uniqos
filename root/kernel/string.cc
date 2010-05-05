@@ -7,7 +7,7 @@
 #include "string.hh"
 
 
-void memory_move(ucpu bytes, const void* src, void* dest)
+void memory_move(const void* src, void* dest, ucpu bytes)
 {
 	const char* s = reinterpret_cast<const char*>(src);
 	char* d = reinterpret_cast<char*>(dest);
@@ -22,7 +22,7 @@ void memory_move(ucpu bytes, const void* src, void* dest)
 	}
 }
 
-void memory_fill(ucpu bytes, u8 c, void* dest)
+void memory_fill(u8 c, void* dest, ucpu bytes)
 {
 	u8* d = reinterpret_cast<u8*>(dest);
 

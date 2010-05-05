@@ -25,6 +25,9 @@ void kern_output::putux(u64 n, int bits)
 
 kern_output* kern_output::PutC(char c)
 {
+	if (!this)
+		return this;
+
 	io_vector iov;
 
 	iov.bytes = 1;
@@ -39,6 +42,9 @@ kern_output* kern_output::PutC(char c)
 
 kern_output* kern_output::PutStr(const char* s)
 {
+	if (!this)
+		return this;
+
 	char buf[32];
 	const int buf_size = sizeof buf;
 	io_vector iov;
@@ -53,7 +59,7 @@ kern_output* kern_output::PutStr(const char* s)
 	int left = string_get_length(s);
 	while (left > 0) {
 		iov.bytes = min(left, buf_size);
-		memory_move(iov.bytes, s, iov.address);
+		memory_move(s, iov.address, iov.bytes);
 		write(&iov,
 		    1,   // iov count
 		    0);  // offset
@@ -66,6 +72,9 @@ kern_output* kern_output::PutStr(const char* s)
 
 kern_output* kern_output::PutSDec(s64 n)
 {
+	if (!this)
+		return this;
+
 	if (n < 0) {
 		PutC('-');
 		n = -n;
@@ -76,6 +85,9 @@ kern_output* kern_output::PutSDec(s64 n)
 
 kern_output* kern_output::PutUDec(u64 n)
 {
+	if (!this)
+		return this;
+
 	if (n == 0) {
 		PutC('0');
 		return this;
@@ -96,28 +108,32 @@ kern_output* kern_output::PutUDec(u64 n)
 
 kern_output* kern_output::PutU8Hex(u8 n)
 {
-	putux(n, 8);
+	if (this)
+		putux(n, 8);
 
 	return this;
 }
 
 kern_output* kern_output::PutU16Hex(u16 n)
 {
-	putux(n, 16);
+	if (this)
+		putux(n, 16);
 
 	return this;
 }
 
 kern_output* kern_output::PutU32Hex(u32 n)
 {
-	putux(n, 32);
+	if (this)
+		putux(n, 32);
 
 	return this;
 }
 
 kern_output* kern_output::PutU64Hex(u64 n)
 {
-	putux(n, 64);
+	if (this)
+		putux(n, 64);
 
 	return this;
 }

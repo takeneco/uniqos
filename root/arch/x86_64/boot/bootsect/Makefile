@@ -4,7 +4,7 @@
 #
 # (C) 2010 Kato Takeshi
 
-CFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions
+CFLAGS = -m64 -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions
 CPPFLAGS = -I../include
 
 all: bootsect.bin

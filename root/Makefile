@@ -6,6 +6,8 @@
 export MAKE_DEFAULTS = make.defaults
 include $(MAKE_DEFAULTS)
 
+export CC CXX AS LD
+
 all : fd1440
 
 fd1440 :

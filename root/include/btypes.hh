@@ -281,7 +281,7 @@ namespace cause
 		UNKNOWN = 1000,
 	};
 
-	typedef _u32 type;
+	typedef u32 type;
 	inline bool IsOk(type x) { return x == OK; }
 	inline bool IsFail(type x) { return x != OK; }
 }
@@ -301,7 +301,7 @@ namespace log
 		DEBUG,
 	};
 
-	typedef _u32 type;
+	typedef u32 type;
 	inline bool IsHeavy(type x, type base) { return (x & 0x0f) <= base; }
 	inline bool IsLight(type x, type base) { return (x & 0x0f) >= base; }
 }

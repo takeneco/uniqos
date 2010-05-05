@@ -56,6 +56,11 @@ public:
 		COM2_PICIRQ = 3,
 	};
 
+	void* operator new(std::size_t size, serial_output* obj) {
+		size = size;
+		return obj;
+	}
+
 	void init(u16 com_base_port, u16 com_pic_irq);
 
 	virtual int write(
@@ -63,6 +68,10 @@ public:
 	    int              vector_count,
 	    ucpu             offset);
 };
+
+kern_output* kern_get_out();
+serial_output* serial_get_out(int i);
+void serial_output_init();
 
 
 #endif  // Include guard.

@@ -9,6 +9,6 @@
 .globl _start
 
 _start:
-	call  KernInit
+	call  kern_init
 1:hlt
 jmp 1b

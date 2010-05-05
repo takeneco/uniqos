@@ -11,13 +11,13 @@
 #include "setup.h"
 
 
-template<class T> inline T SetupGetValue(u64 off) {
+template<class T> inline T setup_get_value(u64 off) {
 	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
 }
-template<class T> inline void SetupSetValue(u64 off, T val) {
+template<class T> inline void setup_set_value(u64 off, T val) {
 	*reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off) = val;
 }
-template<class T> inline T* SetupGetPtr(u64 off) {
+template<class T> inline T* setup_get_ptr(u64 off) {
 	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
 }
 
