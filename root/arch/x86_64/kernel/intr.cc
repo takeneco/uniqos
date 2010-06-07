@@ -39,16 +39,12 @@ public:
 	u64 get(int i) const { return e[i]; }
 };
 
-// アライメント？？？
-idte idt[256];
-//idte* const idt = (idte*)0x100000;
+idte idt_vec[256];
 
 void intr_update()
 {
 	idt_ptr64 idtptr;
-	//idtptr.init(sizeof idt, convert_vadr_to_padr(idt));
-	//idtptr.init(sizeof idt, (u64)idt);
-	idtptr.init(sizeof (idte) * 256, (u64)idt);
+	idtptr.init(sizeof (idte) * 256, &idt_vec[0]);
 
 	native_lidt(&idtptr);
 }
@@ -82,68 +78,88 @@ void exception_intr_19_handler();
 
 void intr_init()
 {
-	idt[0].set(reinterpret_cast<u64>(exception_intr_0_handler),
+	idt_vec[0].set(
+	    reinterpret_cast<u64>(exception_intr_0_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[1].set(reinterpret_cast<u64>(exception_intr_1_handler),
+	idt_vec[1].set(
+	    reinterpret_cast<u64>(exception_intr_1_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[2].set(reinterpret_cast<u64>(exception_intr_2_handler),
+	idt_vec[2].set(
+	    reinterpret_cast<u64>(exception_intr_2_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[3].set(reinterpret_cast<u64>(exception_intr_3_handler),
+	idt_vec[3].set(
+	    reinterpret_cast<u64>(exception_intr_3_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[4].set(reinterpret_cast<u64>(exception_intr_4_handler),
+	idt_vec[4].set(
+	    reinterpret_cast<u64>(exception_intr_4_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[5].set(reinterpret_cast<u64>(exception_intr_5_handler),
+	idt_vec[5].set(
+	    reinterpret_cast<u64>(exception_intr_5_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[6].set(reinterpret_cast<u64>(exception_intr_6_handler),
+	idt_vec[6].set(
+	    reinterpret_cast<u64>(exception_intr_6_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[7].set(reinterpret_cast<u64>(exception_intr_7_handler),
+	idt_vec[7].set(
+	    reinterpret_cast<u64>(exception_intr_7_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[8].set(reinterpret_cast<u64>(exception_intr_8_handler),
+	idt_vec[8].set(
+	    reinterpret_cast<u64>(exception_intr_8_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[9].set(reinterpret_cast<u64>(exception_intr_9_handler),
+	idt_vec[9].set(
+	    reinterpret_cast<u64>(exception_intr_9_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[10].set(reinterpret_cast<u64>(exception_intr_10_handler),
+	idt_vec[10].set(
+	    reinterpret_cast<u64>(exception_intr_10_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[11].set(reinterpret_cast<u64>(exception_intr_11_handler),
+	idt_vec[11].set(
+	    reinterpret_cast<u64>(exception_intr_11_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[12].set(reinterpret_cast<u64>(exception_intr_12_handler),
+	idt_vec[12].set(
+	    reinterpret_cast<u64>(exception_intr_12_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[13].set(reinterpret_cast<u64>(exception_intr_13_handler),
+	idt_vec[13].set(
+	    reinterpret_cast<u64>(exception_intr_13_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[14].set(reinterpret_cast<u64>(exception_intr_14_handler),
+	idt_vec[14].set(
+	    reinterpret_cast<u64>(exception_intr_14_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[15].set(reinterpret_cast<u64>(exception_intr_15_handler),
+	idt_vec[15].set(
+	    reinterpret_cast<u64>(exception_intr_15_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[16].set(reinterpret_cast<u64>(exception_intr_16_handler),
+	idt_vec[16].set(
+	    reinterpret_cast<u64>(exception_intr_16_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[17].set(reinterpret_cast<u64>(exception_intr_17_handler),
+	idt_vec[17].set(
+	    reinterpret_cast<u64>(exception_intr_17_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[18].set(reinterpret_cast<u64>(exception_intr_18_handler),
+	idt_vec[18].set(
+	    reinterpret_cast<u64>(exception_intr_18_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt[19].set(reinterpret_cast<u64>(exception_intr_19_handler),
+	idt_vec[19].set(
+	    reinterpret_cast<u64>(exception_intr_19_handler),
 	    8 * 1, 0, 0, idte::TRAP);
 
 	for (int i = 20; i < 256; i++) {
-		idt[i].disable();
+		idt_vec[i].disable();
 	}
 
 	intr_update();
 
 	kern_output* kout = kern_get_out();
 	kout->PutStr("convert_vadr_to_padr(idt) = ")
-	->PutU64Hex(convert_vadr_to_padr(&idt[255]))
+	->PutU64Hex(convert_vadr_to_padr(&idt_vec[255]))
 	->PutC('\n');
 }
 
 void intr_set_handler(int intr, intr_handler handler)
 {
-	idt[intr].set(
+	idt_vec[intr].set(
 	    reinterpret_cast<u64>(handler),
 	    8 * 1, 0, 0, idte::INTR);
 
 	kern_get_out()->PutStr("idt[")->PutU32Hex(intr)->
-	PutStr("] = ")->PutU64Hex(idt[intr].get(1))->PutC(' ')->
-	PutU64Hex(idt[intr].get(0))->PutC('\n');
+	PutStr("] = ")->PutU64Hex(idt_vec[intr].get(1))->PutC(' ')->
+	PutU64Hex(idt_vec[intr].get(0))->PutC('\n');
 
 	intr_update();
 }
