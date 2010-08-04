@@ -89,65 +89,14 @@ void fixed_allocs(memmgr* mm)
 	page_table_ent* pdpte_base =
 		reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
 	u64 pde_adr = KERN_PDE_PADR;
-	page_table_ent* pde;
-
-// Physical address mapping start (for debug)
-/*
-	// pdpte_base[0] -> 0x....80000.......
-	pdpte_base[0].set(pde_adr, page_table_ent::P | page_table_ent::RW);
-
-	page_table_ent* pde = reinterpret_cast<arch::pte*>(pde_adr);
-	for (int i = 0; i < 512; i++) { // 1GiB
-		pde[i].set(0x200000 * i,
-		    page_table_ent::P |
-		    page_table_ent::RW |
-		    page_table_ent::PS |
-		    page_table_ent::G);
-	}
-
-	pde_adr += 8 * 512;
-*/
-// Physical address mapping end
-
-
-// Special address mapping start
-
-	// pdpte_base[0x1fff8] -> 0x....fffe0.......
-	pdpte_base[0x1fff8].set(pde_adr, page_table_ent::P | page_table_ent::RW);
-
-	pde = reinterpret_cast<arch::pte*>(pde_adr);
-
-	// コンベンショナルメモリを含む先頭 20MiB (2MiB * 10)
-	for (int i = 0; i < 10; i++) {
-		pde[i].set(0x200000 * i,
-		    page_table_ent::P |
-		    page_table_ent::RW |
-		    page_table_ent::PS |
-		    page_table_ent::G);
-	}
-
-	// APIC register
-	pde[10].set(0xfee00000,
-	    page_table_ent::P |
-	    page_table_ent::RW |
-	    page_table_ent::PS |
-	    page_table_ent::G);
-
-	for (int i = 11; i < 512; i++) {
-		pde[i].set(0, 0);
-	}
-
-	pde_adr += 8 * 512;
-
-// Special address mapping end
-
 
 // Kernel text body address mapping start
 
 	// pdpte_base[0x1fffc] -> 0x....ffff0.......
-	pdpte_base[0x1fffc].set(pde_adr, page_table_ent::P | page_table_ent::RW);
+	pdpte_base[0x1fffc].set(pde_adr,
+	    page_table_ent::P | page_table_ent::RW);
 
-	pde = reinterpret_cast<page_table_ent*>(pde_adr);
+	page_table_ent* pde = reinterpret_cast<page_table_ent*>(pde_adr);
 	char* p1 = (char*)memmgr_alloc(mm, 0x200000, 0x200000);
 	// 0x....ffffc00.....
 	pde[0].set(reinterpret_cast<u64>(p1),
@@ -160,9 +109,9 @@ void fixed_allocs(memmgr* mm)
 
 // Kernel text body address mapping end
 
-
 	// pdpte_base[0x1ffff] -> 0x....ffffc.......
-	pdpte_base[0x1ffff].set(pde_adr, page_table_ent::P | page_table_ent::RW);
+	pdpte_base[0x1ffff].set(pde_adr,
+	    page_table_ent::P | page_table_ent::RW);
 
 	// Kernel stack memory
 
@@ -170,14 +119,6 @@ void fixed_allocs(memmgr* mm)
 	char* p2 = (char*)memmgr_alloc(mm, 0x200000, 0x200000);
 	// 0x....ffffffe.....
 	pde[511].set(reinterpret_cast<u64>(p2),
-	    page_table_ent::P |
-	    page_table_ent::RW |
-	    page_table_ent::PS |
-	    page_table_ent::G);
-
-	// test map
-	// 0x....ffffc02.....
-	pde[1].set(0,
 	    page_table_ent::P |
 	    page_table_ent::RW |
 	    page_table_ent::PS |
@@ -201,9 +142,8 @@ extern "C" int prekernel()
 	vt.init(
 		setup_get_value<u32>(SETUP_DISP_WIDTH),
 		setup_get_value<u32>(SETUP_DISP_HEIGHT),
-		setup_get_value<u32>(SETUP_DISP_VRAM));
-		//setup_get_value<u32>(SETUP_DISP_VRAM) +
-		//0xffff800000000000L);
+		setup_get_value<u32>(SETUP_DISP_VRAM) +
+		0xffff800000000000L);
 	vt.set_cur(
 		setup_get_value<u32>(SETUP_DISP_CURROW),
 		setup_get_value<u32>(SETUP_DISP_CURCOL));
@@ -222,8 +162,8 @@ extern "C" int prekernel()
 	tc.puts("Memorymap by ACPI : \n");
 
 	const acpi_memmap* memmap_buf =
-		setup_get_ptr<const acpi_memmap>(SETUP_MEMMAP);
-	const int memmaps = setup_get_value<u32>(SETUP_MEMMAP_COUNT);
+		setup_get_ptr<const acpi_memmap>(SETUP_ACPI_MEMMAP);
+	const int memmaps = setup_get_value<u32>(SETUP_ACPI_MEMMAP_COUNT);
 	if (memmaps < 0) {
 		return -1;
 	}
@@ -261,7 +201,9 @@ extern "C" int prekernel()
 	setup_set_value<u32>(SETUP_DISP_CURROW, currow);
 	setup_set_value<u32>(SETUP_DISP_CURCOL, curcol);
 
-	memmgr_dump(&mm, setup_get_ptr<memmgr_dumpdata>(SETUP_MEMMAP_DUMP), 32);
+	int dumps = memmgr_dump(&mm,
+	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_MEMMAP_DUMP), 32);
+	setup_set_value<u32>(SETUP_MEMMAP_DUMP_COUNT, dumps);
 
 	return 0;
 }

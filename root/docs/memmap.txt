@@ -7,11 +7,8 @@
 
  - Virtual memory -
 0000|000000000000 - 0000|7fffffffffff User program.
-ffff|800000000000 - ffff|80ffffffffff Phisical memory map (1TiB).
-ffff|810000000000 - ffff|fffdffffffff Undefined.
-ffff|fffe00000000 - ffff|fffeffffffff Special address map (iomap, etc.) (4GiB).
-     fffe00000000 -      fffe013fffff Phisical 0 - 20MiB (20MiB).
-     fffe01400000 -      fffe015fffff Phisical 0xfee00000 - 0xfeffffff (2MiB).
-                                      0xfee00000 - 0xfee003f0 : APIC register
-ffff|ffff00000000 - ffff|ffffffdfffff Kernel body and modules (4GiB - 2MiB).
+ffff|800000000000 - ffff|bfffffffffff Phisical memory map (64TiB).
+ffff|c00000000000 - ffff|efffffffffff Undefined.
+ffff|f00000000000 - ffff|fffdffffffff Kernel heap (16TiB- 16GiB).
+ffff|fffe00000000 - ffff|ffffffdfffff Kernel body and modules (8GiB - 2MiB).
 ffff|ffffffe00000 - ffff|ffffffffffff Kernel stack (2MiB).

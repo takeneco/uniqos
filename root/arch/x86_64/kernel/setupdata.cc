@@ -22,3 +22,8 @@ void setup_get_display_cursor(u32* row, u32* col)
 	*col = setup_get_value<u32>(SETUP_DISP_CURCOL);
 }
 
+void setup_get_free_memmap(setup_memmgr_dumpdata** freemap, u32* num)
+{
+	*freemap = setup_get_value<setup_memmgr_dumpdata*>(SETUP_MEMMAP_DUMP);
+	*num = setup_get_value<u32>(SETUP_MEMMAP_DUMP_COUNT);
+}

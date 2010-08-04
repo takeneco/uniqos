@@ -2,9 +2,10 @@
 // @author  Kato Takeshi
 // @brief   Easy memory management implement used by setup.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 Kato Takeshi
 
 #include "mem.hh"
+#include "memdump.hh"
 #include "access.hh"
 
 
@@ -123,8 +124,10 @@ void memmap_add_entry(memmgr* mm, const acpi_memmap* raw)
  */
 void memmap_import(memmgr* mm)
 {
-	const acpi_memmap* rawmap = setup_get_ptr<acpi_memmap>(SETUP_MEMMAP);
-	const u32 memmap_count = setup_get_value<u32>(SETUP_MEMMAP_COUNT);
+	const acpi_memmap* rawmap =
+	    setup_get_ptr<acpi_memmap>(SETUP_ACPI_MEMMAP);
+	const u32 memmap_count =
+	    setup_get_value<u32>(SETUP_ACPI_MEMMAP_COUNT);
 
 	for (u32 i = 0; i < memmap_count; i++) {
 		if (rawmap[i].type == acpi_memmap::MEMORY) {
@@ -300,7 +303,7 @@ void memmgr_free(memmgr* mm, void* p)
 // @param[out] dumpto  Ptr to destination.
 // @param[in] n        dumpto entries.
 // @return  Dumped number.
-int memmgr_dump(const memmgr* mm, memmgr_dumpdata* dumpto, int n)
+int memmgr_dump(const memmgr* mm, setup_memmgr_dumpdata* dumpto, int n)
 {
 	const memmap_entry* ent = mm->free_list;
 	int i;

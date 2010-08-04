@@ -29,29 +29,17 @@ struct memmgr
 	memmap_entry* nofree_list;
 };
 
-struct memmgr_dumpdata
-{
-	u64 head;
-	u64 bytes;
-};
-
 void  memmgr_init(memmgr* mm);
 void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align = 8);
 void  memmgr_free(memmgr* mm, void* p);
-int   memmgr_dump(const memmgr* mm, memmgr_dumpdata* dumpto, int n);
+
+struct setup_memmgr_dumpdata;
+int   memmgr_dump(const memmgr* mm, setup_memmgr_dumpdata* dumpto, int n);
+
 void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);
 void  operator delete(void* p, memmgr*);
 void  operator delete[](void* p, memmgr*);
-
-/*
-inline void set_video_term(video_term* p) {
-	*reinterpret_cast<video_term**>(PH4_VIDEOTERM) = p;
-}
-inline video_term* get_video_term() {
-	return *reinterpret_cast<video_term**>(PH4_VIDEOTERM);
-}
-*/
 
 void* memory_move(void* dest, const void* src, std::size_t size);
 
@@ -68,7 +56,6 @@ struct acpi_memmap {
 	_u32 type;
 	_u32 attr;
 };
-
 
 
 #endif  // Include guard.

@@ -12,9 +12,9 @@
  * @brief  Constantly phisical address map.
  *
  * - 00001000 - 00006fff  Kernel head code.
- * - 00010000 - 0001ffff  Setup stack.
- * - 00020000 - 0002ffff  Setup memmgr buffer.
- * - 00030000 - 00032fff  Setup address tr table PML4.
+ * - 00010000 - 00017fff  Setup stack.
+ * - 00018000 - 0001ffff  Setup memmgr buffer.
+ * - 00020000 - 0007ffff  Setup address tr table.
  * - 00080000 - 0008ffff  Setup collect params store by BIOS.
  * - 00100000 - 00ffffff  Compressed kernel body (15MiB).
  * - 01000000 - 010fffff  Kernel constant use PDPTEs (1MiB).
@@ -22,15 +22,15 @@
  * - 01200000 -           Extracted kernel body.
  */
 
-// Stack address : 0x10000-0x1ffff
-#define SETUP_STACK_ADR             0x20000
+// Stack address : 0x10000-0x17fff
+#define SETUP_STACK_ADR             0x18000
 
 // Memory management buffer
-#define SETUP_MEMMGR_ADR            0x20000
-#define SETUP_MEMMGR_SIZE           0x10000
+#define SETUP_MEMMGR_ADR            0x18000
+#define SETUP_MEMMGR_SIZE           0x08000
 
 /// Address tr table for setup.
-#define SETUP_PML4_PADR             0x30000
+#define SETUP_PML4_PADR             0x20000
 /// セットアップ中に作るメモリマップテーブルの格納アドレス
 #define SETUP_PDE_HEAD_PADR         (SETUP_PML4_PADR + 0x1000)
 #define SETUP_PDE_TAIL_PADR         0x7ffff
@@ -42,12 +42,13 @@
 #define SETUP_DISP_HEIGHT            0x0008
 #define SETUP_DISP_VRAM              0x000c
 #define SETUP_KEYB_LEDS              0x0010
-#define SETUP_MEMMAP_COUNT           0x0014
+#define SETUP_ACPI_MEMMAP_COUNT      0x0014
 #define SETUP_DISP_CURROW            0x0018
 #define SETUP_DISP_CURCOL            0x001c
 #define SETUP_KERNFILE_SIZE          0x0020
+#define SETUP_MEMMAP_DUMP_COUNT      0x0024
 // ACPIから取得したメモリマップ
-#define SETUP_MEMMAP                 0x0100
+#define SETUP_ACPI_MEMMAP            0x0100
 // Setupフェーズ終了後のメモリマップ
 #define SETUP_MEMMAP_DUMP            0x0400
 
