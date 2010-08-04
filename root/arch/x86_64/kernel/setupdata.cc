@@ -9,16 +9,16 @@
 #include "setup/access.hh"
 
 
-void SetupGetCurrentDisplayMode(u32* Width, u32* Height, u32* VRam)
+void setup_get_display_mode(u32* width, u32* height, u32* vram)
 {
-	*Width  = setup_get_value<u32>(SETUP_DISP_WIDTH);
-	*Height = setup_get_value<u32>(SETUP_DISP_HEIGHT);
-	*VRam   = setup_get_value<u32>(SETUP_DISP_VRAM);
+	*width  = setup_get_value<u32>(SETUP_DISP_WIDTH);
+	*height = setup_get_value<u32>(SETUP_DISP_HEIGHT);
+	*vram   = setup_get_value<u32>(SETUP_DISP_VRAM);
 }
 
-void SetupGetCurrentDisplayCursor(u32* Row, u32* Col)
+void setup_get_display_cursor(u32* row, u32* col)
 {
-	*Row = setup_get_value<u32>(SETUP_DISP_CURROW);
-	*Col = setup_get_value<u32>(SETUP_DISP_CURCOL);
+	*row = setup_get_value<u32>(SETUP_DISP_CURROW);
+	*col = setup_get_value<u32>(SETUP_DISP_CURCOL);
 }
 

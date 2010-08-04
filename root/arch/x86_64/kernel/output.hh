@@ -39,13 +39,18 @@ public:
 };
 
 
+extern "C" void on_serial_intr_com1();
+extern "C" void on_serial_intr_com2();
+
 // @brief  Output only serial port term.
 
 class serial_output : public kern_output
 {
+	friend void on_serial_intr_com1();
+	friend void on_serial_intr_com2();
+
 	u16 base_port;
-	u16 pic_irq;
-	u16 out_buf_size;
+//	u16 pic_irq;
 	u16 out_buf_left;
 public:
 	enum {
@@ -54,6 +59,8 @@ public:
 
 		COM1_PICIRQ = 4,
 		COM2_PICIRQ = 3,
+
+		OUT_BUF_SIZE = 2,
 	};
 
 	void* operator new(std::size_t size, serial_output* obj) {

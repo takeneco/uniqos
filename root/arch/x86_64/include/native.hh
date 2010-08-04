@@ -119,14 +119,15 @@ struct gidt_ptr64 {
 	u16 ptr[4];
 
 	void init(
-		u16 len,    ///< sizeof gdt/idt table
-		u64 table)  ///< Phisical address to gdt/idt table
+		u16   len,    ///< sizeof gdt/idt table
+		void* table)  ///< Phisical address to gdt/idt table
 	{
 		length = len - 1;
-		ptr[0] = static_cast<u16>(table);
-		ptr[1] = static_cast<u16>(table >> 16);
-		ptr[2] = static_cast<u16>(table >> 32);
-		ptr[3] = static_cast<u16>(table >> 48);
+		const u64 p = reinterpret_cast<u64>(table);
+		ptr[0] = static_cast<u16>(p);
+		ptr[1] = static_cast<u16>(p >> 16);
+		ptr[2] = static_cast<u16>(p >> 32);
+		ptr[3] = static_cast<u16>(p >> 48);
 	}
 };
 typedef gidt_ptr64 gdt_ptr64;

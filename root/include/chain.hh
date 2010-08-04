@@ -163,24 +163,28 @@ public:
 	}
 };
 
+/// Directional single ended chain
 template<class DataType, chain_link<DataType> DataType::* LinkVal>
 class chain : public _chain_impl
     <DataType, chain_link<DataType>, _chain_end<DataType>, LinkVal>
 {
 };
 
+/// Bidirectional and single ended chain
 template<class DataType, bichain_link<DataType> DataType::* LinkVal>
 class bichain : public _chain_impl
     <DataType, bichain_link<DataType>, _chain_end<DataType>, LinkVal>
 {
 };
 
+/// Directional and double ended chain
 template<class DataType, chain_link<DataType> DataType::* LinkVal>
 class dechain : public _chain_impl
     <DataType, chain_link<DataType>, _dechain_end<DataType>, LinkVal>
 {
 };
 
+/// Bidirectional and double ended chain
 template<class DataType, bichain_link<DataType> DataType::* LinkVal>
 class bidechain : public _chain_impl
     <DataType, bichain_link<DataType>, _dechain_end<DataType>, LinkVal>

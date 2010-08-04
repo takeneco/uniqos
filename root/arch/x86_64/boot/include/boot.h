@@ -1,10 +1,8 @@
-/**
- * @file    arch/x86_64/boot/include/boot.h
- * @version 0.0.0.1
- * @author  Kato.T
- * @brief   各ブートフェーズで使用するメモリアドレスの定義。
- */
-// (C) Kato.T 2010
+// @file    arch/x86_64/boot/include/boot.h
+// @author  Kato Takeshi
+// @brief   各ブートフェーズで使用するメモリアドレスの定義。
+//
+// (C) 2010 Kato Takeshi
 
 #ifndef _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
 #define _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_

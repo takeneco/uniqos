@@ -7,44 +7,7 @@
 #ifndef BTYPES_HH_
 #define BTYPES_HH_
 
-
-#if defined ARCH_W32
-
-typedef   signed char      _s8;
-typedef unsigned char      _u8;
-typedef   signed short     _s16;
-typedef unsigned short     _u16;
-typedef   signed long      _s32;
-typedef unsigned long      _u32;
-typedef   signed long long _s64;
-typedef unsigned long long _u64;
-typedef   signed long long _smax;
-typedef unsigned long long _umax;
-
-typedef _u32 _ucpu;
-typedef _s32 _scpu;
-
-#  define _u64cast(n)  n ## ULL
-
-#elif defined ARCH_W64
-
-typedef   signed char      _s8;
-typedef unsigned char      _u8;
-typedef   signed short     _s16;
-typedef unsigned short     _u16;
-typedef   signed int       _s32;
-typedef unsigned int       _u32;
-typedef   signed long      _s64;
-typedef unsigned long      _u64;
-typedef   signed long      _smax;
-typedef unsigned long      _umax;
-
-typedef _u64 _ucpu;
-typedef _s64 _scpu;
-
-#  define _u64cast(n)  n ## UL
-
-#endif  // ARCH_W*
+#include "baseint.hh"
 
 typedef _s8   s8;
 typedef _u8   u8;

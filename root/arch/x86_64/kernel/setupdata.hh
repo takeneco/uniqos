@@ -9,8 +9,8 @@
 #include "btypes.hh"
 
 
-void SetupGetCurrentDisplayMode(u32* Width, u32* Height, u32* VRam);
-void SetupGetCurrentDisplayCursor(u32* Row, u32* Col);
+void setup_get_display_mode(u32* width, u32* height, u32* vram);
+void setup_get_display_cursor(u32* row, u32* col);
 
 
 #endif  // Include guard.

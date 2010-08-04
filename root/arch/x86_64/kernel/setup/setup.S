@@ -15,6 +15,8 @@
 
 #include "setup.h"
 
+PAGE_SIZE = 4096
+
 .section .entry
 
 .globl _start
@@ -33,7 +35,7 @@ _start:
 	pushl %ecx
 
 	movw  $setup_msg, %si
-	call  display
+	call  display16
 
 	// Protect I/O interrupt
 	movb  $0xff, %al
@@ -45,21 +47,21 @@ _start:
 	// A20 はブートローダが開くので本当はここは不要。
 	call  a20_test_bios
 	movw  %ax, %si
-	call  display
+	call  display16
 
 	call  a20_test_mem
 	movw  %ax, %si
-	call  display
+	call  display16
 
 	call  a20_open_bios  // A20 open
 
 	call  a20_test_bios
 	movw  %ax, %si
-	call  display
+	call  display16
 
 	call  a20_test_mem
 	movw  %ax, %si
-	call  display
+	call  display16
 	// ここまで A20
 
 	// 画面モード設定
@@ -151,7 +153,7 @@ a20isclose:
 /// 文字列を表示する
 // %si : 表示するヌル終端文字列のポインタ
 // %si, %ax, %bx は破壊される
-display:
+display16:
 	// lodsb : %al = *(%ds:%si++) 
         lodsb
 	testb %al, %al
@@ -159,7 +161,7 @@ display:
 	movb  $0x0e, %ah
 	movb  $15, %bh  // 白
 	int   $0x10
-	jmp   display
+	jmp   display16
 1:	ret
 
 // ACPI経由で %es:%di にメモリマップを書き込む
@@ -217,18 +219,18 @@ start32:
 
 	// Create Page Map
 
-	movl  $SETUP_PML4_ADR, %ebx
+	movl  $SETUP_PML4_PADR, %ebx
 	movl  %ebx, %edi
 	xorl  %eax, %eax
-	movl  $(512*8*3/4), %ecx
+	// PML4のブロックをゼロクリアする。
+	movl  $(PAGE_SIZE * 1 / 4), %ecx
+	//movl  $(PAGE_SIZE * 3 / 4), %ecx
 	rep stosl
 
-	// PML4
-	leal  0x1007(%ebx), %eax
-	movl  %eax, (%ebx)
-
+	// アドレス空間の後半半分をカーネル用に割り当てるため、
+	// PML4 の後半を KERN_PDPTE_PADR にマップする。
 	leal  8*256(%ebx), %edi
-	movl  $KERN_PDPTE_PADR + 0x0003, %eax
+	movl  $KERN_PDPTE_PADR + 0x007, %eax
 	movl  $256, %ecx
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
@@ -236,28 +238,42 @@ start32:
 	addl  $0x1000, %eax
 	loop  1b
 
-	// PDP
-	leal  0x1000(%ebx), %edi
-	leal  0x2007(%ebx), %eax
-	movl  %eax, (%edi)
-
+	// カーネルメモリ空間の中に物理メモリマップを作る。
+	// 0xffff800000000000 -> 0x0000000000000000
+	// PDPTE
+	movl  $KERN_PDPTE_PADR, %edi
+	movl  $SETUP_PDE_HEAD_PADR + 0x007, (%edi)
+	addl  $4, %edi
+	movl  $(PAGE_SIZE * 256 / 4) - 4, %ecx  // Zero clear left PDPTE
+	xorl  %eax, %eax
+	rep   stosl
 	// PDE
-	leal  0x2000(%ebx), %edi
+	movl  $SETUP_PDE_HEAD_PADR, %edi
 	movl  $0 + 0x183, %eax
-	// 32MiB
-	movl  $16, %ecx
-	//// 1GiB
-	//movl  $512, %ecx
+1:	movl  %eax, (%edi)
+	movl  $0, 4(%edi)
+	addl  $0x00200000, %eax
+	addl  $8, %edi
+	cmpl  $SETUP_PDE_TAIL_PADR - (PAGE_SIZE * 2), %edi
+	jb    1b
+
+	// 実行中のアドレスのメモリマップテーブルを作る。
+	// PML4
+	leal  0x007(%edi), %eax
+	movl  %eax, (%ebx)
+	// PDPTE
+	leal  PAGE_SIZE + 0x007(%edi), %eax
+	movl  %eax, (%edi)
+	movl  $0, 4(%edi)
+	// PDE
+	addl  $PAGE_SIZE, %edi
+	movl  $0 + 0x183, %eax
+	movl  $16, %ecx  // 32MiB
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi
-	addl  $0x00200000, %eax
+	addl  $0x200000, %eax
 	loop  1b
-
-	///// 32~34MiB == 0~2MiB
-	//movl  $0x183, (%edi)
-	//movl  $0, 4(%edi)
-	/////
 
 	// Set page table
 	movl  %ebx, %cr3

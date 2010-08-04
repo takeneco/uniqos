@@ -1,10 +1,8 @@
-/**
- * @file    arch/x86_64/boot/bootsect/bootsect.S
- * @version 0.0.0.2
- * @author  Kato.T
- * @brief   Boot sector.
- */
-// (C) 2010 Kato.T
+// @file    arch/x86_64/boot/bootsect/bootsect.S
+// @author  Kato Takeshi
+// @brief   Boot sector.
+//
+// (C) 2010 Kato Takeshi
 
 .code16
 

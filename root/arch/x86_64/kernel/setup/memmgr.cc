@@ -14,11 +14,11 @@ const std::size_t MEMORY_MAX = 0x3fffffff; /* 1GB */
 
 // Work area.
 memmap_entry* const memmap_buf
-	= reinterpret_cast<memmap_entry*>(MEMMGR_MEMMAP_ADR);
+	= reinterpret_cast<memmap_entry*>(SETUP_MEMMGR_ADR);
 
 // Size of work area.
 const int memmap_buf_count
-	= MEMMGR_MEMMAP_SIZE / sizeof (memmap_entry);
+	= SETUP_MEMMGR_SIZE / sizeof (memmap_entry);
 
 
 /**
@@ -186,9 +186,9 @@ void memmgr_init(memmgr* mm)
 
 	memmap_import(mm);
 
-	// 先頭の16MiBを予約領域とする。
+	// 先頭の固定利用アドレスを予約領域とする。
 	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
-	memmap_reserve(mm, 0x00000000, MEMMGR_RESERVED_PADR);
+	memmap_reserve(mm, 0x00000000, SETUP_MEMMGR_RESERVED_PADR);
 }
 
 /**

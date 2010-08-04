@@ -23,7 +23,7 @@ void kern_output::putux(u64 n, int bits)
 	}
 }
 
-kern_output* kern_output::PutC(char c)
+kern_output* kern_output::put_c(char c)
 {
 	if (!this)
 		return this;
@@ -40,7 +40,7 @@ kern_output* kern_output::PutC(char c)
 	return this;
 }
 
-kern_output* kern_output::PutStr(const char* s)
+kern_output* kern_output::put_str(const char* s)
 {
 	if (!this)
 		return this;
@@ -70,7 +70,7 @@ kern_output* kern_output::PutStr(const char* s)
 	return this;
 }
 
-kern_output* kern_output::PutSDec(s64 n)
+kern_output* kern_output::put_sdec(s64 n)
 {
 	if (!this)
 		return this;
@@ -83,7 +83,7 @@ kern_output* kern_output::PutSDec(s64 n)
 	return PutUDec(static_cast<u64>(n));
 }
 
-kern_output* kern_output::PutUDec(u64 n)
+kern_output* kern_output::put_udec(u64 n)
 {
 	if (!this)
 		return this;
@@ -106,7 +106,7 @@ kern_output* kern_output::PutUDec(u64 n)
 	return this;
 }
 
-kern_output* kern_output::PutU8Hex(u8 n)
+kern_output* kern_output::put_u8hex(u8 n)
 {
 	if (this)
 		putux(n, 8);
@@ -114,7 +114,7 @@ kern_output* kern_output::PutU8Hex(u8 n)
 	return this;
 }
 
-kern_output* kern_output::PutU16Hex(u16 n)
+kern_output* kern_output::put_u16hex(u16 n)
 {
 	if (this)
 		putux(n, 16);
@@ -122,7 +122,7 @@ kern_output* kern_output::PutU16Hex(u16 n)
 	return this;
 }
 
-kern_output* kern_output::PutU32Hex(u32 n)
+kern_output* kern_output::put_u32hex(u32 n)
 {
 	if (this)
 		putux(n, 32);
@@ -130,7 +130,7 @@ kern_output* kern_output::PutU32Hex(u32 n)
 	return this;
 }
 
-kern_output* kern_output::PutU64Hex(u64 n)
+kern_output* kern_output::put_u64hex(u64 n)
 {
 	if (this)
 		putux(n, 64);

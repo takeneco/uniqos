@@ -34,7 +34,7 @@ void video_term::roll(int n)
 // @param w         Console width chars.
 // @param h         Console height chars.
 // @param vram_addr VRAM head address.
-void video_term::init(int w, int h, _u64 vram_addr)
+void video_term::init(int w, int h, u64 vram_addr)
 {
 	width = w;
 	height = h;

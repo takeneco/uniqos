@@ -29,19 +29,19 @@ extern "C" int kern_init()
 {
 	kout = 0;
 
-	//cpu_init();
+	cpu_init();
 
 	VideoOutput vo;
 	kout = &vo;
 
 	u32 width, height, vram, row, col;
-	SetupGetCurrentDisplayMode(&width, &height, &vram);
-	SetupGetCurrentDisplayCursor(&row, &col);
+	setup_get_display_mode(&width, &height, &vram);
+	setup_get_display_cursor(&row, &col);
 	//vo.Init(width, height, vram);
 	vo.Init(width, height,
-	    0xffffffffc0200000 + 0xb8000);
+//	    0xffffffffc0200000 + 0xb8000);
+	    0xffff800000000000L + 0xb8000);
 	vo.SetCur(row, col);
-cpu_init();
 
 	vo.PutStr("width=")->PutUDec(width)->
 	   PutStr(":height=")->PutUDec(height)->
@@ -59,23 +59,8 @@ cpu_init();
 
 	serial_output_init();
 
-/*
-	int a, b, c;
-	a = 0;
-	b = 1;
-	c = b / a;
-*/
-
 	serial_output* com1 = serial_get_out(0);
-	vo.PutStr("com1 = ")->PutU64Hex((u64)com1)->PutC('\n');
-//	vo.PutStr("c = ")->PutU32Hex(c)->PutC('\n');
-//	com1->PutStr("x");
-/*
-	io_vector iov;
-	char c = 'x';
-	iov.bytes = 1;
-	iov.address = &c;
-	com1->write(&iov, 1, 0);
-*/
+	com1->PutStr("x");
+
 	return 0;
 }

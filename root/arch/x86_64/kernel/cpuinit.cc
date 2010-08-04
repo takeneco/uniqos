@@ -7,6 +7,7 @@
 #include "kerninit.hh"
 
 #include "btypes.hh"
+#include "desctable.hh"
 #include "native.hh"
 
 
@@ -18,7 +19,8 @@ class gdte {
 
 public:
 	enum {
-		XR  = U64CAST(0xa) << 40, ///< Exec and read.
+		XR  = U64CAST(0xa) << 40, ///< Exec and Read.
+		RW  = U64CAST(0x2) << 40, ///< Read and Write
 		S   = U64CAST(1) << 44,  ///< System seg if set, Data seg if clear.
 		                         ///< Always set in long mode.
 		P   = U64CAST(1) << 47,  ///< Descriptor exist if set.
@@ -43,7 +45,7 @@ public:
 	type get_raw() const { return e; }
 };
 
-gdte gdt[3];
+gdte gdt[5];
 
 cause::stype pic_init()
 {
@@ -99,14 +101,20 @@ cause::stype pic_init()
 int cpu_init()
 {
 	gdt[0].set_null();
-	gdt[1].set(0, 0xfffff, 0,
-		gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
-	gdt[2].set(0, 0xfffff, 3,
-		gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
+	gdt[GDT_KERN_CODESEG].set(0, 0xfffff, 0,
+	    gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
+	gdt[GDT_KERN_DATASEG].set(0, 0xfffff, 0,
+	    gdte::RW | gdte::S | gdte::P | gdte::L | gdte::G);
+	gdt[GDT_USER_CODESEG].set(0, 0xfffff, 3,
+	    gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
+	gdt[GDT_USER_DATASEG].set(0, 0xfffff, 3,
+	    gdte::RW | gdte::S | gdte::P | gdte::L | gdte::G);
 
 	gdt_ptr64 gdtptr;
-	gdtptr.init(sizeof gdt, (u64)gdt);
+	gdtptr.init(sizeof gdt, gdt);
 	native_lgdt(&gdtptr);
+
+	native_set_ss(8 * GDT_KERN_DATASEG);
 
 	intr_init();
 

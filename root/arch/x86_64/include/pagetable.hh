@@ -18,16 +18,21 @@ class page_table_ent
 
 public:
 	enum flags {
-		P    = 1 << 0,  ///< Page exist if set.
-		RW   = 1 << 1,  ///< Writable if set.
-		US   = 1 << 2,  ///< User table if set.
-		PWT  = 1 << 3,  ///< Write through if set.
-		PCD  = 1 << 4,  ///< Cash Disable if set.
-		A    = 1 << 5,  ///< Access if set.
-		D    = 1 << 6,  ///< Dirty if set.
-		PS   = 1 << 7,  ///< Page size 2MiB if set, else 4KiB.
-		//PAT  = 1 << 7,  ///< Page attrbute table enable if set.
-		G    = 1 << 8,  ///< Global page if set.
+		P    = 1L << 0,  ///< Page exist if set.
+		RW   = 1L << 1,  ///< Writable if set.
+		US   = 1L << 2,  ///< User table if set.
+		PWT  = 1L << 3,  ///< Write through if set.
+		PCD  = 1L << 4,  ///< Cash Disable if set.
+		A    = 1L << 5,  ///< Accessed. Set by CPU.
+		D    = 1L << 6,  ///< Dirtied. Set by CPU.
+		PS   = 1L << 7,  ///< Page size 1GiB or 2MiB if set, else 4KiB.
+		//PAT  = 1L << 7,  ///< Page attribute table enable if set (PTE).
+		G    = 1L << 8,  ///< Global page if set.
+		//PAT  = 1L << 12, ///< Page attribute table enable if set (PDPTE,PDE).
+
+		/// Execute disable if set.
+		/// このフラグが使えるのは IA32_EFER.NXE = 1 のときだけ。
+		XD   = 1L << 63,
 	};
 
 	void set(type a, type f) {

@@ -10,7 +10,8 @@ MAKE_DEFAULTS ?= make.defaults
 
 CFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions -m32
 CXXFLAGS = -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions -fno-rtti -m32
-CPPFLAGS = -DARCH_W32 -DARCH_LE -I../include -I$(ROOT)/include
+#CPPFLAGS = -DARCH_W32 -DARCH_LE -I../include -I$(ROOT)/include
+CPPFLAGS += -DARCH_IA32 -I../include
 
 OBJS = tr.o bootldr.o loadfat.o loadkern.o
 
