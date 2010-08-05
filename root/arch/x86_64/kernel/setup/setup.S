@@ -104,10 +104,10 @@ _start:
 	popl  %eax
 	movl  %eax, %es:SETUP_KERNFILE_SIZE
 
-	movw  $SETUP_MEMMAP, %di
+	movw  $SETUP_ACPI_MEMMAP, %di
 	call  acpi_get_memmap
 	// %eax != 0xffffffff でエラーチェックが必要
-	movl  %eax, %es:SETUP_MEMMAP_COUNT
+	movl  %eax, %es:SETUP_ACPI_MEMMAP_COUNT
 
 	lgdtl setup_gdtr
 	lidtl setup_idtr
