@@ -6,6 +6,8 @@
 
 #include "btypes.hh"
 #include "chain.hh"
+#include "pnew.hh"
+#include "setupdata.hh"
 #include "setup/memdump.hh"
 
 namespace 
@@ -13,35 +15,46 @@ namespace
 
 /// メモリブロックの空き状態を管理する。
 /// 4KiBメモリブロック単位で管理し、
-/// 1bitで空き状態を記憶する。
-class physical_4kmemblk_cluster
+/// 1bitでメモリブロックの空き状態を記憶する。
+class physical_4kmemblk_bitmap
 {
-	static u64 cluster_base_addr;
+	static u64 table_base_addr;
 
 	/// 64 * 2 blocks
 	u64 free_mem_bitmap[2];
 public:
-	bichain_link<physical_4kmemblk_cluster> chain_item;
+	bichain_link<physical_4kmemblk_bitmap> _chain_link;
 
 public:
-	static void set_base_addr(u64 base) {
-		cluster_base_addr = base;
+	static void set_table_base_addr(u64 base) {
+		table_base_addr = base;
 	}
+
+	physical_4kmemblk_bitmap();
+
 	u64 get_base_addr();
 };
-u64 physical_4kmemblk_cluster::cluster_base_addr;
+u64 physical_4kmemblk_bitmap::table_base_addr;
+
+inline physical_4kmemblk_bitmap::physical_4kmemblk_bitmap()
+	: _chain_link()
+{
+	free_mem_bitmap[0] = free_mem_bitmap[1] = 0;
+}
+
+inline u64 physical_4kmemblk_bitmap::get_base_addr()
+{
+	return reinterpret_cast<u64>(this) - table_base_addr;
+}
+
 
 typedef
-    bichain<physical_4kmemblk_cluster, &physical_4kmemblk_cluster::chain_item>
-    pmem_cluster_chain;
+    bichain<physical_4kmemblk_bitmap, &physical_4kmemblk_bitmap::_chain_link>
+    pmem_bitmap_chain;
 
-pmem_cluster_chain free_chain;
-pmem_cluster_chain used_chain;
+pmem_bitmap_chain free_chain;
+pmem_bitmap_chain fill_chain;
 
-inline u64 physical_4kmemblk_cluster::get_base_addr()
-{
-	return reinterpret_cast<u64>(this) - cluster_base_addr;
-}
 
 /// 物理メモリサイズをバイト数で返す。
 /// セットアップ後の空きメモリのうち、
@@ -81,6 +94,22 @@ setup_memmgr_dumpdata* search_seriesof_free_physical_memory(u64 size)
 	return 0;
 }
 
+void phymemmgr_init_table(u64 table_base_addr, u64 talbe_size)
+{
+	new(&free_chain) pmem_bitmap_chain;
+	new(&fill_chain) pmem_bitmap_chain;
+
+	physical_4kmemblk_bitmap::set_table_base_addr(table_base_addr);
+
+	physical_4kmemblk_bitmap* bitmap =
+	    reinterpret_cast<physical_4kmemblk_bitmap*>(table_base_addr);
+
+	for (u64 i = 0; i < table_size; i++) {
+		new(&bitmap[i]) physical_4kmemblk_bitmap;
+		free_chain.insert_tail(&bitmap[i]);
+	}
+}
+
 } // namespace
 
 /// @retval cause::NO_MEMORY  No enough physical memory.
@@ -89,52 +118,27 @@ cause::stype phymemmgr_init()
 {
 	const u64 phymem_size = get_physical_memory_size();
 
+	// 物理メモリのページ数
+	const u64 phymem_pages = phymem_size / 0x1000;
+	// すべての物理メモリページを管理するために必要な bitmap 数
+	const u64 bitmap_num = (phymem_pages + 127) / 128;
+	// Required memory size for physical memory management.
+	const u64 phymemmgr_buf_size =
+	    bitmap_num * sizeof (physical_4kmemblk_bitmap);
+
 	setup_memmgr_dumpdata* phymem_data =
-	    search_seriesof_free_physical_memory(phymem_size);
+	    search_seriesof_free_physical_memory(phymemmgr_buf_size);
 	if (phymem_data == 0)
 		return cause::NO_MEMORY;
 
-	// 物理メモリのページ数
-	const u64 phymem_pages = phymem_size / 0x1000;
-	// すべての物理メモリページを管理するために必要な cluster 数
-	const u64 cluster_num = (phymem_pages + 127) / 128;
-	// cluster が使用するメモリサイズ
-	const u64 phymemmgr_buf_size =
-	    cluster_num * sizeof (physical_4kmemblk_cluster);
-
-	const u64 cluster_base_addr = phymem_data->head;
+	const u64 table_base_addr = up_align(8, phymem_data->head);
+	phymem_data->bytes -= phymemmgr_buf_size +
+	    (table_base_addr - phymem_data->head);
 	phymem_data->head += phymemmgr_buf_size;
-	phymem_data->bytes -= phymemmgr_buf_size;
 
-	physical_4kmemblk_cluster* cluster =
-	    reinterpret_cast<physical_4kmemblk_cluster>
-	    (cluster_base_addr + 0xffff800000000000);
-
-	physical_4kmemblk_cluster::set_base_addr(cluster_base_addr);
-
-
+	// 物理メモリマップのアドレスを渡す。
+	phymemmgr_init_table(table_base_addr + 0xffff800000000000, bitmap_num);
 
 	return cause::OK;
 }
 
-/// 空きメモリをメモリ管理に取り込む。
-// TODO
-void merge_free_memblock(u64 head, u64 size)
-{
-	u64 tail = head + size;
-
-	head = up_align(0x1000, head);
-	tail = down_align(0x1000, tail);
-
-	while (head < tail) {
-		if ((tail - head) >= 0x40000000 && (head & 0x3fffffff)) {
-			// 1GiB block
-		}
-		else if ((tail - head) >= 0x200000 && (head & 0x1fffff)) {
-			// 2MiB block
-		}
-		else {
-			// 4KiB block
-		}
-	}
-}

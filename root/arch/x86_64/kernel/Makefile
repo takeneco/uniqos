@@ -19,6 +19,7 @@ KERNEL_DIR = ../../../kernel
 KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
 
 OBJS = entry.o exception_handler.o gnuc.o intr.o kerninit.o \
+       physical_memmgr.o \
        serialh.o serialout.o setupdata.o \
        vadr2padr.o videoout.o cpuinit.o
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))

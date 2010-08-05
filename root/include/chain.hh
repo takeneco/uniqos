@@ -42,6 +42,7 @@ class _chain_end
 public:
 	DataType* head;
 	_chain_end() : head(0) {}
+
 	void set_head(DataType* p) { head = p; }
 	void set_tail(DataType* p) {}
 };
@@ -58,29 +59,47 @@ public:
 };
 
 // @brief  Chain implemnts.
-template<class DataType, class LinkType, class EndType, LinkType DataType::* LinkVal>
+template<
+    class DataType,
+    class LinkType,
+    class EndType,
+    LinkType DataType::* LinkVal>
 class _chain_impl
 {
 	EndType end;
 
-	const DataType& prev(const DataType* p) const { return *(p->*LinkVal).prev; }
-	      DataType& prev(DataType* p)             { return *(p->*LinkVal).prev; }
-	const DataType& next(const DataType* p) const { return *(p->*LinkVal).next; }
-	      DataType& next(DataType* p)             { return *(p->*LinkVal).next; }
+	const DataType& prev(const DataType* p) const {
+		return *(p->*LinkVal).prev; }
+	      DataType& prev(DataType* p) {
+		return *(p->*LinkVal).prev; }
+	const DataType& next(const DataType* p) const {
+		return *(p->*LinkVal).next; }
+	      DataType& next(DataType* p) {
+		return *(p->*LinkVal).next; }
 
-	void set_prev(DataType* p, DataType* prev) { (p->*LinkVal)._set_prev(prev); }
-	void set_next(DataType* p, DataType* next) { (p->*LinkVal)._set_next(next); }
+	void set_prev(DataType* p, DataType* prev) {
+		(p->*LinkVal)._set_prev(prev); }
+	void set_next(DataType* p, DataType* next) {
+		(p->*LinkVal)._set_next(next); }
+
 public:
 	_chain_impl() : end() {}
 
 	const DataType* get_head() const { return end.head; }
 	      DataType* get_head()       { return end.head; }
+
 	const DataType* get_tail() const { return end.tail; }
 	      DataType* get_tail()       { return end.tail; }
-	const DataType* get_prev(const DataType* p) const { return (p->*LinkVal).prev; }
-	      DataType* get_prev(DataType* p)             { return (p->*LinkVal).prev; }
-	const DataType* get_next(const DataType* p) const { return (p->*LinkVal).next; }
-	      DataType* get_next(DataType* p)             { return (p->*LinkVal).next; }
+
+	const DataType* get_prev(const DataType* p) const {
+		return (p->*LinkVal).prev; }
+	      DataType* get_prev(DataType* p) {
+		return (p->*LinkVal).prev; }
+
+	const DataType* get_next(const DataType* p) const {
+		return (p->*LinkVal).next; }
+	      DataType* get_next(DataType* p) {
+		return (p->*LinkVal).next; }
 
 	void insert_head(DataType* p) {
 		set_prev(p, 0);

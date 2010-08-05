@@ -2,7 +2,7 @@
 // @author Kato Takeshi
 // @brief  Device interface class definition.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 Kato Takeshi
 
 #ifndef _INCLUDE_FILEIF_HH_
 #define _INCLUDE_FILEIF_HH_

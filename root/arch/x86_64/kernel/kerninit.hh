@@ -17,5 +17,8 @@ void intr_set_handler(int intr, intr_handler hander);
 
 u64 convert_vadr_to_padr(const void* vadr);
 
+cause::stype phymemmgr_init();
+
+
 #endif  // Include guard.
 

@@ -62,5 +62,8 @@ extern "C" int kern_init()
 	serial_output* com1 = serial_get_out(0);
 	com1->PutStr("x");
 
+	cause::stype r = phymemmgr_init();
+	com1->put_str("phymemmgr_init() = ")->put_udec(r)->put_endl();
+
 	return 0;
 }

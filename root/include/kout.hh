@@ -37,6 +37,8 @@ public:
 	kern_output* put_u32hex(u32 n);
 	kern_output* put_u64hex(u64 n);
 
+	kern_output* put_endl() { return put_c('\n'); }
+
 	virtual void Sync() {}
 };
 
