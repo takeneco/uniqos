@@ -18,7 +18,7 @@ namespace
 /// 1bitでメモリブロックの空き状態を記憶する。
 class physical_4kmemblk_bitmap
 {
-	static u64 table_base_addr;
+	static physical_4kmemblk_bitmap* table_base_addr;
 
 	/// 64 * 2 blocks
 	u64 free_mem_bitmap[2];
@@ -27,24 +27,33 @@ public:
 
 public:
 	static void set_table_base_addr(u64 base) {
-		table_base_addr = base;
+		table_base_addr =
+		    reinterpret_cast<physical_4kmemblk_bitmap>(base);
+	}
+	static physical_4kmemblk_bitmap* get_bitmap_by_addr(u64 addr) {
+		return &table_base_addr[addr >> (12 + 7)];
 	}
 
-	physical_4kmemblk_bitmap();
+	physical_4kmemblk_bitmap(setup_memmgr_dumpdata* freemap, u32 num);
 
 	u64 get_base_addr();
 };
-u64 physical_4kmemblk_bitmap::table_base_addr;
+physical_4kmemblk_bitmap* physical_4kmemblk_bitmap::table_base_addr;
 
-inline physical_4kmemblk_bitmap::physical_4kmemblk_bitmap()
+inline physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
+    setup_memmgr_dumpdata* freemap,
+    u32 num)
 	: _chain_link()
 {
+	
+
+
 	free_mem_bitmap[0] = free_mem_bitmap[1] = 0;
 }
 
 inline u64 physical_4kmemblk_bitmap::get_base_addr()
 {
-	return reinterpret_cast<u64>(this) - table_base_addr;
+	return (this - table_base_addr) * (1 << 12) * 128;
 }
 
 
@@ -53,7 +62,7 @@ typedef
     pmem_bitmap_chain;
 
 pmem_bitmap_chain free_chain;
-pmem_bitmap_chain fill_chain;
+//pmem_bitmap_chain fill_chain;
 
 
 /// 物理メモリサイズをバイト数で返す。
@@ -97,15 +106,19 @@ setup_memmgr_dumpdata* search_seriesof_free_physical_memory(u64 size)
 void phymemmgr_init_table(u64 table_base_addr, u64 talbe_size)
 {
 	new(&free_chain) pmem_bitmap_chain;
-	new(&fill_chain) pmem_bitmap_chain;
+	//new(&fill_chain) pmem_bitmap_chain;
 
 	physical_4kmemblk_bitmap::set_table_base_addr(table_base_addr);
 
 	physical_4kmemblk_bitmap* bitmap =
 	    reinterpret_cast<physical_4kmemblk_bitmap*>(table_base_addr);
 
+	setup_memmgr_dumpdata* freemap;
+	u32 freemap_num;
+	setup_get_free_memmap(&freemap, &freemap_num);
+
 	for (u64 i = 0; i < table_size; i++) {
-		new(&bitmap[i]) physical_4kmemblk_bitmap;
+		new(&bitmap[i]) physical_4kmemblk_bitmap(freemap, freemap_num);
 		free_chain.insert_tail(&bitmap[i]);
 	}
 }

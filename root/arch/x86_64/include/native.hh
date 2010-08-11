@@ -67,6 +67,54 @@ inline u64 native_get_cr3() {
 inline void native_set_cr3(u64 cr3) {
 	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
+inline s16 native_bsfw(u16 data) {
+	s16 index;
+	asm volatile ("bsfw %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s32 native_bsfl(u32 data) {
+	s32 index;
+	asm volatile ("bsfl %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s64 native_bsfq(u64 data) {
+	u64 index;
+	asm volatile ("bsfq %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s16 native_bsrw(u16 data) {
+	u16 index;
+	asm volatile ("bsrw %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s32 native_bsrl(u32 data) {
+	u32 index;
+	asm volatile ("bsrl %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s64 native_bsrw(u64 data) {
+	u64 index;
+	asm volatile ("bsrq %1, %0" : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s16 bitscan_forward_16(u16 data) {
+	return data != 0 ? native_bsfw(data) : -1;
+}
+inline s32 bitscan_forward_32(u32 data) {
+	return data != 0 ? native_bsfl(data) : -1;
+}
+inline s64 bitscan_forward_64(u64 data) {
+	return data != 0 ? native_bsfq(data) : -1;
+}
+inline s16 bitscan_reverse_16(u16 data) {
+	return data != 0 ? native_bsrw(data) : -1;
+}
+inline s32 bitscan_reverse_32(u32 data) {
+	return data != 0 ? native_bsrl(data) : -1;
+}
+inline s64 bitscan_reverse_64(u64 data) {
+	return data != 0 ? native_bsrq(data) : -1;
+}
 
 // セグメントレジスタの値を返す。
 // デバッグ用。
