@@ -16,7 +16,7 @@ class chain_link
 	DataType* next;
 
 public:
-	void _set_prev(DataType* p) {}
+	void _set_prev(DataType*) {}
 	void _set_next(DataType* p) { next = p; }
 	const DataType* get_next() const { return next; }
 	      DataType* get_next()       { return next; }
@@ -44,7 +44,7 @@ public:
 	_chain_end() : head(0) {}
 
 	void set_head(DataType* p) { head = p; }
-	void set_tail(DataType* p) {}
+	void set_tail(DataType*) {}
 };
 
 // @brief  Double ended chain.

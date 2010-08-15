@@ -92,7 +92,7 @@ inline s32 native_bsrl(u32 data) {
 	asm volatile ("bsrl %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s64 native_bsrw(u64 data) {
+inline s64 native_bsrq(u64 data) {
 	u64 index;
 	asm volatile ("bsrq %1, %0" : "=r" (index) : "rm" (data));
 	return index;
