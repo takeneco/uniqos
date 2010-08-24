@@ -53,7 +53,7 @@ extern "C" int kern_init()
 	vo.PutStr("&VideoOutput = ")->
 	   PutU64Hex(reinterpret_cast<u64>(&vo))->
 	   PutC('\n');
-	vo.PutStr("%ss = ")->
+	vo.put_str("%ss = ")->
 	   PutU16Hex(native_get_ss())->
 	   PutC('\n');
 
@@ -63,7 +63,7 @@ extern "C" int kern_init()
 	com1->PutStr("x");
 
 	cause::stype r = phymemmgr_init();
-	com1->put_str("phymemmgr_init() = ")->put_udec(r)->put_endl();
+	vo.put_str("phymemmgr_init() = ")->put_udec(r)->put_endl();
 
 	return 0;
 }

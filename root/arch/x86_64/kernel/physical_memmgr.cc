@@ -6,9 +6,11 @@
 
 #include "btypes.hh"
 #include "chain.hh"
+#include "output.hh"
 #include "pnew.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"
+
 
 namespace 
 {
@@ -26,7 +28,7 @@ public:
 	chain_link<physical_4kmemblk_bitmap> _chain_link;
 
 	enum {
-		BITS = 8 * sizeof free_mem_bitmap;
+		BITS = 8 * sizeof free_mem_bitmap,
 	};
 
 private:
@@ -35,7 +37,7 @@ private:
 public:
 	static void set_table_base_addr(u64 base) {
 		table_base_addr =
-		    reinterpret_cast<physical_4kmemblk_bitmap>(base);
+		    reinterpret_cast<physical_4kmemblk_bitmap*>(base);
 	}
 	static physical_4kmemblk_bitmap* get_bitmap_by_addr(u64 addr) {
 		return &table_base_addr[addr / 4096 / BITS];
@@ -54,10 +56,15 @@ physical_4kmemblk_bitmap* physical_4kmemblk_bitmap::table_base_addr;
 /// @param[in] head メモリ範囲の先頭アドレス
 /// @param[in] tail メモリ範囲の終端アドレス+1
 void physical_4kmemblk_bitmap::free_bits(
-    u64 head, u64 tail)
+    u64 freehead, u64 freetail)
 {
 	u64 pagehead = get_base_addr();
 	u64 pagetail = pagehead + 4096;
+
+	for (u32 i = 0; i < BITS; ++i) {
+		if (freehead <= pagehead && pagetail <= freetail)
+			free_mem_bitmap[0] &= ~(1 << i);
+	}
 }
 
 physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
@@ -67,27 +74,27 @@ physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
 {
 	free_mem_bitmap[0] = 0xffffffffffffffff;
 
-	const u64 myhead = get_base_addr();
-	const u64 mytail = myhead + 4096 * BITS;
+	const u64 blkhead = get_base_addr();
+	const u64 blktail = blkhead + 4096 * BITS;
 
-	for (u32 i = 0; i < num; i++) {
+	for (u32 i = 0; i < num; ++i) {
 		const u64 freehead = freemap[i].head;
 		const u64 freetail = freehead + freemap[i].bytes;
-		if (freehead <= myhead && mytail <= freetail) {
+		if (freehead <= blkhead && blktail <= freetail) {
 			free_mem_bitmap[0] = 0;
 			break;
 		}
-		else if ((freehead <= myhead && myhead <  freetail) ||
-		         (freehead <  mytail && mytail <= freetail) ||
-			 (myhead <= freehead && freetail <= mytail)) {
-			free_bits(freemap[i]);
+		else if ((freehead <= blkhead && blkhead <  freetail) ||
+		         (freehead <  blktail && blktail <= freetail) ||
+			 (blkhead <= freehead && freetail <= blktail)) {
+			free_bits(freehead, freetail);
 		}
 	}
 }
 
 
 typedef
-    bichain<physical_4kmemblk_bitmap, &physical_4kmemblk_bitmap::_chain_link>
+    dechain<physical_4kmemblk_bitmap, &physical_4kmemblk_bitmap::_chain_link>
     pmem_bitmap_chain;
 
 pmem_bitmap_chain free_chain;
@@ -132,7 +139,7 @@ setup_memmgr_dumpdata* search_seriesof_free_physical_memory(u64 size)
 	return 0;
 }
 
-void phymemmgr_init_table(u64 table_base_addr, u64 table_size)
+void phymemmgr_init_table(u64 table_base_addr, u64 table_num)
 {
 	new(&free_chain) pmem_bitmap_chain;
 	//new(&fill_chain) pmem_bitmap_chain;
@@ -146,9 +153,9 @@ void phymemmgr_init_table(u64 table_base_addr, u64 table_size)
 	u32 freemap_num;
 	setup_get_free_memmap(&freemap, &freemap_num);
 
-	for (u64 i = 0; i < table_size; i++) {
+	for (u64 i = 0; i < table_num; i++) {
 		new(&bitmap[i]) physical_4kmemblk_bitmap(freemap, freemap_num);
-		free_chain.insert_tail(&bitmap[i]);
+		free_chain.insert_head(&bitmap[i]);
 	}
 }
 
@@ -158,7 +165,9 @@ void phymemmgr_init_table(u64 table_base_addr, u64 table_size)
 /// @retval cause::OK  Succeeds.
 cause::stype phymemmgr_init()
 {
-	using physical_4kmemblk_bitmap::BITS;
+	enum {
+		BITS = physical_4kmemblk_bitmap::BITS,
+	};
 
 	const u64 phymem_size = get_physical_memory_size();
 

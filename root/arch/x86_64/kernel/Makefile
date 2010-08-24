@@ -16,7 +16,7 @@ CXXFLAGS += -fno-exceptions -fno-rtti
 CPPFLAGS +=
 
 KERNEL_DIR = ../../../kernel
-KERNEL_OBJS := $(shell cat $(KERNEL_DIR)/objects.txt)
+KERNEL_OBJS = $(shell cat $(KERNEL_DIR)/objects.txt)
 
 OBJS = entry.o exception_handler.o gnuc.o intr.o kerninit.o \
        physical_memmgr.o \
