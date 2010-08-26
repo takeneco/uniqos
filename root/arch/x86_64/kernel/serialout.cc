@@ -6,8 +6,10 @@
 
 #include "output.hh"
 
-#include "native.hh"
 #include "kerninit.hh"
+#include "native.hh"
+#include "pnew.hh"
+#include "x86_64.hh"
 
 
 extern "C" void serial_intr_com1_handler();
@@ -52,36 +54,37 @@ void serial_output_init()
 void serial_output::init(u16 com_base_port, u16 com_pic_irq)
 {
 	base_port = com_base_port;
-	//pic_irq = com_pic_irq;
+	pic_irq = com_pic_irq;
 
 	native_cli();
 
-	intr_set_handler(0x20 + 4, serial_intr_com1_handler);
-	intr_set_handler(0x20 + 3, serial_intr_com2_handler);
+	intr_set_handler(IRQ_PIC_OFFSET + 4, serial_intr_com1_handler);
+	intr_set_handler(IRQ_PIC_OFFSET + 3, serial_intr_com2_handler);
 
-	// ÄÌ¿®¥¹¥Ô¡¼¥ÉÀßÄê³«»Ï
+	// é€šä¿¡ã‚¹ãƒ”ãƒ¼ãƒ‰è¨­å®šé–‹å§‹
 	native_outb(0x80, base_port + LINE_CTRL);
 
-	// ÄÌ¿®¥¹¥Ô¡¼¥É¤Î»ØÄê 600[bps]
+	// é€šä¿¡ã‚¹ãƒ”ãƒ¼ãƒ‰ã®æŒ‡å®š 600[bps]
 	native_outb(0xc0, base_port + BAUDRATE_LSB);
 	native_outb(0x00, base_port + BAUDRATE_MSB);
 
-	// ÄÌ¿®¥¹¥Ô¡¼¥ÉÀßÄê½ªÎ»(Á÷¼õ¿®³«»Ï)
+	// é€šä¿¡ã‚¹ãƒ”ãƒ¼ãƒ‰è¨­å®šçµ‚äº†(é€å—ä¿¡é–‹å§‹)
 	native_outb(0x03, base_port + LINE_CTRL);
 
-	// À©¸æ¥Ô¥óÀßÄê
+	// åˆ¶å¾¡ãƒ”ãƒ³è¨­å®š
 	native_outb(0x0b, base_port + MODEM_CTRL);
 
-	// 16550¸ß´¹¥â¡¼¥É¤ËÀßÄê
-	// FIFO¤¬14bytes¤Ë¤Ê¤ë¡£
-	native_outb(0xc9, base_port + FIFO_CTRL);
+	// 16550äº’æ›ãƒ¢ãƒ¼ãƒ‰ã«è¨­å®š
+	// FIFOãŒ14bytesã«ãªã‚‹ã€‚
+	// FIFOã‚’ã‚¯ãƒªã‚¢ã™ã‚‹ã€‚
+	native_outb(0xcf, base_port + FIFO_CTRL);
 
-	// ³ä¤ê¹ş¤ß¤òÍ­¸ú²½
+	// å‰²ã‚Šè¾¼ã¿ã‚’æœ‰åŠ¹åŒ–
 	native_outb(0x03, base_port + INTR_ENABLE);
-	// Ìµ¸ú²½
+	// ç„¡åŠ¹åŒ–
 	//native_outb(0x00, base_port + INT_ENABLE);
 
-	out_buf_left = OUT_BUF_SIZE;
+	txfifo_left = OUT_BUF_SIZE;
 
 	native_sti();
 }
@@ -92,6 +95,31 @@ int serial_output::write(
     int              vector_count,
     ucpu             offset)
 {
+	io_vector_iterator itr(vectors, vector_count);
+
+	for (;;) {
+		const u8* const c = itr.next_u8();
+		if (c == 0)
+			break;
+		native_outb(*c, base_port + TRANSMIT_DATA);
+
+		for (;;) {
+		/*
+			if (txfifo_intr_empty) {
+				txfifo_intr_empty = false;
+				txfifo_left = OUT_BUF_SIZE;
+			}
+			if (txfifo_left != 0)
+				break;
+		*/
+			u8 r = native_inb(base_port + LINE_STATUS);
+			if (r & 0x40)
+				break;
+		}
+
+		//native_outb(*c, base_port + TRANSMIT_DATA);
+	}
+/*
 	if (out_buf_left == 0) {
 		u8 line_status = native_inb(base_port + LINE_STATUS);
 		if ((line_status & 0x20) != 0)
@@ -104,19 +132,25 @@ int serial_output::write(
 	char c = *reinterpret_cast<char*>(vectors->address);
 	native_outb(c, base_port + TRANSMIT_DATA);
 	out_buf_left -= 1;
-
+*/
 	return cause::OK;
 }
 
 extern "C" void on_serial_intr_com1()
 {
+	u8 line_status = native_inb(serial_out[0].base_port + LINE_STATUS);
+	if (line_status & 0x20) {
+		serial_out[0].txfifo_intr_empty = true;
+	}
+/*
 	u8 status = native_inb(serial_out[0].base_port + INTR_ID);
 	if ((status & 7) == 0x1) {
 		// Tx data/FIFO empty
-		serial_out[0].out_buf_left = serial_output::OUT_BUF_SIZE;
+		//serial_out[0].out_buf_left = serial_output::OUT_BUF_SIZE;
 	}
+*/
 	kern_output* kout = kern_get_out();
-	kout->put_str("com1intr status:")->put_u8hex(status)->put_c('\n');
+	kout->put_str("com1intr status:")->put_u8hex(line_status)->put_c('\n');
 }
 
 extern "C" void on_serial_intr_com2()
@@ -124,7 +158,7 @@ extern "C" void on_serial_intr_com2()
 	u8 status = native_inb(serial_out[1].base_port + INTR_ID);
 	if ((status & 7) == 0x1) {
 		// Tx data/FIFO empty
-		serial_out[1].out_buf_left = serial_output::OUT_BUF_SIZE;
+		//serial_out[1].out_buf_left = serial_output::OUT_BUF_SIZE;
 	}
 	kern_output* kout = kern_get_out();
 	kout->put_str("com2intr status:")->put_u8hex(status)->put_c('\n');

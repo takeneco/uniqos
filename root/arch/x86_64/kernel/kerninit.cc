@@ -60,7 +60,7 @@ extern "C" int kern_init()
 	serial_output_init();
 
 	serial_output* com1 = serial_get_out(0);
-	com1->PutStr("x");
+	com1->PutStr("xyz");
 
 	cause::stype r = phymemmgr_init();
 	vo.put_str("phymemmgr_init() = ")->put_udec(r)->put_endl();

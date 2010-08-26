@@ -7,12 +7,12 @@
 #include "fileif.hh"
 
 
-void io_vector_iterator::normalize()
+inline void io_vector_iterator::normalize()
 {
 	while (iovec_index < iovec_num) {
 		if (address_offset < iovec[iovec_index].bytes)
 			break;
-		iovec_num++;
+		iovec_index++;
 		address_offset = 0;
 	}
 }
@@ -24,9 +24,10 @@ u8* io_vector_iterator::next_u8()
 {
 	if (iovec_index >= iovec_num) {
 		return 0;
-	} else if (address_offset >= iovec[iovec_index].bytes) {
-		return 0;
 	}
+	//if (address_offset >= iovec[iovec_index].bytes) {
+	//	return 0;
+	//}
 
 	u8* const addr = reinterpret_cast<u8*>(iovec[iovec_index].address);
 	u8* const r = &addr[address_offset];

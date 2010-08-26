@@ -50,8 +50,9 @@ class serial_output : public kern_output
 	friend void on_serial_intr_com2();
 
 	u16 base_port;
-//	u16 pic_irq;
-	u16 out_buf_left;
+	u16 pic_irq;
+	u16 txfifo_left;
+	bool txfifo_intr_empty;
 public:
 	enum {
 		COM1_BASEPORT = 0x03f8,
@@ -60,13 +61,8 @@ public:
 		COM1_PICIRQ = 4,
 		COM2_PICIRQ = 3,
 
-		OUT_BUF_SIZE = 2,
+		OUT_BUF_SIZE = 14,
 	};
-
-	void* operator new(std::size_t size, serial_output* obj) {
-		size = size;
-		return obj;
-	}
 
 	void init(u16 com_base_port, u16 com_pic_irq);
 

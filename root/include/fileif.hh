@@ -18,12 +18,12 @@ struct io_vector
 
 class io_vector_iterator
 {
-	io_vector* iovec;
-	ucpu       iovec_num;
+	const io_vector* iovec;
+	ucpu             iovec_num;
 
 	// Current address is iov[index].address[offset]
-	ucpu       iovec_index;
-	ucpu       address_offset;
+	ucpu             iovec_index;
+	ucpu             address_offset;
 
 	void normalize();
 public:
@@ -31,7 +31,7 @@ public:
 	    iovec(0), iovec_num(0) {
 		reset();
 	}
-	io_vector_iterator(io_vector* iov, ucpu num) :
+	explicit io_vector_iterator(const io_vector* iov, ucpu num) :
 	    iovec(iov), iovec_num(num) {
 		reset();
 	}
@@ -39,8 +39,7 @@ public:
 		iovec_index = address_offset = 0;
 	}
 	bool is_end() const {
-		return iovec_index < iovec_num &&
-		       address_offset < iovec[iovec_index].bytes;
+		return iovec_index >= iovec_num;
 	}
 	u8* next_u8();
 };
