@@ -98,59 +98,23 @@ int serial_output::write(
 	io_vector_iterator itr(vectors, vector_count);
 
 	for (;;) {
-		const u8* const c = itr.next_u8();
-		if (c == 0)
-			break;
-		native_outb(*c, base_port + TRANSMIT_DATA);
-
 		for (;;) {
-		/*
-			if (txfifo_intr_empty) {
-				txfifo_intr_empty = false;
-				txfifo_left = OUT_BUF_SIZE;
-			}
-			if (txfifo_left != 0)
-				break;
-		*/
-			u8 r = native_inb(base_port + LINE_STATUS);
+			const u8 r = native_inb(base_port + LINE_STATUS);
 			if (r & 0x40)
 				break;
 		}
 
-		//native_outb(*c, base_port + TRANSMIT_DATA);
-	}
-/*
-	if (out_buf_left == 0) {
-		u8 line_status = native_inb(base_port + LINE_STATUS);
-		if ((line_status & 0x20) != 0)
-			out_buf_left = OUT_BUF_SIZE;
+		const u8* const c = itr.next_u8();
+		if (c == 0)
+			break;
+		native_outb(*c, base_port + TRANSMIT_DATA);
 	}
 
-	while (out_buf_left == 0) {
-	}
-
-	char c = *reinterpret_cast<char*>(vectors->address);
-	native_outb(c, base_port + TRANSMIT_DATA);
-	out_buf_left -= 1;
-*/
 	return cause::OK;
 }
 
 extern "C" void on_serial_intr_com1()
 {
-	u8 line_status = native_inb(serial_out[0].base_port + LINE_STATUS);
-	if (line_status & 0x20) {
-		serial_out[0].txfifo_intr_empty = true;
-	}
-/*
-	u8 status = native_inb(serial_out[0].base_port + INTR_ID);
-	if ((status & 7) == 0x1) {
-		// Tx data/FIFO empty
-		//serial_out[0].out_buf_left = serial_output::OUT_BUF_SIZE;
-	}
-*/
-	kern_output* kout = kern_get_out();
-	kout->put_str("com1intr status:")->put_u8hex(line_status)->put_c('\n');
 }
 
 extern "C" void on_serial_intr_com2()

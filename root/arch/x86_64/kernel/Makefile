@@ -18,14 +18,19 @@ CPPFLAGS +=
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS = $(shell cat $(KERNEL_DIR)/objects.txt)
 
-OBJS = entry.o exception_handler.o gnuc.o intr.o kerninit.o \
-       physical_memmgr.o \
-       serialh.o serialout.o setupdata.o \
-       vadr2padr.o videoout.o cpuinit.o
+SRCS = entry.S exception_handler.S gnuc.c intr.cc kerninit.cc \
+       physical_memmgr.cc \
+       serialh.S serialout.cc setupdata.cc \
+       vadr2padr.cc videoout.cc cpuinit.cc
+OBJS := $(SRCS:%.cc=%.o)
+OBJS := $(OBJS:%.S=%.o)
+OBJS := $(OBJS:%.c=%.o)
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
+.PHONY: all
 all : kernel.bin.lzma setup
 
+.PHONY: setup
 setup :
 	$(MAKE) -C $@
 
@@ -44,10 +49,17 @@ kernel.bin : $(OBJS)
 gnuc.o : gnuc.c
 	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
+.PHONY: clean
 clean:
 	$(MAKE) -C setup $@
 	$(RM) kernel.bin kernel.bin.lzma
 	$(RM) $(OBJS)
+	$(RM) Makefile.deps
 
-.PHONY: all clean setup
+.PHONY: depends
+depends:
+	$(MAKE) -C setup $@
+	$(RM) Makefile.deps
+	$(CPP) -MM $(CPPFLAGS) $(SRCS) >> Makefile.deps
 
+-include Makefile.deps

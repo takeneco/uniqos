@@ -45,9 +45,15 @@ public:
 
 	physical_4kmemblk_bitmap(setup_memmgr_dumpdata* freemap, u32 num);
 
+	bool is_empty() const {
+		return free_mem_bitmap[0] == 0;
+	}
+
 	u64 get_base_addr() const {
 		return (this - table_base_addr) * 4096 * BITS;
 	}
+
+	u64 test() { return free_mem_bitmap[0]; }
 };
 
 physical_4kmemblk_bitmap* physical_4kmemblk_bitmap::table_base_addr;
@@ -86,7 +92,8 @@ physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
 		}
 		else if ((freehead <= blkhead && blkhead <  freetail) ||
 		         (freehead <  blktail && blktail <= freetail) ||
-			 (blkhead <= freehead && freetail <= blktail)) {
+			 (blkhead <= freehead && freetail <= blktail))
+		{
 			free_bits(freehead, freetail);
 		}
 	}
@@ -155,7 +162,11 @@ void phymemmgr_init_table(u64 table_base_addr, u64 table_num)
 
 	for (u64 i = 0; i < table_num; i++) {
 		new(&bitmap[i]) physical_4kmemblk_bitmap(freemap, freemap_num);
-		free_chain.insert_head(&bitmap[i]);
+		if (!bitmap[i].is_empty())
+			free_chain.insert_head(&bitmap[i]);
+
+		kern_get_out()->put_str("bm[")->put_udec((u32)i)->
+		put_str("] = ")->put_u64hex(bitmap[i].test())->put_endl();
 	}
 }
 
