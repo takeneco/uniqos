@@ -7,6 +7,7 @@
 #include "access.hh"
 #include "lzmadecwrap.hh"
 #include "pagetable.hh"
+#include "x86_64.hh"
 
 #include "term.hh"
 #include "native.hh"
@@ -62,8 +63,9 @@ inline page_table_ent* pdpte_base_addr()
 	// pdpte_base[512 * 255] -> 0x....ff8.........
 	return reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
 }
-
-void fixed_fhysical_memmap_alloc(u64* pde_adr)
+/*
+// not used
+void fixed_physical_memmap_alloc(u64* pde_adr)
 {
 	page_table_ent* pdpte_base = pdpte_base_addr();
 
@@ -83,21 +85,24 @@ void fixed_fhysical_memmap_alloc(u64* pde_adr)
 		*pde_adr += 8 * 512;
 	}
 }
-
+*/
 void fixed_allocs(memmgr* mm)
 {
 	page_table_ent* pdpte_base =
 		reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
-	u64 pde_adr = KERN_PDE_PADR;
+	//u64 pde_adr = KERN_PDE_PADR;
 
 // Kernel text body address mapping start
 
+	page_table_ent* pde = reinterpret_cast<page_table_ent*>
+	    (memmgr_alloc(PAGE_SIZE, PAGE_SIZE));
+
 	// pdpte_base[0x1fffc] -> 0x....ffff0.......
-	pdpte_base[0x1fffc].set(pde_adr,
+	pdpte_base[0x1fffc].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
 	    page_table_ent::P | page_table_ent::RW);
 
-	page_table_ent* pde = reinterpret_cast<page_table_ent*>(pde_adr);
-	char* p1 = (char*)memmgr_alloc(mm, 0x200000, 0x200000);
+	//page_table_ent* pde = reinterpret_cast<page_table_ent*>(pde_adr);
+	char* p1 = (char*)memmgr_alloc(0x200000, 0x200000);
 	// 0x....ffffc00.....
 	pde[0].set(reinterpret_cast<u64>(p1),
 	    page_table_ent::P |
@@ -105,18 +110,21 @@ void fixed_allocs(memmgr* mm)
 	    page_table_ent::PS |
 	    page_table_ent::G);
 
-	pde_adr += 8 * 512;
+	//pde_adr += 8 * 512;
 
 // Kernel text body address mapping end
 
+	pde = reinterpret_cast<page_table_ent*>
+	    (memmgr_alloc(PAGE_SIZE, PAGE_SIZE));
+
 	// pdpte_base[0x1ffff] -> 0x....ffffc.......
-	pdpte_base[0x1ffff].set(pde_adr,
+	pdpte_base[0x1ffff].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
 	    page_table_ent::P | page_table_ent::RW);
 
 	// Kernel stack memory
 
-	pde = reinterpret_cast<page_table_ent*>(pde_adr);
-	char* p2 = (char*)memmgr_alloc(mm, 0x200000, 0x200000);
+	//pde = reinterpret_cast<page_table_ent*>(pde_adr);
+	char* p2 = (char*)memmgr_alloc(0x200000, 0x200000);
 	// 0x....ffffffe.....
 	pde[511].set(reinterpret_cast<u64>(p2),
 	    page_table_ent::P |
@@ -124,7 +132,7 @@ void fixed_allocs(memmgr* mm)
 	    page_table_ent::PS |
 	    page_table_ent::G);
 
-	pde_adr += 8 * 512;
+	//pde_adr += 8 * 512;
 }
 
 }  // End of anonymous namespace
@@ -153,12 +161,6 @@ extern "C" int prekernel()
 
 	debug_tc = &tc;
 
-	tc.puts("DISPLAY : ")
-	->putu64(setup_get_value<u32>(SETUP_DISP_WIDTH))
-	->putc('x')
-	->putu64(setup_get_value<u32>(SETUP_DISP_HEIGHT))
-	->putc('\n');
-
 	tc.puts("Memorymap by ACPI : \n");
 
 	const acpi_memmap* memmap_buf =
@@ -182,7 +184,7 @@ extern "C" int prekernel()
 	}
 
 	memmgr mm;
-	memmgr_init(&mm);
+	memmgr_init();
 
 	// 最初に静的に使用するメモリを fixed_allocs() で先頭から割り当てる。
 	// その後で mm を動的メモリの確保に使用する。動的メモリは開放してから
@@ -201,7 +203,7 @@ extern "C" int prekernel()
 	setup_set_value<u32>(SETUP_DISP_CURROW, currow);
 	setup_set_value<u32>(SETUP_DISP_CURCOL, curcol);
 
-	int dumps = memmgr_dump(&mm,
+	int dumps = memmgr_dump(
 	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_MEMMAP_DUMP), 32);
 	setup_set_value<u32>(SETUP_MEMMAP_DUMP_COUNT, dumps);
 

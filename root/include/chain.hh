@@ -91,14 +91,18 @@ public:
 	const DataType* get_tail() const { return end.tail; }
 	      DataType* get_tail()       { return end.tail; }
 
-	const DataType* get_prev(const DataType* p) const {
+	//static const DataType* get_prev(const DataType* p) const {
+	//	return (p->*LinkVal).prev; }
+	static const DataType* get_prev(const DataType* p) {
 		return (p->*LinkVal).prev; }
-	      DataType* get_prev(DataType* p) {
+	static       DataType* get_prev(DataType* p) {
 		return (p->*LinkVal).prev; }
 
-	const DataType* get_next(const DataType* p) const {
+	//static const DataType* get_next(const DataType* p) const {
+	//	return (p->*LinkVal).next; }
+	static const DataType* get_next(const DataType* p) {
 		return (p->*LinkVal).next; }
-	      DataType* get_next(DataType* p) {
+	static       DataType* get_next(DataType* p) {
 		return (p->*LinkVal).next; }
 
 	void insert_head(DataType* p) {
@@ -159,7 +163,7 @@ public:
 		}
 		return tail;
 	}
-	DataType* remove(DataType* p) {
+	void remove(DataType* p) {
 		if (get_prev(p))
 			set_next(get_prev(p), get_next(p));
 		else
@@ -169,7 +173,7 @@ public:
 		else
 			end.set_tail(get_prev(p));
 	}
-	DataType* remove_next(DataType* p) {
+	void remove_next(DataType* p) {
 		DataType* next = get_next(p);
 		//if (next) {
 			DataType* nnext = get_next(next);

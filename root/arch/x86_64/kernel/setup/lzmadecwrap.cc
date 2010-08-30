@@ -15,6 +15,7 @@ extern "C" {
 #include "mem.hh"
 
 
+#include "native.hh"
 #include "term.hh"
 extern term_chain* debug_tc;
 
@@ -31,32 +32,14 @@ namespace {
 	{
 		ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
 
-		void* r = memmgr_alloc(alloc->mm, size);
-
-		if (debug_tc != NULL) {
-			debug_tc
-				->puts("lzma_alloc : size = ")
-				->putu64(size)
-				->puts(", return ")
-				->putu64x(reinterpret_cast<_u64>(r))
-				->putc('\n');
-		}
-
-		return r;
+		return memmgr_alloc(size);
 	}
 
 	void lzma_free(void* p, void* addr)
 	{
-		if (debug_tc != NULL) {
-			debug_tc
-				->puts("lzma_free : addr = ")
-				->putu64x(reinterpret_cast<_u64>(addr))
-				->putc('\n');
-		}
-
 		ex_alloc* alloc = reinterpret_cast<ex_alloc*>(p);
 
-		memmgr_free(alloc->mm, addr);
+		memmgr_free(addr);
 	}
 
 }  // End of anonymous namespace.

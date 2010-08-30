@@ -10,6 +10,9 @@
 
 
 enum {
+	PAGE_SIZE = 4096,
+	PAGE_SIZE_BITS = 12,
+
 	IRQ_CPU_OFFSET = 0x00,
 	IRQ_PIC_OFFSET = 0x20,
 };

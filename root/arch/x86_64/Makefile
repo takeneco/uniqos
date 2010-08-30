@@ -19,6 +19,7 @@ SETUP = kernel/setup/setup.bin
 #PHASE4 = boot/phase4/phase4.bin
 KERNEL = kernel/kernel.bin.lzma
 
+.PHONY: all
 all : fd1440.img
 
 # FAT12ヘッダの直後(0x3e)にブートセクタ bootsect.bin を挿入する。
@@ -30,23 +31,30 @@ fd1440.img : KERNEL
 	$(PUTIMG) -t 0x0200 $(BOOTLDR) $@
 	mcopy -i $@ $(ROOT) ::ROOTCORE.BIN
 
-BOOT :
+.PHONY: BOOT
+BOOT:
 	$(MAKE) -C boot
 
-KERNEL : BOOT
+.PHONY: KERNEL
+KERNEL: BOOT
 	$(MAKE) -C kernel
 	cat $(SETUP) $(KERNEL) > $(ROOT)
 
+.PHONY: depends
+depends:
+	$(MAKE) -C kernel $@
+
+.PHONY: clean
 clean:
 	$(MAKE) -C boot clean
 	$(MAKE) -C kernel clean
 	$(RM) $(ROOT) fd1440.img
 
+.PHONY: envecho
 envecho:
 	@echo CFLAGS=$(CFLAGS)
 	@echo CPPFLAGS=$(CPPFLAGS)
 	@echo MAKE=$(MAKE)
 	@echo RM=$(RM)
 
-.PHONY: all clean envecho BOOT KERNEL
 

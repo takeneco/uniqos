@@ -78,22 +78,22 @@ inline s32 native_bsfl(u32 data) {
 	return index;
 }
 inline s64 native_bsfq(u64 data) {
-	u64 index;
+	s64 index;
 	asm volatile ("bsfq %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
 inline s16 native_bsrw(u16 data) {
-	u16 index;
+	s16 index;
 	asm volatile ("bsrw %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
 inline s32 native_bsrl(u32 data) {
-	u32 index;
+	s32 index;
 	asm volatile ("bsrl %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
 inline s64 native_bsrq(u64 data) {
-	u64 index;
+	s64 index;
 	asm volatile ("bsrq %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }

@@ -10,37 +10,55 @@
 #include <cstddef>
 
 #include "btypes.hh"
+#include "chain.hh"
 
 
 struct memmap_entry
 {
-	memmap_entry* prev;
-	memmap_entry* next;
 	u64 head;
 	u64 bytes;  ///< If bytes == 0, not used.
+
+	bichain_link<memmap_entry> _chain_link;
+
+	void set(u64 _head, u64 _bytes) {
+		head = _head;
+		bytes = _bytes;
+	}
+	void unset() {
+		bytes = 0;
+	}
+	void release_head(u64 head_bytes) {
+		head += head_bytes;
+		bytes -= head_bytes;
+	}
 };
 
 struct memmgr
 {
+	typedef bichain<memmap_entry, &memmap_entry::_chain_link>
+	    memmap_entry_chain;
+
 	/// 空き領域リスト
-	memmap_entry* free_list;
+	memmap_entry_chain free_chain;
+	//memmap_entry* free_list;
 
 	/// 割り当て済み領域リスト
-	memmap_entry* nofree_list;
+	memmap_entry_chain nofree_chain;
+	//memmap_entry* nofree_list;
 };
 
-void  memmgr_init(memmgr* mm);
-void* memmgr_alloc(memmgr* mm, std::size_t size, std::size_t align = 8);
-void  memmgr_free(memmgr* mm, void* p);
+void  memmgr_init();
+void* memmgr_alloc(std::size_t size, std::size_t align = 8);
+void  memmgr_free(void* p);
 
 struct setup_memmgr_dumpdata;
-int   memmgr_dump(const memmgr* mm, setup_memmgr_dumpdata* dumpto, int n);
-
+int   memmgr_dump(setup_memmgr_dumpdata* dumpto, int n);
+/*
 void* operator new(std::size_t s, memmgr*);
 void* operator new[](std::size_t s, memmgr*);
 void  operator delete(void* p, memmgr*);
 void  operator delete[](void* p, memmgr*);
-
+*/
 void* memory_move(void* dest, const void* src, std::size_t size);
 
 struct acpi_memmap {

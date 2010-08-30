@@ -1,5 +1,4 @@
 /**
- * @file   arch/x86_64/kernel/setup/setup.S
  * @author Kato Takeshi
  * @brief  カーネル自身のセットアップ。
  *
@@ -241,7 +240,10 @@ start32:
 	// カーネルメモリ空間の中に物理メモリマップを作る。
 	// 0xffff800000000000 -> 0x0000000000000000
 	// PDPTE
+	// カーネル空間全体の PDPTE(1MiB) をここで割り当てておく。
+
 	movl  $KERN_PDPTE_PADR, %edi
+	// 物理メモリマップ用の PDPTE
 	movl  $SETUP_PDE_HEAD_PADR + 0x007, (%edi)
 	addl  $4, %edi
 	movl  $(PAGE_SIZE * 256 / 4) - 4, %ecx  // Zero clear left PDPTE
@@ -254,6 +256,7 @@ start32:
 	movl  $0, 4(%edi)
 	addl  $0x00200000, %eax
 	addl  $8, %edi
+	// SETUP_PDE_TAIL_PADR までの２ページは次に使う。
 	cmpl  $SETUP_PDE_TAIL_PADR - (PAGE_SIZE * 2), %edi
 	jb    1b
 

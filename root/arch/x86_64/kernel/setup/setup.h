@@ -68,7 +68,9 @@
 /// @}
 
 /// Reserved memory address from 0.
-#define SETUP_MEMMGR_RESERVED_PADR 0x013fffff
+/// - 0x0100000:0x0ffffff for legacy device dma use.
+/// - 0x1000000:0x10fffff for PDPTE kernel area.
+#define SETUP_MEMMGR_RESERVED_PADR 0x010fffff
 
 /// Finally kernel execute virtual address.
 #define KERN_FINAL_VADR  0xffffffff00000000

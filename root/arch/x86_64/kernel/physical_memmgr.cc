@@ -6,10 +6,12 @@
 
 #include "btypes.hh"
 #include "chain.hh"
+#include "native.hh"
 #include "output.hh"
 #include "pnew.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"
+#include "x86_64.hh"
 
 
 namespace 
@@ -23,7 +25,10 @@ class physical_4kmemblk_bitmap
 	static physical_4kmemblk_bitmap* table_base_addr;
 
 	/// 64 * 1 blocks
+	/// 空きメモリを表すビットは１に、
+	/// 使用メモリを表すビットは０にする。
 	u64 free_mem_bitmap[1];
+
 public:
 	chain_link<physical_4kmemblk_bitmap> _chain_link;
 
@@ -34,13 +39,25 @@ public:
 private:
 	void free_bits(u64 head, u64 tail);
 
+	u64 search_freepage() const {
+		s64 r = bitscan_forward_64(free_mem_bitmap[0]);
+		// assert(r >= 0)
+		return static_cast<int>(r);
+	}
+	void set_free(int i) {
+		free_mem_bitmap[0] |= 1 << i;
+	}
+	void unset_free(int i) {
+		free_mem_bitmap[0] &= ~(1 << i);
+	}
+
 public:
 	static void set_table_base_addr(u64 base) {
 		table_base_addr =
 		    reinterpret_cast<physical_4kmemblk_bitmap*>(base);
 	}
 	static physical_4kmemblk_bitmap* get_bitmap_by_addr(u64 addr) {
-		return &table_base_addr[addr / 4096 / BITS];
+		return &table_base_addr[addr / PAGE_SIZE / BITS];
 	}
 
 	physical_4kmemblk_bitmap(setup_memmgr_dumpdata* freemap, u32 num);
@@ -49,12 +66,25 @@ public:
 		return free_mem_bitmap[0] == 0;
 	}
 
-	u64 get_base_addr() const {
-		return (this - table_base_addr) * 4096 * BITS;
+	u64 get_baseadr() const {
+		return (this - table_base_addr) * PAGE_SIZE * BITS;
 	}
+	u64 get_page_baseadr(int i) const {
+		return get_baseadr() + i * PAGE_SIZE;
+	}
+
+	bool alloc_1page(u64* padr);
 
 	u64 test() { return free_mem_bitmap[0]; }
 };
+
+typedef
+    dechain<physical_4kmemblk_bitmap, &physical_4kmemblk_bitmap::_chain_link>
+    pmem_bitmap_chain;
+
+/// 空きメモリを含む physical_4kmemblk_bitmap の片方向リスト。
+pmem_bitmap_chain free_chain;
+
 
 physical_4kmemblk_bitmap* physical_4kmemblk_bitmap::table_base_addr;
 
@@ -64,12 +94,12 @@ physical_4kmemblk_bitmap* physical_4kmemblk_bitmap::table_base_addr;
 void physical_4kmemblk_bitmap::free_bits(
     u64 freehead, u64 freetail)
 {
-	u64 pagehead = get_base_addr();
-	u64 pagetail = pagehead + 4096;
+	u64 pagehead = get_baseadr();
+	u64 pagetail = pagehead + PAGE_SIZE;
 
 	for (u32 i = 0; i < BITS; ++i) {
 		if (freehead <= pagehead && pagetail <= freetail)
-			free_mem_bitmap[0] &= ~(1 << i);
+			free_mem_bitmap[0] |= 1 << i;
 	}
 }
 
@@ -78,16 +108,16 @@ physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
     u32 num)
 	: _chain_link()
 {
-	free_mem_bitmap[0] = 0xffffffffffffffff;
+	free_mem_bitmap[0] = 0;
 
-	const u64 blkhead = get_base_addr();
-	const u64 blktail = blkhead + 4096 * BITS;
+	const u64 blkhead = get_baseadr();
+	const u64 blktail = blkhead + PAGE_SIZE * BITS;
 
 	for (u32 i = 0; i < num; ++i) {
 		const u64 freehead = freemap[i].head;
 		const u64 freetail = freehead + freemap[i].bytes;
 		if (freehead <= blkhead && blktail <= freetail) {
-			free_mem_bitmap[0] = 0;
+			free_mem_bitmap[0] = 0xffffffffffffffff;
 			break;
 		}
 		else if ((freehead <= blkhead && blkhead <  freetail) ||
@@ -99,13 +129,16 @@ physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
 	}
 }
 
+bool physical_4kmemblk_bitmap::alloc_1page(u64* padr)
+{
+	const int i = search_freepage();
 
-typedef
-    dechain<physical_4kmemblk_bitmap, &physical_4kmemblk_bitmap::_chain_link>
-    pmem_bitmap_chain;
+	unset_free(i);
 
-pmem_bitmap_chain free_chain;
-//pmem_bitmap_chain fill_chain;
+	*padr = get_page_baseadr(i);
+
+	return true;
+}
 
 
 /// 物理メモリサイズをバイト数で返す。
@@ -146,10 +179,9 @@ setup_memmgr_dumpdata* search_seriesof_free_physical_memory(u64 size)
 	return 0;
 }
 
-void phymemmgr_init_table(u64 table_base_addr, u64 table_num)
+void _init_table(u64 table_base_addr, u64 table_num)
 {
 	new(&free_chain) pmem_bitmap_chain;
-	//new(&fill_chain) pmem_bitmap_chain;
 
 	physical_4kmemblk_bitmap::set_table_base_addr(table_base_addr);
 
@@ -168,6 +200,25 @@ void phymemmgr_init_table(u64 table_base_addr, u64 table_num)
 		kern_get_out()->put_str("bm[")->put_udec((u32)i)->
 		put_str("] = ")->put_u64hex(bitmap[i].test())->put_endl();
 	}
+
+	for (u32 i = 0; i < freemap_num; ++i) {
+		kern_get_out()->put_u64hex(freemap[i].head)->put_c(':')
+		->put_u64hex(freemap[i].head+freemap[i].bytes)->put_endl();
+	}
+}
+
+bool _alloc_1page(u64* padr)
+{
+	physical_4kmemblk_bitmap* bitmap = free_chain.get_head();
+	if (!bitmap)
+		return false;
+
+	if (bitmap->is_empty()) {
+		// bitmap は先頭から取り出したので、先頭を取り除く。
+		free_chain.remove_head();
+	}
+
+	return bitmap->alloc_1page(padr);
 }
 
 } // namespace
@@ -201,8 +252,16 @@ cause::stype phymemmgr_init()
 	phymem_data->head += phymemmgr_buf_size;
 
 	// 物理メモリマップのアドレスを渡す。
-	phymemmgr_init_table(table_base_addr + 0xffff800000000000, bitmap_num);
+	_init_table(table_base_addr + 0xffff800000000000, bitmap_num);
 
 	return cause::OK;
 }
 
+/// 物理メモリページを１ページ確保する。
+/// @param[out] padr  Ptr to physical page base address returned.
+/// @retval cause::FAIL  No free memory.
+/// @retval cause::OK  Succeeds. padr is physical page base address.
+cause::stype phymemmgr_alloc_1page(u64* padr)
+{
+	return _alloc_1page(padr) ? cause::OK : cause::FAIL;
+}
