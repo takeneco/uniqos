@@ -27,10 +27,6 @@ struct memmap_entry
 	void unset() {
 		bytes = 0;
 	}
-	void release_head(u64 head_bytes) {
-		head += head_bytes;
-		bytes -= head_bytes;
-	}
 };
 
 struct memmgr

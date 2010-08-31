@@ -271,7 +271,7 @@ start32:
 	// PDE
 	addl  $PAGE_SIZE, %edi
 	movl  $0 + 0x183, %eax
-	movl  $16, %ecx  // 32MiB
+	movl  $32, %ecx  // 64MiB
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi
