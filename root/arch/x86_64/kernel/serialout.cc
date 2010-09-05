@@ -9,7 +9,7 @@
 #include "kerninit.hh"
 #include "native.hh"
 #include "pnew.hh"
-#include "x86_64.hh"
+#include "arch.hh"
 
 
 extern "C" void serial_intr_com1_handler();

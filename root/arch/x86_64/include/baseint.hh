@@ -1,8 +1,7 @@
-// @file    arch/x86_64/include/baseint.hh
-// @author  Kato Takeshi
-// @brief   Builtin int types.
-//
-// (C) 2010 Kato Takeshi.
+/// @author  KATO Takeshi
+/// @brief   Builtin int types.
+///
+/// (C) 2010 KATO Takeshi
 
 #ifndef _ARCH_X86_64_INCLUDE_BASEINT_HH_
 #define _ARCH_X86_64_INCLUDE_BASEINT_HH_
@@ -23,6 +22,8 @@ typedef unsigned long long _umax;
 
 typedef _u32 _ucpu;
 typedef _s32 _scpu;
+typedef _u32 _uptr;
+typedef _s32 _sptr;
 
 #  define _u64cast(n)  n ## ULL
 
@@ -41,6 +42,8 @@ typedef unsigned long      _umax;
 
 typedef _u64 _ucpu;
 typedef _s64 _scpu;
+typedef _u64 _uptr;
+typedef _s64 _sptr;
 
 #  define _u64cast(n)  n ## UL
 

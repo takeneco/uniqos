@@ -3,13 +3,15 @@
 ///
 /// (C) 2010 Kato Takeshi
 
-#ifndef _ARCH_X86_64_INCLUDE_X86_64_HH_
-#define _ARCH_X86_64_INCLUDE_X86_64_HH_
+#ifndef _ARCH_X86_64_INCLUDE_ARCH_HH_
+#define _ARCH_X86_64_INCLUDE_ARCH_HH_
 
 #include "btypes.hh"
 
 
 enum {
+	BITS_PER_BYTE = 8,
+
 	PAGE_SIZE = 4096,
 	PAGE_SIZE_BITS = 12,
 

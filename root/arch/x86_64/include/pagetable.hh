@@ -1,8 +1,7 @@
-// @file   arch/x86_64/include/pagetable.hh
-// @author Kato Takeshi
-// @brief  64bit paging table ops.
+/// @author KATO Takeshi
+/// @brief  64bit paging table ops.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #ifndef _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
@@ -39,7 +38,7 @@ public:
 		//e = (a & 0x000000fffffff000) | f;
 		e = a | f;
 	}
-	type get() {
+	type get() const {
 		return e;
 	}
 	void set_flags(type f) {
@@ -56,6 +55,18 @@ public:
 	}
 	type get_addr() const {
 		return e & 0x000000fffffff000;
+	}
+	void set_avail1(u32 a) {
+		e = (e & 0xfffffffffff1ffff) | (a << 9);
+	}
+	u32 get_avail1() const {
+		return static_cast<u32>((e & 0x00000000000e0000) >> 9);
+	}
+	void set_avail2(u32 a) {
+		e = (e & 0x800fffffffffffff) | (static_cast<u64>(a) << 52);
+	}
+	u32 get_avail2() const {
+		return static_cast<u32>((e & 0x7ff0000000000000) >> 52);
 	}
 };
 

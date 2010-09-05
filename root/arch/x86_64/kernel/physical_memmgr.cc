@@ -11,7 +11,7 @@
 #include "pnew.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"
-#include "x86_64.hh"
+#include "arch.hh"
 
 
 namespace 
