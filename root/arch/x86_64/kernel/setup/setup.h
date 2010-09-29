@@ -1,11 +1,10 @@
-// @file    arch/x86_64/kernel/setup/setup.h
-// @author  Kato Takeshi
-// @brief   アセンブラとC++で共有するパラメータの定義
+/// @author  KATO Takeshi
+/// @brief   アセンブラとC++で共有するパラメータの定義
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010 KATO Takeshi
 
-#ifndef _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
-#define _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
+#ifndef ARCH_X86_64_KERNEL_SETUP_SETUP_H_
+#define ARCH_X86_64_KERNEL_SETUP_SETUP_H_
 
 
 /**
@@ -46,11 +45,14 @@
 #define SETUP_DISP_CURROW            0x0018
 #define SETUP_DISP_CURCOL            0x001c
 #define SETUP_KERNFILE_SIZE          0x0020
-#define SETUP_MEMMAP_DUMP_COUNT      0x0024
-// ACPIから取得したメモリマップ
+#define SETUP_FREEMEM_DUMP_COUNT     0x0024
+#define SETUP_USEDMEM_DUMP_COUNT     0x0028
+/// ACPIから取得したメモリマップ
 #define SETUP_ACPI_MEMMAP            0x0100
-// Setupフェーズ終了後のメモリマップ
-#define SETUP_MEMMAP_DUMP            0x0400
+/// Setupフェーズ終了後の空きメモリ情報
+#define SETUP_FREEMEM_DUMP           0x0400
+/// Setupフェーズ終了後の使用メモリ情報
+#define SETUP_USEDMEM_DUMP           0x0500
 
 /// Full kernel load address by bootloader.
 #define SETUP_KERN_ADR             0x100000

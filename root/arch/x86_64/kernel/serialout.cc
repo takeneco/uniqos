@@ -1,8 +1,7 @@
-// @file   arch/x86_64/kernel/serialout.cc
-// @author Kato Takeshi
-// @brief  Output only serial port.
+/// @author KATO Takeshi
+/// @brief  Output only serial port.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #include "output.hh"
 
@@ -58,8 +57,8 @@ void serial_output::init(u16 com_base_port, u16 com_pic_irq)
 
 	native_cli();
 
-	intr_set_handler(IRQ_PIC_OFFSET + 4, serial_intr_com1_handler);
-	intr_set_handler(IRQ_PIC_OFFSET + 3, serial_intr_com2_handler);
+	intr_set_handler(arch::IRQ_PIC_OFFSET + 4, serial_intr_com1_handler);
+	intr_set_handler(arch::IRQ_PIC_OFFSET + 3, serial_intr_com2_handler);
 
 	// 通信スピード設定開始
 	native_outb(0x80, base_port + LINE_CTRL);

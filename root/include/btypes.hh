@@ -1,8 +1,7 @@
-// @file    btypes.hh
-// @author  Kato Takeshi
-// @brief   共通で使う型・関数など。
+/// @author  KATO Takeshi
+/// @brief   共通で使う型・関数など。
 //
-// (C) 2008-2010 Kato Takeshi.
+// (C) 2008-2010 KATO Takeshi
 
 #ifndef BTYPES_HH_
 #define BTYPES_HH_
@@ -21,6 +20,8 @@ typedef _scpu scpu;
 typedef _ucpu ucpu;
 typedef _smax smax;
 typedef _umax umax;
+typedef _sptr sptr;
+typedef _uptr uptr;
 #define U64CAST(n) _u64cast(n)
 
 inline _u16 _swap16(_u16 x) {
@@ -162,37 +163,39 @@ inline _u64 le64_to_cpu(_u8 x0, _u8 x1, _u8 x2, _u8 x3,
 
 #elif defined ARCH_BE
 
-inline _u16 cpu_to_be16(_u16 x) {
+inline u16 cpu_to_be16(u16 x) {
 	return x;
 }
-inline _u16 be16_to_cpu(_u16 x) {
+inline u16 be16_to_cpu(u16 x) {
 	return x;
 }
-inline _u16 cpu_to_le16(_u16 x) {
+inline u16 cpu_to_le16(u16 x) {
 	return _swap16(x);
 }
-inline _u16 le16_to_cpu(_u16 x) {
+inline u16 le16_to_cpu(u16 x) {
 	return _swap16(x);
 }
-inline void cpu_to_be16(_u16 x, _u8* y1, _u8* y2) {
+inline void cpu_to_be16(u16 x, u8* y1, u8* y2) {
 	_split16(x, y2, y1);
 }
-inline _u16 be16_to_cpu(_u8 x1, _u8 x2) {
+inline u16 be16_to_cpu(_u8 x1, _u8 x2) {
 	return _combine16(x2, x1);
 }
-inline void cpu_to_le16(_u16 x, _u8* y1, _u8* y2) {
+inline void cpu_to_le16(u16 x, u8* y1, u8* y2) {
 	_split16(x, y1, y2);
 }
-inline _u16 le16_to_cpu(_u8 x1, _u8 x2) {
+inline u16 le16_to_cpu(u8 x1, u8 x2) {
 	return _combine16(x1, x2);
 }
 
 #endif  // ARCH_LE or ARCH_BE
 
-static inline _ucpu down_align(_ucpu base, _ucpu value) {
+template <class uint_>
+inline uint_ down_align(uint_ value, uint_ align) {
 	return value & ~(base - 1);
 }
-static inline _ucpu up_align(_ucpu base, _ucpu value) {
+template <class uint_>
+inline uint_ up_align(uint_ value, uint_ align) {
 	return (value + base - 1) & ~(base - 1);
 }
 

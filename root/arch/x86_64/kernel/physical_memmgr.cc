@@ -1,8 +1,7 @@
-// @file   arch/x86_64/kernel/physical_memmgr.cc
-// @author Kato Takeshi
+// @author KATO Takeshi
 // @brief  Physical memory manager.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #include "btypes.hh"
 #include "chain.hh"
@@ -57,7 +56,7 @@ public:
 		    reinterpret_cast<physical_4kmemblk_bitmap*>(base);
 	}
 	static physical_4kmemblk_bitmap* get_bitmap_by_addr(u64 addr) {
-		return &table_base_addr[addr / PAGE_SIZE / BITS];
+		return &table_base_addr[addr / arch::PAGE_SIZE / BITS];
 	}
 
 	physical_4kmemblk_bitmap(setup_memmgr_dumpdata* freemap, u32 num);
@@ -67,10 +66,10 @@ public:
 	}
 
 	u64 get_baseadr() const {
-		return (this - table_base_addr) * PAGE_SIZE * BITS;
+		return (this - table_base_addr) * arch::PAGE_SIZE * BITS;
 	}
 	u64 get_page_baseadr(int i) const {
-		return get_baseadr() + i * PAGE_SIZE;
+		return get_baseadr() + i * arch::PAGE_SIZE;
 	}
 
 	bool alloc_1page(u64* padr);
@@ -95,7 +94,7 @@ void physical_4kmemblk_bitmap::free_bits(
     u64 freehead, u64 freetail)
 {
 	u64 pagehead = get_baseadr();
-	u64 pagetail = pagehead + PAGE_SIZE;
+	u64 pagetail = pagehead + arch::PAGE_SIZE;
 
 	for (u32 i = 0; i < BITS; ++i) {
 		if (freehead <= pagehead && pagetail <= freetail)
@@ -111,7 +110,7 @@ physical_4kmemblk_bitmap::physical_4kmemblk_bitmap(
 	free_mem_bitmap[0] = 0;
 
 	const u64 blkhead = get_baseadr();
-	const u64 blktail = blkhead + PAGE_SIZE * BITS;
+	const u64 blktail = blkhead + arch::PAGE_SIZE * BITS;
 
 	for (u32 i = 0; i < num; ++i) {
 		const u64 freehead = freemap[i].head;
@@ -257,11 +256,19 @@ cause::stype phymemmgr_init()
 	return cause::OK;
 }
 
+namespace arch {
+
+namespace pmem {
+
 /// 物理メモリページを１ページ確保する。
 /// @param[out] padr  Ptr to physical page base address returned.
 /// @retval cause::FAIL  No free memory.
-/// @retval cause::OK  Succeeds. padr is physical page base address.
-cause::stype phymemmgr_alloc_1page(u64* padr)
+/// @retval cause::OK  Succeeds. *padr is physical page base address.
+cause::stype alloc_page(u64* padr)
 {
 	return _alloc_1page(padr) ? cause::OK : cause::FAIL;
 }
+
+}  // namespace pmem
+
+}  // namespace arch

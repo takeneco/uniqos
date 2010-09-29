@@ -15,7 +15,7 @@ class chain_link
 	DataType* next;
 
 public:
-	void _set_prev(DataType*) {}
+	void _set_prev(DataType*) { /* nothing */ }
 	void _set_next(DataType* p) { next = p; }
 	const DataType* get_next() const { return next; }
 	      DataType* get_next()       { return next; }
@@ -43,7 +43,7 @@ public:
 	_chain_end() : head(0) {}
 
 	void set_head(DataType* p) { head = p; }
-	void set_tail(DataType*) {}
+	void set_tail(DataType*) { /* nothing */ }
 	const DataType* get_head() const { return head; }
 	      DataType* get_head()       { return head; }
 	static DataType* null() { return 0; }
@@ -70,8 +70,6 @@ template<
     LinkType DataType::* LinkVal>
 class _chain_impl
 {
-	EndType end;
-
 	const DataType& prev(const DataType* p) const {
 		return *(p->*LinkVal).prev; }
 	      DataType& prev(DataType* p) {
@@ -85,6 +83,9 @@ class _chain_impl
 		(p->*LinkVal)._set_prev(prev); }
 	void set_next(DataType* p, DataType* next) {
 		(p->*LinkVal)._set_next(next); }
+
+protected:
+	EndType end;
 
 public:
 	_chain_impl() : end() {}
@@ -191,6 +192,10 @@ template<class DataType, chain_link<DataType> DataType::* LinkVal>
 class chain : public _chain_impl
     <DataType, chain_link<DataType>, _chain_end<DataType>, LinkVal>
 {
+public:
+	void init_head(DataType* head) {
+		this->end.set_head(head);
+	}
 };
 
 /// Bidirectional and single ended chain
@@ -198,6 +203,10 @@ template<class DataType, bichain_link<DataType> DataType::* LinkVal>
 class bichain : public _chain_impl
     <DataType, bichain_link<DataType>, _chain_end<DataType>, LinkVal>
 {
+public:
+	void init_head(DataType* head) {
+		this->end.set_head(head);
+	}
 };
 
 /// Directional and double ended chain

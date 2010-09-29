@@ -1,13 +1,12 @@
-// @file    arch/x86_64/kernel/setup/prekern.cc
-// @author  Kato Takeshi
-// @brief   Kernel extend phase before execute.
+/// @author  KATO Takeshi
+/// @brief   Kernel extend phase before execute.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #include "access.hh"
 #include "lzmadecwrap.hh"
 #include "pagetable.hh"
-#include "x86_64.hh"
+#include "arch.hh"
 
 #include "term.hh"
 #include "native.hh"
@@ -26,15 +25,13 @@ const char* acpi_memtype(int type)
 		"unknown", "memory", "reserved",
 		"acpi", "nvs", "unusuable" };
 
-	if (1 <= type && type <= 5) {
+	if (1 <= type && type <= 5)
 		return type_name[type];
-	}
-	else {
+	else
 		return type_name[0];
-	}
 }
 
-bool kern_extract(memmgr* mm)
+bool kern_extract()
 {
 	const u32 setup_size = &kern_body_start - &setup_body_start;
 
@@ -49,7 +46,7 @@ bool kern_extract(memmgr* mm)
 	u8* const ext_kern_dest =
 		reinterpret_cast<u8*>(KERN_FINAL_VADR);
 
-	return lzma_decode(mm, comp_kern_src, comp_kern_size,
+	return lzma_decode(comp_kern_src, comp_kern_size,
 		ext_kern_dest, ext_kern_size);
 }
 
@@ -86,7 +83,7 @@ void fixed_physical_memmap_alloc(u64* pde_adr)
 	}
 }
 */
-void fixed_allocs(memmgr* mm)
+void fixed_allocs()
 {
 	page_table_ent* pdpte_base =
 		reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
@@ -95,7 +92,7 @@ void fixed_allocs(memmgr* mm)
 // Kernel text body address mapping start
 
 	page_table_ent* pde = reinterpret_cast<page_table_ent*>
-	    (memmgr_alloc(PAGE_SIZE, PAGE_SIZE));
+	    (memmgr_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
 
 	// pdpte_base[0x1fffc] -> 0x....ffff0.......
 	pdpte_base[0x1fffc].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
@@ -115,7 +112,7 @@ void fixed_allocs(memmgr* mm)
 // Kernel text body address mapping end
 
 	pde = reinterpret_cast<page_table_ent*>
-	    (memmgr_alloc(PAGE_SIZE, PAGE_SIZE));
+	    (memmgr_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
 
 	// pdpte_base[0x1ffff] -> 0x....ffffc.......
 	pdpte_base[0x1ffff].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
@@ -183,18 +180,16 @@ extern "C" int prekernel()
 		->putc('\n');
 	}
 
-	memmgr mm;
 	memmgr_init();
 
 	// 最初に静的に使用するメモリを fixed_allocs() で先頭から割り当てる。
 	// その後で mm を動的メモリの確保に使用する。動的メモリは開放してから
 	// kernel body にジャンプする。
 
-	fixed_allocs(&mm);
+	fixed_allocs();
 
-	if (kern_extract(&mm) == false) {
+	if (kern_extract() == false)
 		return -1;
-	}
 
 	asm ("invlpg " TOSTR(KERN_FINAL_VADR));
 
@@ -203,9 +198,13 @@ extern "C" int prekernel()
 	setup_set_value<u32>(SETUP_DISP_CURROW, currow);
 	setup_set_value<u32>(SETUP_DISP_CURCOL, curcol);
 
-	int dumps = memmgr_dump(
-	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_MEMMAP_DUMP), 32);
-	setup_set_value<u32>(SETUP_MEMMAP_DUMP_COUNT, dumps);
+	int dumps = memmgr_freemem_dump(
+	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_FREEMEM_DUMP), 32);
+	setup_set_value<u32>(SETUP_FREEMEM_DUMP_COUNT, dumps);
+
+	dumps = memmgr_nofreemem_dump(
+	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_USEDMEM_DUMP), 32);
+	setup_set_value<u32>(SETUP_USEDMEM_DUMP_COUNT, dumps);
 
 	return 0;
 }
