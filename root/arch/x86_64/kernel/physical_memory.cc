@@ -36,18 +36,25 @@ class physical_page_table
 	table_chain free_item_chain;
 	table_item* table_base;
 
+	const u64 page_size;
+	physical_page_table* const next_level;
+
 public:
 	enum {
 		BITMAP_BITS = bitmap<uptr>::BITS;
 	};
 
+	physical_page_table(u64 page_size_, physical_page_table* next_level_)
+	:	page_size(page_size_),
+		next_level(next_level_)
+	{}
+
 	static uptr calc_buf_size(uptr pmem_end, uptr page_size);
 
-	void init_empty(void* buf);
-	void init_free_all(void* buf);
+	void init(void* buf);
+	void init_free_all(void* buf, uptr buf_size);
 
-	bool alloc_page(u64* padr);
-
+	void reserve_range(uptr head, uptr bytes);
 };
 
 uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
@@ -61,7 +68,10 @@ uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
 	return sizeof (table_item) * bitmaps;
 }
 
-void physical_page_table::init_empty(void* buf)
+/// @brief バッファを設定する。
+//
+/// バッファの初期化はしない。
+void physical_page_table::init(void* buf)
 {
 	table_base = reinterpret_cast<table_item*>(buf);
 }
@@ -83,6 +93,13 @@ void physical_page_table::init_free_all(void* buf, uptr buf_size)
 	free_item_chain.init_head(dech.get_head());
 }
 
+void reserve_range(uptr head, uptr bytes)
+{
+	const uptr head_page = head / page_size;
+	if (head % page_size != 0) {
+		
+	}
+}
 
 /////////////////////////////////////////////////////////////////////
 /// @brief 物理メモリの空き状態を２段のページで管理する。
@@ -92,15 +109,25 @@ class physical_memory
 	physical_page_table page_l2_table;
 	uptr pmem_end;
 
+	void reserve_range(uptr head, uptr bytes);
+
 public:
 	static uptr calc_workarea_size(uptr pmem_end_);
 
+	physical_memory();
+
 	bool init(uptr pmem_end_, void* buf);
+	bool load_setupdump();
 };
+
+void physical_memory::reserve_range(uptr head, uptr bytes)
+{
+	
+}
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
 //
-/// @param[in] total_mem_size 物理メモリ全体のバイト数。
+/// @param[in] pmem_end_ 物理メモリの終端アドレス。
 /// @return ワークエリアのサイズをバイト数で返す。
 uptr physical_memory::calc_workarea_size(uptr pmem_end_)
 {
@@ -112,6 +139,13 @@ uptr physical_memory::calc_workarea_size(uptr pmem_end_)
 	return l1buf + l2buf;
 }
 
+physical_memory::physical_memory()
+:	page_l1_table(PAGE_L1_SIZE, &page_l2_table),
+	page_l2_table(PAGE_L2_SIZE, 0)
+{
+}
+
+/// @param[in] pmem_end_ 物理メモリの終端アドレス。
 /// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
 /// @return true を返す。
 bool physical_memory::init(uptr pmem_end_, void* buf)
@@ -122,9 +156,19 @@ bool physical_memory::init(uptr pmem_end_, void* buf)
 	    physical_page_table::calc_buf_size(pmem_end_, PAGE_L2_SIZE);
 	page_l2_table.init_free_all(buf, l2buf_size);
 
-	page_l1_table.init_empty(reinterpret_cast<char*>(buf) + l2buf_size);
+	page_l1_table.init(reinterpret_cast<char*>(buf) + l2buf_size);
 
 	return true;
+}
+
+bool physical_memory::load_setupdump()
+{
+	setup_memmgr_dumpdata* usedmap;
+	u32 usedmap_num;
+	setup_get_used_memmap(&usedmap, &usedmap_num);
+
+	for (u32 i = 0; i < usedmap_num; i++) {
+	}
 }
 
 /// @brief 物理メモリの末端アドレスを返す。
@@ -160,7 +204,8 @@ setup_memmgr_dumpdata* search_free_pmem(u32 size)
 	setup_get_free_memmap(&freemap, &freemap_num);
 
 	for (u32 i = 0; i < freemap_num; i++) {
-		if (freemap[i].bytes >= size)
+		const uptr d = up_align(freemap[i].head) - freemap[i].head;
+		if ((freemap[i].bytes - d) >= size)
 			return &freemap[i];
 	}
 
@@ -199,7 +244,7 @@ cause::stype init()
 
 	// メモリ管理用領域の先頭を physical_memory に割り当てる。
 	physical_memory* pmem_ctrl =
-	    new (PHYSICAL_MEMMAP_BASEADR + reinterpret_cast<void*>(base_adr))
+	    new (reinterpret_cast<u8*>(PHYSICAL_MEMMAP_BASEADR + base_adr))
 	    physical_memory;
 
 	// 続くメモリをバッファにする。

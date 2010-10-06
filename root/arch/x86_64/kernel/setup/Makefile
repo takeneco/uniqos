@@ -1,8 +1,7 @@
-# @file    arch/x86_64/kernel/setup/Makefile
-# @author  Kato Takeshi
+# @author  KATO Takeshi
 # @brief   カーネル自身をセットアップするMakefile。
 #
-# (C) 2010 Kato Takeshi.
+# (C) 2010 KATO Takeshi
 
 
 ROOT = ../../../..
