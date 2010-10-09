@@ -3,6 +3,8 @@
 //
 // (C) 2010 KATO Takeshi
 
+#include <algorithm>
+
 #include "arch.hh"
 #include "btypes.hh"
 #include "bitmap.hh"
@@ -54,7 +56,7 @@ public:
 	void init(void* buf);
 	void init_free_all(void* buf, uptr buf_size);
 
-	void reserve_range(uptr head, uptr bytes);
+	void reserve_range(uptr from, uptr to);
 };
 
 uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
@@ -93,11 +95,36 @@ void physical_page_table::init_free_all(void* buf, uptr buf_size)
 	free_item_chain.init_head(dech.get_head());
 }
 
-void reserve_range(uptr head, uptr bytes)
+void physical_page_table::reserve_range(uptr from, uptr to)
 {
-	const uptr head_page = head / page_size;
-	if (head % page_size != 0) {
-		
+	const uptr fr_page = from / page_size;
+	const uptr fr_table = fr_page / BITMAP_BITS;
+	const uptr fr_page_in_table = fr_page - (fr_table * BITMAP_BITS);
+
+	const uptr to_page = to / page_size;
+	const uptr to_table = to_page / BITMAP_BITS;
+	const uptr to_page_in_table = to_page - (t_table * BITMAP_BITS);
+
+	for (uptr table = fr_table; table <= to_table; ++table) {
+		const uptr page_min =
+		    table == fr_table ? fr_page_in_table : 0;
+		const uptr page_max =
+		    table == to_table ? to_page_in_table : BITMAP_BITS - 1;
+
+		for (uptr page = page_min; page <= page_max; ++page) {
+			table_base[table].table.set_false(page);
+		}
+	}
+
+	if (next_level != 0) {
+		if (from % page_size != 0) {
+			const uptr tmp = up_align(from, page_size);
+			next_level->reserve_range(from, std::min(tmp, to));
+		}
+		if (fr_page != to_page && to % page_size != 0) {
+			const uptr tmp = down_align(to, page_size);
+			next_level->reserve_range(tmp, to);
+		}
 	}
 }
 
@@ -109,7 +136,8 @@ class physical_memory
 	physical_page_table page_l2_table;
 	uptr pmem_end;
 
-	void reserve_range(uptr head, uptr bytes);
+	void reserve_bits(uptr from, uptr to);
+	void reserve_range(uptr from, uptr to);
 
 public:
 	static uptr calc_workarea_size(uptr pmem_end_);
@@ -120,9 +148,28 @@ public:
 	bool load_setupdump();
 };
 
-void physical_memory::reserve_range(uptr head, uptr bytes)
+void physical_memory::reserve_bits(uptr from, uptr to)
 {
 	
+}
+
+/// from から to までを割当済みの状態にする。
+void physical_memory::reserve_range(uptr from, uptr to)
+{
+	const uptr l2size_x_bits = PAGE_L2_SIZE * page_l2_table.BITMAP_BITS;
+	if (from % l2size_x_bits != 0) {
+		const uptr tmp = std::min(up_align(from, l1size_x_bits), to);
+		reserve_bits(from, tmp);
+		from = tmp;
+	}
+
+	const uptr down_align_to = down_align(to, l2size_x_bits);
+	for (; from < down_align_to; from += l2size_x_bits) {
+	}
+
+	if (to != down_align_to) {
+		reserve_bits(from, to);
+	}
 }
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
@@ -168,6 +215,8 @@ bool physical_memory::load_setupdump()
 	setup_get_used_memmap(&usedmap, &usedmap_num);
 
 	for (u32 i = 0; i < usedmap_num; i++) {
+		reserve_range(usedmap[i]->head,
+		    usedmap[i]->head + usedmap[i]->bytes);
 	}
 }
 
