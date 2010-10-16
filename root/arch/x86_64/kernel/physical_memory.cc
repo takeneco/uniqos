@@ -2,6 +2,11 @@
 /// @brief  Physical memory manager.
 //
 // (C) 2010 KATO Takeshi
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
 #include "arch.hh"
 #include "btypes.hh"
@@ -10,7 +15,7 @@
 #include "global_variables.hh"
 #include "kerninit.hh"
 #include "native.hh"
-#include "pnew.hh"
+#include "placement_new.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"
 
@@ -20,6 +25,8 @@
 namespace {
 
 using global_variable::gv;
+
+const uptr ADR_INVALID = U64CAST(0xffffffffffffffff);
 
 /// @brief 物理メモリの末端アドレスを返す。
 //
@@ -69,20 +76,28 @@ setup_memmgr_dumpdata* search_free_pmem(u32 size)
 /// @brief 物理メモリページの空き状態を管理する。
 class physical_page_table
 {
-	struct table_item
+	struct table_cell
 	{
+		/// 空きページのビットは true
+		/// 予約ページのビットは false
 		bitmap<uptr> table;
-		chain_link<table_item> chain_link_;
+		chain_link<table_cell> chain_link_;
 	};
 
-	typedef chain<table_item, &table_item::chain_link_> table_chain;
+	typedef chain<table_cell, &table_cell::chain_link_> cell_chain;
 
-	table_chain free_item_chain;
-	table_item* table_base;
+	cell_chain free_cell_chain;
+	table_cell* table_base;
 
-	const u64 page_size;
+	const uptr page_size;
+	const uptr cell_size;
 	physical_page_table* const up_level;
 	physical_page_table* const down_level;
+
+private:
+	uptr get_page_address(const table_cell* cell, uptr offset) const;
+	table_cell& get_cell(uptr adr);
+	bool import_uplevel_page();
 
 public:
 	enum {
@@ -94,6 +109,7 @@ public:
 	    physical_page_table* up_level_,
 	    physical_page_table* down_level_)
 	:	page_size(page_size_),
+		cell_size(page_size * BITMAP_BITS),
 		up_level(up_level_),
 		down_level(down_level_)
 	{}
@@ -107,8 +123,44 @@ public:
 
 	void build_free_chain(uptr pmem_end);
 
-	bool reserve_1page(uptr* padr);
+	uptr reserve_1page();
 };
+
+inline
+uptr physical_page_table::get_page_address(
+    const physical_page_table::table_cell* cell,
+    uptr offset)
+const
+{
+	return ((cell - table_base) * BITMAP_BITS + offset) * page_size;
+}
+
+inline
+physical_page_table::table_cell& physical_page_table::get_cell(uptr adr)
+{
+	return table_base[adr / cell_size];
+}
+
+/// 上のレベルから1ページだけ崩して取り込む。
+/// @retval true  Succeeds.
+/// @retval false No memory in uplevel.
+bool physical_page_table::import_uplevel_page()
+{
+	if (up_level == 0)
+		return false;
+
+	uptr up_padr = up_level->reserve_1page();
+	if (up_padr == ADR_INVALID)
+		return false;
+
+	const uptr up_page_size = up_level->page_size;
+	for (uptr offset = 0; offset < up_page_size; offset += cell_size) {
+		table_cell& cell = get_cell(up_padr + offset);
+		free_cell_chain.insert_head(&cell);
+	}
+
+	return true;
+}
 
 uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
 {
@@ -118,36 +170,39 @@ uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
 	// すべてのページを管理するために必要な bitmap_list 数
 	const uptr bitmaps = (pages + (BITMAP_BITS - 1)) / BITMAP_BITS;
 
-	return sizeof (table_item) * bitmaps;
+	return sizeof (table_cell) * bitmaps;
 }
 
 /// @brief 物理メモリを予約済みとして初期化する。
+/// Without for top levels.
 void physical_page_table::init_reserve_all(void* buf, uptr buf_size)
 {
-	table_base = reinterpret_cast<table_item*>(buf);
+	table_base = reinterpret_cast<table_cell*>(buf);
 
-	const uptr n = buf_size / sizeof (table_item);
+	const uptr n = buf_size / sizeof (table_cell);
 
-	for (uptr i = 0; i < n; ++i) {
-		table_base[i].table.set_false_all();
-	}
+	// up_level から渡されたページを free の状態にするため、
+	// true で初期化する。
+	for (uptr i = 0; i < n; ++i)
+		table_base[i].table.set_true_all();
 }
 
 /// @brief 物理メモリ全体を空き状態として初期化する。
+/// For top level.
 void physical_page_table::init_free_all(void* buf, uptr buf_size)
 {
-	table_base = reinterpret_cast<table_item*>(buf);
+	table_base = reinterpret_cast<table_cell*>(buf);
 
-	const uptr n = buf_size / sizeof (table_item);
+	const uptr n = buf_size / sizeof (table_cell);
 
-	dechain<table_item, &table_item::chain_link_> dech;
+	dechain<table_cell, &table_cell::chain_link_> dech;
 
 	for (uptr i = 0; i < n; ++i) {
 		table_base[i].table.set_true_all();
 		dech.insert_tail(&table_base[i]);
 	}
 
-	free_item_chain.init_head(dech.get_head());
+	free_cell_chain.init_head(dech.get_head());
 }
 
 /// @brief from から to までを割当済みの状態にする。
@@ -189,7 +244,7 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 
 void physical_page_table::build_free_chain(uptr pmem_end)
 {
-	dechain<table_item, &table_item::chain_link_> dech;
+	dechain<table_cell, &table_cell::chain_link_> dech;
 
 	const uptr n = (pmem_end + (page_size - 1)) / page_size;
 	for (uptr i = 0; i < n; ++i) {
@@ -197,20 +252,29 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 			dech.insert_tail(&table_base[i]);
 	}
 
-	free_item_chain.init_head(dech.get_head());
+	free_cell_chain.init_head(dech.get_head());
 }
 
 /// １ページだけ予約する。
 /// @param[in] padr  Must not 0.
-/// @retval true  Succeeds.
-/// @retval false  No free page.
-bool physical_page_table::reserve_1page(uptr* padr)
+/// @retval ADR_INVALID No free page.
+/// @retval other       Succeeds.
+uptr physical_page_table::reserve_1page()
 {
-	table_item* head = free_item_chain.get_head();
-	if (head == 0)
-		return false;
+	table_cell* cell = free_cell_chain.get_head();
+	if (cell == 0) {
+		if (import_uplevel_page())
+			cell = free_cell_chain.get_head();
+		else
+			return ADR_INVALID;
+	}
 
-	int offset = head->table.search_true();
+	int offset = cell->table.search_true();
+	cell->table.set_false(offset);
+	if (cell->table.is_all_false())
+		free_cell_chain.remove_head();
+
+	return get_page_address(cell, offset);
 }
 
 }  // namepsace
@@ -232,7 +296,7 @@ public:
 	bool load_setupdump();
 	void build();
 
-	bool reserve_l1page(uptr* padr);
+	cause::stype reserve_l1page(uptr* padr);
 };
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
@@ -296,9 +360,16 @@ void physical_memory::build()
 	page_l2_table.build_free_chain(pmem_end);
 }
 
-bool physical_memory::reserve_l1page(uptr* padr)
+cause::stype physical_memory::reserve_l1page(uptr* padr)
 {
-	
+	uptr tmp = page_l1_table.reserve_1page();
+	if (tmp != ADR_INVALID) {
+		*padr = tmp;
+		return cause::OK;
+	}
+	else {
+		return cause::NO_MEMORY;
+	}
 }
 
 namespace arch
@@ -352,7 +423,7 @@ cause::stype init()
 /// @retval cause::OK  Succeeds. *padr is physical page base address.
 cause::stype alloc_l1page(uptr* adr)
 {
-	return cause::FAIL;
+	return gv.pmem_ctrl->reserve_l1page(adr);
 }
 
 /// レベル２の物理メモリページを１ページ確保する。
@@ -361,7 +432,7 @@ cause::stype alloc_l1page(uptr* adr)
 /// @retval cause::OK  Succeeds. *padr is physical page base address.
 cause::stype alloc_l2page(uptr* adr)
 {
-	return cause::FAIL;
+	return cause::NO_IMPLEMENTS;
 }
 
 /// レベル１の物理メモリページを１ページ解放する。
@@ -369,7 +440,7 @@ cause::stype alloc_l2page(uptr* adr)
 /// @retval cause::OK  Succeeds.
 cause::stype free_l1page(uptr adr)
 {
-	return cause::FAIL;
+	return cause::NO_IMPLEMENTS;
 }
 
 /// レベル２の物理メモリページを１ページ解放する。
@@ -377,7 +448,7 @@ cause::stype free_l1page(uptr adr)
 /// @retval cause::OK  Succeeds.
 cause::stype free_l2page(uptr adr)
 {
-	return cause::FAIL;
+	return cause::NO_IMPLEMENTS;
 }
 
 }  // namespace pmem

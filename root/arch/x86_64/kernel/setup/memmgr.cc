@@ -2,16 +2,18 @@
 /// @brief   Easy memory management implement used by setup.
 //
 // (C) 2010 KATO Takeshi
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
 
 #include "mem.hh"
 #include "memdump.hh"
 #include "access.hh"
-#include "pnew.hh"
+#include "placement_new.hh"
 
 #include "native.hh"
-
-#include "term.hh"
-extern term_chain* debug_tc;
 
 
 namespace {
@@ -247,7 +249,6 @@ void* memmgr_alloc(std::size_t size, std::size_t align)
 			ent->bytes -= size;
 		}
 
-		debug_tc->puts("memmgr_alloc:")->putu64x(r);
 		return reinterpret_cast<void*>(r);
 	}
 

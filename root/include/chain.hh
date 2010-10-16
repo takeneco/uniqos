@@ -11,7 +11,7 @@
 template<class DataType>
 class chain_link
 {
-	template<class A, class B, class C, B A::* D> friend class _chain_impl;
+	template<class A, class B, class C, B A::* D> friend class chain_impl_;
 	DataType* next;
 
 public:
@@ -25,7 +25,7 @@ public:
 template<class DataType>
 class bichain_link : public chain_link<DataType>
 {
-	template<class A, class B, class C, B A::* D> friend class _chain_impl;
+	template<class A, class B, class C, B A::* D> friend class chain_impl_;
 	DataType* prev;
 
 public:
@@ -36,11 +36,11 @@ public:
 
 /// @brief  Single ended chain.
 template<class DataType>
-class _chain_end
+class chain_end_
 {
 	DataType* head;
 public:
-	_chain_end() : head(0) {}
+	chain_end_() : head(0) {}
 
 	void set_head(DataType* p) { head = p; }
 	void set_tail(DataType*) { /* nothing */ }
@@ -51,11 +51,11 @@ public:
 
 /// @brief  Double ended chain.
 template<class DataType>
-class _dechain_end : public _chain_end<DataType>
+class dechain_end_ : public chain_end_<DataType>
 {
 	DataType* tail;
 public:
-	_dechain_end() : _chain_end<DataType>(), tail(0) {}
+	dechain_end_() : chain_end_<DataType>(), tail(0) {}
 
 	void set_tail(DataType* p) { tail = p; }
 	const DataType* get_tail() const { return tail; }
@@ -68,7 +68,7 @@ template<
     class LinkType,
     class EndType,
     LinkType DataType::* LinkVal>
-class _chain_impl
+class chain_impl_
 {
 	const DataType& prev(const DataType* p) const {
 		return *(p->*LinkVal).prev; }
@@ -88,24 +88,29 @@ protected:
 	EndType end;
 
 public:
-	_chain_impl() : end() {}
+	chain_impl_() : end() {}
 
+	// 1end 2end & dir, bidir
 	const DataType* get_head() const { return end.get_head(); }
 	      DataType* get_head()       { return end.get_head(); }
 
+	// 2end & dir, bidir
 	const DataType* get_tail() const { return end.get_tail(); }
 	      DataType* get_tail()       { return end.get_tail(); }
 
+	// 1end, 2end & bidir
 	static const DataType* get_prev(const DataType* p) {
 		return (p->*LinkVal).prev; }
 	static       DataType* get_prev(DataType* p) {
 		return (p->*LinkVal).prev; }
 
+	// 1end, 2end & dir, bidir
 	static const DataType* get_next(const DataType* p) {
 		return (p->*LinkVal).next; }
 	static       DataType* get_next(DataType* p) {
 		return (p->*LinkVal).next; }
 
+	// 1end, 2end & dir, bidir
 	void insert_head(DataType* p) {
 		set_prev(p, 0);
 		set_next(p, end.get_head());
@@ -115,6 +120,7 @@ public:
 			end.set_tail(p);
 		end.set_head(p);
 	}
+	// 2end & dir, bidir
 	void insert_tail(DataType* p) {
 		set_prev(p, end.get_tail());
 		set_next(p, 0);
@@ -124,6 +130,7 @@ public:
 			end.set_head(p);
 		end.set_tail(p);
 	}
+	// 1end, 2end & bidir
 	void insert_prev(DataType* base, DataType* p) {
 		set_prev(p, get_prev(base));
 		set_next(p, base);
@@ -133,6 +140,7 @@ public:
 			end.set_head(p);
 		set_prev(base, p);
 	}
+	// 1end, 2end & dir, bidir
 	void insert_next(DataType* base, DataType* p) {
 		set_prev(p, base);
 		set_next(p, get_next(base));
@@ -142,6 +150,7 @@ public:
 			end.set_tail(p);
 		set_next(base, p);
 	}
+	// 1end, 2end & dir, bidir
 	DataType* remove_head() {
 		DataType* head = end.get_head();
 		if (head) {
@@ -153,6 +162,7 @@ public:
 		}
 		return head;
 	}
+	// 2end & bidir
 	DataType* remove_tail() {
 		DataType* tail = end.get_tail();
 		if (tail) {
@@ -164,6 +174,7 @@ public:
 		}
 		return tail;
 	}
+	// 1end, 2end & bidir
 	void remove(DataType* p) {
 		if (get_prev(p))
 			set_next(get_prev(p), get_next(p));
@@ -174,6 +185,7 @@ public:
 		else
 			end.set_tail(get_prev(p));
 	}
+	// 1end, 2end & dir, bidir
 	void remove_next(DataType* p) {
 		DataType* next = get_next(p);
 		//if (next) {
@@ -189,8 +201,8 @@ public:
 
 /// Directional single ended chain
 template<class DataType, chain_link<DataType> DataType::* LinkVal>
-class chain : public _chain_impl
-    <DataType, chain_link<DataType>, _chain_end<DataType>, LinkVal>
+class chain : public chain_impl_
+    <DataType, chain_link<DataType>, chain_end_<DataType>, LinkVal>
 {
 public:
 	void init_head(DataType* head) {
@@ -200,8 +212,8 @@ public:
 
 /// Bidirectional and single ended chain
 template<class DataType, bichain_link<DataType> DataType::* LinkVal>
-class bichain : public _chain_impl
-    <DataType, bichain_link<DataType>, _chain_end<DataType>, LinkVal>
+class bichain : public chain_impl_
+    <DataType, bichain_link<DataType>, chain_end_<DataType>, LinkVal>
 {
 public:
 	void init_head(DataType* head) {
@@ -211,15 +223,15 @@ public:
 
 /// Directional and double ended chain
 template<class DataType, chain_link<DataType> DataType::* LinkVal>
-class dechain : public _chain_impl
-    <DataType, chain_link<DataType>, _dechain_end<DataType>, LinkVal>
+class dechain : public chain_impl_
+    <DataType, chain_link<DataType>, dechain_end_<DataType>, LinkVal>
 {
 };
 
 /// Bidirectional and double ended chain
 template<class DataType, bichain_link<DataType> DataType::* LinkVal>
-class bidechain : public _chain_impl
-    <DataType, bichain_link<DataType>, _dechain_end<DataType>, LinkVal>
+class bidechain : public chain_impl_
+    <DataType, bichain_link<DataType>, dechain_end_<DataType>, LinkVal>
 {
 };
 

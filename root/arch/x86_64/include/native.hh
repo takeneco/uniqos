@@ -1,10 +1,10 @@
-/// @author  Kato Takeshi
-/// @brief   C言語から呼び出すアセンブラ命令
-///
-/// (C) 2010 Kato Takeshi
+/// @author KATO Takeshi
+/// @brief  C言語から呼び出すアセンブラ命令
+//
+// (C) 2010 KATO Takeshi
 
-#ifndef _ARCH_X86_64_INCLUDE_NATIVE_HH
-#define _ARCH_X86_64_INCLUDE_NATIVE_HH
+#ifndef ARCH_X86_64_INCLUDE_NATIVE_HH
+#define ARCH_X86_64_INCLUDE_NATIVE_HH
 
 #include "btypes.hh"
 
@@ -17,36 +17,36 @@ inline void hlt() {
 inline void outb(u8 data, u16 port) {
 	asm volatile ("outb %0,%1" : : "a"(data), "dN"(port));
 }
-
-}  // namespace native
-
-inline void native_outw(u16 data, u16 port) {
+inline void outw(u16 data, u16 port) {
 	asm volatile ("outw %0,%1" : : "a"(data), "dN"(port));
 }
-inline void native_outl(u32 data, u16 port) {
+inline void outl(u32 data, u16 port) {
 	asm volatile ("outl %0,%1" : : "a"(data), "dN"(port));
 }
-inline u8 native_inb(u16 port) {
+inline u8 inb(u16 port) {
 	u8 data;
 	asm volatile ("inb %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-inline u16 native_inw(u16 port) {
+inline u16 inw(u16 port) {
 	u16 data;
 	asm volatile ("inw %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-inline u32 native_inl(u16 port) {
+inline u32 inl(u16 port) {
 	u32 data;
 	asm volatile ("inl %1,%0" : "=a"(data) : "dN"(port));
 	return data;
 }
-inline void native_cli() {
+inline void cli() {
 	asm volatile ("cli");
 }
-inline void native_sti() {
+inline void sti() {
 	asm volatile ("sti");
 }
+
+}  // namespace native
+
 inline u32 native_get_cr0_32() {
 	u32 cr0;
 	asm volatile ("movl %%cr0, %0" : "=r" (cr0));

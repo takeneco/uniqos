@@ -7,7 +7,7 @@
 
 #include "kerninit.hh"
 #include "native.hh"
-#include "pnew.hh"
+#include "placement_new.hh"
 #include "arch.hh"
 
 
@@ -55,7 +55,7 @@ void serial_output::init(u16 com_base_port, u16 com_pic_irq)
 	base_port = com_base_port;
 	pic_irq = com_pic_irq;
 
-	native_cli();
+	native::cli();
 
 	intr_set_handler(arch::IRQ_PIC_OFFSET + 4, serial_intr_com1_handler);
 	intr_set_handler(arch::IRQ_PIC_OFFSET + 3, serial_intr_com2_handler);
@@ -85,7 +85,7 @@ void serial_output::init(u16 com_base_port, u16 com_pic_irq)
 
 	txfifo_left = OUT_BUF_SIZE;
 
-	native_sti();
+	native::sti();
 }
 
 
@@ -98,7 +98,7 @@ int serial_output::write(
 
 	for (;;) {
 		for (;;) {
-			const u8 r = native_inb(base_port + LINE_STATUS);
+			const u8 r = native::inb(base_port + LINE_STATUS);
 			if (r & 0x40)
 				break;
 		}
@@ -118,7 +118,7 @@ extern "C" void on_serial_intr_com1()
 
 extern "C" void on_serial_intr_com2()
 {
-	u8 status = native_inb(serial_out[1].base_port + INTR_ID);
+	u8 status = native::inb(serial_out[1].base_port + INTR_ID);
 	if ((status & 7) == 0x1) {
 		// Tx data/FIFO empty
 		//serial_out[1].out_buf_left = serial_output::OUT_BUF_SIZE;
