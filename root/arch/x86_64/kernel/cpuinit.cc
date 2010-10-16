@@ -62,26 +62,26 @@ cause::stype pic_init()
 		PIC1_ICW4 = 0x00a1,
 	};
 	// Disable interrupt
-	native_outb(0xff, PIC0_IMR);
-	native_outb(0xff, PIC1_IMR);
+	native::outb(0xff, PIC0_IMR);
+	native::outb(0xff, PIC1_IMR);
 
 	// Edge trigger mode
-	native_outb(0x11, PIC0_ICW1);
+	native::outb(0x11, PIC0_ICW1);
 	// Map IRQ 0-7 to INT 20h-27h
-	native_outb(0x20, PIC0_ICW2);
+	native::outb(0x20, PIC0_ICW2);
 	// PIC1 cascading to PIC0-IRQ2
-	native_outb(1 << 2, PIC0_ICW3);
+	native::outb(1 << 2, PIC0_ICW3);
 	// No buffering
-	native_outb(0x01, PIC0_ICW4);
+	native::outb(0x01, PIC0_ICW4);
 
 	// Edge trigger mode
-	native_outb(0x11, PIC1_ICW1);
+	native::outb(0x11, PIC1_ICW1);
 	// Map IRQ 8-15 to INT 28h-2Fh
-	native_outb(0x28, PIC1_ICW2);
+	native::outb(0x28, PIC1_ICW2);
 	// PIC1 cascading to PIC0-IRQ2
-	native_outb(2, PIC1_ICW3);
+	native::outb(2, PIC1_ICW3);
 	// No buffering
-	native_outb(0x01, PIC1_ICW4);
+	native::outb(0x01, PIC1_ICW4);
 
 	// Enable interrupt
 	// PIC0 - 0x01 : Timer
@@ -89,8 +89,8 @@ cause::stype pic_init()
 	// PIC0 - 0x04 : PIC1 cascades(IRQ2)
 	// PIC0 - 0x08 : COM2
 	// PIC0 - 0x10 : COM1
-	native_outb(0xef, PIC0_IMR);
-	native_outb(0xff, PIC1_IMR);
+	native::outb(0xef, PIC0_IMR);
+	native::outb(0xff, PIC1_IMR);
 
 	return cause::OK;
 }

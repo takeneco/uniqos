@@ -1,8 +1,7 @@
-# @file    arch/x86_64/kernel/Makefile
-# @author  Kato Takeshi
+# @author  KATO Takeshi
 # @brief   カーネル本体の Makefile
 #
-# (C) 2010 Kato Takeshi.
+# (C) 2010 KATO Takeshi
 
 
 ROOT = ../../..
@@ -18,13 +17,16 @@ CPPFLAGS +=
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS = $(shell cat $(KERNEL_DIR)/objects.txt)
 
-SRCS = entry.S exception_handler.S gnuc.c intr.cc kerninit.cc \
-       physical_memmgr.cc \
-       serialh.S serialout.cc setupdata.cc \
-       vadr2padr.cc videoout.cc cpuinit.cc
-OBJS := $(SRCS:%.cc=%.o)
-OBJS := $(OBJS:%.S=%.o)
-OBJS := $(OBJS:%.c=%.o)
+ASM_SRCS = entry.S exception_handler.S serialh.S
+C_SRCS = gnuc.c
+CXX_SRCS = global_variables.cc \
+	intr.cc kerninit.cc physical_memory.cc \
+	serialout.cc setupdata.cc \
+	vadr2padr.cc videoout.cc cpuinit.cc
+ASM_OBJS = $(ASM_SRCS:%.S=%.o)
+C_OBJS = $(C_SRCS:%.c=%.o)
+CXX_OBJS = $(CXX_SRCS:%.cc=%.o)
+OBJS = $(ASM_OBJS) $(C_OBJS) $(CXX_OBJS)
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 .PHONY: all

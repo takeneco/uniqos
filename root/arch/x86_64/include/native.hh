@@ -1,8 +1,7 @@
-// @file    arch/x86_64/include/native.hh
-// @author  Kato Takeshi
-// @brief   C言語から呼び出すアセンブラ命令
-//
-// (C) 2010 Kato Takeshi.
+/// @author  Kato Takeshi
+/// @brief   C言語から呼び出すアセンブラ命令
+///
+/// (C) 2010 Kato Takeshi
 
 #ifndef _ARCH_X86_64_INCLUDE_NATIVE_HH
 #define _ARCH_X86_64_INCLUDE_NATIVE_HH
@@ -10,12 +9,17 @@
 #include "btypes.hh"
 
 
-inline void native_hlt() {
+namespace native {
+
+inline void hlt() {
 	asm volatile ("hlt");
 }
-inline void native_outb(u8 data, u16 port) {
+inline void outb(u8 data, u16 port) {
 	asm volatile ("outb %0,%1" : : "a"(data), "dN"(port));
 }
+
+}  // namespace native
+
 inline void native_outw(u16 data, u16 port) {
 	asm volatile ("outw %0,%1" : : "a"(data), "dN"(port));
 }
@@ -67,54 +71,118 @@ inline u64 native_get_cr3() {
 inline void native_set_cr3(u64 cr3) {
 	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
-inline s16 native_bsfw(u16 data) {
+
+namespace native {
+
+/// @{
+/// @name ビット検索関数。
+/// _or0 の関数は、0 を入力すると -1 を返す。
+inline s16 bsfw(u16 data) {
 	s16 index;
 	asm volatile ("bsfw %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s32 native_bsfl(u32 data) {
+inline s16 bsfw_or0(u16 data) {
+	s16 index;
+	asm volatile (
+	    "bsfw %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movw $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s32 bsfl(u32 data) {
 	s32 index;
 	asm volatile ("bsfl %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s64 native_bsfq(u64 data) {
+inline s32 bsfl_or0(u32 data) {
+	s32 index;
+	asm volatile (
+	    "bsfl %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movl $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s64 bsfq(u64 data) {
 	s64 index;
 	asm volatile ("bsfq %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s16 native_bsrw(u16 data) {
+inline s32 bsfq_or0(u64 data) {
+	s64 index;
+	asm volatile (
+	    "bsfq %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movq $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s16 bsrw(u16 data) {
 	s16 index;
 	asm volatile ("bsrw %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s32 native_bsrl(u32 data) {
+inline s16 bsrw_or0(u16 data) {
+	s16 index;
+	asm volatile (
+	    "bsrw %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movw $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s32 bsrl(u32 data) {
 	s32 index;
 	asm volatile ("bsrl %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s64 native_bsrq(u64 data) {
+inline s32 bsrl_or0(u32 data) {
+	u32 index;
+	asm volatile (
+	    "bsrl %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movl $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
+}
+inline s64 bsrq(u64 data) {
 	s64 index;
 	asm volatile ("bsrq %1, %0" : "=r" (index) : "rm" (data));
 	return index;
 }
-inline s16 bitscan_forward_16(u16 data) {
-	return data != 0 ? native_bsfw(data) : -1;
+inline s64 bsrq_or0(u64 data) {
+	s64 index;
+	asm volatile (
+	    "bsrq %1, %0 \n\t"
+	    "jnz 1f \n\t"
+	    "movq $-1, %0 \n\t"
+	    "1: \n\t"
+	    : "=r" (index) : "rm" (data));
+	return index;
 }
-inline s32 bitscan_forward_32(u32 data) {
-	return data != 0 ? native_bsfl(data) : -1;
-}
-inline s64 bitscan_forward_64(u64 data) {
-	return data != 0 ? native_bsfq(data) : -1;
-}
-inline s16 bitscan_reverse_16(u16 data) {
-	return data != 0 ? native_bsrw(data) : -1;
-}
-inline s32 bitscan_reverse_32(u32 data) {
-	return data != 0 ? native_bsrl(data) : -1;
-}
-inline s64 bitscan_reverse_64(u64 data) {
-	return data != 0 ? native_bsrq(data) : -1;
-}
+/// @}
+
+}  // namespace native
+
+inline s16 bitscan_forward_16(u16 data) { return native::bsfw_or0(data); }
+inline s32 bitscan_forward_32(u32 data) { return native::bsfl_or0(data); }
+inline s64 bitscan_forward_64(u64 data) { return native::bsfq_or0(data); }
+inline s16 bitscan_forward(u16 data) { return native::bsfw_or0(data); }
+inline s32 bitscan_forward(u32 data) { return native::bsfl_or0(data); }
+inline s64 bitscan_forward(u64 data) { return native::bsfq_or0(data); }
+inline s16 bitscan_reverse_16(u16 data) { return native::bsrw_or0(data); }
+inline s32 bitscan_reverse_32(u32 data) { return native::bsrl_or0(data); }
+inline s64 bitscan_reverse_64(u64 data) { return native::bsrq_or0(data); }
+inline s16 bitscan_reverse(u16 data) { return native::bsrw_or0(data); }
+inline s32 bitscan_reverse(u32 data) { return native::bsrl_or0(data); }
+inline s64 bitscan_reverse(u64 data) { return native::bsrq_or0(data); }
 
 // セグメントレジスタの値を返す。
 // デバッグ用。

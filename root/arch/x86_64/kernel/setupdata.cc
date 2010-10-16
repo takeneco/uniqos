@@ -1,8 +1,7 @@
-// @file   arch/x86_64/kernel/setupdata.cpp
-// @author Kato Takeshi
-// @brief  Access to setup data.
+/// @author KATO Takeshi
+/// @brief  Access to setup data.
 //
-// (C) Kato Takeshi 2010
+// (C) KATO Takeshi 2010
 
 #include "setupdata.hh"
 
@@ -22,8 +21,14 @@ void setup_get_display_cursor(u32* row, u32* col)
 	*col = setup_get_value<u32>(SETUP_DISP_CURCOL);
 }
 
-void setup_get_free_memmap(setup_memmgr_dumpdata** freemap, u32* num)
+void setup_get_free_memdump(setup_memmgr_dumpdata** freedump, u32* num)
 {
-	*freemap = setup_get_ptr<setup_memmgr_dumpdata>(SETUP_MEMMAP_DUMP);
-	*num = setup_get_value<u32>(SETUP_MEMMAP_DUMP_COUNT);
+	*freedump = setup_get_ptr<setup_memmgr_dumpdata>(SETUP_FREEMEM_DUMP);
+	*num = setup_get_value<u32>(SETUP_FREEMEM_DUMP_COUNT);
+}
+
+void setup_get_used_memdump(setup_memmgr_dumpdata** useddump, u32* num)
+{
+	*useddump = setup_get_ptr<setup_memmgr_dumpdata>(SETUP_USEDMEM_DUMP);
+	*num = setup_get_value<u32>(SETUP_USEDMEM_DUMP_COUNT);
 }

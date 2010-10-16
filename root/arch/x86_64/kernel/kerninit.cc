@@ -1,8 +1,7 @@
-// @file   arch/x86_64/kernel/kerninit.cpp
-// @author Kato Takeshi
-// @brief  Call kernel initialize funcs.
+/// @author KATO Takeshi
+/// @brief  Call kernel initialize funcs.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #include "kerninit.hh"
 
@@ -62,8 +61,8 @@ extern "C" int kern_init()
 	serial_output* com1 = serial_get_out(0);
 	com1->PutStr("xyz");
 kout=com1;
-	cause::stype r = phymemmgr_init();
-	vo.put_str("phymemmgr_init() = ")->put_udec(r)->put_endl();
+	cause::stype r = arch::pmem::init();
+	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
 	return 0;
 }
