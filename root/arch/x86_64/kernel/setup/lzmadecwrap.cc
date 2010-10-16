@@ -18,7 +18,8 @@ namespace {
 
 	void* lzma_alloc(void*, std::size_t size)
 	{
-		return memmgr_alloc(size);
+		void* p = memmgr_alloc(size);
+		return p;
 	}
 
 	void lzma_free(void*, void* addr)
@@ -58,5 +59,5 @@ bool lzma_decode(
 	    LZMA_PROPS_SIZE,
 	    LZMA_FINISH_END,
 	    &status,
-	    0) == SZ_OK;
+	    &alloc) == SZ_OK;
 }

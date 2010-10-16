@@ -8,6 +8,11 @@
 #include "access.hh"
 #include "pnew.hh"
 
+#include "native.hh"
+
+#include "term.hh"
+extern term_chain* debug_tc;
+
 
 namespace {
 
@@ -218,12 +223,12 @@ void* memmgr_alloc(std::size_t size, std::size_t align)
 			mm->nofree_chain.insert_head(ent);
 		} else {
 			memmap_entry* newent = mm->memmap_new_entry();
-			if (newent == NULL)
+			if (newent == 0)
 				continue;
 
 			if (align_gap != 0) {
 				memmap_entry* newent2 = mm->memmap_new_entry();
-				if (newent2 == NULL) {
+				if (newent2 == 0) {
 					newent->unset();
 					continue;
 				}
@@ -242,10 +247,11 @@ void* memmgr_alloc(std::size_t size, std::size_t align)
 			ent->bytes -= size;
 		}
 
+		debug_tc->puts("memmgr_alloc:")->putu64x(r);
 		return reinterpret_cast<void*>(r);
 	}
 
-	return NULL;
+	return 0;
 }
 
 /// @brief  Free memory.

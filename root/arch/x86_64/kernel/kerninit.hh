@@ -1,10 +1,9 @@
-// @file    arch/x86_64/kernel/kerninit.hh
-// @author  Kato Takeshi
+/// @author  KATO Takeshi
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
-#ifndef _ARCH_X86_64_KERNEL_KERNINIT_HH_
-#define _ARCH_X86_64_KERNEL_KERNINIT_HH_
+#ifndef ARCH_X86_64_KERNEL_KERNINIT_HH_
+#define ARCH_X86_64_KERNEL_KERNINIT_HH_
 
 #include "btypes.hh"
 
@@ -17,7 +16,13 @@ void intr_set_handler(int intr, intr_handler hander);
 
 u64 convert_vadr_to_padr(const void* vadr);
 
-cause::stype phymemmgr_init();
+namespace arch {
+namespace pmem {
+
+cause::stype init();
+
+}  // namespace pmem
+}  // namespace arch
 
 
 #endif  // Include guard.

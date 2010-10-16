@@ -1,8 +1,7 @@
-// @file   arch/x86_64/kernel/intr.cc
-// @author Kato Takeshi
-// @brief  IDT ops.
+/// @author KATO Takeshi
+/// @brief  IDT ops.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 
 #include "kerninit.hh"
 
@@ -172,7 +171,7 @@ extern "C" void on_exception_intr_0()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_1()
@@ -183,7 +182,7 @@ extern "C" void on_exception_intr_1()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_2()
@@ -194,7 +193,7 @@ extern "C" void on_exception_intr_2()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_3()
@@ -205,7 +204,7 @@ extern "C" void on_exception_intr_3()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_4()
@@ -216,7 +215,7 @@ extern "C" void on_exception_intr_4()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_5()
@@ -227,7 +226,7 @@ extern "C" void on_exception_intr_5()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_6()
@@ -238,7 +237,7 @@ extern "C" void on_exception_intr_6()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_7()
@@ -249,7 +248,7 @@ extern "C" void on_exception_intr_7()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_8()
@@ -260,7 +259,7 @@ extern "C" void on_exception_intr_8()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_9()
@@ -271,7 +270,7 @@ extern "C" void on_exception_intr_9()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_10()
@@ -282,7 +281,7 @@ extern "C" void on_exception_intr_10()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_11()
@@ -293,7 +292,7 @@ extern "C" void on_exception_intr_11()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_12()
@@ -304,7 +303,7 @@ extern "C" void on_exception_intr_12()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_13()
@@ -315,7 +314,7 @@ extern "C" void on_exception_intr_13()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_14()
@@ -326,7 +325,7 @@ extern "C" void on_exception_intr_14()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_15()
@@ -337,7 +336,7 @@ extern "C" void on_exception_intr_15()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_16()
@@ -348,7 +347,7 @@ extern "C" void on_exception_intr_16()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_17()
@@ -359,7 +358,7 @@ extern "C" void on_exception_intr_17()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_18()
@@ -370,7 +369,7 @@ extern "C" void on_exception_intr_18()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }
 
 extern "C" void on_exception_intr_19()
@@ -381,5 +380,5 @@ extern "C" void on_exception_intr_19()
 	}
 
 	for (;;)
-		native_hlt();
+		native::hlt();
 }

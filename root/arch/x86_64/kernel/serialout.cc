@@ -61,25 +61,25 @@ void serial_output::init(u16 com_base_port, u16 com_pic_irq)
 	intr_set_handler(arch::IRQ_PIC_OFFSET + 3, serial_intr_com2_handler);
 
 	// 通信スピード設定開始
-	native_outb(0x80, base_port + LINE_CTRL);
+	native::outb(0x80, base_port + LINE_CTRL);
 
 	// 通信スピードの指定 600[bps]
-	native_outb(0xc0, base_port + BAUDRATE_LSB);
-	native_outb(0x00, base_port + BAUDRATE_MSB);
+	native::outb(0xc0, base_port + BAUDRATE_LSB);
+	native::outb(0x00, base_port + BAUDRATE_MSB);
 
 	// 通信スピード設定終了(送受信開始)
-	native_outb(0x03, base_port + LINE_CTRL);
+	native::outb(0x03, base_port + LINE_CTRL);
 
 	// 制御ピン設定
-	native_outb(0x0b, base_port + MODEM_CTRL);
+	native::outb(0x0b, base_port + MODEM_CTRL);
 
 	// 16550互換モードに設定
 	// FIFOが14bytesになる。
 	// FIFOをクリアする。
-	native_outb(0xcf, base_port + FIFO_CTRL);
+	native::outb(0xcf, base_port + FIFO_CTRL);
 
 	// 割り込みを有効化
-	native_outb(0x03, base_port + INTR_ENABLE);
+	native::outb(0x03, base_port + INTR_ENABLE);
 	// 無効化
 	//native_outb(0x00, base_port + INT_ENABLE);
 
@@ -106,7 +106,7 @@ int serial_output::write(
 		const u8* const c = itr.next_u8();
 		if (c == 0)
 			break;
-		native_outb(*c, base_port + TRANSMIT_DATA);
+		native::outb(*c, base_port + TRANSMIT_DATA);
 	}
 
 	return cause::OK;

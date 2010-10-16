@@ -190,13 +190,24 @@ inline u16 le16_to_cpu(u8 x1, u8 x2) {
 
 #endif  // ARCH_LE or ARCH_BE
 
+// @param[in] align  Must be 2^n.
 template <class uint_>
-inline uint_ down_align(uint_ value, uint_ align) {
-	return value & ~(base - 1);
+inline uint_ down_align(const uint_& value, const uint_& align) {
+	return value & ~(align - 1);
 }
+// @param[in] align  Must be 2^n.
 template <class uint_>
-inline uint_ up_align(uint_ value, uint_ align) {
-	return (value + base - 1) & ~(base - 1);
+inline uint_ up_align(const uint_& value, const uint_& align) {
+	return (value + align - 1) & ~(align - 1);
+}
+
+template <class t_>
+inline const t_& min(const t_& x, const t_& y) {
+	return x <= y ? x : y;
+}
+template <class t_>
+inline const t_& max(const t_& x, const t_& y) {
+	return x >= y ? x : y;
 }
 
 
@@ -209,8 +220,6 @@ private:
 	void operator&() const;
 } null = {};
 
-template<class T> const T& max(const T& x, const T& y) { return x >= y ? x : y; }
-template<class T> const T& min(const T& x, const T& y) { return x <= y ? x : y; }
 
 /*-------------------------------------------------------------------
  * エラーコード
@@ -244,6 +253,7 @@ namespace cause
 		NO_MEMORY = 2,
 		INVALID_PARAMS = 3,
 		INVALID_OPERATION = 4,
+		NO_IMPLEMENTS,
 		UNKNOWN = 1000,
 	};
 

@@ -17,14 +17,16 @@ CPPFLAGS +=
 KERNEL_DIR = ../../../kernel
 KERNEL_OBJS = $(shell cat $(KERNEL_DIR)/objects.txt)
 
-ASM_SRCS = entry.S exception_handler.S 
+ASM_SRCS = entry.S exception_handler.S serialh.S
+C_SRCS = gnuc.c
 CXX_SRCS = global_variables.cc \
-	gnuc.c intr.cc kerninit.cc physical_memory.cc \
-	serialh.S serialout.cc setupdata.cc \
+	intr.cc kerninit.cc physical_memory.cc \
+	serialout.cc setupdata.cc \
 	vadr2padr.cc videoout.cc cpuinit.cc
-ASM_OBJS = $(ASM_OBJS:%.S=%.o)
+ASM_OBJS = $(ASM_SRCS:%.S=%.o)
+C_OBJS = $(C_SRCS:%.c=%.o)
 CXX_OBJS = $(CXX_SRCS:%.cc=%.o)
-OBJS = $(ASM_OBJS) $(CXX_OBJS)
+OBJS = $(ASM_OBJS) $(C_OBJS) $(CXX_OBJS)
 OBJS += $(foreach x, $(KERNEL_OBJS), $(KERNEL_DIR)/$(x))
 
 .PHONY: all

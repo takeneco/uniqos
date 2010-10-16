@@ -1,7 +1,7 @@
 /// @author  KATO Takeshi
 /// @brief   Link list structure.
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010 KATO Takeshi
 
 #ifndef CHAIN_HH_
 #define CHAIN_HH_
