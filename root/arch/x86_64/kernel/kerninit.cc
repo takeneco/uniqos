@@ -64,5 +64,20 @@ kout=com1;
 	cause::stype r = arch::pmem::init();
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
+	uptr p;
+	r = arch::pmem::alloc_l1page(&p);
+	vo.put_str("alloc_l1page() = ")->
+	    put_udec(r)->
+	    put_c(',')->
+	    put_u64hex(p)->
+	    put_endl();
+
+	r = arch::pmem::alloc_l1page(&p);
+	vo.put_str("alloc_l1page() = ")->
+	    put_udec(r)->
+	    put_c(',')->
+	    put_u64hex(p)->
+	    put_endl();
+
 	return 0;
 }

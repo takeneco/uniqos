@@ -120,6 +120,7 @@ public:
 	void init_free_all(void* buf, uptr buf_size);
 
 	void reserve_range(uptr from, uptr to);
+	void free_range(uptr from, uptr to);
 
 	void build_free_chain(uptr pmem_end);
 
@@ -182,9 +183,10 @@ void physical_page_table::init_reserve_all(void* buf, uptr buf_size)
 	const uptr n = buf_size / sizeof (table_cell);
 
 	// up_level から渡されたページを free の状態にするため、
-	// true で初期化する。
+	// true で初期化したい。
+
 	for (uptr i = 0; i < n; ++i)
-		table_base[i].table.set_true_all();
+		table_base[i].table.set_false_all();
 }
 
 /// @brief 物理メモリ全体を空き状態として初期化する。
@@ -207,6 +209,7 @@ void physical_page_table::init_free_all(void* buf, uptr buf_size)
 
 /// @brief from から to までを割当済みの状態にする。
 //
+/// 最上位のレベルでなければ使えない。
 /// 下のレベルのテーブルにも反映する。
 /// 空きメモリリストは更新しない。
 void physical_page_table::reserve_range(uptr from, uptr to)
@@ -232,12 +235,50 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 
 	if (down_level != 0) {
 		if (from % page_size != 0) {
+			const uptr tmp = down_align(from, page_size);
+			down_level->free_range(tmp, from);
+		}
+		if (to % page_size != 0) {
+			const uptr tmp = up_align(to, page_size);
+			down_level->free_range(to, tmp);
+		}
+	}
+}
+
+/// @brief from から to までを空き状態にする。
+//
+/// 最上位のレベルでは使えない。
+/// 下のレベルのテーブルにも反映する。
+/// 空きメモリリストは更新しない。
+void physical_page_table::free_range(uptr from, uptr to)
+{
+	const uptr fr_page = from / page_size;
+	const uptr fr_table = fr_page / BITMAP_BITS;
+	const uptr fr_page_in_table = fr_page - (fr_table * BITMAP_BITS);
+
+	const uptr to_page = to / page_size;
+	const uptr to_table = to_page / BITMAP_BITS;
+	const uptr to_page_in_table = to_page - (to_table * BITMAP_BITS);
+
+	for (uptr table = fr_table; table <= to_table; ++table) {
+		const uptr page_min =
+		    table == fr_table ? fr_page_in_table : 0;
+		const uptr page_max =
+		    table == to_table ? to_page_in_table : BITMAP_BITS - 1;
+
+		for (uptr page = page_min; page <= page_max; ++page) {
+			table_base[table].table.set_true(page);
+		}
+	}
+
+	if (down_level != 0) {
+		if (from % page_size != 0) {
 			const uptr tmp = up_align(from, page_size);
-			down_level->reserve_range(from, min(tmp, to));
+			down_level->free_range(from, min(tmp, to));
 		}
 		if (fr_page != to_page && to % page_size != 0) {
 			const uptr tmp = down_align(to, page_size);
-			down_level->reserve_range(tmp, to);
+			down_level->free_range(tmp, to);
 		}
 	}
 }

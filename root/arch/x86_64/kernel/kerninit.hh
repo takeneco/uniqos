@@ -7,6 +7,7 @@
 
 #include "btypes.hh"
 
+
 int cpu_init();
 
 typedef void (*intr_handler)();
@@ -20,6 +21,7 @@ namespace arch {
 namespace pmem {
 
 cause::stype init();
+cause::stype alloc_l1page(uptr* padr);
 
 }  // namespace pmem
 }  // namespace arch

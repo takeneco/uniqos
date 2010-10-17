@@ -44,9 +44,6 @@ inline void cli() {
 inline void sti() {
 	asm volatile ("sti");
 }
-
-}  // namespace native
-
 inline u32 native_get_cr0_32() {
 	u32 cr0;
 	asm volatile ("movl %%cr0, %0" : "=r" (cr0));
@@ -71,9 +68,6 @@ inline u64 native_get_cr3() {
 inline void native_set_cr3(u64 cr3) {
 	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
-
-namespace native {
-
 /// @{
 /// @name ビット検索関数。
 /// _or0 の関数は、0 を入力すると -1 を返す。
