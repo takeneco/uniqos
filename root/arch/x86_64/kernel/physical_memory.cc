@@ -3,10 +3,6 @@
 //
 // (C) 2010 KATO Takeshi
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// (at your option) any later version.
 
 #include "arch.hh"
 #include "btypes.hh"
@@ -125,6 +121,13 @@ public:
 	void build_free_chain(uptr pmem_end);
 
 	uptr reserve_1page();
+
+	void dump() {
+		for (int i = 64; i < 128; i++) {
+			kern_get_out()->put_u32hex(i)->put_c(':')->
+			put_u64hex(table_base[i].table.get_raw())->put_c('\n');
+		}
+	}
 };
 
 inline
@@ -190,7 +193,9 @@ void physical_page_table::init_reserve_all(void* buf, uptr buf_size)
 }
 
 /// @brief 物理メモリ全体を空き状態として初期化する。
-/// For top level.
+//
+// *** UNUSED ***
+//
 void physical_page_table::init_free_all(void* buf, uptr buf_size)
 {
 	table_base = reinterpret_cast<table_cell*>(buf);
@@ -212,6 +217,9 @@ void physical_page_table::init_free_all(void* buf, uptr buf_size)
 /// 最上位のレベルでなければ使えない。
 /// 下のレベルのテーブルにも反映する。
 /// 空きメモリリストは更新しない。
+//
+// *** UNUSED ***
+//
 void physical_page_table::reserve_range(uptr from, uptr to)
 {
 	const uptr fr_page = from / page_size;
@@ -249,7 +257,7 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 //
 /// 最上位のレベルでは使えない。
 /// 下のレベルのテーブルにも反映する。
-/// 空きメモリリストは更新しない。
+/// 空きメモリチェインは更新しない。
 void physical_page_table::free_range(uptr from, uptr to)
 {
 	const uptr fr_page = from / page_size;
@@ -261,6 +269,11 @@ void physical_page_table::free_range(uptr from, uptr to)
 	const uptr to_page_in_table = to_page % BITMAP_BITS;
 
 	for (uptr table = fr_table; table <= to_table; ++table) {
+		if (table != fr_table && table != to_table) {
+			table_base[table].table.set_true_all();
+			continue;
+		}
+
 		const uptr page_min =
 		    table == fr_table ? fr_page_in_table : 0;
 		const uptr page_max =
@@ -283,6 +296,7 @@ void physical_page_table::free_range(uptr from, uptr to)
 	}
 }
 
+/// @brief 空きメモリチェインをつなぐ。
 void physical_page_table::build_free_chain(uptr pmem_end)
 {
 	dechain<table_cell, &table_cell::chain_link_> dech;
@@ -369,7 +383,7 @@ bool physical_memory::init(uptr pmem_end_, void* buf)
 
 	const uptr l2buf_size =
 	    physical_page_table::calc_buf_size(pmem_end_, arch::PAGE_L2_SIZE);
-	page_l2_table.init_free_all(buf, l2buf_size);
+	page_l2_table.init_reserve_all(buf, l2buf_size);
 
 	const uptr l1buf_size =
 	    physical_page_table::calc_buf_size(pmem_end_, arch::PAGE_L1_SIZE);
@@ -382,14 +396,14 @@ bool physical_memory::init(uptr pmem_end_, void* buf)
 
 bool physical_memory::load_setupdump()
 {
-	setup_memmgr_dumpdata* usedmap;
-	u32 usedmap_num;
-	setup_get_used_memdump(&usedmap, &usedmap_num);
+	setup_memmgr_dumpdata* freemap;
+	u32 freemap_num;
+	setup_get_free_memdump(&freemap, &freemap_num);
 
-	for (u32 i = 0; i < usedmap_num; i++) {
-		page_l2_table.reserve_range(
-		    usedmap[i].head,
-		    usedmap[i].head + usedmap[i].bytes);
+	for (u32 i = 0; i < freemap_num; ++i) {
+		page_l2_table.free_range(
+		    freemap[i].head,
+		    freemap[i].head + freemap[i].bytes);
 	}
 
 	return true;
@@ -399,6 +413,7 @@ void physical_memory::build()
 {
 	page_l1_table.build_free_chain(pmem_end);
 	page_l2_table.build_free_chain(pmem_end);
+	page_l1_table.dump();
 }
 
 cause::stype physical_memory::reserve_l1page(uptr* padr)
@@ -434,12 +449,13 @@ cause::stype init()
 	if (pmem_data == 0)
 		return cause::NO_MEMORY;
 
-	const uptr base_padr = up_align<u8>(pmem_data->head, 8);
+	const uptr base_padr = up_align<uptr>(pmem_data->head, 8);
 
 	// 空きメモリからメモリ管理用領域を外す。
 	const uptr align_diff = base_padr - pmem_data->head;
-	pmem_data->bytes -= work_size + align_diff;
 	pmem_data->head += work_size + align_diff;
+	pmem_data->bytes -= work_size + align_diff;
+
 
 	// メモリ管理用領域の先頭を physical_memory に割り当てる。
 	physical_memory* pmem_ctrl =

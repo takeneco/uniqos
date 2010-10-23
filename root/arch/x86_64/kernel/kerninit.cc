@@ -61,7 +61,9 @@ extern "C" int kern_init()
 	serial_output_init();
 
 	serial_output* com1 = serial_get_out(0);
-	
+com1->PutStr("xyz");
+kout=com1;
+
 	setup_memmgr_dumpdata* map;
 	u32 map_num;
 	setup_get_used_memdump(&map, &map_num);
@@ -78,12 +80,25 @@ extern "C" int kern_init()
 		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
 	}
 
-com1->PutStr("xyz");
-kout=com1;
 	cause::stype r = arch::pmem::init();
+
+	setup_get_free_memdump(&map, &map_num);
+	vo.put_str("free:\n");
+	for (u32 i = 0; i < map_num; ++i) {
+		vo.put_u64hex(map[i].head)->put_c(':')->
+		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
+	}
+
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
 	uptr p;
+	r = arch::pmem::alloc_l1page(&p);
+	vo.put_str("alloc_l1page() = ")->
+	    put_udec(r)->
+	    put_c(',')->
+	    put_u64hex(p)->
+	    put_endl();
+
 	r = arch::pmem::alloc_l1page(&p);
 	vo.put_str("alloc_l1page() = ")->
 	    put_udec(r)->
