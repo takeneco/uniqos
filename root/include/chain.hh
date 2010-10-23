@@ -15,8 +15,8 @@ class chain_link
 	DataType* next;
 
 public:
-	void _set_prev(DataType*) { /* nothing */ }
-	void _set_next(DataType* p) { next = p; }
+	void set_prev_(DataType*) { /* nothing */ }
+	void set_next_(DataType* p) { next = p; }
 	const DataType* get_next() const { return next; }
 	      DataType* get_next()       { return next; }
 };
@@ -29,7 +29,7 @@ class bichain_link : public chain_link<DataType>
 	DataType* prev;
 
 public:
-	void _set_prev(DataType* p) { prev = p; }
+	void set_prev_(DataType* p) { prev = p; }
 	const DataType* get_prev() const { return prev; }
 	      DataType* get_prev()       { return prev; }
 };
@@ -80,9 +80,9 @@ class chain_impl_
 		return *(p->*LinkVal).next; }
 
 	void set_prev(DataType* p, DataType* prev) {
-		(p->*LinkVal)._set_prev(prev); }
+		(p->*LinkVal).set_prev_(prev); }
 	void set_next(DataType* p, DataType* next) {
-		(p->*LinkVal)._set_next(next); }
+		(p->*LinkVal).set_next_(next); }
 
 protected:
 	EndType end;

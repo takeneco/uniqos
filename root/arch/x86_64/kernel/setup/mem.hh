@@ -1,5 +1,5 @@
-/// @author  KATO Takeshi
-/// @brief   Memory ops.
+/// @file  mem.hh
+/// @brief Memory ops.
 //
 // (C) 2010 KATO Takeshi
 
@@ -9,24 +9,7 @@
 #include <cstddef>
 
 #include "btypes.hh"
-#include "chain.hh"
 
-
-struct memmap_entry
-{
-	u64 head;
-	u64 bytes;  ///< If bytes == 0, not used.
-
-	bichain_link<memmap_entry> _chain_link;
-
-	void set(u64 head_, u64 bytes_) {
-		head = head_;
-		bytes = bytes_;
-	}
-	void unset() {
-		bytes = 0;
-	}
-};
 
 void  memmgr_init();
 void* memmgr_alloc(std::size_t size, std::size_t align = 8);

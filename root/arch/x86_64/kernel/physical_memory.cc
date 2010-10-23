@@ -216,11 +216,11 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 {
 	const uptr fr_page = from / page_size;
 	const uptr fr_table = fr_page / BITMAP_BITS;
-	const uptr fr_page_in_table = fr_page - (fr_table * BITMAP_BITS);
+	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
 
 	const uptr to_page = to / page_size;
 	const uptr to_table = to_page / BITMAP_BITS;
-	const uptr to_page_in_table = to_page - (to_table * BITMAP_BITS);
+	const uptr to_page_in_table = to_page % BITMAP_BITS;
 
 	for (uptr table = fr_table; table <= to_table; ++table) {
 		const uptr page_min =
@@ -254,11 +254,11 @@ void physical_page_table::free_range(uptr from, uptr to)
 {
 	const uptr fr_page = from / page_size;
 	const uptr fr_table = fr_page / BITMAP_BITS;
-	const uptr fr_page_in_table = fr_page - (fr_table * BITMAP_BITS);
+	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
 
 	const uptr to_page = to / page_size;
 	const uptr to_table = to_page / BITMAP_BITS;
-	const uptr to_page_in_table = to_page - (to_table * BITMAP_BITS);
+	const uptr to_page_in_table = to_page % BITMAP_BITS;
 
 	for (uptr table = fr_table; table <= to_table; ++table) {
 		const uptr page_min =

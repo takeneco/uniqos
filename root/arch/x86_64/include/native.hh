@@ -44,28 +44,28 @@ inline void cli() {
 inline void sti() {
 	asm volatile ("sti");
 }
-inline u32 native_get_cr0_32() {
+inline u32 get_cr0_32() {
 	u32 cr0;
 	asm volatile ("movl %%cr0, %0" : "=r" (cr0));
 	return cr0;
 }
-inline void native_set_cr0_32(u32 cr0) {
+inline void set_cr0_32(u32 cr0) {
 	asm volatile ("movl %0, %%cr0" : : "r" (cr0));
 }
-inline u64 native_get_cr0_64() {
+inline u64 get_cr0_64() {
 	u64 cr0;
 	asm volatile ("movq %%cr0, %0" : "=r" (cr0));
 	return cr0;
 }
-inline void native_set_cr0_64(u64 cr0) {
+inline void set_cr0_64(u64 cr0) {
 	asm volatile ("movq %0, %%cr0" : : "r" (cr0));
 }
-inline u64 native_get_cr3() {
+inline u64 get_cr3() {
 	u64 cr3;
 	asm volatile ("movq %%cr3, %0" : "=r" (cr3));
 	return cr3;
 }
-inline void native_set_cr3(u64 cr3) {
+inline void set_cr3(u64 cr3) {
 	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
 /// @{

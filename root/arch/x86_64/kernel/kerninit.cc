@@ -9,6 +9,8 @@
 #include "setupdata.hh"
 #include "native.hh"
 
+#include "setupdata.hh"
+#include "setup/memdump.hh"
 
 namespace {
 
@@ -59,7 +61,24 @@ extern "C" int kern_init()
 	serial_output_init();
 
 	serial_output* com1 = serial_get_out(0);
-	com1->PutStr("xyz");
+	
+	setup_memmgr_dumpdata* map;
+	u32 map_num;
+	setup_get_used_memdump(&map, &map_num);
+	vo.put_str("used:\n");
+	for (u32 i = 0; i < map_num; ++i) {
+		vo.put_u64hex(map[i].head)->put_c(':')->
+		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
+	}
+
+	setup_get_free_memdump(&map, &map_num);
+	vo.put_str("free:\n");
+	for (u32 i = 0; i < map_num; ++i) {
+		vo.put_u64hex(map[i].head)->put_c(':')->
+		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
+	}
+
+com1->PutStr("xyz");
 kout=com1;
 	cause::stype r = arch::pmem::init();
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
