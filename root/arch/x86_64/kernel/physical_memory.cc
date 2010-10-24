@@ -253,18 +253,18 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 	}
 }
 
-/// @brief from から to までを空き状態にする。
+/// @brief from から to-1 までを空き状態にする。
 //
 /// 最上位のレベルでは使えない。
 /// 下のレベルのテーブルにも反映する。
 /// 空きメモリチェインは更新しない。
 void physical_page_table::free_range(uptr from, uptr to)
 {
-	const uptr fr_page = from / page_size;
+	const uptr fr_page = up_align(from, page_size) / page_size;
 	const uptr fr_table = fr_page / BITMAP_BITS;
 	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
 
-	const uptr to_page = to / page_size;
+	const uptr to_page = (to - 1) / page_size;
 	const uptr to_table = to_page / BITMAP_BITS;
 	const uptr to_page_in_table = to_page % BITMAP_BITS;
 

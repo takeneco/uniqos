@@ -1,10 +1,11 @@
-/// @author KATO Takeshi
+/// @file native.hh
 /// @brief  C言語から呼び出すアセンブラ命令
 //
 // (C) 2010 KATO Takeshi
+//
 
-#ifndef ARCH_X86_64_INCLUDE_NATIVE_HH
-#define ARCH_X86_64_INCLUDE_NATIVE_HH
+#ifndef ARCH_X86_64_INCLUDE_NATIVE_HH_
+#define ARCH_X86_64_INCLUDE_NATIVE_HH_
 
 #include "btypes.hh"
 
@@ -163,21 +164,6 @@ inline s64 bsrq_or0(u64 data) {
 }
 /// @}
 
-}  // namespace native
-
-inline s16 bitscan_forward_16(u16 data) { return native::bsfw_or0(data); }
-inline s32 bitscan_forward_32(u32 data) { return native::bsfl_or0(data); }
-inline s64 bitscan_forward_64(u64 data) { return native::bsfq_or0(data); }
-inline s16 bitscan_forward(u16 data) { return native::bsfw_or0(data); }
-inline s32 bitscan_forward(u32 data) { return native::bsfl_or0(data); }
-inline s64 bitscan_forward(u64 data) { return native::bsfq_or0(data); }
-inline s16 bitscan_reverse_16(u16 data) { return native::bsrw_or0(data); }
-inline s32 bitscan_reverse_32(u32 data) { return native::bsrl_or0(data); }
-inline s64 bitscan_reverse_64(u64 data) { return native::bsrq_or0(data); }
-inline s16 bitscan_reverse(u16 data) { return native::bsrw_or0(data); }
-inline s32 bitscan_reverse(u32 data) { return native::bsrl_or0(data); }
-inline s64 bitscan_reverse(u64 data) { return native::bsrq_or0(data); }
-
 // セグメントレジスタの値を返す。
 // デバッグ用。
 inline u16 get_cs() {
@@ -208,18 +194,21 @@ inline u16 get_gs() {
 	    "movw %%ax, %0" : "=rm" (gs) : : "%ax");
 	return gs;
 }
-inline u16 native_get_ss() {
+inline u16 get_ss() {
 	u16 ss;
 	asm volatile (
 	    "movw %%ss, %%ax \n"
 	    "movw %%ax, %0" : "=rm" (ss) : : "%ax");
 	return ss;
 }
-inline void native_set_ss(u16 ss) {
+inline void set_ss(u16 ss) {
 	asm volatile (
 	    "movw %0, %%ax \n"
 	    "movw %%ax, %%ss" : : "rm" (ss) : "%ax");
 }
+
+}  // namespace native
+
 
 // @brief Global/Interrupt Descriptor Table register.
 //
@@ -253,5 +242,18 @@ inline void native_lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
 
+inline s16 bitscan_forward_16(u16 data) { return native::bsfw_or0(data); }
+inline s32 bitscan_forward_32(u32 data) { return native::bsfl_or0(data); }
+inline s64 bitscan_forward_64(u64 data) { return native::bsfq_or0(data); }
+inline s16 bitscan_forward(u16 data) { return native::bsfw_or0(data); }
+inline s32 bitscan_forward(u32 data) { return native::bsfl_or0(data); }
+inline s64 bitscan_forward(u64 data) { return native::bsfq_or0(data); }
+inline s16 bitscan_reverse_16(u16 data) { return native::bsrw_or0(data); }
+inline s32 bitscan_reverse_32(u32 data) { return native::bsrl_or0(data); }
+inline s64 bitscan_reverse_64(u64 data) { return native::bsrq_or0(data); }
+inline s16 bitscan_reverse(u16 data) { return native::bsrw_or0(data); }
+inline s32 bitscan_reverse(u32 data) { return native::bsrl_or0(data); }
+inline s64 bitscan_reverse(u64 data) { return native::bsrq_or0(data); }
 
-#endif  // Include guard.
+
+#endif  // Include guard

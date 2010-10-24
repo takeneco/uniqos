@@ -1,7 +1,7 @@
-# @author  KATO Takeshi
 # @brief   カーネル自身をセットアップするMakefile。
 #
 # (C) 2010 KATO Takeshi
+#
 
 
 ROOT = ../../../..
@@ -14,7 +14,7 @@ CPPFLAGS += -I../include
 CPPFLAGS += -I$(ROOT)/external/lzma/C
 
 SRCS = a20.S lzmadecwrap.cc memmgr.cc memops.cc \
- prekern.cc setup.S termchain.cc videoterm.cc
+ prekernel.cc setup.S termchain.cc videoterm.cc
 OBJS = $(SRCS:%.cc=%.o)
 OBJS := $(OBJS:%.S=%.o)
 OBJS += LzmaDec.o

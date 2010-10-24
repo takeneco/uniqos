@@ -1,18 +1,17 @@
-// @file    arch/x86_64/kernel/setup/term.hh
-// @author  Kato Takeshi
+// @file    term.hh
 // @brief   カーネルセットアップ中のメッセージ出力先。
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 Kato Takeshi
 
-#ifndef _ARCH_X86_64_KERNEL_SETUP_TERM_HH_
-#define _ARCH_X86_64_KERNEL_SETUP_TERM_HH_
+#ifndef ARCH_X86_64_KERNEL_SETUP_TERM_HH_
+#define ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 
 #include <cstddef>
 
 #include "btypes.hh"
 
 
-// @brief  Output terminal base class.
+/// @brief  Output terminal base class.
 
 class outterm
 {
@@ -22,7 +21,7 @@ public:
 };
 
 
-// @brief  複数の outterm へテキストを同時出力する。
+/// @brief  複数の outterm へテキストを同時出力する。
 
 class term_chain
 {
@@ -40,7 +39,7 @@ public:
 };
 
 
-// @brief  Output only kernel serial term.
+/// @brief  Output only kernel serial term.
 
 class com_term : public outterm
 {
@@ -67,7 +66,7 @@ public:
 };
 
 
-// @brief  Output only kernel video term.
+/// @brief  Output only kernel video term.
 
 class video_term : public outterm
 {
@@ -85,17 +84,6 @@ public:
 	virtual void putc(char c);
 };
 
-/*
-inline void set_video_term(video_term* p) {
-	*reinterpret_cast<video_term**>(PH4_VIDEOTERM) = p;
-}
-inline video_term* get_video_term() {
-	return *reinterpret_cast<video_term**>(PH4_VIDEOTERM);
-}
 
-extern "C" void* memcpy(void* dest, const void* src, std::size_t n);
-
-*/
-
-#endif  // Include guard.
+#endif  // Include guard
 
