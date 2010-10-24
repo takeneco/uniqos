@@ -55,7 +55,7 @@ extern "C" int kern_init()
 	   PutU64Hex(reinterpret_cast<u64>(&vo))->
 	   PutC('\n');
 	vo.put_str("%ss = ")->
-	   PutU16Hex(native_get_ss())->
+	   PutU16Hex(native::get_ss())->
 	   PutC('\n');
 
 	serial_output_init();

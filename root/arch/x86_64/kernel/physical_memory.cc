@@ -72,6 +72,7 @@ setup_memmgr_dumpdata* search_free_pmem(u32 size)
 /// @brief 物理メモリページの空き状態を管理する。
 class physical_page_table
 {
+	/// bitmap の１ビットで１ページの空き状態を管理する。
 	struct table_cell
 	{
 		/// 空きページのビットは true
@@ -82,6 +83,7 @@ class physical_page_table
 
 	typedef chain<table_cell, &table_cell::chain_link_> cell_chain;
 
+	// １ページ * BITMAP_BITS のサイズを 1cell と呼ぶことにする。
 	cell_chain free_cell_chain;
 	table_cell* table_base;
 
@@ -92,6 +94,7 @@ class physical_page_table
 
 private:
 	uptr get_page_address(const table_cell* cell, uptr offset) const;
+	unsigned int get_cell_index(uptr adr) const;
 	table_cell& get_cell(uptr adr);
 	bool import_uplevel_page();
 
@@ -121,9 +124,10 @@ public:
 	void build_free_chain(uptr pmem_end);
 
 	uptr reserve_1page();
+	void free_1page(uptr padr);
 
 	void dump() {
-		for (int i = 64; i < 128; i++) {
+		for (int i = 0; i < 64; i++) {
 			kern_get_out()->put_u32hex(i)->put_c(':')->
 			put_u64hex(table_base[i].table.get_raw())->put_c('\n');
 		}
@@ -140,9 +144,15 @@ const
 }
 
 inline
+unsigned int physical_page_table::get_cell_index(uptr adr) const
+{
+	return adr / cell_size;
+}
+
+inline
 physical_page_table::table_cell& physical_page_table::get_cell(uptr adr)
 {
-	return table_base[adr / cell_size];
+	return table_base[get_cell_index(adr)];
 }
 
 /// 上のレベルから1ページだけ崩して取り込む。
@@ -264,7 +274,7 @@ void physical_page_table::free_range(uptr from, uptr to)
 	const uptr fr_table = fr_page / BITMAP_BITS;
 	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
 
-	const uptr to_page = (to - 1) / page_size;
+	const uptr to_page = (down_align(to, page_size) - 1) / page_size;
 	const uptr to_table = to_page / BITMAP_BITS;
 	const uptr to_page_in_table = to_page % BITMAP_BITS;
 
@@ -289,7 +299,7 @@ void physical_page_table::free_range(uptr from, uptr to)
 			const uptr tmp = up_align(from, page_size);
 			down_level->free_range(from, min(tmp, to));
 		}
-		if (fr_page != to_page && to % page_size != 0) {
+		if (fr_page <= to_page && to % page_size != 0) {
 			const uptr tmp = down_align(to, page_size);
 			down_level->free_range(tmp, to);
 		}
@@ -332,6 +342,32 @@ uptr physical_page_table::reserve_1page()
 	return get_page_address(cell, offset);
 }
 
+void physical_page_table::free_1page(uptr padr)
+{
+	unsigned int cell_index = get_cell_index(padr);
+	table_cell& cell = table_base[cell_index];
+	if (cell.table.is_all_false())
+		free_cell_chain.insert_head(&cell);
+
+	const int offset = padr / page_size % BITMAP_BITS;
+	cell.table.set_true(offset);
+
+	if (up_level) {
+		const uptr n = up_level->page_size / this->cell_size;
+		const unsigned int up_cell_base = cell_index / n * n;
+
+		unsigned int i;
+		for (i = 0; i < n; i++) {
+			if (!table_base[up_cell_base + i].table.is_all_true())
+				break;
+		}
+
+		if (i == n) {
+			
+		}
+	}
+}
+
 }  // namepsace
 
 /////////////////////////////////////////////////////////////////////
@@ -352,6 +388,9 @@ public:
 	void build();
 
 	cause::stype reserve_l1page(uptr* padr);
+	cause::stype reserve_l2page(uptr* padr);
+
+	cause::stype free_l1page(uptr padr);
 };
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
@@ -413,7 +452,7 @@ void physical_memory::build()
 {
 	page_l1_table.build_free_chain(pmem_end);
 	page_l2_table.build_free_chain(pmem_end);
-	page_l1_table.dump();
+	page_l2_table.dump();
 }
 
 cause::stype physical_memory::reserve_l1page(uptr* padr)
@@ -426,6 +465,25 @@ cause::stype physical_memory::reserve_l1page(uptr* padr)
 	else {
 		return cause::NO_MEMORY;
 	}
+}
+
+cause::stype physical_memory::reserve_l2page(uptr* padr)
+{
+	uptr tmp = page_l2_table.reserve_1page();
+	if (tmp != ADR_INVALID) {
+		*padr = tmp;
+		return cause::OK;
+	}
+	else {
+		return cause::NO_MEMORY;
+	}
+}
+
+cause::stype physical_memory::free_l1page(uptr padr)
+{
+	page_l1_table.free_1page(padr);
+
+	return cause::OK;
 }
 
 namespace arch
@@ -489,7 +547,7 @@ cause::stype alloc_l1page(uptr* adr)
 /// @retval cause::OK  Succeeds. *padr is physical page base address.
 cause::stype alloc_l2page(uptr* adr)
 {
-	return cause::NO_IMPLEMENTS;
+	return gv.pmem_ctrl->reserve_l2page(adr);
 }
 
 /// レベル１の物理メモリページを１ページ解放する。
