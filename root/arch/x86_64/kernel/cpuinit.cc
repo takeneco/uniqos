@@ -114,7 +114,7 @@ int cpu_init()
 	gdtptr.init(sizeof gdt, gdt);
 	native_lgdt(&gdtptr);
 
-	native_set_ss(8 * GDT_KERN_DATASEG);
+	native::set_ss(8 * GDT_KERN_DATASEG);
 
 	intr_init();
 

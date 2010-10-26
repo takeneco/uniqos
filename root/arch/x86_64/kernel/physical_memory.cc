@@ -326,15 +326,29 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 /// @retval other       Succeeds.
 uptr physical_page_table::reserve_1page()
 {
-	table_cell* cell = free_cell_chain.get_head();
-	if (cell == 0) {
-		if (import_uplevel_page())
-			cell = free_cell_chain.get_head();
-		else
-			return ADR_INVALID;
+	table_cell* cell;
+
+	for (;;) {
+		cell = free_cell_chain.get_head();
+
+		if (cell == 0) {
+			if (import_uplevel_page())
+				continue;
+			else
+				return ADR_INVALID;
+		}
+
+		if (!cell->table.is_all_false())
+			break;
+
+		// まとまった cell を上位レベルに返却するときに、
+		// 一緒に返却された cell は、空きページを含まないまま
+		// free_cell_chain に残ってしまう。
+		// その場合はここで cell を削除する。
+		free_cell_chain.remove_head();
 	}
 
-	int offset = cell->table.search_true();
+	const int offset = cell->table.search_true();
 	cell->table.set_false(offset);
 	if (cell->table.is_all_false())
 		free_cell_chain.remove_head();
@@ -344,7 +358,7 @@ uptr physical_page_table::reserve_1page()
 
 void physical_page_table::free_1page(uptr padr)
 {
-	unsigned int cell_index = get_cell_index(padr);
+	const unsigned int cell_index = get_cell_index(padr);
 	table_cell& cell = table_base[cell_index];
 	if (cell.table.is_all_false())
 		free_cell_chain.insert_head(&cell);
@@ -352,7 +366,11 @@ void physical_page_table::free_1page(uptr padr)
 	const int offset = padr / page_size % BITMAP_BITS;
 	cell.table.set_true(offset);
 
-	if (up_level) {
+	if (cell.table.is_all_true() && up_level) {
+		// padr を含む上位レベルのページがすべて空き状態となった
+		// 場合は、上位レベルへ返却する。
+
+		// 上位レベルの１ページは n セルに相当する。
 		const uptr n = up_level->page_size / this->cell_size;
 		const unsigned int up_cell_base = cell_index / n * n;
 
