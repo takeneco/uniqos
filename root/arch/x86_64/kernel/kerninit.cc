@@ -17,6 +17,7 @@ namespace {
 
 }  // End of anonymous namespace
 
+void tmp_debug();
 
 kern_output* kout;
 extern int kern_tail_addr;
@@ -91,27 +92,18 @@ kout=com1;
 
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
-	uptr p;
-	r = arch::pmem::alloc_l1page(&p);
-	vo.put_str("alloc_l1page() = ")->
-	    put_udec(r)->
-	    put_c(',')->
-	    put_u64hex(p)->
-	    put_endl();
+	uptr adrs[64];
+	for (int i = 0; i < 1; ++i) {
+		r = arch::pmem::alloc_l1page(&adrs[i]);
+		if (r != 0) {
+			vo.put_str("r=")->put_udec(r)->put_str(",i=")->
+			put_udec(i)->put_endl();
+		} else {
+			vo.put_str("alloc[")->put_udec(i)->put_str("]=")->
+			put_u64hex(adrs[i])->put_endl();
+		}
+	}
 
-	r = arch::pmem::alloc_l1page(&p);
-	vo.put_str("alloc_l1page() = ")->
-	    put_udec(r)->
-	    put_c(',')->
-	    put_u64hex(p)->
-	    put_endl();
-
-	r = arch::pmem::alloc_l1page(&p);
-	vo.put_str("alloc_l1page() = ")->
-	    put_udec(r)->
-	    put_c(',')->
-	    put_u64hex(p)->
-	    put_endl();
-
+	tmp_debug();
 	return 0;
 }
