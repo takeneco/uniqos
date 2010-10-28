@@ -84,6 +84,8 @@ class physical_page_table
 	typedef chain<table_cell, &table_cell::chain_link_> cell_chain;
 
 	// １ページ * BITMAP_BITS のサイズを 1cell と呼ぶことにする。
+
+	/// 空きメモリチェイン
 	cell_chain free_cell_chain;
 	table_cell* table_base;
 
@@ -119,7 +121,7 @@ public:
 	void init_free_all(void* buf, uptr buf_size);
 
 	void reserve_range(uptr from, uptr to);
-	void free_range(uptr from, uptr to);
+	uptr free_range(uptr from, uptr to);
 
 	void build_free_chain(uptr pmem_end);
 
@@ -266,11 +268,12 @@ void physical_page_table::reserve_range(uptr from, uptr to)
 }
 
 /// @brief from から to-1 までを空き状態にする。
+/// @return 空き状態になったメモリのバイト数を返す。
+/// @return この関数を呼び出す前に空き領域になっていたメモリの分も含む。
 //
-/// 最上位のレベルでは使えない。
-/// 下のレベルのテーブルにも反映する。
+/// page_size より小さな空きメモリは、下のレベルのテーブルに反映する。
 /// 空きメモリチェインは更新しない。
-void physical_page_table::free_range(uptr from, uptr to)
+uptr physical_page_table::free_range(uptr from, uptr to)
 {
 	const uptr fr_page = up_align(from, page_size) / page_size;
 	const uptr fr_table = fr_page / BITMAP_BITS;
@@ -280,9 +283,11 @@ void physical_page_table::free_range(uptr from, uptr to)
 	const uptr to_table = to_page / BITMAP_BITS;
 	const uptr to_page_in_table = to_page % BITMAP_BITS;
 
+	uptr total = 0;
 	for (uptr table = fr_table; table <= to_table; ++table) {
 		if (table != fr_table && table != to_table) {
 			table_base[table].table.set_true_all();
+			total += cell_size;
 			continue;
 		}
 
@@ -293,19 +298,22 @@ void physical_page_table::free_range(uptr from, uptr to)
 
 		for (uptr page = page_min; page <= page_max; ++page) {
 			table_base[table].table.set_true(page);
+			total += page_size;
 		}
 	}
 
 	if (down_level != 0) {
 		if (from % page_size != 0) {
 			const uptr tmp = up_align(from, page_size);
-			down_level->free_range(from, min(tmp, to));
+			total += down_level->free_range(from, min(tmp, to));
 		}
 		if (fr_page <= to_page && to % page_size != 0) {
 			const uptr tmp = down_align(to, page_size);
-			down_level->free_range(tmp, to);
+			total += down_level->free_range(tmp, to);
 		}
 	}
+
+	return total;
 }
 
 /// @brief 空きメモリチェインをつなぐ。
@@ -322,10 +330,9 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 	free_cell_chain.init_head(dech.get_head());
 }
 
-/// １ページだけ予約する。
-/// @param[in] padr  Must not 0.
-/// @retval ADR_INVALID No free page.
-/// @retval other       Succeeds.
+/// @brief １ページだけ予約する。
+/// @return 予約した物理メモリのアドレス返す。
+/// @return 空きメモリがないときは ADR_INVALID を返す。
 uptr physical_page_table::reserve_1page()
 {
 	table_cell* cell;
@@ -358,6 +365,9 @@ uptr physical_page_table::reserve_1page()
 	return get_page_address(cell, offset);
 }
 
+/// @brief １ページだけ解放する。
+/// @param[in] padr 解放する物理メモリのアドレス。
+///                 ページサイズより小さなビットは無視してしまう。
 void physical_page_table::free_1page(uptr padr)
 {
 	const unsigned int cell_index = get_cell_index(padr);
@@ -402,6 +412,7 @@ class physical_memory
 	physical_page_table page_l1_table;
 	physical_page_table page_l2_table;
 	uptr pmem_end;
+	uptr free_bytes;
 
 public:
 	static uptr calc_workarea_size(uptr pmem_end_);
@@ -416,6 +427,7 @@ public:
 	cause::stype reserve_l2page(uptr* padr);
 
 	cause::stype free_l1page(uptr padr);
+	cause::stype free_l2page(uptr padr);
 
 	void tmp_debug() {
 		page_l1_table.dump();
@@ -438,7 +450,8 @@ uptr physical_memory::calc_workarea_size(uptr pmem_end_)
 
 physical_memory::physical_memory()
 :	page_l1_table(arch::PAGE_L1_SIZE, &page_l2_table, 0),
-	page_l2_table(arch::PAGE_L2_SIZE, 0, &page_l1_table)
+	page_l2_table(arch::PAGE_L2_SIZE, 0, &page_l1_table),
+	free_bytes(0)
 {
 }
 
@@ -469,7 +482,7 @@ bool physical_memory::load_setupdump()
 	setup_get_free_memdump(&freemap, &freemap_num);
 
 	for (u32 i = 0; i < freemap_num; ++i) {
-		page_l2_table.free_range(
+		free_bytes += page_l2_table.free_range(
 		    freemap[i].head,
 		    freemap[i].head + freemap[i].bytes);
 	}
@@ -510,6 +523,13 @@ cause::stype physical_memory::reserve_l2page(uptr* padr)
 cause::stype physical_memory::free_l1page(uptr padr)
 {
 	page_l1_table.free_1page(padr);
+
+	return cause::OK;
+}
+
+cause::stype physical_memory::free_l2page(uptr padr)
+{
+	page_l2_table.free_1page(padr);
 
 	return cause::OK;
 }
@@ -583,7 +603,7 @@ cause::stype alloc_l2page(uptr* adr)
 /// @retval cause::OK  Succeeds.
 cause::stype free_l1page(uptr adr)
 {
-	return cause::NO_IMPLEMENTS;
+	return gv.pmem_ctrl->free_l1page(adr);
 }
 
 /// レベル２の物理メモリページを１ページ解放する。
@@ -591,7 +611,7 @@ cause::stype free_l1page(uptr adr)
 /// @retval cause::OK  Succeeds.
 cause::stype free_l2page(uptr adr)
 {
-	return cause::NO_IMPLEMENTS;
+	return gv.pmem_ctrl->free_l2page(adr);
 }
 
 }  // namespace pmem
