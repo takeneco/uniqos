@@ -1,5 +1,5 @@
 /// @file  physical_memory.cc
-/// @brief Physical memory manager.
+/// @brief Physical memory management.
 //
 // (C) 2010 KATO Takeshi
 //
@@ -9,8 +9,8 @@
 #include "bitmap.hh"
 #include "chain.hh"
 #include "global_variables.hh"
-#include "kerninit.hh"
-#include "native.hh"
+#include "native_ops.hh"
+#include "physical_memory.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"

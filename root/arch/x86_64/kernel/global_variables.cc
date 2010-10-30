@@ -1,7 +1,8 @@
-/// @author KATO Takeshi
-/// @brief  Global variables definition.
+/// @file  global_variables.cc
+/// @brief Global variables definition.
 //
 // (C) 2010 KATO Takeshi
+//
 
 #include "global_variables.hh"
 

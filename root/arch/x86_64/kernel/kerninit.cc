@@ -1,7 +1,8 @@
-/// @author KATO Takeshi
-/// @brief  Call kernel initialize funcs.
+/// @file  kerninit.cc
+/// @brief Call kernel initialize funcs.
 //
 // (C) 2010 KATO Takeshi
+//
 
 #include "kerninit.hh"
 
