@@ -1,5 +1,5 @@
-/// @author KATO Takeshi
-/// @brief  Physical memory manager.
+/// @file  physical_memory.cc
+/// @brief Physical memory manager.
 //
 // (C) 2010 KATO Takeshi
 //
@@ -125,12 +125,12 @@ public:
 
 	void build_free_chain(uptr pmem_end);
 
-	uptr reserve_1page();
-	void free_1page(uptr padr);
+	cause::stype reserve_1page(uptr* padr);
+	cause::stype free_1page(uptr padr);
 
 	void dump() {
 		for (int i = 0; i < 128; i++) {
-			if (!table_base[i].table.is_all_false()) {
+			if (!table_base[i].table.is_false_all()) {
 			kern_get_out()->put_u32hex(i)->put_c(':')->
 			put_u64hex(table_base[i].table.get_raw())->put_c('\n');
 			}
@@ -167,13 +167,15 @@ bool physical_page_table::import_uplevel_page()
 	if (up_level == 0)
 		return false;
 
-	uptr up_padr = up_level->reserve_1page();
-	if (up_padr == ADR_INVALID)
+	uptr up_padr;
+	const cause::stype r = up_level->reserve_1page(&up_padr);
+	if (r != cause::OK)
 		return false;
 
 	const uptr up_page_size = up_level->page_size;
 	for (uptr offset = 0; offset < up_page_size; offset += cell_size) {
 		table_cell& cell = get_cell(up_padr + offset);
+		cell.table.set_true_all();
 		free_cell_chain.insert_head(&cell);
 	}
 
@@ -323,7 +325,7 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 
 	const uptr n = (pmem_end + (page_size - 1)) / page_size;
 	for (uptr i = 0; i < n; ++i) {
-		if (!table_base[i].table.is_all_false())
+		if (!table_base[i].table.is_false_all())
 			dech.insert_tail(&table_base[i]);
 	}
 
@@ -331,9 +333,10 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 }
 
 /// @brief １ページだけ予約する。
-/// @return 予約した物理メモリのアドレス返す。
-/// @return 空きメモリがないときは ADR_INVALID を返す。
-uptr physical_page_table::reserve_1page()
+/// @param[out] padr 予約した物理ページのアドレスを返す。
+/// @retval cause::OK 成功した。
+/// @retval cause::NO_MEMORY 空きメモリがない。
+cause::stype physical_page_table::reserve_1page(uptr* padr)
 {
 	table_cell* cell;
 
@@ -344,10 +347,10 @@ uptr physical_page_table::reserve_1page()
 			if (import_uplevel_page())
 				continue;
 			else
-				return ADR_INVALID;
+				return cause::NO_MEMORY;
 		}
 
-		if (!cell->table.is_all_false())
+		if (!cell->table.is_false_all())
 			break;
 
 		// まとまった cell を上位レベルに返却するときに、
@@ -358,27 +361,34 @@ uptr physical_page_table::reserve_1page()
 	}
 
 	const int offset = cell->table.search_true();
+
 	cell->table.set_false(offset);
-	if (cell->table.is_all_false())
+
+	if (cell->table.is_false_all())
 		free_cell_chain.remove_head();
 
-	return get_page_address(cell, offset);
+	*padr = get_page_address(cell, offset);
+	return cause::OK;
 }
 
 /// @brief １ページだけ解放する。
 /// @param[in] padr 解放する物理メモリのアドレス。
 ///                 ページサイズより小さなビットは無視してしまう。
-void physical_page_table::free_1page(uptr padr)
+cause::stype physical_page_table::free_1page(uptr padr)
 {
 	const unsigned int cell_index = get_cell_index(padr);
 	table_cell& cell = table_base[cell_index];
-	if (cell.table.is_all_false())
+	if (cell.table.is_false_all())
 		free_cell_chain.insert_head(&cell);
 
 	const int offset = padr / page_size % BITMAP_BITS;
+
+	if (!cell.table.is_true(offset))
+		return cause::NOT_ALLOCED;
+
 	cell.table.set_true(offset);
 
-	if (cell.table.is_all_true() && up_level) {
+	if (cell.table.is_true_all() && up_level) {
 		// padr を含む上位レベルのページがすべて空き状態となった
 		// 場合は、上位レベルへ返却する。
 
@@ -388,7 +398,7 @@ void physical_page_table::free_1page(uptr padr)
 
 		unsigned int i;
 		for (i = 0; i < n; ++i) {
-			if (!table_base[up_cell_base + i].table.is_all_true())
+			if (!table_base[up_cell_base + i].table.is_true_all())
 				break;
 		}
 
@@ -401,6 +411,8 @@ void physical_page_table::free_1page(uptr padr)
 			up_level->free_1page(padr);
 		}
 	}
+
+	return cause::OK;
 }
 
 }  // namepsace
@@ -498,40 +510,38 @@ void physical_memory::build()
 
 cause::stype physical_memory::reserve_l1page(uptr* padr)
 {
-	uptr tmp = page_l1_table.reserve_1page();
-	if (tmp != ADR_INVALID) {
-		*padr = tmp;
-		return cause::OK;
-	}
-	else {
-		return cause::NO_MEMORY;
-	}
+	const cause::stype r = page_l1_table.reserve_1page(padr);
+	if (r == cause::OK)
+		free_bytes -= arch::PAGE_L1_SIZE;
+
+	return r;
 }
 
 cause::stype physical_memory::reserve_l2page(uptr* padr)
 {
-	uptr tmp = page_l2_table.reserve_1page();
-	if (tmp != ADR_INVALID) {
-		*padr = tmp;
-		return cause::OK;
-	}
-	else {
-		return cause::NO_MEMORY;
-	}
+	const cause::stype r = page_l2_table.reserve_1page(padr);
+	if (r == cause::OK)
+		free_bytes -= arch::PAGE_L2_SIZE;
+
+	return r;
 }
 
 cause::stype physical_memory::free_l1page(uptr padr)
 {
-	page_l1_table.free_1page(padr);
+	const cause::stype r = page_l1_table.free_1page(padr);
+	if (r == cause::OK)
+		free_bytes += arch::PAGE_L1_SIZE;
 
-	return cause::OK;
+	return r;
 }
 
 cause::stype physical_memory::free_l2page(uptr padr)
 {
-	page_l2_table.free_1page(padr);
+	const cause::stype r = page_l2_table.free_1page(padr);
+	if (r == cause::OK)
+		free_bytes += arch::PAGE_L2_SIZE;
 
-	return cause::OK;
+	return r;
 }
 
 namespace arch

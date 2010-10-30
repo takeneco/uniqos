@@ -20,16 +20,24 @@ public:
 		BITS = arch::BITS_PER_BYTE * sizeof map,
 	};
 
+	// Cast to bittype_
+	static bittype_ b(bittype_ x) { return x; }
+
 public:
+	bitmap() {}
+	explicit bitmap(bittype_ x) : map(x) {}
+
 	bittype_ get_raw() const { return map; }
 
-	void set_true(int i)  { map |= static_cast<bittype_>(1) << i; }
-	void set_false(int i) { map &= ~(static_cast<bittype_>(1) << i); }
-	void set_true_all()   { map = ~static_cast<bittype_>(0); }
-	void set_false_all()  { map = static_cast<bittype_>(0); }
+	void set_true(int i)  { map |= b(1) << i; }
+	void set_false(int i) { map &= ~(b(1) << i); }
+	void set_true_all()   { map = ~b(0); }
+	void set_false_all()  { map = b(0); }
 
-	bool is_all_true() { return map == ~static_cast<bittype_>(0); }
-	bool is_all_false() { return map == static_cast<bittype_>(0); }
+	bool is_true(int i) { return map == b(1) << i; }
+	bool is_false(int i) { return map != b(1) << i; }
+	bool is_true_all() { return map == ~b(0); }
+	bool is_false_all() { return map == b(0); }
 
 	int search_true() const {
 		const int r = static_cast<int>(bitscan_forward(map));

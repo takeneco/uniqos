@@ -250,9 +250,13 @@ namespace cause
 	enum stype {
 		OK = 0,
 		FAIL = 1,
+
+		/// メモリが不足している。
 		NO_MEMORY = 2,
-		INVALID_PARAMS = 3,
-		INVALID_OPERATION = 4,
+		/// メモリが割り当てられていない。
+		NOT_ALLOCED,
+		INVALID_PARAMS,
+		INVALID_OPERATION,
 		NO_IMPLEMENTS,
 		UNKNOWN = 1000,
 	};

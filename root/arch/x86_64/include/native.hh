@@ -207,9 +207,6 @@ inline void set_ss(u16 ss) {
 	    "movw %%ax, %%ss" : : "rm" (ss) : "%ax");
 }
 
-}  // namespace native
-
-
 // @brief Global/Interrupt Descriptor Table register.
 //
 // アライメント調整を防ぐために ptr を分割した。
@@ -233,14 +230,17 @@ typedef gidt_ptr64 gdt_ptr64;
 typedef gidt_ptr64 idt_ptr64;
 
 // @brief lgdt を実行する。
-inline void native_lgdt(gdt_ptr64* ptr) {
+inline void lgdt(gdt_ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
 }
 
 // @brief lidt を実行する。
-inline void native_lidt(idt_ptr64* ptr) {
+inline void lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
+
+}  // namespace native
+
 
 inline s16 bitscan_forward_16(u16 data) { return native::bsfw_or0(data); }
 inline s32 bitscan_forward_32(u32 data) { return native::bsfl_or0(data); }
