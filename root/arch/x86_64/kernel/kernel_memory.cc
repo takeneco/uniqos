@@ -16,14 +16,53 @@ namespace {
 
 class allocatable_page;
 
+/// ページの先頭にページヘッダ(page_header)を置く。
+/// ページをピース(piece)に切り出してメモリを割り当てる。
+/// 割当済みピースの先頭にはresv_piece_headerを置く。
+/// 空きピースの先頭にはfree_piece_headerを置く。
 
-/// @brief 空きメモリのヘッダ
+/// @brief 割当済みピースのヘッダ
+class hold_piece_header
+{
+	/// ヘッダも含めたサイズ
+	u32 piece_bytes;
+	/// ページ先頭への相対ポインタ。
+	/// this = &page_header + page_offset になる
+	u32 page_offset;
+
+public:
+	hold_piece_header(page_header* page_header_, u32 piece_bytes_) :
+	    piece_bytes(piece_bytes_),
+	{
+		page_offset = reinterpret_cast<u32>(
+		    reinterpret_cast<uptr>(this) -
+		    reinterpret_cast<uptr>(page_header_)
+		);
+	}
+	void* get_memory_ptr() {
+		return this + 1;
+	}
+};
+
+/// @brief 空きピースのヘッダ
 class free_piece_header
 {
-	u32  piece_size;
+	/// ヘッダも含めたサイズ
+	u32  piece_bytes;
 	int  reserved; // for lock
+
 public:
 	bichain_link<free_piece_header> chain_link_;
+
+	free_piece_header() {}
+
+	/// @brief メモリを切り出す。
+	//
+	/// メモリを後ろから切り取って、切り取ったメモリのポインタを返す。
+	void* cut(u32 bytes) {
+		piece_bytes -= bytes;
+		return reinterpret_cast<u8>(this) + piece_bytes;
+	}
 };
 
 /// @brief ページ内のメモリ割当状況を管理する。
@@ -33,21 +72,94 @@ class page_header
 	int  reserved;
 	bichain<free_piece_header, &free_piece_header::chain_link_> free_chain;
 	allocatable_page* status;
+
+public:
+	page_header(u32 page_size_, allocatable_page* status_)
+	    : page_size(page_size_), status(status_)
+	    {}
+
+	free_piece_header* search_free(uptr bytes);
+
+	void remove_free(free_piece_header* piece) {
+		free_chain.remove(piece);
+	}
 };
 
+/// @brief ページ内の空きメモリから size より大きいものを探す。
+/// @param[in] bytes 探しているメモリサイズ
+/// @return 発見したメモリの free_piece_header ポインタを返す。
+//
+/// ここで最適なサイズの空きメモリを探すくらいのことはしたい。
+free_piece_header* page_header::search_free(uptr bytes)
+{
+	for (free_piece_header* p = free_chain.get_head();
+	     p != 0;
+	     p = free_chain.get_next(p))
+	{
+		if (p->piece_bytes >= bytes)
+			return p;
+	}
+
+	return 0;
+}
+
+
 /// @brief 割当可能な空きメモリを含むページを管理する。
+//
+/// 空きメモリを検索するときに、空きメモリのサイズの部分が
+/// キャッシュに乗るようにする。
 class allocatable_page
 {
 	/// ページが含む最も大きい空きメモリサイズ。
 	u32  max_free_bytes;
-	/// ロックに使う予定。
-	int  reserved;
+	int  dummy___;
 	/// ページの先頭アドレス。
 	uptr page_adr;
 
 public:
 	allocatable_page() : max_free_bytes(0) {}
+
+	void* alloc(uptr bytes);
 };
+
+void* allocatable_page::alloc(uptr bytes)
+{
+	page_header* page = reinterpret_cast<page_header*>(page_adr);
+
+	// メモリを確保するときは、hold_piece_header をヘッダにするので、
+	// その分を足したサイズで空きメモリを探す。
+	const uptr piece_bytes =
+	    up_align(bytes + sizeof (hold_piece_header), BASIC_TYPE_ALIGN);
+
+	free_piece_header* free_piece = page->search_free(piece_bytes);
+	if (free_piece == 0)
+		return 0;
+
+	if (free_piece->piece_bytes >= max_free_bytes) {
+		// 最後に max_free_bytes を更新する。
+	}
+
+	void* hold_ptr;
+	const uptr rest_bytes = free_piece->piece_bytes - piece_bytes;
+	if (rest_bytes < sizeof (free_piece_header)) {
+		// 発見したピースを丸ごと確保する。
+		const u32 bytes = free_piece->piece_bytes;
+		page->remove_free(free_piece);
+		hold_ptr = free_piece;
+	} else {
+		// 発見したピースのシッポからメモリを削りだす。
+		hold_ptr = free_piece->cut(piece_bytes);
+	}
+
+	hold_piece_header* hold_piece =
+	    new (hold_ptr) hold_piece_header(page, bytes);
+	void* r = hold_piece->get_memory_ptr();
+
+	// max_free_bytes をここで更新。
+
+	return r;
+}
+
 
 /// @brief allocatable_page の配列。
 //
@@ -58,12 +170,14 @@ class allocatable_page_array
 	struct array_info
 	{
 		bichain_link<allocatable_page_array> chain_link_;
-		// page_arrya に含まれる割当可能ページの数
+		// page_array に含まれる割当可能ページの数
 		int page_num;
-		// ロックに使う予定
-		int reserved;
+		// 配列の先頭に最も近い空きエントリのインデックス
+		int first_blank_entry;
 
-		array_info() : page_num(0) {}
+		array_info()
+		    : page_num(0), first_blank_entry(0)
+		    {}
 	} info;
 
 	// データ型のサイズがページサイズと等しくなるようにする。
@@ -74,8 +188,22 @@ class allocatable_page_array
 	allocatable_page page_array[ARRAY_LENGTH];
 
 public:
+	allocatable_page_array() {}
+
+	allocatable_page* new_entry();
 	void* alloc(uptr size);
 };
+
+/// @brief 空いている allocatable_page のアドレスを返す。
+//
+/// @return allocatable_page の空きがないときは 0 を返す。
+allocatable_page* allocatable_page_array::new_entry()
+{
+	int i;
+	for (i = 0; i < ARRAY_LENGH; ++i) {
+		page_array[i]
+	}
+}
 
 void* allocatable_page_array::alloc(uptr size)
 {
@@ -99,7 +227,7 @@ void* allocatable_page_array::alloc(uptr size)
 }
 
 
-/// @brief カーネル自信が使うメモリを管理する。
+/// @brief カーネル自身が使うメモリを管理する。
 //
 /// このクラスは物理メモリ１ページに収まらなければならない。
 /// (初期化処理で物理ページを割り当てているだけなので)
@@ -112,6 +240,7 @@ class kernel_memory_
 
 private:
 	void* alloc_from_array(uptr size);
+	void* alloc_from_newpage(uptr size);
 
 public:
 	void* alloc(uptr size);
@@ -129,9 +258,36 @@ void* kernel_memory_::alloc_from_array(uptr size)
 	return 0;
 }
 
+void* kernel_memory_::alloc_from_newpage(uptr size)
+{
+	const uptr header_size = sizeof page_header + sizeof resv_piece_header;
+
+	uptr padr;
+	u32 page_size;
+	cause::stype r;
+	if (size <= (PAGE_L1_SIZE - header_size)) {
+		page_size = PAGE_L1_SIZE;
+		r = arch::pmem::alloc_l1page(&padr);
+	} else if (size <= (PAGE_L2_SIZE - header_size)) {
+		page_size = PAGE_L2_SIZE;
+		r = arch::pmem::alloc_l2page(&padr);
+	} else {
+		r = cause::NOT_IMPLEMENTS;
+	}
+	if (r != cause::OK) {
+		/* TODO: error */
+		return 0;
+	}
+
+	new (reinterpret_cast<void*>(padr)) page_header(page_size, );
+}
+
 void* kernel_memory_::alloc(uptr size)
 {
-	return alloc_on_array(size);
+	void* p = alloc_from_array(size);
+	if (p != 0)
+		return p;
+
 }
 
 }  // namespace

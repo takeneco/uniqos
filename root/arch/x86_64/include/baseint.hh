@@ -1,7 +1,8 @@
-/// @author  KATO Takeshi
-/// @brief   Builtin int types.
-///
-/// (C) 2010 KATO Takeshi
+/// @file  baseint.hh
+/// @brief Builtin int types.
+//
+// (C) 2010 KATO Takeshi
+//
 
 #ifndef _ARCH_X86_64_INCLUDE_BASEINT_HH_
 #define _ARCH_X86_64_INCLUDE_BASEINT_HH_
@@ -20,6 +21,8 @@ typedef unsigned long long _u64;
 typedef   signed long long _smax;
 typedef unsigned long long _umax;
 
+typedef _u8  _ubyte;
+typedef _s8  _sbyte;
 typedef _u32 _ucpu;
 typedef _s32 _scpu;
 typedef _u32 _uptr;
@@ -40,6 +43,8 @@ typedef unsigned long      _u64;
 typedef   signed long      _smax;
 typedef unsigned long      _umax;
 
+typedef _u8  _ubyte;
+typedef _s8  _sbyte;
 typedef _u64 _ucpu;
 typedef _s64 _scpu;
 typedef _u64 _uptr;

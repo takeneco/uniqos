@@ -1,7 +1,8 @@
-/// @author Kato Takeshi
-/// @brief  x86_64 hardware parameters.
+/// @file  arch.hh
+/// @brief x86_64 hardware parameters.
 //
 // (C) 2010 Kato Takeshi
+//
 
 #ifndef ARCH_X86_64_INCLUDE_ARCH_HH_
 #define ARCH_X86_64_INCLUDE_ARCH_HH_
@@ -14,6 +15,8 @@ namespace arch
 
 enum {
 	BITS_PER_BYTE = 8,
+
+	BASIC_TYPE_ALIGN = 8,
 
 	PAGE_L1_SIZE_BITS = 12,
 	PAGE_L1_SIZE      = 1 << PAGE_L1_SIZE_BITS, // 4KiB
