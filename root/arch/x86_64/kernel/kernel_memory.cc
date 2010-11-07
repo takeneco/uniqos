@@ -78,7 +78,8 @@ public:
 	    : page_size(page_size_), status(status_)
 	    {}
 
-	free_piece_header* search_free(uptr bytes);
+	free_piece_header* search_free_piece(uptr bytes);
+	u32 search_max_free_bytes() const;
 
 	void remove_free(free_piece_header* piece) {
 		free_chain.remove(piece);
@@ -90,7 +91,7 @@ public:
 /// @return 発見したメモリの free_piece_header ポインタを返す。
 //
 /// ここで最適なサイズの空きメモリを探すくらいのことはしたい。
-free_piece_header* page_header::search_free(uptr bytes)
+free_piece_header* page_header::search_free_piece(uptr bytes)
 {
 	for (free_piece_header* p = free_chain.get_head();
 	     p != 0;
@@ -101,6 +102,21 @@ free_piece_header* page_header::search_free(uptr bytes)
 	}
 
 	return 0;
+}
+
+/// @brief 最大空き piece のサイズを返す。
+u32 page_header::search_max_free_bytes() const
+{
+	u32 max_bytes = 0;
+	for (free_piece_header* p = free_chain.get_head();
+	     p != 0;
+	     p = free_chain.get_next(p))
+	{
+		if (p->piece_bytes > max_bytes)
+			max_bytes = p->piece_bytes;
+	}
+
+	return max_bytes;
 }
 
 
@@ -119,31 +135,37 @@ class allocatable_page
 public:
 	allocatable_page() : max_free_bytes(0) {}
 
+	u32 get_max_free_bytes() const { return max_free_bytes; }
 	void* alloc(uptr bytes);
 };
 
+/// @brief ページの中からメモリを割り当てる。
+/// @param[in] bytes 割り当てるメモリのサイズ
+/// @return 割り当てられたメモリへのポインタを返す。
 void* allocatable_page::alloc(uptr bytes)
 {
 	page_header* page = reinterpret_cast<page_header*>(page_adr);
 
 	// メモリを確保するときは、hold_piece_header をヘッダにするので、
 	// その分を足したサイズで空きメモリを探す。
-	const uptr piece_bytes =
-	    up_align(bytes + sizeof (hold_piece_header), BASIC_TYPE_ALIGN);
+	uptr piece_bytes = up_align(
+	    bytes + sizeof (hold_piece_header), BASIC_TYPE_ALIGN);
 
-	free_piece_header* free_piece = page->search_free(piece_bytes);
+	free_piece_header* free_piece = page->search_free_piece(piece_bytes);
 	if (free_piece == 0)
 		return 0;
 
+	bool recalc_max_free = false;
 	if (free_piece->piece_bytes >= max_free_bytes) {
 		// 最後に max_free_bytes を更新する。
+		recalc_max_free = true;
 	}
 
 	void* hold_ptr;
 	const uptr rest_bytes = free_piece->piece_bytes - piece_bytes;
 	if (rest_bytes < sizeof (free_piece_header)) {
 		// 発見したピースを丸ごと確保する。
-		const u32 bytes = free_piece->piece_bytes;
+		piece_bytes = free_piece->piece_bytes;
 		page->remove_free(free_piece);
 		hold_ptr = free_piece;
 	} else {
@@ -153,11 +175,12 @@ void* allocatable_page::alloc(uptr bytes)
 
 	hold_piece_header* hold_piece =
 	    new (hold_ptr) hold_piece_header(page, bytes);
-	void* r = hold_piece->get_memory_ptr();
+	void* ret = hold_piece->get_memory_ptr();
 
-	// max_free_bytes をここで更新。
+	if (recalc_max_free)
+		max_free_bytes = page->search_max_free_bytes();
 
-	return r;
+	return ret;
 }
 
 
@@ -214,11 +237,12 @@ void* allocatable_page_array::alloc(uptr size)
 		if (pages >= page_num)
 			break;
 
-		if (page_array[i].max_free_bytes == 0)
+		if (page_array[i].get_max_free_bytes() == 0)
 			continue;
 
-		if (page_array[i].max_free_bytes >= size)
-			;
+		// 最初に見つけたページからメモリを割り当てる。
+		if (page_array[i].get_max_free_bytes() >= size)
+			return page_array[i].alloc(size);
 
 		++pages;
 	}
