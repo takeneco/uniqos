@@ -44,6 +44,7 @@ public:
 	}
 };
 
+
 /// @brief 空きピースのヘッダ
 class free_piece_header
 {
@@ -64,6 +65,7 @@ public:
 		return reinterpret_cast<u8>(this) + piece_bytes;
 	}
 };
+
 
 /// @brief ページ内のメモリ割当状況を管理する。
 class page_header
@@ -132,55 +134,61 @@ class allocatable_page
 	/// ページの先頭アドレス。
 	uptr page_adr;
 
-public:
-	allocatable_page() : max_free_bytes(0) {}
+	enum { NOT_CAPTURED = 0xffffffff };
 
-	u32 get_max_free_bytes() const { return max_free_bytes; }
-	void* alloc(uptr bytes);
+public:
+	allocatable_page() : max_free_bytes(NOT_CAPTURED) {}
+
+	bool is_captured() const {
+		return max_free_bytes != NOT_CAPTURED;
+	}
+	u32 get_max_free_bytes() const {
+		return max_free_bytes;
+	}
+	page_header* get_page_header() {
+		return reinterpret_cast<page_header*>(page_adr);
+	}
+
+	hold_piece_header* alloc(uptr bytes);
 };
 
 /// @brief ページの中からメモリを割り当てる。
 /// @param[in] bytes 割り当てるメモリのサイズ
-/// @return 割り当てられたメモリへのポインタを返す。
-void* allocatable_page::alloc(uptr bytes)
+/// @return 割り当てられたメモリの hold_piece_header のポインタを返す。
+hold_piece_header* allocatable_page::alloc(uptr bytes)
 {
-	page_header* page = reinterpret_cast<page_header*>(page_adr);
+	page_header* page = get_page_header();
 
-	// メモリを確保するときは、hold_piece_header をヘッダにするので、
-	// その分を足したサイズで空きメモリを探す。
-	uptr piece_bytes = up_align(
-	    bytes + sizeof (hold_piece_header), BASIC_TYPE_ALIGN);
-
-	free_piece_header* free_piece = page->search_free_piece(piece_bytes);
+	free_piece_header* free_piece = page->search_free_piece(bytes);
 	if (free_piece == 0)
 		return 0;
 
 	bool recalc_max_free = false;
 	if (free_piece->piece_bytes >= max_free_bytes) {
-		// 最後に max_free_bytes を更新する。
+		// 一番大きな空きメモリを削ることになるので、
+		// あとで max_free_bytes を更新する。
 		recalc_max_free = true;
 	}
 
 	void* hold_ptr;
-	const uptr rest_bytes = free_piece->piece_bytes - piece_bytes;
+	const uptr rest_bytes = free_piece->piece_bytes - bytes;
 	if (rest_bytes < sizeof (free_piece_header)) {
 		// 発見したピースを丸ごと確保する。
-		piece_bytes = free_piece->piece_bytes;
+		bytes = free_piece->piece_bytes;
 		page->remove_free(free_piece);
 		hold_ptr = free_piece;
 	} else {
 		// 発見したピースのシッポからメモリを削りだす。
-		hold_ptr = free_piece->cut(piece_bytes);
+		hold_ptr = free_piece->cut(bytes);
 	}
 
 	hold_piece_header* hold_piece =
 	    new (hold_ptr) hold_piece_header(page, bytes);
-	void* ret = hold_piece->get_memory_ptr();
 
 	if (recalc_max_free)
 		max_free_bytes = page->search_max_free_bytes();
 
-	return ret;
+	return hold_piece;
 }
 
 
@@ -214,7 +222,7 @@ public:
 	allocatable_page_array() {}
 
 	allocatable_page* new_entry();
-	void* alloc(uptr size);
+	hold_piece_header* alloc(uptr bytes);
 };
 
 /// @brief 空いている allocatable_page のアドレスを返す。
@@ -222,14 +230,24 @@ public:
 /// @return allocatable_page の空きがないときは 0 を返す。
 allocatable_page* allocatable_page_array::new_entry()
 {
-	int i;
-	for (i = 0; i < ARRAY_LENGH; ++i) {
-		page_array[i]
+	if (info.page_num == ARRAY_LENGTH)
+		return 0;
+
+	for (int i = 0; i < ARRAY_LENGH; ++i) {
+		if (!page_array[i].is_captured())
+			return &page_array[i];
 	}
+
+	return 0;
 }
 
-void* allocatable_page_array::alloc(uptr size)
+hold_piece_header* allocatable_page_array::alloc(uptr bytes)
 {
+	// メモリを確保するときは、hold_piece_header をヘッダにするので、
+	// その分を足したサイズで空きメモリを探す。
+	bytes = up_align(
+	    bytes + sizeof (hold_piece_header), BASIC_TYPE_ALIGN);
+
 	const int page_num = info.page_num;
 
 	int pages = 0;
@@ -237,16 +255,20 @@ void* allocatable_page_array::alloc(uptr size)
 		if (pages >= page_num)
 			break;
 
-		if (page_array[i].get_max_free_bytes() == 0)
+		if (!page_array[i].is_captured())
 			continue;
 
+		const u32 max_free_bytes = page_array[i].get_max_free_bytes();
+
 		// 最初に見つけたページからメモリを割り当てる。
-		if (page_array[i].get_max_free_bytes() >= size)
-			return page_array[i].alloc(size);
+		if (max_free_bytes >= bytes)
+			return page_array[i].alloc(bytes);
 
 		++pages;
 	}
 
+	// 空きメモリがあることを確認してから呼ばれるので、
+	// ここには到達しないはず。
 	return 0;
 }
 
@@ -263,20 +285,20 @@ class kernel_memory_
 	        allocatable_chain;
 
 private:
-	void* alloc_from_array(uptr size);
+	void* alloc_from_existpage(uptr size);
 	void* alloc_from_newpage(uptr size);
 
 public:
 	void* alloc(uptr size);
 };
 
-void* kernel_memory_::alloc_from_array(uptr size)
+void* kernel_memory_::alloc_from_existpage(uptr size)
 {
 	for (allocatable_page_array* ary = allocatable_chain.get_head();
 	    ary != 0;
 	    ary = allocatable_chain.get_next())
 	{
-		ary->alloc_from_page(size);
+		ary->alloc(size);
 	}
 
 	return 0;
@@ -308,10 +330,11 @@ void* kernel_memory_::alloc_from_newpage(uptr size)
 
 void* kernel_memory_::alloc(uptr size)
 {
-	void* p = alloc_from_array(size);
-	if (p != 0)
-		return p;
+	hold_piece_header* p = alloc_from_existpage(size);
+	if (p == 0)
+		return 0;
 
+	return p->get_memory_ptr();
 }
 
 }  // namespace
