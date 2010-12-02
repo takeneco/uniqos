@@ -20,7 +20,7 @@ KERNEL_OBJS = $(shell cat $(KERNEL_DIR)/objects.txt)
 ASM_SRCS = entry.S exception_handler.S serialh.S
 C_SRCS = gnuc.c
 CXX_SRCS = global_variables.cc \
-	intr.cc kerninit.cc physical_memory.cc \
+	intr.cc kerninit.cc kernel_memory.cc physical_memory.cc \
 	serialout.cc setupdata.cc \
 	vadr2padr.cc videoout.cc cpuinit.cc
 ASM_OBJS = $(ASM_SRCS:%.S=%.o)

@@ -23,6 +23,13 @@ cause::stype free_l2page(uptr padr);
 
 }  // namespace arch
 
+namespace memory {
+
+cause::stype init();
+void* alloc(uptr bytes);
+void  free(void* ptr);
+
+}  // namespace memory
 
 #endif  // Include guard.
 

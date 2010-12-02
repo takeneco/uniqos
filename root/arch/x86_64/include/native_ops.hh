@@ -1,11 +1,11 @@
-/// @file native.hh
+/// @file native_ops.hh
 /// @brief  C言語から呼び出すアセンブラ命令
 //
 // (C) 2010 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_NATIVE_HH_
-#define ARCH_X86_64_INCLUDE_NATIVE_HH_
+#ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
+#define ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 
 #include "btypes.hh"
 

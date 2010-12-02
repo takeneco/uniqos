@@ -1,14 +1,14 @@
-// @file   arch/x86_64/kernel/cpuinit.cc
-// @author Kato Takeshi
+// @file   cpuinit.cc
 // @brief  Initialize GDT/IDT.
 //
 // (C) 2010 Kato Takeshi.
+//
 
 #include "kerninit.hh"
 
 #include "btypes.hh"
 #include "desctable.hh"
-#include "native.hh"
+#include "native_ops.hh"
 
 
 namespace {
@@ -110,9 +110,9 @@ int cpu_init()
 	gdt[GDT_USER_DATASEG].set(0, 0xfffff, 3,
 	    gdte::RW | gdte::S | gdte::P | gdte::L | gdte::G);
 
-	gdt_ptr64 gdtptr;
+	native::gdt_ptr64 gdtptr;
 	gdtptr.init(sizeof gdt, gdt);
-	native_lgdt(&gdtptr);
+	native::lgdt(&gdtptr);
 
 	native::set_ss(8 * GDT_KERN_DATASEG);
 

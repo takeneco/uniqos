@@ -5,7 +5,7 @@
 
 #include "kerninit.hh"
 
-#include "native.hh"
+#include "native_ops.hh"
 #include "output.hh"
 #include "string.hh"
 
@@ -42,10 +42,10 @@ idte idt_vec[256];
 
 void intr_update()
 {
-	idt_ptr64 idtptr;
+	native::idt_ptr64 idtptr;
 	idtptr.init(sizeof (idte) * 256, &idt_vec[0]);
 
-	native_lidt(&idtptr);
+	native::lidt(&idtptr);
 }
 
 }  // End of anonymous namespace

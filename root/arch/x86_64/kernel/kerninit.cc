@@ -8,7 +8,8 @@
 
 #include "output.hh"
 #include "setupdata.hh"
-#include "native.hh"
+#include "memory_allocate.hh"
+#include "native_ops.hh"
 
 #include "setupdata.hh"
 #include "setup/memdump.hh"
@@ -104,6 +105,13 @@ kout=com1;
 			put_u64hex(adrs[i])->put_endl();
 		}
 	}
+
+	memory::init();
+
+	char* p = (char*)memory::alloc(1);
+	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
+
+	*p = 'x';
 
 	tmp_debug();
 	return 0;

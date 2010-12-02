@@ -10,7 +10,7 @@
 #include "chain.hh"
 #include "global_variables.hh"
 #include "native_ops.hh"
-#include "physical_memory.hh"
+#include "memory_allocate.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
 #include "setup/memdump.hh"
@@ -79,9 +79,13 @@ class physical_page_table
 		/// 予約ページのビットは false
 		bitmap<uptr> table;
 		chain_link<table_cell> chain_link_;
+
+		chain_link<table_cell>& chain_hook() {
+			return chain_link_;
+		}
 	};
 
-	typedef chain<table_cell, &table_cell::chain_link_> cell_chain;
+	typedef chain<table_cell, &table_cell::chain_hook> cell_chain;
 
 	// １ページ * BITMAP_BITS のサイズを 1cell と呼ぶことにする。
 
@@ -218,7 +222,7 @@ void physical_page_table::init_free_all(void* buf, uptr buf_size)
 
 	const uptr n = buf_size / sizeof (table_cell);
 
-	dechain<table_cell, &table_cell::chain_link_> dech;
+	dechain<table_cell, &table_cell::chain_hook> dech;
 
 	for (uptr i = 0; i < n; ++i) {
 		table_base[i].table.set_true_all();
@@ -321,7 +325,7 @@ uptr physical_page_table::free_range(uptr from, uptr to)
 /// @brief 空きメモリチェインをつなぐ。
 void physical_page_table::build_free_chain(uptr pmem_end)
 {
-	dechain<table_cell, &table_cell::chain_link_> dech;
+	dechain<table_cell, &table_cell::chain_hook> dech;
 
 	const uptr n = (pmem_end + (page_size - 1)) / page_size;
 	for (uptr i = 0; i < n; ++i) {

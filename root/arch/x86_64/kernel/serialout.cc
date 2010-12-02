@@ -1,12 +1,13 @@
-/// @author KATO Takeshi
+/// @file  serialout.cc
 /// @brief  Output only serial port.
 //
 // (C) 2010 KATO Takeshi
+//
 
 #include "output.hh"
 
 #include "kerninit.hh"
-#include "native.hh"
+#include "native_ops.hh"
 #include "placement_new.hh"
 #include "arch.hh"
 

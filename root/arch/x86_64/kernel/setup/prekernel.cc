@@ -1,7 +1,8 @@
-/// @author  KATO Takeshi
-/// @brief   Kernel extend phase before execute.
+/// @file  prekernel.cc
+/// @brief Kernel extend phase before execute.
 //
 // (C) 2010 KATO Takeshi
+//
 
 #include "access.hh"
 #include "lzmadecwrap.hh"
@@ -9,7 +10,7 @@
 #include "arch.hh"
 
 #include "term.hh"
-#include "native.hh"
+#include "native_ops.hh"
 
 
 extern char setup_body_start;

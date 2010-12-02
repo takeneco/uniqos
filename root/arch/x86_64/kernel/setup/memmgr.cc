@@ -10,7 +10,7 @@
 #include "access.hh"
 #include "placement_new.hh"
 
-#include "native.hh"
+#include "native_ops.hh"
 
 #include "term.hh"
 extern term_chain* debug_tc;
@@ -24,6 +24,10 @@ struct memmap_entry
 
 	bichain_link<memmap_entry> chain_link_;
 
+	bichain_link<memmap_entry>& chain_hook() {
+		return chain_link_;
+	}
+
 	void set(u64 head_, u64 bytes_) {
 		head = head_;
 		bytes = bytes_;
@@ -35,7 +39,7 @@ struct memmap_entry
 
 class memmgr
 {
-	typedef bichain<memmap_entry, &memmap_entry::chain_link_>
+	typedef bichain<memmap_entry, &memmap_entry::chain_hook>
 	    memmap_entry_chain;
 
 	/// 空き領域リスト

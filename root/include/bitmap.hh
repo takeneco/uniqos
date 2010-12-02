@@ -1,13 +1,14 @@
-/// @author  KATO Takeshi
-/// @brief   Bitmap structure.
+/// @file  bitmap.hh
+/// @brief Bitmap structure.
 //
 // (C) 2010 Kato Takeshi
+//
 
 #ifndef BITMAP_HH_
 #define BITMAP_HH_
 
 #include "arch.hh"
-#include "native.hh"
+#include "native_ops.hh"
 
 
 template<class bittype_>
