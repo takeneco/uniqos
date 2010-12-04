@@ -288,6 +288,8 @@ allocatable_page* allocatable_page_array::add_page(uptr page_adr, u32 page_size)
 	if (entry == 0)
 		return 0;
 
+	++info.page_num;
+
 	entry->init(page_adr, page_size);
 
 	return entry;

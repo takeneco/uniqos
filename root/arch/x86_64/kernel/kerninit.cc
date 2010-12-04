@@ -108,9 +108,16 @@ kout=com1;
 
 	memory::init();
 
-	char* p = (char*)memory::alloc(1);
+	char* p = (char*)memory::alloc(4056);
 	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
+	*p = 'x';
 
+	p = (char*)memory::alloc(4056);
+	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
+	*p = 'x';
+
+	p = (char*)memory::alloc(1);
+	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
 	*p = 'x';
 
 	tmp_debug();
