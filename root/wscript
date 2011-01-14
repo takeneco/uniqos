@@ -1,0 +1,109 @@
+
+vERSION = '0.0.1.0'
+APPNAME = 'uniqos'
+
+top = '.'
+out = 'build'
+
+arch_name = 'x86_64'
+
+def configure_x86_64(conf):
+	conf.env.arch_name = arch_name
+
+	conf.recurse('arch')
+
+	conf.env.ASFLAGS = [
+	    '-pipe', '-Wall', '-Wextra',
+	]
+	conf.env.CFLAGS = [
+	    '-pipe', '-Wall', '-Wextra',
+	]
+	conf.env.CXXFLAGS = [
+	    '-pipe', '-Wall', '-Wextra',
+	]
+	conf.env.INCLUDES = [
+	    conf.path.find_dir('include').abspath(),
+	    conf.path.find_dir('arch/' + arch_name + '/include').abspath()
+	]
+
+	conf.env.DEFINES_SETUP = [
+	    'ARCH_LE',
+	]
+	conf.env.CXXFLAGS_SETUP = [
+	    '-fno-exceptions', '-fno-rtti',
+	    '-mno-sse',
+	    '-fomit-frame-pointer',
+	]
+
+	conf.env.DEFINES_KERNEL = [
+	    'ARCH_LE',
+	]
+	conf.env.CFLAGS_KERNEL = [
+	    '-mno-sse',
+	    '-fomit-frame-pointer', '-O2',
+	]
+
+	conf.env.CXXFLAGS_KERNEL = [
+	    '-fno-exceptions', '-fno-rtti',
+	    '-mno-sse',
+	    '-fomit-frame-pointer', '-O2',
+	]
+
+	if conf.options.compiler == 'clang':
+		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
+		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
+		conf.env.LINKFLAGS_KERNEL.append('-native')
+		conf.find_program('clang', var='CC')
+		conf.find_program('clang++', var='CXX')
+		conf.env.LINK_PASS = ''
+		conf.env.LINK_PASS2 = '-Wl,'
+
+	elif conf.options.compiler == 'llvm':
+		conf.env.CFLAGS_KERNEL.append('-emit-llvm')
+		conf.env.CXXFLAGS_KERNEL.append('-emit-llvm')
+		#conf.env.CFLAGS_KERNEL.append('-code-model=large')
+		#conf.env.CXXFLAGS_KERNEL.append('-code-model=large')
+		conf.find_program('llvm-gcc', var='CC')
+		conf.find_program('llvm-g++', var='CXX')
+		conf.find_program('llvm-ld', var='LINK_CC')
+		conf.env.LINK_CXX = conf.env.LINK_CC
+		conf.env.LINKFLAGS = ['-code-model=large', '-native']
+		conf.env.LINK_PASS = '-Xlinker='
+		conf.env.LINK_PASS2 = '-Xlinker='
+
+	elif conf.options.compiler == 'gnu':
+		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
+		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
+		conf.find_program('gcc', var='CC')
+		conf.find_program('g++', var='CXX')
+		conf.env.LINK_PASS = ''
+		conf.env.LINK_PASS2 = '-Wl,'
+
+	else:
+		conf.fatal('unknown compiler : ' + conf.options.compiler)
+
+def options(opt):
+	opt.load('compiler_c')
+	opt.load('compiler_cxx')
+	opt.load('gcc gas')
+	opt.add_option(
+	    '--compiler',
+	    default = 'clang',
+	    action  = 'store',
+	    help    = 'compiler family (llvm,gnu)')
+
+def configure(conf):
+	configure_x86_64(conf)
+	conf.load('compiler_c')
+	conf.load('compiler_cxx')
+	conf.load('gcc gas')
+	conf.recurse('tools')
+
+	conf.env.STLIB_MARKER = []
+	conf.env.SHLIB_MARKER = []
+
+def build(bld):
+	bld.recurse('tools')
+	bld.recurse('kernel')
+	bld.recurse('arch')
+

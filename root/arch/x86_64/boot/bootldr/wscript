@@ -1,0 +1,85 @@
+
+ldr_defines = [
+    'ARCH_LE',
+    'ARCH_IA32',  # means 32bit mode in x86_64
+]
+
+ldr_includes = ['.', '../include']
+
+ldr_cflags = [
+    '-fno-exceptions', '-m32',
+    '-fomit-frame-pointer', '-Os',
+]
+
+ldr_cxxflags = [
+    '-fno-exceptions', '-fno-rtti', '-m32',
+    '-fomit-frame-pointer', '-Os',
+]
+
+ldr_linkflags = [
+    '-nostdlib', '-static',
+    '-m32',
+    #'-Wl,-Ttext=0x7e00',
+]
+
+ldr_sources = [
+    'loadfat.cc',
+    'loadkern.cc',
+]
+
+
+def build(bld):
+	#if bld.options.compiler == 'llvm':
+	#	ldr_cflags.append('-###')
+	#	ldr_cxxflags.append('-###')
+
+	ldr_asflags = []
+	ldr_asflags.extend(ldr_cflags)
+	ldr_asflags.append('-I' + bld.path.find_dir('../include').abspath())
+	for i in ldr_defines:
+		ldr_asflags.append('-D' + i)
+
+	# waf はアセンブラにdefine(-D)とincludeパス(-I)を指定できないので、
+	# プリプロセスだけ済ませる。
+	#rule_ap_ldr = '${CC} -S ${SRC} ' + ' '.join(asflags_ldr) + ' > ${TGT}'
+	#
+	#bld(target='bootldr.s', source='bootldr.S', rule=rule_ap_ldr)
+	#bld(target='tr.s', source='tr.S', rule=rule_ap_ldr)
+
+	rule_a_ldr = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(ldr_asflags)
+
+	bld(target='bootldr.o', source='bootldr.S', rule=rule_a_ldr)
+	bld(target='tr.o', source='tr.S', rule=rule_a_ldr)
+
+	# Normal compile
+
+	# リンカスクリプト
+	ldr_linkflags.append(
+	    '-T' + bld.path.find_node('bootldr.ld').abspath())
+	bld.add_manual_dependency(
+	    bld.path.make_node('bootldr'),
+	    bld.path.find_node('bootldr.ld'))
+
+	ldr_linkflags2 = [bld.env.LINK_PASS + f for f in ldr_linkflags]
+	ldr_linkflags2.append(bld.env.LINK_PASS2 + '-Ttext=0x7e00')
+
+	# アセンブラコードから生成したオブジェクトファイル
+	ldr_linkflags2.extend([
+	    bld.path.make_node('bootldr.o').abspath(),
+	    bld.path.make_node('tr.o').abspath(),
+	])
+	bld.add_manual_dependency(
+	    bld.path.make_node('bootldr'),
+	    bld.path.find_node('bootldr.o'))
+	bld.add_manual_dependency(
+	    bld.path.make_node('bootldr'),
+	    bld.path.find_node('tr.o'))
+
+	bld.program(features='cxx cxxprogram',
+	    target   = 'bootldr',
+	    source   = ldr_sources,
+	    defines  = ldr_defines,
+	    includes = ldr_includes,
+	    cxxflags = ldr_cxxflags,
+	    linkflags= ldr_linkflags2)
+

@@ -1,0 +1,22 @@
+
+def configure(conf):
+	conf.env.DEFINES_TOOLS = ['ARCH_LE']
+	conf.env.INCLUDES_TOOLS = ['.']
+
+def build(bld):
+	bld.objects(
+	    target = 'cmdparse',
+	    source = 'cmdparse.c',
+	    use    = 'TOOLS'
+	)
+	bld.program(
+	    target   = 'mkfdimg',
+	    source   = 'mkfdimg.cpp',
+	    use      = ['cmdparse', 'TOOLS']
+	)
+	bld.program(
+	    target = 'putimg',
+	    source = 'putimg.c',
+	    use    = ['cmdparse', 'TOOLS']
+	)
+
