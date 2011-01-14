@@ -14,9 +14,9 @@ extern "C" {
 
 namespace {
 
-	const std::size_t LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
+	const uptr LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
 
-	void* lzma_alloc(void*, std::size_t size)
+	void* lzma_alloc(void*, uptr size)
 	{
 		void* p = memmgr_alloc(size);
 		return p;
@@ -38,10 +38,10 @@ u64 lzma_decode_size(const _u8* src)
 }
 
 bool lzma_decode(
-	u8*         src,
-	std::size_t src_len,
-	u8*         dest,
-	std::size_t dest_len)
+	u8*   src,
+	uptr  src_len,
+	u8*   dest,
+	uptr  dest_len)
 {
 	ISzAlloc alloc;
 	alloc.Alloc = lzma_alloc;

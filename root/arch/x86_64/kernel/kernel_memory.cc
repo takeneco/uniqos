@@ -247,7 +247,8 @@ class allocatable_page_array
 	// データ型のサイズがページサイズと等しくなるようにする。
 	enum {
 		ARRAY_LENGTH =
-		(arch::PAGE_L1_SIZE - sizeof info) / sizeof (allocatable_page)
+		    (arch::PAGE_L1_SIZE - sizeof (array_info)) /
+		    sizeof (allocatable_page)
 	};
 	allocatable_page page_array[ARRAY_LENGTH];
 

@@ -6,8 +6,6 @@
 #ifndef ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 #define ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 
-#include <cstddef>
-
 #include "btypes.hh"
 
 

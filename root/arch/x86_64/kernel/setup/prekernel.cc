@@ -47,6 +47,14 @@ bool kern_extract()
 	u8* const ext_kern_dest =
 		reinterpret_cast<u8*>(KERN_FINAL_VADR);
 
+	debug_tc->puts("&kern_body_start = ")->putu64x((u64)&kern_body_start)->putc('\n');
+	debug_tc->puts("&setup_body_start = ")->putu64x((u64)&setup_body_start)->putc('\n');
+	debug_tc->puts("setup_size = ")->putu64(setup_size)->putc('\n');
+	debug_tc->puts("comp_kern_src = ")->putu64x((u64)comp_kern_src)->putc('\n');
+	debug_tc->puts("comp_kern_size = ")->putu64(comp_kern_size)->putc('\n');
+	debug_tc->puts("ext_kern_size = ")->putu64(ext_kern_size)->putc('\n');
+	debug_tc->puts("ext_kern_dest = ")->putu64x((u64)ext_kern_dest)->putc('\n');
+
 	return lzma_decode(comp_kern_src, comp_kern_size,
 		ext_kern_dest, ext_kern_size);
 }
@@ -190,7 +198,10 @@ extern "C" int prekernel()
 	fixed_allocs();
 
 	if (kern_extract() == false)
+	{
+		tc.puts("x");
 		return -1;
+	}
 
 	asm ("invlpg " TOSTR(KERN_FINAL_VADR));
 

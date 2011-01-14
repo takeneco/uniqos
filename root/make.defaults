@@ -8,13 +8,22 @@ ARCH = x86_64
 endif
 #ARCH = x86
 
-CC  = x86_64-pc-linux-gnu-gcc
-CXX = x86_64-pc-linux-gnu-g++
-AS  = x86_64-pc-linux-gnu-as
-LD  = x86_64-pc-linux-gnu-ld
+#CC  = x86_64-pc-linux-gnu-gcc
+CC  = /usr/bin/gcc
 
-CFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -mcmodel=large -O2 -mno-sse
-CXXFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -mcmodel=large -O2 -mno-sse
+#CXX = x86_64-pc-linux-gnu-g++
+CXX = /usr/bin/g++
+
+#AS  = x86_64-pc-linux-gnu-as
+AS  = /usr/bin/as
+
+#LD  = x86_64-pc-linux-gnu-ld
+LD  = /usr/bin/ld
+
+#CFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -mcmodel=large -O2 -mno-sse
+CFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -O2 -mno-sse
+#CXXFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -mcmodel=large -O2 -mno-sse
+CXXFLAGS = -pipe -Wall -Wextra -fomit-frame-pointer -O2 -mno-sse
 
 CPPFLAGS = -I$(ROOT)/include -I$(ROOT)/arch/$(ARCH)/include 
 

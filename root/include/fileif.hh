@@ -3,6 +3,7 @@
 // @brief  Device interface class definition.
 //
 // (C) 2010 Kato Takeshi
+//
 
 #ifndef _INCLUDE_FILEIF_HH_
 #define _INCLUDE_FILEIF_HH_
@@ -44,6 +45,18 @@ public:
 	u8* next_u8();
 };
 
+
+class filenode_interface;
+
+struct filenode_ops
+{
+	int (*write)(
+	    filenode_interface* self,
+	    const io_vector*    vectors,
+	    int                 vector_count,
+	    ucpu                offset);
+};
+
 // @brief  File node interface base class.
 
 class filenode_interface
@@ -60,6 +73,8 @@ public:
 	    const io_vector* vectors,
 	    int              vector_count,
 	    ucpu             offset) =0;
+
+	filenode_ops* ops;
 };
 
 

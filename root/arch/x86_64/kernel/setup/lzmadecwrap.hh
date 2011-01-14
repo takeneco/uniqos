@@ -12,10 +12,10 @@
 
 u64 lzma_decode_size(const _u8* src);
 bool lzma_decode(
-    _u8*        src,
-    std::size_t src_len,
-    _u8*        dest,
-    std::size_t dest_len);
+    _u8*  src,
+    uptr  src_len,
+    _u8*  dest,
+    uptr  dest_len);
 
 
 #endif  // Include guard.

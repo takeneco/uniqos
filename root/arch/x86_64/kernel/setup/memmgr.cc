@@ -58,7 +58,7 @@ public:
 	void reserve_range(u64 r_head, u64 r_tail);
 	int freemem_dump(setup_memmgr_dumpdata* dumpto, int n);
 	int nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n);
-	void* memmgr_alloc(std::size_t size, std::size_t align);
+	void* memmgr_alloc(uptr size, uptr align);
 	void memmgr_free(void* p);
 };
 
@@ -204,7 +204,7 @@ int memmgr::nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 	return i;
 }
 
-void* memmgr::memmgr_alloc(std::size_t size, std::size_t align)
+void* memmgr::memmgr_alloc(uptr size, uptr align)
 {
 	memmgr* const mm = get_memmgr();
 
@@ -334,7 +334,7 @@ void memmgr_init()
 ///     If align == 256, then return address is "0x....00".
 /// @return If succeeds, this func returns allocated memory address ptr.
 /// @return If fails, this func returns NULL.
-void* memmgr_alloc(std::size_t size, std::size_t align)
+void* memmgr_alloc(uptr size, uptr align)
 {
 	memmgr* const mm = get_memmgr();
 

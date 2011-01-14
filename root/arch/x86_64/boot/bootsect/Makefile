@@ -3,7 +3,7 @@
 #
 # (C) 2010 KATO Takeshi
 
-CFLAGS = -m64 -pipe -Wall -W -fomit-frame-pointer -Os -fno-exceptions
+CFLAGS = -m64 -pipe -Wall -Wextra -fomit-frame-pointer -Os -fno-exceptions
 CPPFLAGS = -I../include
 
 ASM_SRCS = bootsect.S

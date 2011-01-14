@@ -18,7 +18,7 @@ class bitmap
 
 public:
 	enum {
-		BITS = arch::BITS_PER_BYTE * sizeof map,
+		BITS = arch::BITS_PER_BYTE * sizeof (bittype_),
 	};
 
 	// Cast to bittype_

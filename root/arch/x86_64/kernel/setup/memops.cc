@@ -3,8 +3,6 @@
 //
 // (C) 2009-2010 Kato Takeshi.
 
-#include <cstddef>
-
 #include "mem.hh"
 
 
@@ -13,7 +11,7 @@
 // @param src  Source addr.
 // @param size Copy bytes.
 // @return Always return dest.
-void* memory_move(void* dest, const void* src, std::size_t size)
+void* memory_move(void* dest, const void* src, uptr size)
 {
 	char* d = reinterpret_cast<char*>(dest);
 	const char* s = reinterpret_cast<const char*>(src);
@@ -31,6 +29,11 @@ void* memory_move(void* dest, const void* src, std::size_t size)
 	}
 
 	return dest;
+}
+
+extern "C" void* memcpy(void* dest, void* src, uptr n)
+{
+	return memory_move(dest, src, n);
 }
 
 #ifdef __GNUC__

@@ -22,7 +22,7 @@ C_SRCS = gnuc.c
 CXX_SRCS = global_variables.cc \
 	intr.cc kerninit.cc kernel_memory.cc physical_memory.cc \
 	serialout.cc setupdata.cc \
-	vadr2padr.cc videoout.cc cpuinit.cc
+	videoout.cc cpuinit.cc
 ASM_OBJS = $(ASM_SRCS:%.S=%.o)
 C_OBJS = $(C_SRCS:%.c=%.o)
 CXX_OBJS = $(CXX_SRCS:%.cc=%.o)

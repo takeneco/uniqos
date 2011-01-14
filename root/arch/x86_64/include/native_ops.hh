@@ -239,6 +239,20 @@ inline void lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
 
+inline void write_msr(u32 adr, u64 val)
+{
+	asm volatile ("wrmsr" : :
+	    "d"(val >> 32), "a"(val & 0xffffffff), "c"(adr));
+}
+
+inline u64 read_msr(u32 adr)
+{
+	u32 r1, r2;
+	asm volatile ("rdmsr" : "=d"(r2), "=a"(r1): "c"(adr));
+
+	return u64(r2) << 32 | u64(r1);
+}
+
 }  // namespace native
 
 

@@ -7,8 +7,8 @@
 
 #CFLAGS += 
 
-CPPFLAGS += -DARCH_X86 \
-	-I../include
+CPPFLAGS += -DARCH_LE \
+	-I. -I../include
 
 LDFLAGS += -lstdc++
 

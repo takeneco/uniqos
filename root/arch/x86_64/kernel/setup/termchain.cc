@@ -14,7 +14,7 @@
  */
 void term_chain::init()
 {
-	terms = NULL;
+	terms = 0;
 }
 
 /**

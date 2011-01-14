@@ -144,10 +144,10 @@ void intr_init()
 
 	intr_update();
 
-	kern_output* kout = kern_get_out();
-	kout->PutStr("convert_vadr_to_padr(idt) = ")
-	->PutU64Hex(convert_vadr_to_padr(&idt_vec[255]))
-	->PutC('\n');
+//	kern_output* kout = kern_get_out();
+//	kout->PutStr("convert_vadr_to_padr(idt) = ")
+//	->PutU64Hex(convert_vadr_to_padr(&idt_vec[255]))
+//	->PutC('\n');
 }
 
 void intr_set_handler(int intr, intr_handler handler)

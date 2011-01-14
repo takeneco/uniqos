@@ -1,18 +1,16 @@
-// @file   arch/x86_64/kernel/output.hh
-// @author Kato Takeshi
-// @brief  Kernel message destination.
+/// @file   arch/x86_64/kernel/output.hh
+/// @author Kato Takeshi
+/// @brief  Kernel message destination.
 //
 // (C) 2010 Kato Takeshi.
 
 #ifndef _ARCH_X86_64_KERNEL_OUTPUT_HH_
 #define _ARCH_X86_64_KERNEL_OUTPUT_HH_
 
-#include <cstddef>
-
 #include "kout.hh"
 
 
-// @brief  Output only kernel video term.
+/// @brief  Output only kernel video term.
 
 class VideoOutput : public kern_output
 {
@@ -42,7 +40,7 @@ public:
 extern "C" void on_serial_intr_com1();
 extern "C" void on_serial_intr_com2();
 
-// @brief  Output only serial port term.
+/// @brief  Output only serial port term.
 
 class serial_output : public kern_output
 {

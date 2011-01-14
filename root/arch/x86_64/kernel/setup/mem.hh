@@ -6,20 +6,18 @@
 #ifndef ARCH_X86_64_KERNEL_SETUP_MEM_HH_
 #define ARCH_X86_64_KERNEL_SETUP_MEM_HH_
 
-#include <cstddef>
-
 #include "btypes.hh"
 
 
 void  memmgr_init();
-void* memmgr_alloc(std::size_t size, std::size_t align = 8);
+void* memmgr_alloc(uptr size, uptr align = 8);
 void  memmgr_free(void* p);
 
 struct setup_memmgr_dumpdata;
 int   memmgr_freemem_dump(setup_memmgr_dumpdata* dumpto, int n);
 int   memmgr_nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n);
 
-void* memory_move(void* dest, const void* src, std::size_t size);
+void* memory_move(void* dest, const void* src, uptr size);
 
 struct acpi_memmap {
 	enum type_value {

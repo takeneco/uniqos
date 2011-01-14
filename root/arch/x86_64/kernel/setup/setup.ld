@@ -17,5 +17,6 @@ SECTIONS {
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	/*.bss : { *(.bss) }*/
+	.eh_frame : { *(.eh_frame) }
 	kern_body_start = .;
 }
