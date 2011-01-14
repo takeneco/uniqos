@@ -13,23 +13,28 @@ sect_linkflags = [
 linker_script = 'bootsect.ld'
 
 
-def build(bld):
+def build(x):
 	for i in sect_includes:
-		sect_asflags.append('-I' + bld.path.find_dir(i).abspath())
+		sect_asflags.append('-I' + x.path.find_dir(i).abspath())
 
 	rule_c_sect = '${CC} ${ASFLAGS} -c ${SRC} -o ${TGT} ' + ' '.join(sect_asflags)
-	bld(target='bootsect.o',
-	    source='bootsect.S',
-	    rule=rule_c_sect)
+	x (
+	    target = 'bootsect.o',
+	    source = 'bootsect.S',
+	    rule   = rule_c_sect
+	)
 
 	sect_linkflags.append(
-	    '-Wl,-T,' + bld.path.find_node(linker_script).abspath())
+	    '-Wl,-T,' + x.path.find_node(linker_script).abspath())
 
 	rule_sect = '${CC} ${ASFLAGS} ${SRC} -o ${TGT} ' + ' '.join(sect_linkflags)
-	bld(target='bootsect',
-	    source='bootsect.o',
-	    rule=rule_sect)
-	bld.add_manual_dependency(
-	    bld.path.make_node('bootsect'),
-	    bld.path.find_node(linker_script))
+	sect_target = x.path.find_or_declare('bootsect')
+	x (
+	    target = sect_target,
+	    source = 'bootsect.o',
+	    rule   = rule_sect
+	)
+	x.add_manual_dependency(
+	    sect_target,
+	    x.path.find_node(linker_script))
 

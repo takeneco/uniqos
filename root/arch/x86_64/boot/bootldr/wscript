@@ -53,11 +53,13 @@ def build(bld):
 
 	# Normal compile
 
+	ldr_target = bld.path.find_or_declare('bootldr')
+
 	# リンカスクリプト
 	ldr_linkflags.append(
 	    '-T' + bld.path.find_node('bootldr.ld').abspath())
 	bld.add_manual_dependency(
-	    bld.path.make_node('bootldr'),
+	    ldr_target,
 	    bld.path.find_node('bootldr.ld'))
 
 	ldr_linkflags2 = [bld.env.LINK_PASS + f for f in ldr_linkflags]
@@ -65,18 +67,18 @@ def build(bld):
 
 	# アセンブラコードから生成したオブジェクトファイル
 	ldr_linkflags2.extend([
-	    bld.path.make_node('bootldr.o').abspath(),
-	    bld.path.make_node('tr.o').abspath(),
+	    bld.path.find_or_declare('bootldr.o').abspath(),
+	    bld.path.find_or_declare('tr.o').abspath(),
 	])
 	bld.add_manual_dependency(
-	    bld.path.make_node('bootldr'),
-	    bld.path.find_node('bootldr.o'))
+	    ldr_target,
+	    bld.path.find_or_declare('bootldr.o'))
 	bld.add_manual_dependency(
-	    bld.path.make_node('bootldr'),
-	    bld.path.find_node('tr.o'))
+	    ldr_target,
+	    bld.path.find_or_declare('tr.o'))
 
 	bld.program(features='cxx cxxprogram',
-	    target   = 'bootldr',
+	    target   = ldr_target,
 	    source   = ldr_sources,
 	    defines  = ldr_defines,
 	    includes = ldr_includes,

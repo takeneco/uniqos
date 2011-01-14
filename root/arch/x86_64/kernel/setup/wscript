@@ -38,14 +38,14 @@ def build(bld):
 
 	setup_linkflags.append('-T'+bld.path.find_node('setup.ld').abspath())
 	bld.add_manual_dependency(
-	    bld.path.make_node('setup.bin'),
-	    bld.path.make_node('setup.ld'))
+	    bld.path.find_or_declare('setup.bin'),
+	    bld.path.find_node('setup.ld'))
 
 	setup_linkflags2 = [bld.env.LINK_PASS + f for f in setup_linkflags]
 
 	setup_linkflags2.extend([
-	    bld.path.make_node('a20.o').abspath(),
-	    bld.path.make_node('setup.o').abspath(),
+	    bld.path.find_or_declare('a20.o').abspath(),
+	    bld.path.find_or_declare('setup.o').abspath(),
 	])
 
 	setup_source.append(bld.srcnode.find_node('external/lzma/C/LzmaDec.c'))

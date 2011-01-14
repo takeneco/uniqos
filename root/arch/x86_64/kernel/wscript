@@ -51,15 +51,15 @@ def build(bld):
 	kern_linkflags.append(
 	    '-T' + bld.path.find_node('kernel.ld').abspath())
 	bld.add_manual_dependency(
-	    bld.path.make_node('kernel.bin'),
+	    bld.path.find_or_declare('kernel.bin'),
 	    bld.path.find_node('kernel.ld'))
 
 	kern_linkflags2 = [bld.env.LINK_PASS + f for f in kern_linkflags]
 
 	kern_linkflags2.extend([
-	    bld.path.make_node('entry.o').abspath(),
-	    bld.path.make_node('exception_handler.o').abspath(),
-	    bld.path.make_node('serialh.o').abspath(),
+	    bld.path.find_or_declare('entry.o').abspath(),
+	    bld.path.find_or_declare('exception_handler.o').abspath(),
+	    bld.path.find_or_declare('serialh.o').abspath(),
 	])
 
 	bld.program(features='cxx cxxprogram',
