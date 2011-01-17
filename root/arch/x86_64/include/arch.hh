@@ -16,6 +16,7 @@ namespace arch
 enum {
 	BITS_PER_BYTE = 8,
 
+	// alignment
 	BASIC_TYPE_ALIGN = 8,
 
 	PAGE_L1_SIZE_BITS = 12,
@@ -30,6 +31,8 @@ enum {
 
 	// this is not hw param.
 	PHYSICAL_MEMMAP_BASEADR = 0xffff800000000000,
+	// Interrupt vector
+	INTR_APIC_TIMER = 0x30,
 };
 
 namespace pmem

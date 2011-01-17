@@ -18,6 +18,10 @@ void intr_set_handler(int intr, intr_handler hander);
 
 u64 convert_vadr_to_padr(const void* vadr);
 
+// apic
+namespace arch {
+cause::stype apic_init();
+}
 
 #endif  // Include guard.
 

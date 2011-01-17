@@ -17,6 +17,11 @@ SECTIONS {
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	/*.bss : { *(.bss) }*/
+
+	/* C++の例外フレームらしい。
+	 * clangでは例外を無効化できないため必要。
+	 */
 	.eh_frame : { *(.eh_frame) }
+
 	kern_body_start = .;
 }
