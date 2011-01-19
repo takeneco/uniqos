@@ -120,6 +120,8 @@ kout=com1;
 	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
 	*p = 'x';
 
+	arch::apic_init();
+
 	tmp_debug();
 	return 0;
 }

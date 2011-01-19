@@ -20,3 +20,9 @@ serial_intr_com2_handler:
 	movb  $0x60 + 3, %al
 	outb  %al, $0x20
 	iretq
+
+
+
+timer_intr_handler:
+	call on_timer
+	iretq
