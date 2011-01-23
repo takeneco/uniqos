@@ -1,16 +1,16 @@
 /**
- * @author Kato Takeshi
+ * @file   setup.S
  * @brief  カーネル自身のセットアップ。
- *
- * (C) Kato Takeshi 2009-2010
  *
  * - 16bit real mode から始まり、32bit protect mode を経由して
  *   64bit long mode へ移行する。
  * - Create minimum paging table, and jump kernel body.
  *
  * Bootloader から渡されるパラメータ
- *  %ecx : カーネルのサイズ
+ * - %ecx : カーネルのサイズ
  */
+
+/* (C) 2009-2011 KATO Takeshi */
 
 #include "setup.h"
 
@@ -105,7 +105,9 @@ _start:
 
 	movw  $SETUP_ACPI_MEMMAP, %di
 	call  acpi_get_memmap
-	// %eax != 0xffffffff でエラーチェックが必要
+	//
+	// ここは %eax != 0xffffffff でエラーチェックが必要
+	//
 	movl  %eax, %es:SETUP_ACPI_MEMMAP_COUNT
 
 	lgdtl setup_gdtr
@@ -218,12 +220,11 @@ start32:
 
 	// Create Page Map
 
+	// Zero clear PML4
 	movl  $SETUP_PML4_PADR, %ebx
 	movl  %ebx, %edi
 	xorl  %eax, %eax
-	// PML4のブロックをゼロクリアする。
 	movl  $(PAGE_SIZE * 1 / 4), %ecx
-	//movl  $(PAGE_SIZE * 3 / 4), %ecx
 	rep stosl
 
 	// アドレス空間の後半半分をカーネル用に割り当てるため、
@@ -234,7 +235,7 @@ start32:
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi
-	addl  $0x1000, %eax
+	addl  $PAGE_SIZE, %eax
 	loop  1b
 
 	// カーネルメモリ空間の中に物理メモリマップを作る。
@@ -242,13 +243,37 @@ start32:
 	// PDPTE
 	// カーネル空間全体の PDPTE(1MiB) をここで割り当てておく。
 
+	// PDPTE for physical memory map
 	movl  $KERN_PDPTE_PADR, %edi
-	// 物理メモリマップ用の PDPTE
-	movl  $SETUP_PDE_HEAD_PADR + 0x007, (%edi)
-	addl  $4, %edi
-	movl  $(PAGE_SIZE * 256 / 4) - 4, %ecx  // Zero clear left PDPTE
-	xorl  %eax, %eax
-	rep   stosl
+	movl  $SETUP_PDE_HEAD_PADR + 0x007, %eax
+1:	movl  %eax, (%edi)
+	movl  $0, 4(%edi)
+	addl  $PAGE_SIZE, %eax
+	addl  $8, %edi
+	cmpl  $SETUP_PDE_TAIL_PADR - (PAGE_SIZE * 2) + 0x007, %eax
+	jb    1b
+	// Zero clear left PDPTE
+2:	xorl  %eax, %eax
+	movl  %eax, (%edi)
+	movl  %eax, 4(%edi)
+	addl  $8, %edi
+	cmpl  $KERN_PDPTE_PADR + PAGE_SIZE * 256, %edi
+	jb    2b
+
+	//// 物理メモリマップ用の PDPTE
+	//movl  $SETUP_PDE_HEAD_PADR + 0x007, (%edi)
+	//movl  $0, 4(%edi)
+	//movl  $SETUP_PDE_HEAD_PADR + PAGE_SIZE + 0x007, 8(%edi)
+	//movl  $0, 12(%edi)
+	//movl  $SETUP_PDE_HEAD_PADR + PAGE_SIZE*2 + 0x007, 16(%edi)
+	//movl  $0, 20(%edi)
+	//movl  $SETUP_PDE_HEAD_PADR + PAGE_SIZE*3 + 0x007, 24(%edi)
+	//movl  $0, 28(%edi)
+	//addl  $32, %edi
+	//movl  $(PAGE_SIZE * 256 / 4) - 4, %ecx  // Zero clear left PDPTE
+	//xorl  %eax, %eax
+	//rep   stosl
+
 	// PDE
 	movl  $SETUP_PDE_HEAD_PADR, %edi
 	movl  $0 + 0x183, %eax

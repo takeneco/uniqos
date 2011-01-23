@@ -58,3 +58,12 @@ def build(bld):
 	    linkflags = setup_linkflags2,
 	)
 
+	bld.add_manual_dependency(
+	    bld.path.find_or_declare('setup.bin'),
+	    bld.path.find_or_declare('setup.o')
+	)
+	bld.add_manual_dependency(
+	    bld.path.find_or_declare('setup.bin'),
+	    bld.path.find_or_declare('a20.o')
+	)
+
