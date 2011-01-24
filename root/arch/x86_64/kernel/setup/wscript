@@ -22,31 +22,36 @@ setup_source = [
     'videoterm.cc',
 ]
 
-def build(bld):
-	# assemble -->
-	setup_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(setup_asflags)
+setup_asm_source = [
+    'a20.S',
+    'setup.S',
+]
 
-	bld(target = 'a20.o',
-	    source = 'a20.S',
-	    rule   = setup_rule_a)
-	bld(target = 'setup.o',
-	    source = 'setup.S',
-	    rule   = setup_rule_a)
-	# <-- assemble
+
+def build(bld):
+	setup_target = bld.path.find_or_declare('setup.bin')
 
 	setup_includes.append(bld.top_dir + '/external/lzma/C')
 
-	setup_linkflags.append('-T'+bld.path.find_node('setup.ld').abspath())
-	bld.add_manual_dependency(
-	    bld.path.find_or_declare('setup.bin'),
-	    bld.path.find_node('setup.ld'))
+	linker_script = bld.path.find_node('setup.ld')
+	setup_linkflags.append('-T'+linker_script.abspath())
+	bld.add_manual_dependency(setup_target, linker_script)
 
 	setup_linkflags2 = [bld.env.LINK_PASS + f for f in setup_linkflags]
 
-	setup_linkflags2.extend([
-	    bld.path.find_or_declare('a20.o').abspath(),
-	    bld.path.find_or_declare('setup.o').abspath(),
-	])
+	# assemble-->
+	setup_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(setup_asflags)
+
+	for asm_src in setup_asm_source:
+		srcnode = bld.path.find_node(asm_src)
+		objnode = srcnode.change_ext('.o')
+
+		bld(target=objnode, source=srcnode, rule=setup_rule_a)
+
+		# .o を setup_source に入れられないためリンクフラグに入れる。
+		setup_linkflags2.append(objnode.abspath())
+		bld.add_manual_dependency(setup_target, srcnode)
+	# <--assemble
 
 	setup_source.append(bld.srcnode.find_node('external/lzma/C/LzmaDec.c'))
 	bld.program(
@@ -56,14 +61,5 @@ def build(bld):
 	    includes  = setup_includes,
 	    cxxflags  = ['-fno-exceptions', '-fno-rtti', '-Os'],
 	    linkflags = setup_linkflags2,
-	)
-
-	bld.add_manual_dependency(
-	    bld.path.find_or_declare('setup.bin'),
-	    bld.path.find_or_declare('setup.o')
-	)
-	bld.add_manual_dependency(
-	    bld.path.find_or_declare('setup.bin'),
-	    bld.path.find_or_declare('a20.o')
 	)
 
