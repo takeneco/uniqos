@@ -1,8 +1,8 @@
-// @file    arch/x86_64/kernel/exception_handler.S
-// @author  Kato Takeshi
-// @brief   Exception interrupt handler.
+/// @file  exception_handler.S
+/// @brief Exception interrupt handler.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
+//
 
 .section .text
 
@@ -104,5 +104,10 @@ exception_intr_18_handler:
 .globl exception_intr_19_handler
 exception_intr_19_handler:
 	call  on_exception_intr_19
+	iret
+
+.globl intr_30_handler
+intr_30_handler:
+	call  on_timer
 	iret
 

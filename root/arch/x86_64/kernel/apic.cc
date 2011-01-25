@@ -5,6 +5,7 @@
 //
 
 #include "arch.hh"
+#include "kerninit.hh"
 #include "native_ops.hh"
 
 #include "output.hh"
@@ -16,8 +17,16 @@ namespace {
 enum {
 	LOCAL_APIC_REG_BASE = arch::PHYSICAL_MEMMAP_BASEADR + 0xfee00000,
 
+	/// ID
+	LOCAL_APIC_ID = 0x0020,
+	/// Version
+	LOCAL_APIC_VERSION = 0x0030,
 	/// Task Priority Register
 	LOCAL_APIC_TPR = 0x0080,
+	/// Logical Destination Register
+	LOCAL_APIC_LDR = 0x00d0,
+	/// Destination Format Register
+	LOCAL_APIC_DFR = 0x00e0,
 	/// Spurious Interrupt Vector Register
 	LOCAL_APIC_SVR = 0x00f0,
 	/// LVT Timer Register
@@ -30,33 +39,49 @@ enum {
 	LOCAL_APIC_DCR = 0x03e0,
 };
 
-inline u64* local_apic_reg(uptr offset) {
-	return reinterpret_cast<u64*>(LOCAL_APIC_REG_BASE + offset);
+inline u32* local_apic_reg(uptr offset) {
+	return reinterpret_cast<u32*>(LOCAL_APIC_REG_BASE + offset);
 }
 
 cause::stype local_apic_init()
 {
-	volatile u64* reg;
+	volatile u32* reg;
+	volatile u32  tmp;
+
+	kern_get_out()->put_str("local apic version = ")->
+	    put_u64hex(*local_apic_reg(LOCAL_APIC_VERSION))->put_endl();
 
 	// Local APIC enable
 	reg = local_apic_reg(LOCAL_APIC_SVR);
-	*reg |= 0x0100;
+	tmp = *reg | 0x0100;
+	*reg = tmp;
 
-/*
+	*local_apic_reg(LOCAL_APIC_ID) = 0;
+	*local_apic_reg(LOCAL_APIC_LDR) = 0x1000000;
+	*local_apic_reg(LOCAL_APIC_DFR) = 0xffffffff;
+
 	// Task priority lowest
 	*local_apic_reg(LOCAL_APIC_TPR) = 0;
 
-	// Timer
-
-	// *local_apic_reg(LOCAL_APIC_DCR) = 0xb; // clock/1
+	//*local_apic_reg(LOCAL_APIC_DCR) = 0xb; // clock/1
 	*local_apic_reg(LOCAL_APIC_DCR) = 0xa; // clock/128
+
 	// one shot, unmask, とりあえずベクタ0x30
 	*local_apic_reg(LOCAL_APIC_LVT_TIMER) = arch::INTR_APIC_TIMER;
 
-	*local_apic_reg(LOCAL_APIC_INI_COUNT) = 1000;
+	//kern_get_out()->put_str("apic timer ");
+	*local_apic_reg(LOCAL_APIC_INI_COUNT) = 0xffffffff;
 
-	kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_CUR_COUNT));
-*/
+	//kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_INI_COUNT));
+
+	/*
+	int d;
+	asm volatile (
+	"cpuid" : "=d"(d): "a"(1)
+	);
+	kern_get_out()->put_str("cpuid(1)=")->put_u32hex(d)->put_c('\n');
+	*/
+
 	return cause::OK;
 }
 

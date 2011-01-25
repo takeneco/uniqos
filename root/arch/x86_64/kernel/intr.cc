@@ -72,6 +72,7 @@ void exception_intr_16_handler();
 void exception_intr_17_handler();
 void exception_intr_18_handler();
 void exception_intr_19_handler();
+void intr_30_handler();
 
 }
 
@@ -136,6 +137,9 @@ void intr_init()
 	    8 * 1, 0, 0, idte::TRAP);
 	idt_vec[19].set(
 	    reinterpret_cast<u64>(exception_intr_19_handler),
+	    8 * 1, 0, 0, idte::TRAP);
+	idt_vec[0x30].set(
+	    reinterpret_cast<u64>(intr_30_handler),
 	    8 * 1, 0, 0, idte::TRAP);
 
 	for (int i = 20; i < 256; i++) {
