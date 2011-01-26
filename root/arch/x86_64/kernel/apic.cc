@@ -23,6 +23,8 @@ enum {
 	LOCAL_APIC_VERSION = 0x0030,
 	/// Task Priority Register
 	LOCAL_APIC_TPR = 0x0080,
+	/// End of Interrupt
+	LOCAL_APIC_EOI = 0x00b0,
 	/// Logical Destination Register
 	LOCAL_APIC_LDR = 0x00d0,
 	/// Destination Format Register
@@ -70,7 +72,7 @@ cause::stype local_apic_init()
 	*local_apic_reg(LOCAL_APIC_LVT_TIMER) = arch::INTR_APIC_TIMER;
 
 	//kern_get_out()->put_str("apic timer ");
-	*local_apic_reg(LOCAL_APIC_INI_COUNT) = 0xffffffff;
+	*local_apic_reg(LOCAL_APIC_INI_COUNT) = 0xfffff;
 
 	//kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_INI_COUNT));
 
@@ -98,9 +100,12 @@ cause::stype apic_init()
 
 extern "C" void on_timer()
 {
-	kern_get_out()->put_c('.');
-	for (;;)
-		native::hlt();
+	int a;
+	kern_get_out()->put_u64hex((u64)&a);
+	kern_get_out()->put_c('.')->put_endl();
+	//for (;;)
+	//	native::hlt();
+	*local_apic_reg(LOCAL_APIC_EOI) = 0;
 }
 
 

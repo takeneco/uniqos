@@ -109,5 +109,6 @@ exception_intr_19_handler:
 .globl intr_30_handler
 intr_30_handler:
 	call  on_timer
-	iret
+	call  on_timer
+	iretq
 

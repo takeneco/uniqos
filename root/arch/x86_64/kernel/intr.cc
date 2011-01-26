@@ -138,13 +138,14 @@ void intr_init()
 	idt_vec[19].set(
 	    reinterpret_cast<u64>(exception_intr_19_handler),
 	    8 * 1, 0, 0, idte::TRAP);
-	idt_vec[0x30].set(
-	    reinterpret_cast<u64>(intr_30_handler),
-	    8 * 1, 0, 0, idte::TRAP);
 
 	for (int i = 20; i < 256; i++) {
 		idt_vec[i].disable();
 	}
+
+	idt_vec[0x30].set(
+	    reinterpret_cast<u64>(intr_30_handler),
+	    8 * 1, 0, 0, idte::TRAP);
 
 	intr_update();
 
