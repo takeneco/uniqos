@@ -22,7 +22,3 @@ serial_intr_com2_handler:
 	iretq
 
 
-
-timer_intr_handler:
-	call on_timer
-	iretq

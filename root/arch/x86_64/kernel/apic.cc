@@ -71,8 +71,11 @@ cause::stype local_apic_init()
 	// one shot, unmask, とりあえずベクタ0x30
 	*local_apic_reg(LOCAL_APIC_LVT_TIMER) = arch::INTR_APIC_TIMER;
 
-	//kern_get_out()->put_str("apic timer ");
-	*local_apic_reg(LOCAL_APIC_INI_COUNT) = 0xfffff;
+	reg = local_apic_reg(LOCAL_APIC_INI_COUNT);
+	for (;;) {
+		*reg = 0x800000;
+		asm volatile("hlt");
+	}
 
 	//kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_INI_COUNT));
 
@@ -98,13 +101,10 @@ cause::stype apic_init()
 
 }
 
-extern "C" void on_timer()
+extern "C" void interrupt_timer()
 {
-	int a;
-	kern_get_out()->put_u64hex((u64)&a);
-	kern_get_out()->put_c('.')->put_endl();
-	//for (;;)
-	//	native::hlt();
+	kern_get_out()->put_c('.');
+
 	*local_apic_reg(LOCAL_APIC_EOI) = 0;
 }
 

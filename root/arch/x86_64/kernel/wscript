@@ -26,45 +26,44 @@ kern_source = [
     'gnuc.c',
 ]
 
+kern_asm_source = [
+    'entry.S',
+    'interrupt_handler.S',
+    'serialh.S',
+]
+
 def configure(conf):
 	conf.find_program('lzma', var='LZMA')
 
 def build(bld):
 	bld.recurse('setup')
 
+	kern_target = bld.path.find_or_declare('kernel.bin')
+
 	kern_defines.extend(bld.env.common_defines)
 	kern_asflags.extend(bld.env.common_asflags)
 
-	# assemble -->
-	kern_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(kern_asflags)
-
-	bld(target='entry.o',
-	    source='entry.S',
-	    rule=kern_rule_a)
-	bld(target='exception_handler.o',
-	    source='exception_handler.S',
-	    rule=kern_rule_a)
-	bld(target='serialh.o',
-	    source='serialh.S',
-	    rule=kern_rule_a)
-	# <--
-
-	kern_linkflags.append(
-	    '-T' + bld.path.find_node('kernel.ld').abspath())
-	bld.add_manual_dependency(
-	    bld.path.find_or_declare('kernel.bin'),
-	    bld.path.find_node('kernel.ld'))
+	linker_script = bld.path.find_node('kernel.ld')
+	kern_linkflags.append('-T'+linker_script.abspath())
+	bld.add_manual_dependency(kern_target, linker_script)
 
 	kern_linkflags2 = [bld.env.LINK_PASS + f for f in kern_linkflags]
 
-	kern_linkflags2.extend([
-	    bld.path.find_or_declare('entry.o').abspath(),
-	    bld.path.find_or_declare('exception_handler.o').abspath(),
-	    bld.path.find_or_declare('serialh.o').abspath(),
-	])
+	# assemble-->
+	kern_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(kern_asflags)
+
+	for asm_src in kern_asm_source:
+		srcnode = bld.path.find_node(asm_src)
+		objnode = srcnode.change_ext('.o')
+
+		bld(target=objnode, source=srcnode, rule=kern_rule_a)
+
+		# .o を kern_source に入れられないためリンクフラグに入れる。
+		kern_linkflags2.append(objnode.abspath())
+	# <--assemble
 
 	bld.program(features='cxx cxxprogram',
-	    target   = 'kernel.bin',
+	    target   = kern_target,
 	    source   = kern_source,
 	    use      = ['kernel_objs', 'KERNEL'],
 	    defines  = kern_defines,
