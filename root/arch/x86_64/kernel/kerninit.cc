@@ -14,6 +14,8 @@
 #include "setupdata.hh"
 #include "setup/memdump.hh"
 
+void test();
+
 namespace {
 
 
@@ -106,21 +108,25 @@ kout=com1;
 	}
 
 	memory::init();
+	arch::apic_init();
 
 	char* p[50];
+	arch::wait(0x800000);
 	for (int i = 0; i < 40; i++) {
 		p[i] = (char*)memory::alloc(800);
 	}
+	arch::wait(0x800000);
 	for (int i = 0; i < 40; i++) {
 		memory::free(p[i]);
 	}
+	arch::wait(0x800000);
 	for (int i = 0; i < 40; i++) {
 		char* x = (char*)memory::alloc(800);
 		kern_get_out()->put_u64hex((u64)p[i])->put_c(':')->
 			put_u64hex((u64)x)->put_endl();
 	}
 
-	arch::apic_init();
+	test();
 
 	tmp_debug();
 	return 0;

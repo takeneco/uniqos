@@ -71,14 +71,14 @@ cause::stype local_apic_init()
 	// one shot, unmask, とりあえずベクタ0x30
 	*local_apic_reg(LOCAL_APIC_LVT_TIMER) = arch::INTR_APIC_TIMER;
 
+	/*
 	reg = local_apic_reg(LOCAL_APIC_INI_COUNT);
 	for (;;) {
 		*reg = 0x800000;
 		asm volatile("hlt");
 		kern_get_out()->put_c('x');
 	}
-
-	//kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_INI_COUNT));
+	*/
 
 	/*
 	int d;
@@ -100,11 +100,18 @@ cause::stype apic_init()
 	return local_apic_init();
 }
 
+void wait(u32 n)
+{
+	volatile u32* reg = local_apic_reg(LOCAL_APIC_INI_COUNT);
+	*reg = n;
+	native::hlt();
+}
+
 }
 
 extern "C" void interrupt_timer()
 {
-	kern_get_out()->put_c('.');
+	//kern_get_out()->put_c('.');
 
 	*local_apic_reg(LOCAL_APIC_EOI) = 0;
 }

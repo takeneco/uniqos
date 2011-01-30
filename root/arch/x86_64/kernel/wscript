@@ -24,6 +24,9 @@ kern_source = [
 
     # for g++
     'gnuc.c',
+
+    # for test
+    'test.cc',
 ]
 
 kern_asm_source = [
@@ -48,6 +51,9 @@ def build(bld):
 	bld.add_manual_dependency(kern_target, linker_script)
 
 	kern_linkflags2 = [bld.env.LINK_PASS + f for f in kern_linkflags]
+
+	map = bld.path.find_or_declare('kernel.map')
+	kern_linkflags2.append('-Wl,-Map,'+map.abspath())
 
 	# assemble-->
 	kern_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(kern_asflags)
