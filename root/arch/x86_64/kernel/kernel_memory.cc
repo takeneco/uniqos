@@ -78,17 +78,20 @@ public:
 		return chain_link_;
 	}
 
+	u32 get_bytes() const {
+		return piece_bytes;
+	}
 	/// 後ろにある piece のアドレスを返す。
-	uptr get_back_piece_adr() const {
+	uptr get_after_piece_adr() const {
 		return reinterpret_cast<uptr>(this) + piece_bytes;
 	}
 
 	/// 後ろにある hold_piece を結合する。
-	void combine(hold_piece_header* back_piece) {
-		piece_bytes += back_piece->get_bytes();
+	void combine(hold_piece_header* after_piece) {
+		piece_bytes += after_piece->get_bytes();
 	}
-	void combine(free_piece_header* back_piece) {
-		piece_bytes += back_piece->piece_bytes;
+	void combine(free_piece_header* after_piece) {
+		piece_bytes += after_piece->piece_bytes;
 	}
 
 	/// @brief メモリを切り出す。
@@ -112,6 +115,13 @@ class page_header
 
 public:
 	page_header(u32 page_size_, allocatable_page* status_);
+	~page_header() {};
+
+	/// ページ内に hold_piece があれば true を返す。
+	bool is_holded() const {
+		const free_piece_header* p = free_chain.get_head();
+		return p->get_bytes() != page_size - sizeof *this;
+	}
 
 	free_piece_header* search_free_piece(uptr bytes);
 	u32 search_max_free_bytes() const;
@@ -121,6 +131,46 @@ public:
 	}
 	cause::stype set_free(hold_piece_header* piece);
 };
+
+/// @brief 割当可能な空きメモリを含むページを管理する。
+//
+/// 空きメモリを検索するときに、空きメモリのサイズの部分が
+/// キャッシュに乗るようにする。
+class allocatable_page
+{
+	/// ページが含む最も大きい空きメモリサイズ。
+	u32  max_free_bytes;
+	int  dummy___;
+	/// ページの先頭アドレス。
+	uptr page_adr;
+
+	enum { NOT_CAPTURED = 0xffffffff };
+
+public:
+	allocatable_page() : max_free_bytes(NOT_CAPTURED) {}
+
+	bool is_captured() const {
+		return max_free_bytes != NOT_CAPTURED;
+	}
+	u32 get_max_free_bytes() const {
+		return max_free_bytes;
+	}
+	page_header* get_page_header() {
+		return reinterpret_cast<page_header*>(page_adr);
+	}
+	/// free_piece の数が増えたり、
+	/// free_piece のサイズが大きくなったときに呼ばれる。
+	void growed_free_piece(u32 bytes) {
+		if (max_free_bytes < bytes)
+			max_free_bytes = bytes;
+	}
+
+	void init(uptr page_adr_, u32 page_size);
+
+	hold_piece_header* alloc(uptr bytes);
+};
+
+// page_header
 
 page_header::page_header(u32 page_size_, allocatable_page* status_)
     : page_size(page_size_), free_chain(), status(status_)
@@ -175,7 +225,7 @@ cause::stype page_header::set_free(hold_piece_header* piece)
 		 free_piece != 0;
 	     free_piece = free_chain.get_next(free_piece))
 	{
-		if (free_piece->get_back_piece_adr() == piece_adr) {
+		if (free_piece->get_after_piece_adr() == piece_adr) {
 			free_piece->combine(piece);
 			piece = 0;
 			break;
@@ -195,48 +245,21 @@ cause::stype page_header::set_free(hold_piece_header* piece)
 	}
 
 	// 直後の piece が free_piece なら結合する。
+	// ここで remove from list
 	free_piece_header* free_after = free_chain.get_next(free_piece);
 	if (reinterpret_cast<uptr>(free_after) ==
-	        free_piece->get_back_piece_adr())
+	        free_piece->get_after_piece_adr())
 	{
+		free_chain.remove(free_after);
 		free_piece->combine(free_after);
 	}
+
+	status->growed_free_piece(free_piece->get_bytes());
 
 	return cause::OK;
 }
 
-
-/// @brief 割当可能な空きメモリを含むページを管理する。
-//
-/// 空きメモリを検索するときに、空きメモリのサイズの部分が
-/// キャッシュに乗るようにする。
-class allocatable_page
-{
-	/// ページが含む最も大きい空きメモリサイズ。
-	u32  max_free_bytes;
-	int  dummy___;
-	/// ページの先頭アドレス。
-	uptr page_adr;
-
-	enum { NOT_CAPTURED = 0xffffffff };
-
-public:
-	allocatable_page() : max_free_bytes(NOT_CAPTURED) {}
-
-	bool is_captured() const {
-		return max_free_bytes != NOT_CAPTURED;
-	}
-	u32 get_max_free_bytes() const {
-		return max_free_bytes;
-	}
-	page_header* get_page_header() {
-		return reinterpret_cast<page_header*>(page_adr);
-	}
-
-	void init(uptr page_adr_, u32 page_size);
-
-	hold_piece_header* alloc(uptr bytes);
-};
+// allocatable_page
 
 void allocatable_page::init(uptr page_adr_, u32 page_size)
 {
@@ -458,8 +481,6 @@ hold_piece_header* kernel_memory_::alloc_from_newpage(uptr size)
 	}
 
 	page_adr += arch::PHYSICAL_MEMMAP_BASEADR;
-
-kern_get_out()->put_str("page_adr = ")->put_u64hex(page_adr)->put_c('\n');
 
 	allocatable_page* page = 0;
 	for (allocatable_page_array* ary = allocatable_chain.get_head();

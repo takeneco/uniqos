@@ -64,7 +64,6 @@ extern "C" int kern_init()
 	serial_output_init();
 
 	serial_output* com1 = serial_get_out(0);
-com1->PutStr("xyz");
 kout=com1;
 
 	setup_memmgr_dumpdata* map;
@@ -109,14 +108,14 @@ kout=com1;
 	memory::init();
 
 	char* p[50];
-	for (int i = 0; i < 30; i++) {
-		p[i] = (char*)memory::alloc(100);
+	for (int i = 0; i < 40; i++) {
+		p[i] = (char*)memory::alloc(800);
 	}
-	for (int i = 0; i < 30; i++) {
+	for (int i = 0; i < 40; i++) {
 		memory::free(p[i]);
 	}
-	for (int i = 0; i < 30; i++) {
-		char* x = (char*)memory::alloc(100);
+	for (int i = 0; i < 40; i++) {
+		char* x = (char*)memory::alloc(800);
 		kern_get_out()->put_u64hex((u64)p[i])->put_c(':')->
 			put_u64hex((u64)x)->put_endl();
 	}
