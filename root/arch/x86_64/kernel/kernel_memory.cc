@@ -44,8 +44,19 @@ public:
 		    reinterpret_cast<uptr>(page_header_)
 		);
 	}
+	u32 get_bytes() const {
+		return piece_bytes;
+	}
 	void* get_memory_ptr() {
 		return this + 1;
+	}
+	page_header* get_page_header() {
+		const uptr p = reinterpret_cast<uptr>(this) - page_offset;
+		return reinterpret_cast<page_header*>(p);
+	}
+
+	static hold_piece_header* ptr_to_hold_piece(void* p) {
+		return reinterpret_cast<hold_piece_header*>(p) - 1;
 	}
 };
 
@@ -67,6 +78,19 @@ public:
 		return chain_link_;
 	}
 
+	/// 後ろにある piece のアドレスを返す。
+	uptr get_back_piece_adr() const {
+		return reinterpret_cast<uptr>(this) + piece_bytes;
+	}
+
+	/// 後ろにある hold_piece を結合する。
+	void combine(hold_piece_header* back_piece) {
+		piece_bytes += back_piece->get_bytes();
+	}
+	void combine(free_piece_header* back_piece) {
+		piece_bytes += back_piece->piece_bytes;
+	}
+
 	/// @brief メモリを切り出す。
 	//
 	/// メモリを後ろから切り取って、切り取ったメモリのポインタを返す。
@@ -82,7 +106,8 @@ class page_header
 {
 	u32  page_size;
 	int  reserved;
-	bichain<free_piece_header, &free_piece_header::chain_hook> free_chain;
+	bidechain<free_piece_header, &free_piece_header::chain_hook>
+	    free_chain;
 	allocatable_page* status;
 
 public:
@@ -94,6 +119,7 @@ public:
 	void remove_free(free_piece_header* piece) {
 		free_chain.remove(piece);
 	}
+	cause::stype set_free(hold_piece_header* piece);
 };
 
 page_header::page_header(u32 page_size_, allocatable_page* status_)
@@ -135,6 +161,48 @@ u32 page_header::search_max_free_bytes() const
 	}
 
 	return max_bytes;
+}
+
+/// hold_piece を free_piece にする。
+cause::stype page_header::set_free(hold_piece_header* piece)
+{
+	uptr piece_adr = reinterpret_cast<uptr>(piece);
+
+	// 直前の piece が free_piece なら結合する。
+	free_piece_header* free_piece;
+	for (free_piece = free_chain.get_head();
+	         reinterpret_cast<uptr>(free_piece) < piece_adr &&
+		 free_piece != 0;
+	     free_piece = free_chain.get_next(free_piece))
+	{
+		if (free_piece->get_back_piece_adr() == piece_adr) {
+			free_piece->combine(piece);
+			piece = 0;
+			break;
+		}
+	}
+
+	// 直前の piece が free_piece でなければ、
+	// hold_piece を free_piece に変える。
+	if (piece != 0) {
+		free_piece_header* tmp = free_piece;
+		const u32 bytes = piece->get_bytes();
+		free_piece = new (piece) free_piece_header(bytes);
+		if (tmp != 0)
+			free_chain.insert_prev(tmp, free_piece);
+		else
+			free_chain.insert_tail(free_piece);
+	}
+
+	// 直後の piece が free_piece なら結合する。
+	free_piece_header* free_after = free_chain.get_next(free_piece);
+	if (reinterpret_cast<uptr>(free_after) ==
+	        free_piece->get_back_piece_adr())
+	{
+		free_piece->combine(free_after);
+	}
+
+	return cause::OK;
 }
 
 
@@ -192,8 +260,6 @@ hold_piece_header* allocatable_page::alloc(uptr bytes)
 	if (free_piece == 0)
 		return 0;
 
-kern_get_out()->put_str("free_piece = ")->put_u64hex((u64)free_piece)->put_c('\n');
-
 	bool recalc_max_free = false;
 	if (free_piece->piece_bytes >= max_free_bytes) {
 		// 一番大きな空きメモリを削ることになるので、
@@ -212,8 +278,6 @@ kern_get_out()->put_str("free_piece = ")->put_u64hex((u64)free_piece)->put_c('\n
 		// 発見したピースのシッポからメモリを削りだす。
 		hold_ptr = free_piece->cut(bytes);
 	}
-
-kern_get_out()->put_str("hold_ptr = ")->put_u64hex((u64)hold_ptr)->put_c('\n');
 
 	hold_piece_header* ret =
 	    new (hold_ptr) hold_piece_header(page, bytes);
@@ -346,6 +410,7 @@ private:
 
 public:
 	void* alloc(uptr size);
+	cause::stype free(void* ptr);
 };
 
 /// @brief カーネルメモリとして予約済みのページからメモリを割り当てる。
@@ -443,6 +508,14 @@ void* kernel_memory_::alloc(uptr size)
 	return p->get_memory_ptr();
 }
 
+cause::stype kernel_memory_::free(void* ptr)
+{
+	hold_piece_header* piece = hold_piece_header::ptr_to_hold_piece(ptr);
+	page_header* page = piece->get_page_header();
+
+	return page->set_free(piece);
+}
+
 }  // namespace
 
 
@@ -474,8 +547,9 @@ void* alloc(uptr bytes)
 	return global_variable::gv.kmem_ctrl->alloc(bytes);
 }
 
-void free(void* ptr)
+cause::stype free(void* ptr)
 {
+	return global_variable::gv.kmem_ctrl->free(ptr);
 }
 
 }

@@ -108,17 +108,18 @@ kout=com1;
 
 	memory::init();
 
-	char* p = (char*)memory::alloc(4056);
-	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
-	*p = 'x';
-
-	p = (char*)memory::alloc(4056);
-	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
-	*p = 'x';
-
-	p = (char*)memory::alloc(1);
-	vo.put_str("memory::alloc(1) = ")->put_u64hex((u64)p)->put_c('\n');
-	*p = 'x';
+	char* p[50];
+	for (int i = 0; i < 30; i++) {
+		p[i] = (char*)memory::alloc(100);
+	}
+	for (int i = 0; i < 30; i++) {
+		memory::free(p[i]);
+	}
+	for (int i = 0; i < 30; i++) {
+		char* x = (char*)memory::alloc(100);
+		kern_get_out()->put_u64hex((u64)p[i])->put_c(':')->
+			put_u64hex((u64)x)->put_endl();
+	}
 
 	arch::apic_init();
 

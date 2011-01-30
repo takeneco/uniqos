@@ -26,8 +26,8 @@ cause::stype free_l2page(uptr padr);
 namespace memory {
 
 cause::stype init();
-void* alloc(uptr bytes);
-void  free(void* ptr);
+void*        alloc(uptr bytes);
+cause::stype free(void* ptr);
 
 }  // namespace memory
 

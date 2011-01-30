@@ -75,6 +75,7 @@ cause::stype local_apic_init()
 	for (;;) {
 		*reg = 0x800000;
 		asm volatile("hlt");
+		kern_get_out()->put_c('x');
 	}
 
 	//kern_get_out()->put_u64hex(*local_apic_reg(LOCAL_APIC_INI_COUNT));
