@@ -6,7 +6,7 @@ ldr_defines = [
 
 ldr_includes = ['.', '../include']
 
-ldr_cflags = [
+ldr_asflags = [
     '-fno-exceptions', '-m32',
     '-fomit-frame-pointer', '-Os',
 ]
@@ -27,57 +27,42 @@ ldr_sources = [
     'loadkern.cc',
 ]
 
+ldr_asm_source = [
+    'entry.S',
+    'transport.S',
+]
 
-def build(bld):
-	#if bld.options.compiler == 'llvm':
-	#	ldr_cflags.append('-###')
-	#	ldr_cxxflags.append('-###')
 
-	ldr_asflags = []
-	ldr_asflags.extend(ldr_cflags)
-	ldr_asflags.append('-I' + bld.path.find_dir('../include').abspath())
+def build(x):
+	ldr_target = x.path.find_or_declare('bootldr.bin')
+
+	ldr_asflags.append('-I' + x.path.find_dir('../include').abspath())
+
 	for i in ldr_defines:
 		ldr_asflags.append('-D' + i)
 
-	# waf はアセンブラにdefine(-D)とincludeパス(-I)を指定できないので、
-	# プリプロセスだけ済ませる。
-	#rule_ap_ldr = '${CC} -S ${SRC} ' + ' '.join(asflags_ldr) + ' > ${TGT}'
-	#
-	#bld(target='bootldr.s', source='bootldr.S', rule=rule_ap_ldr)
-	#bld(target='tr.s', source='tr.S', rule=rule_ap_ldr)
+	linker_script = x.path.find_node('bootldr.ld')
+	ldr_linkflags.append('-T' + linker_script.abspath())
+	x.add_manual_dependency(ldr_target, linker_script)
 
-	rule_a_ldr = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(ldr_asflags)
+	ldr_linkflags2 = [x.env.LINK_PASS + f for f in ldr_linkflags]
+	ldr_linkflags2.append('-Wl,-Ttext=0x7e00')
 
-	bld(target='bootldr.o', source='bootldr.S', rule=rule_a_ldr)
-	bld(target='tr.o', source='tr.S', rule=rule_a_ldr)
+	# assemble-->
+	rule_asm = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(ldr_asflags)
 
-	# Normal compile
+	for asm_src in ldr_asm_source:
+		srcnode = x.path.find_node(asm_src)
+		objnode = srcnode.change_ext('.o')
 
-	ldr_target = bld.path.find_or_declare('bootldr')
+		x(target=objnode, source=srcnode, rule=rule_asm)
 
-	# リンカスクリプト
-	ldr_linkflags.append(
-	    '-T' + bld.path.find_node('bootldr.ld').abspath())
-	bld.add_manual_dependency(
-	    ldr_target,
-	    bld.path.find_node('bootldr.ld'))
+		# .o を ldr_source に入れられないためリンクフラグに入れる。
+		ldr_linkflags2.append(objnode.abspath())
+		x.add_manual_dependency(ldr_target, srcnode)
+	# <--assemble
 
-	ldr_linkflags2 = [bld.env.LINK_PASS + f for f in ldr_linkflags]
-	ldr_linkflags2.append(bld.env.LINK_PASS2 + '-Ttext=0x7e00')
-
-	# アセンブラコードから生成したオブジェクトファイル
-	ldr_linkflags2.extend([
-	    bld.path.find_or_declare('bootldr.o').abspath(),
-	    bld.path.find_or_declare('tr.o').abspath(),
-	])
-	bld.add_manual_dependency(
-	    ldr_target,
-	    bld.path.find_or_declare('bootldr.o'))
-	bld.add_manual_dependency(
-	    ldr_target,
-	    bld.path.find_or_declare('tr.o'))
-
-	bld.program(features='cxx cxxprogram',
+	x.program(features='cxx cxxprogram',
 	    target   = ldr_target,
 	    source   = ldr_sources,
 	    defines  = ldr_defines,

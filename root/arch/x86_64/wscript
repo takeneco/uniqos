@@ -26,7 +26,7 @@ def build(x):
 	)
 	x (
 	    target = 'fd1440.img',
-	    source = ['../../tools/putimg', 'boot/bootldr/bootldr'],
+	    source = ['../../tools/putimg', 'boot/bootldr/bootldr.bin'],
 	    rule   = '${SRC[0].abspath()} -t 0x0200 ${SRC[1].abspath()} ${TGT}',
 	    after  = 'fdimg1',
 	)

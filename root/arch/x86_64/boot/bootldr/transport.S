@@ -1,10 +1,8 @@
-/**
- * @file    arch/x86_64/boot/bootldr/tr.S
- * @version 0.0.0.2
- * @author  Kato.T
- * @brief   Translate funcs.
- */
-// (C) T.Kato 2010
+/// @file  tr.S
+/// @brief memory transport funcs.
+//
+// (C) 2010 KATO Takeshi
+//
 
 .code16gcc
 
@@ -14,28 +12,15 @@
 
 #include "boot.h"
 
+
 /**
- * int bios_block_copy(_u32 src, _u32 dest, _u32 words)
+ * int bios_block_copy(u32 src, u32 dest, u32 words)
  * メモリブロックを1MiB越えのアドレスへ転送する。
  */
 bios_block_copy:
 	pushl %ecx
 	pushl %esi
-/*
-	movw  $block_copy_gdt, %si
-	movw  %ss, %ax
-	movw  %ax, %es
-	leaw  -48(%esp), %di
-	movw  $24, %cx
-	rep movsw
-	leaw  -48(%esp), %si
-	movl  12(%esp), %edx
-	movl  %edx, 0x12(%si)
-	movb  $0x93, 0x15(%si)
-	movl  16(%esp), %edx
-	movl  %edx, 0x1a(%si)
-	movb  $0x93, 0x1d(%si)
-*/
+
 	pushw %cs
 	popw  %es
 	movw  $block_copy_gdt, %si
@@ -52,7 +37,6 @@ bios_block_copy:
 	jnc   1f
 	orw   $0x8000, %ax
 1:
-//	movl  %eax, 0x1c(%esp)
 	popl  %esi
 	popl  %ecx
 	ret
@@ -85,41 +69,6 @@ work_to_setup:
 	pop   %ds
 	popa
 	ret
-
-/*
-// acpi_get_memmap(_u32 handle, _u16 srcseg, _u16 srcmem)
-// 最初は handle を 0 として呼び出す。
-// 戻り値が 0 でなければ、戻り値を handle として再度呼び出すことで
-// メモリマップの続きを取得できる。
-acpi_get_memmap:
-//	pusha
-	pushl %eax
-	pushl %ebx
-	pushl %ecx
-	pushl %edx
-	pushw %di
-
-	movl  0x16(%esp), %ebx
-	movw  0x2a(%esp), %ax
-	movw  %ax, %es
-	movw  0x2e(%esp), %ax
-	movw  %ax, %di
-
-	movl  $24, %ecx
-	movl  $0x0000e820, %eax
-	movl  $0x534d4150, %edx // 'SMAP'
-	int   $0x15
-	movl  %ebx, 0x1c(%esp)
-//	movl  %eax, 0x1c(%esp)
-
-	popw  %di
-	popl  %edx
-	popl  %ecx
-	popl  %ebx
-	popl  %eax
-//	popa
-	ret
-*/
 
 /*
 // 文字列を表示する

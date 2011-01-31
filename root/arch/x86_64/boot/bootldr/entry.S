@@ -1,10 +1,8 @@
-/**
- * @file    arch/x86_64/boot/bootldr/bootldr.S
- * @version 0.0.0.1
- * @author  Kato.T
- * @brief   Boot loader.
- */
-// (C) Kato.T 2010
+/// @file  bootldr.S
+/// @brief Boot loader.
+//
+// (C) 2010 KATO Takeshi
+//
 
 #include "boot.h"
 
@@ -56,7 +54,7 @@ wait_kbc:
 	jnz   wait_kbc
 	ret
 
-
+/*
 // 文字列を表示する
 // %si : 表示する文字列のポインタ
 // %si, %ax, %bx は破壊される
@@ -70,3 +68,4 @@ display:
 	jmp   display
 1:
 	ret
+*/
