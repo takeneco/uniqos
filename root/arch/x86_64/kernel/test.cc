@@ -19,22 +19,21 @@ struct data {
 
 void memory_test()
 {
-	kern_output* out = kern_get_out();
-
 	chain<data, &data::chain_hook> ch;
 
 	uptr total = 0;
 
 	for (int i = 0; ; ++i) {
-		out->put_udec(i)->put_c(':');
+		ko().udec(i).c(':');
 
 		arch::wait(0x400000);
 
-		out->put_c('a');
+		ko().c('a');
 		uptr s = 0;
 		for (;;) {
 			if (i == 5 && s >= 0x172200) {
-				out->put_c('x');
+				ko_set(1, true);
+				ko().c('x');
 			}
 			data* p = (data*)memory::alloc(sizeof (data));
 			if (p) {
@@ -44,20 +43,21 @@ void memory_test()
 				break;
 			}
 		}
-		out->put_c('b');
+
+		ko().c('b');
 		if (total == 0) {
 			total = s;
-			out->	put_str("total = ")->
-				put_u64hex(total)->
-				put_endl();
+			ko().	str("total = ").
+				u64hex(total).
+				endl();
 		}
 		else if (total != s) {
-			out->	put_str("s = ")->
-				put_u64hex(s)->
-				put_endl();
+			ko().	str("s = ").
+				u64hex(s).
+				endl();
 		}
 
-		out->put_c('c');
+		ko().c('c');
 		for (;;) {
 			data* p = ch.get_head();
 			if (p == 0)
@@ -65,10 +65,10 @@ void memory_test()
 			ch.remove_head();
 			memory::free(p);
 		}
-		out->put_c('d')->put_endl();
+		ko().c('d').endl();
 	}
 
-	out->put_c('?')->put_endl();
+	ko().c('?').endl();
 }
 
 void test()

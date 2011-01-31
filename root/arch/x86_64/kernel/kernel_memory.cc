@@ -519,13 +519,18 @@ hold_piece_header* kernel_memory_::alloc_from_newpage(uptr size)
 
 void* kernel_memory_::alloc(uptr size)
 {
+	ko(1)(__FILE__, __LINE__, __func__)();
+
 	hold_piece_header* p = alloc_from_existpage(size);
+	ko(1)(__FILE__, __LINE__, __func__)();
+
 	if (p == 0) {
 		p = alloc_from_newpage(size);
 		if (p == 0)
 			return 0;
 	}
 
+	ko(1)(__FILE__, __LINE__, __func__)();
 	return p->get_memory_ptr();
 }
 

@@ -1,8 +1,8 @@
-/// @file   arch/x86_64/kernel/output.hh
-/// @author Kato Takeshi
-/// @brief  Kernel message destination.
+/// @file   output.hh
+/// @brief  Kernel debug message destination.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2011 KATO Takeshi
+//
 
 #ifndef _ARCH_X86_64_KERNEL_OUTPUT_HH_
 #define _ARCH_X86_64_KERNEL_OUTPUT_HH_
@@ -35,6 +35,34 @@ public:
 	    int              vector_count,
 	    ucpu             offset);
 };
+
+
+/// @brief  Output only serial port term.
+
+class serial_kout : public kout
+{
+	u16 base_port;
+
+public:
+	enum {
+		COM1_BASEPORT = 0x03f8,
+		COM2_BASEPORT = 0x02f8,
+
+		COM1_PICIRQ = 4,
+		COM2_PICIRQ = 3,
+
+		OUT_BUF_SIZE = 14,
+	};
+
+	void init(u16 com_base_port);
+
+	virtual void write(char ch);
+};
+
+kout& ko(u8 i=0);
+void ko_set(u8 i, bool mask);
+serial_kout& serial_get_kout();
+void serial_kout_init();
 
 
 extern "C" void on_serial_intr_com1();

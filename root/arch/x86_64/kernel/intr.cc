@@ -148,11 +148,6 @@ void intr_init()
 	    8 * 1, 0, 0, idte::TRAP);
 
 	intr_update();
-
-//	kern_output* kout = kern_get_out();
-//	kout->PutStr("convert_vadr_to_padr(idt) = ")
-//	->PutU64Hex(convert_vadr_to_padr(&idt_vec[255]))
-//	->PutC('\n');
 }
 
 void intr_set_handler(int intr, intr_handler handler)
@@ -160,10 +155,6 @@ void intr_set_handler(int intr, intr_handler handler)
 	idt_vec[intr].set(
 	    reinterpret_cast<u64>(handler),
 	    8 * 1, 0, 0, idte::INTR);
-
-	kern_get_out()->PutStr("idt[")->PutU32Hex(intr)->
-	PutStr("] = ")->PutU64Hex(idt_vec[intr].get(1))->PutC(' ')->
-	PutU64Hex(idt_vec[intr].get(0))->PutC('\n');
 
 	intr_update();
 }
