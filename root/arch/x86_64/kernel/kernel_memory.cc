@@ -187,6 +187,7 @@ page_header::page_header(u32 page_size_, allocatable_page* status_)
 /// ここで最適なサイズの空きメモリを探すくらいのことはしたい。
 free_piece_header* page_header::search_free_piece(uptr bytes)
 {
+ko(1)(__FILE__, __LINE__, __func__)(this)();
 	for (free_piece_header* p = free_chain.get_head();
 	     p != 0;
 	     p = free_chain.get_next(p))
@@ -279,7 +280,9 @@ hold_piece_header* allocatable_page::alloc(uptr bytes)
 	bytes = up_align<uptr>(
 	    bytes + sizeof (hold_piece_header), arch::BASIC_TYPE_ALIGN);
 
+dump(1)(__FILE__, __LINE__, __func__)();
 	free_piece_header* free_piece = page->search_free_piece(bytes);
+dump(1)(__FILE__, __LINE__, __func__)();
 	if (free_piece == 0)
 		return 0;
 
@@ -480,6 +483,7 @@ hold_piece_header* kernel_memory_::alloc_from_newpage(uptr size)
 		return 0;
 	}
 
+dump(1)(__FILE__, __LINE__, __func__)("page_adr=").u64hex(page_adr)();
 	page_adr += arch::PHYSICAL_MEMMAP_BASEADR;
 
 	allocatable_page* page = 0;
@@ -514,15 +518,14 @@ hold_piece_header* kernel_memory_::alloc_from_newpage(uptr size)
 		allocatable_chain.insert_tail(ary);
 	}
 
+dump(1)(__FILE__, __LINE__, __func__)();
 	return page->alloc(size);
 }
 
 void* kernel_memory_::alloc(uptr size)
 {
-	ko(1)(__FILE__, __LINE__, __func__)();
-
 	hold_piece_header* p = alloc_from_existpage(size);
-	ko(1)(__FILE__, __LINE__, __func__)();
+dump(1)(__FILE__, __LINE__, __func__)();
 
 	if (p == 0) {
 		p = alloc_from_newpage(size);
@@ -530,7 +533,7 @@ void* kernel_memory_::alloc(uptr size)
 			return 0;
 	}
 
-	ko(1)(__FILE__, __LINE__, __func__)();
+dump(1)(__FILE__, __LINE__, __func__)();
 	return p->get_memory_ptr();
 }
 

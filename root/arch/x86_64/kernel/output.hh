@@ -59,8 +59,11 @@ public:
 	virtual void write(char ch);
 };
 
-kout& ko(u8 i=0);
-void ko_set(u8 i, bool mask);
+kout& dump(u8 i=0);
+void dump_set(u8 i, bool mask);
+inline kout& ko(u8 i=0) { return dump(i); }
+inline void ko_set(u8 i, bool mask) { dump_set(i, mask); }
+
 serial_kout& serial_get_kout();
 void serial_kout_init();
 

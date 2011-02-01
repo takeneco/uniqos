@@ -26,12 +26,12 @@ void memory_test()
 	for (int i = 0; ; ++i) {
 		ko().udec(i).c(':');
 
-		arch::wait(0x400000);
+		//arch::wait(0x400000);
 
 		ko().c('a');
 		uptr s = 0;
 		for (;;) {
-			if (i == 5 && s >= 0x172200) {
+			if (i == 5 && s >= 0x172208) {
 				ko_set(1, true);
 				ko().c('x');
 			}

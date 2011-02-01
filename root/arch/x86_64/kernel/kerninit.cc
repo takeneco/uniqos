@@ -14,27 +14,29 @@
 #include "setupdata.hh"
 #include "setup/memdump.hh"
 
+
 void test();
 
 namespace {
 
-kout* kout_;
-unsigned int ko_mask;
+kout* kern_dump;
+unsigned int dump_mask;
 
 }  // End of anonymous namespace
 
-kout& ko(u8 i)
+kout& dump(u8 i)
 {
-	return ko_mask & (1 << i) ? *kout_ : *static_cast<kout*>(0);
+	return dump_mask & (1 << i) ? *kern_dump : *static_cast<kout*>(0);
 }
 
-void ko_set(u8 i, bool mask)
+void dump_set(u8 i, bool mask)
 {
 	if (mask)
-		ko_mask |= 1 << i;
+		dump_mask |= 1 << i;
 	else
-		ko_mask &= ~(1 << i);
+		dump_mask &= ~(1 << i);
 }
+
 
 void tmp_debug();
 
@@ -70,8 +72,8 @@ extern "C" int kern_init()
 	serial_kout_init();
 	//serial_output_init();
 
-	kout_ = &serial_get_kout();
-	ko_mask = 0x000001;
+	kern_dump = &serial_get_kout();
+	dump_mask = 0x000001;
 	//serial_output* com1 = serial_get_out(0);
 	//kout=com1;
 
@@ -129,7 +131,7 @@ extern "C" int kern_init()
 	arch::wait(0x800000);
 	for (int i = 0; i < 40; i++) {
 		void* x = memory::alloc(800);
-		ko()(p[i])(':')(x)();
+		dump()(p[i])(':')(x)();
 	}
 
 	test();
