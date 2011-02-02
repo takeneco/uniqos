@@ -74,6 +74,7 @@ extern "C" int kern_init()
 
 	kern_dump = &serial_get_kout();
 	dump_mask = 0x000001;
+	dump_set(0, true);
 	//serial_output* com1 = serial_get_out(0);
 	//kout=com1;
 

@@ -26,7 +26,7 @@ void memory_test()
 	for (int i = 0; ; ++i) {
 		ko().udec(i).c(':');
 
-		//arch::wait(0x400000);
+		arch::wait(0x400000);
 
 		ko().c('a');
 		uptr s = 0;

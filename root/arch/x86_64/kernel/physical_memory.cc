@@ -132,7 +132,7 @@ public:
 	cause::stype reserve_1page(uptr* padr);
 	cause::stype free_1page(uptr padr);
 
-	void dump() {
+	void dump_() {
 		for (int i = 0; i < 128; i++) {
 			if (!table_base[i].table.is_false_all()) {
 			kern_get_out()->put_u32hex(i)->put_c(':')->
@@ -327,7 +327,7 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 {
 	dechain<table_cell, &table_cell::chain_hook> dech;
 
-	const uptr n = (pmem_end + (page_size - 1)) / page_size;
+	const uptr n = (pmem_end + (page_size - 1)) / page_size / BITMAP_BITS;
 	for (uptr i = 0; i < n; ++i) {
 		if (!table_base[i].table.is_false_all())
 			dech.insert_tail(&table_base[i]);
@@ -446,7 +446,7 @@ public:
 	cause::stype free_l2page(uptr padr);
 
 	void tmp_debug() {
-		page_l1_table.dump();
+		page_l1_table.dump_();
 	}
 };
 
