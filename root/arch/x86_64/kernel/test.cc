@@ -11,6 +11,27 @@
 #include "output.hh"
 
 
+class test_rand
+{
+	u32 seed1, seed2, seed3;
+
+	u32 get() {
+		seed3 = seed2 + 1;
+		seed2 = seed1;
+		return seed1 = seed2 + seed3;
+	}
+public:
+	test_rand(u32 s1=0, u32 s2=0) : seed1(s1), seed2(s2), seed3(0) {}
+
+	operator u32 () { return get(); }
+	operator u64 () {
+		const u64 tmp = (u64)get() << 32;
+		return tmp | get();
+	}
+	u32 operator () () { return get(); }
+	u32 operator () (u32 top) { return get() % top; }
+};
+
 struct data {
 	chain_link<data> link;
 
