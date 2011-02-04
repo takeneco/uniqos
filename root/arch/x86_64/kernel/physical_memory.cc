@@ -327,8 +327,10 @@ void physical_page_table::build_free_chain(uptr pmem_end)
 {
 	dechain<table_cell, &table_cell::chain_hook> dech;
 
-	const uptr n = (pmem_end + (page_size - 1)) / page_size / BITMAP_BITS;
-	for (uptr i = 0; i < n; ++i) {
+	const uptr page_num = (pmem_end + (page_size - 1)) / page_size;
+	const uptr cell_num = (page_num + (BITMAP_BITS - 1)) / BITMAP_BITS;
+
+	for (uptr i = 0; i < cell_num; ++i) {
 		if (!table_base[i].table.is_false_all())
 			dech.insert_tail(&table_base[i]);
 	}
