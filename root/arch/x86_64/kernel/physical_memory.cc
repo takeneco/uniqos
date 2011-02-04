@@ -131,15 +131,6 @@ public:
 
 	cause::stype reserve_1page(uptr* padr);
 	cause::stype free_1page(uptr padr);
-
-	void dump_() {
-		for (int i = 0; i < 128; i++) {
-			if (!table_base[i].table.is_false_all()) {
-			kern_get_out()->put_u32hex(i)->put_c(':')->
-			put_u64hex(table_base[i].table.get_raw())->put_c('\n');
-			}
-		}
-	}
 };
 
 inline
@@ -446,10 +437,6 @@ public:
 
 	cause::stype free_l1page(uptr padr);
 	cause::stype free_l2page(uptr padr);
-
-	void tmp_debug() {
-		page_l1_table.dump_();
-	}
 };
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
@@ -634,7 +621,3 @@ cause::stype free_l2page(uptr adr)
 
 }  // namespace arch
 
-void tmp_debug()
-{
-	gv.pmem_ctrl->tmp_debug();
-}
