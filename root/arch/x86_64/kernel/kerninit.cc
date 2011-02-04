@@ -105,38 +105,10 @@ extern "C" int kern_init()
 
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
-	uptr adrs[64];
-	for (int i = 0; i < 1; ++i) {
-		r = arch::pmem::alloc_l1page(&adrs[i]);
-		if (r != 0) {
-			vo.put_str("r=")->put_udec(r)->put_str(",i=")->
-			put_udec(i)->put_endl();
-		} else {
-			vo.put_str("alloc[")->put_udec(i)->put_str("]=")->
-			put_u64hex(adrs[i])->put_endl();
-		}
-	}
-
 	memory::init();
 	arch::apic_init();
 
-	void* p[50];
-	arch::wait(0x800000);
-	for (int i = 0; i < 40; i++) {
-		p[i] = memory::alloc(800);
-	}
-	arch::wait(0x800000);
-	for (int i = 0; i < 40; i++) {
-		memory::free(p[i]);
-	}
-	arch::wait(0x800000);
-	for (int i = 0; i < 40; i++) {
-		void* x = memory::alloc(800);
-		dump()(p[i])(':')(x)();
-	}
-
 	test();
 
-	tmp_debug();
 	return 0;
 }

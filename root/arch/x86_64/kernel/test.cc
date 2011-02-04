@@ -34,6 +34,7 @@ public:
 
 struct data {
 	chain_link<data> link;
+	uptr size;
 
 	chain_link<data>& chain_hook() { return link; }
 };
@@ -41,59 +42,53 @@ struct data {
 void memory_test()
 {
 	chain<data, &data::chain_hook> ch;
+	test_rand rnd;
 
-	uptr total = 0;
-
-	for (int i = 0; ; ++i) {
-		ko().udec(i).c(':');
-
+	for (;;) {
 		arch::wait(0x400000);
 
-		ko().c('a');
-		uptr s = 0;
-		for (;;) {
-			if (i == 5 && s >= 0x172208) {
-				ko_set(1, true);
-				ko().c('x');
-			}
-			data* p = (data*)memory::alloc(sizeof (data));
+		uptr total = 0;
+		uptr total_max = 0;
+		for (int i = 0; i < 100000; ++i) {
+			uptr size =
+			    rnd(4096 - 8 - sizeof (data)) + sizeof (data);
+
+			data* p = (data*)memory::alloc(size);
+//dump().udec(size)(':')(p)();
 			if (p) {
-				s += sizeof (data);
+				total += size;
+				p->size = size;
 				ch.insert_head(p);
 			} else {
-				break;
+				if (total_max < total)
+					total_max = total;
+				p = ch.remove_head();
+				total -= p->size;
+//dump()('?')(p);
+				memory::free(p);
+//dump()('.');
 			}
 		}
+dump().u64hex(total_max).endl();
 
-		ko().c('b');
-		if (total == 0) {
-			total = s;
-			ko().	str("total = ").
-				u64hex(total).
-				endl();
-		}
-		else if (total != s) {
-			ko().	str("s = ").
-				u64hex(s).
-				endl();
-		}
-
-		ko().c('c');
 		for (;;) {
-			data* p = ch.get_head();
+			data* p = ch.remove_head();
 			if (p == 0)
 				break;
-			ch.remove_head();
 			memory::free(p);
 		}
-		ko().c('d').endl();
 	}
-
-	ko().c('?').endl();
 }
 
 void test()
 {
-	memory_test();
+//	memory_test();
+
+	int i;
+	for (i = 0; ; ++i) {
+		if (0 == memory::alloc(4000))
+			break;
+	}
+dump().udec(i)();
 }
 
