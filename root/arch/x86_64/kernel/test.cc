@@ -30,6 +30,12 @@ public:
 	}
 	u32 operator () () { return get(); }
 	u32 operator () (u32 top) { return get() % top; }
+
+	void dump(kout& dump) {
+		dump.c('[').u32hex(seed1)
+		    .c(',').u32hex(seed2)
+		    .c(',').u32hex(seed3).c(']');
+	}
 };
 
 struct data {
@@ -51,7 +57,7 @@ void memory_test()
 		uptr total_max = 0;
 		for (int i = 0; i < 100000; ++i) {
 			uptr size =
-			    rnd(4096 - 8 - sizeof (data)) + sizeof (data);
+			    rnd(0x200000 - 8 - sizeof (data)) + sizeof (data);
 
 			data* p = (data*)memory::alloc(size);
 //dump().udec(size)(':')(p)();
@@ -69,6 +75,7 @@ void memory_test()
 //dump()('.');
 			}
 		}
+rnd.dump(dump());
 dump().u64hex(total_max).endl();
 
 		for (;;) {
@@ -82,13 +89,6 @@ dump().u64hex(total_max).endl();
 
 void test()
 {
-//	memory_test();
-
-	int i;
-	for (i = 0; ; ++i) {
-		if (0 == memory::alloc(4000))
-			break;
-	}
-dump().udec(i)();
+	memory_test();
 }
 

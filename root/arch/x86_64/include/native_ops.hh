@@ -69,6 +69,14 @@ inline u64 get_cr3() {
 inline void set_cr3(u64 cr3) {
 	asm volatile ("movq %0, %%cr3" : : "r" (cr3));
 }
+inline u64 get_cr4_64() {
+	u64 cr4;
+	asm volatile ("movq %%cr4, %0" : "=r" (cr4));
+	return cr4;
+}
+inline void set_cr4(u64 cr4) {
+	asm volatile ("movq %0, %%cr4" : : "r" (cr4));
+}
 /// @{
 /// @name ビット検索関数。
 /// _or0 の関数は、0 を入力すると -1 を返す。

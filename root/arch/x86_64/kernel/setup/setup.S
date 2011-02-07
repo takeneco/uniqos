@@ -218,6 +218,8 @@ start32:
 	movl  $0x00000020, %eax
 	movl  %eax, %cr4
 
+	// ここで EFLAGS.IOPL を更新しておきたい。
+
 	// Create Page Map
 
 	// Zero clear PML4

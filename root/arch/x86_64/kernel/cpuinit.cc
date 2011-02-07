@@ -46,7 +46,7 @@ public:
 };
 
 gdte gdt[5];
-
+/*
 cause::stype pic_init()
 {
 	enum {
@@ -94,12 +94,23 @@ cause::stype pic_init()
 
 	return cause::OK;
 }
-
+*/
 }  // End of anonymous namespace
 
 
 int cpu_init()
 {
+	/*
+	// setup.S で設定される
+
+	u64 reg;
+	reg = get_cr4_64();
+	// clear VME flag
+	// 仮想8086モード割り込みを無効化する
+	reg &= ~0x0000000000000001;
+	set_cr4_64(reg);
+	*/
+
 	gdt[0].set_null();
 	gdt[GDT_KERN_CODESEG].set(0, 0xfffff, 0,
 	    gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
@@ -118,7 +129,7 @@ int cpu_init()
 
 	intr_init();
 
-	pic_init();
+	//pic_init();
 
 	return 0;
 }
