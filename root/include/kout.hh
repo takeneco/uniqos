@@ -1,4 +1,4 @@
-// @file  kout.hh
+/// @file  kout.hh
 //
 // (C) 2008-2011 KATO Takeshi
 //
@@ -12,7 +12,10 @@
 // @brief  Kernel message output destination.
 class kout
 {
-	void put_ux(umax n, int bits);
+	void put_uhex(umax n, int bits);
+	void put_uoct(umax n, int bits);
+	void put_ubin(umax n, int bits);
+	void put_udec(umax n);
 
 protected:
 	kout() {}
@@ -21,7 +24,7 @@ public:
 	kout& operator () (char ch) { return c(ch); }
 	kout& operator () (const char* s) { return str(s); }
 	kout& operator () (const void* p) {
-		return u64hex(reinterpret_cast<u64>(p));
+		return c('*').u64hex(reinterpret_cast<u64>(p));
 	}
 	kout& operator () (const char* path, int line) {
 		return str(path).c('(').udec(line).c(')');
@@ -34,6 +37,14 @@ public:
 
 	kout& c(char ch);
 	kout& str(const char* s);
+	kout& s(s8 n, int base=10);
+	kout& s(s16 n, int base=10);
+	kout& s(s32 n, int base=10);
+	kout& s(s64 n, int base=10);
+	kout& u(u8 n, int base=10);
+	kout& u(u16 n, int base=10);
+	kout& u(u32 n, int base=10);
+	kout& u(u64 n, int base=10);
 	kout& sdec(s64 n);
 	kout& udec(u64 n);
 	kout& u8hex(u8 n);

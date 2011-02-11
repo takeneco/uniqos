@@ -17,6 +17,20 @@
 
 void test();
 
+#include "task.hh"
+extern "C" void task_switch(thread_state*, thread_state*);
+void create_thread(thread_state* ts, void (*entry)())
+{
+	u64 eflags;
+	asm volatile ("pushfq;popq %0": "=r"(eflags));
+	ts->eflags = eflags;
+
+	u64* stack = (u64*)memory::alloc(sizeof (u64) * 256);
+	stack[255] = (u64)entry;
+	ts->rsp = (u64)&stack[255];
+}
+thread_state ts1, ts2;
+
 namespace {
 
 kout* kern_dump;
@@ -46,6 +60,18 @@ extern int kern_tail_addr;
 kern_output* kern_get_out()
 {
 	return kout;
+}
+
+void func()
+{
+	dump()("func")(1)();
+	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
+	dump()("func")(2)();
+	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
+	dump()("func")(3)();
+	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
+	dump()("func")(4)();
+	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
 }
 
 extern "C" int kern_init()
@@ -107,6 +133,16 @@ extern "C" int kern_init()
 
 	memory::init();
 	arch::apic_init();
+
+	dump()("ts1=")(&ts1)()("ts2=")(&ts2)();
+	create_thread(&ts2, func);
+	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
+	dump()("kerninit")(1)();
+	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
+	dump()("kerninit")(2)();
+	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
+	dump()("kerninit")(3)();
+	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 
 	test();
 

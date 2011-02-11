@@ -33,6 +33,7 @@ kern_asm_source = [
     'entry.S',
     'interrupt_handler.S',
     'serialh.S',
+    'task_switch.S',
 ]
 
 def configure(conf):

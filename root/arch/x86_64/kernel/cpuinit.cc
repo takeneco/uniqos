@@ -1,7 +1,7 @@
-// @file   cpuinit.cc
-// @brief  Initialize GDT/IDT.
+/// @file   cpuinit.cc
+/// @brief  Initialize GDT/IDT.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 KATO Takeshi
 //
 
 #include "kerninit.hh"
@@ -13,7 +13,10 @@
 
 namespace {
 
-class gdte {
+/// Global Descriptor Table Entry
+class gdte
+{
+protected:
 	typedef u64 type;
 	type e;
 
@@ -21,8 +24,11 @@ public:
 	enum {
 		XR  = U64CAST(0xa) << 40, ///< Exec and Read.
 		RW  = U64CAST(0x2) << 40, ///< Read and Write
-		S   = U64CAST(1) << 44,  ///< System seg if set, Data seg if clear.
-		                         ///< Always set in long mode.
+
+		/// System segment if clear,
+		/// Data or Code segment if set.
+		S   = U64CAST(1) << 44,
+
 		P   = U64CAST(1) << 47,  ///< Descriptor exist if set.
 		AVL = U64CAST(1) << 52,  ///< Software useable.
 		L   = U64CAST(1) << 53,  ///< Long mode if set.
@@ -45,57 +51,55 @@ public:
 	type get_raw() const { return e; }
 };
 
-gdte gdt[5];
-/*
-cause::stype pic_init()
+class code_seg_desc : gdte
 {
-	enum {
-		PIC0_IMR  = 0x0021,
-		PIC0_ICW1 = 0x0020,
-		PIC0_ICW2 = 0x0021,
-		PIC0_ICW3 = 0x0021,
-		PIC0_ICW4 = 0x0021,
-		PIC1_IMR  = 0x00a1,
-		PIC1_ICW1 = 0x00a0,
-		PIC1_ICW2 = 0x00a1,
-		PIC1_ICW3 = 0x00a1,
-		PIC1_ICW4 = 0x00a1,
-	};
-	// Disable interrupt
-	native::outb(0xff, PIC0_IMR);
-	native::outb(0xff, PIC1_IMR);
+public:
+	code_seg_desc() : gdte() {}
 
-	// Edge trigger mode
-	native::outb(0x11, PIC0_ICW1);
-	// Map IRQ 0-7 to INT 20h-27h
-	native::outb(0x20, PIC0_ICW2);
-	// PIC1 cascading to PIC0-IRQ2
-	native::outb(1 << 2, PIC0_ICW3);
-	// No buffering
-	native::outb(0x01, PIC0_ICW4);
+	/// flags には AVL を指定できる。
+	void set(type dpl, type flags=0) {
+		// base and limit is disabled in long mode.
+		gdte::set(0, 0, dpl, XR | S | P | L | flags);
+	}
+};
 
-	// Edge trigger mode
-	native::outb(0x11, PIC1_ICW1);
-	// Map IRQ 8-15 to INT 28h-2Fh
-	native::outb(0x28, PIC1_ICW2);
-	// PIC1 cascading to PIC0-IRQ2
-	native::outb(2, PIC1_ICW3);
-	// No buffering
-	native::outb(0x01, PIC1_ICW4);
+class data_seg_desc : gdte
+{
+public:
+	data_seg_desc() : gdte() {}
 
-	// Enable interrupt
-	// PIC0 - 0x01 : Timer
-	// PIC0 - 0x02 : Keyboard
-	// PIC0 - 0x04 : PIC1 cascades(IRQ2)
-	// PIC0 - 0x08 : COM2
-	// PIC0 - 0x10 : COM1
-	native::outb(0xef, PIC0_IMR);
-	native::outb(0xff, PIC1_IMR);
+	/// flags には AVL を指定できる。
+	void set(type dpl, type flags=0) {
+		// base and limit is disabled in long mode.
+		gdte::set(0, 0, dpl, RW | S | P | L | flags);
+	}
+};
 
-	return cause::OK;
-}
-*/
-}  // End of anonymous namespace
+class global_desc_table
+{
+	static global_desc_table* nulltable() { return 0; }
+	static u16 offset_cast(void* p) {
+		return static_cast<u16>(reinterpret_cast<uptr>(p));
+	}
+
+public:
+	gdte          null_entry;
+	code_seg_desc kern_code;
+	data_seg_desc kern_data;
+	code_seg_desc user_code;
+	data_seg_desc user_data;
+
+	static u16 kern_code_offset() {
+		return offset_cast(&nulltable()->kern_code);
+	}
+	static u16 kern_data_offset() {
+		return offset_cast(&nulltable()->kern_data);
+	}
+};
+
+global_desc_table cpu0_gdt;
+
+}  // namespace
 
 
 int cpu_init()
@@ -111,14 +115,15 @@ int cpu_init()
 	set_cr4_64(reg);
 	*/
 
+	/*
 	gdt[0].set_null();
-	gdt[GDT_KERN_CODESEG].set(0, 0xfffff, 0,
+	gdt[GDT_KERN_CODESEG].set(0, 0, 0,
 	    gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
-	gdt[GDT_KERN_DATASEG].set(0, 0xfffff, 0,
+	gdt[GDT_KERN_DATASEG].set(0, 0, 0,
 	    gdte::RW | gdte::S | gdte::P | gdte::L | gdte::G);
-	gdt[GDT_USER_CODESEG].set(0, 0xfffff, 3,
+	gdt[GDT_USER_CODESEG].set(0, 0, 3,
 	    gdte::XR | gdte::S | gdte::P | gdte::L | gdte::G);
-	gdt[GDT_USER_DATASEG].set(0, 0xfffff, 3,
+	gdt[GDT_USER_DATASEG].set(0, 0, 3,
 	    gdte::RW | gdte::S | gdte::P | gdte::L | gdte::G);
 
 	native::gdt_ptr64 gdtptr;
@@ -126,6 +131,16 @@ int cpu_init()
 	native::lgdt(&gdtptr);
 
 	native::set_ss(8 * GDT_KERN_DATASEG);
+	*/
+	cpu0_gdt.null_entry.set_null();
+	cpu0_gdt.kern_code.set(0);
+	cpu0_gdt.kern_data.set(0);
+	cpu0_gdt.user_code.set(3);
+	cpu0_gdt.user_data.set(3);
+	native::gdt_ptr64 gdtptr;
+	gdtptr.init(sizeof cpu0_gdt, &cpu0_gdt);
+	native::lgdt(&gdtptr);
+	native::set_ss(cpu0_gdt.kern_data_offset());
 
 	intr_init();
 
