@@ -10,7 +10,6 @@ setup_includes = [
 setup_linkflags = [
     '-nostdlib',
     '-static',
-    "-Wl,-M"
 ]
 
 setup_source = [
@@ -52,6 +51,9 @@ def build(bld):
 		setup_linkflags2.append(objnode.abspath())
 		bld.add_manual_dependency(setup_target, srcnode)
 	# <--assemble
+
+	map = bld.path.find_or_declare('setup.map')
+	setup_linkflags2.append('-Wl,-Map,'+map.abspath())
 
 	setup_source.append(bld.srcnode.find_node('external/lzma/C/LzmaDec.c'))
 	bld.program(

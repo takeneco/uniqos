@@ -11,8 +11,8 @@
  * @brief  Constantly phisical address map.
  *
  * - 00001000 - 00006fff  Kernel head code.
- * - 00010000 - 00017fff  Setup stack.
- * - 00018000 - 0001ffff  Setup memmgr buffer.
+ * - 00018000 - 0001bfff  Setup stack.
+ * - 0001c000 - 0001ffff  Setup memmgr buffer.
  * - 00020000 - 0007ffff  Setup address tr table.
  * - 00080000 - 0008ffff  Setup collect params store by BIOS.
  * - 00100000 - 00ffffff  Compressed kernel body (15MiB).
@@ -21,12 +21,12 @@
  * - 01200000 -           Extracted kernel body.
  */
 
-// Stack address : 0x10000-0x17fff
-#define SETUP_STACK_ADR             0x18000
+// Stack address : 0x18000-0x1bfff
+#define SETUP_STACK_ADR             0x1c000
 
 // Memory management buffer
-#define SETUP_MEMMGR_ADR            0x18000
-#define SETUP_MEMMGR_SIZE           0x08000
+#define SETUP_MEMMGR_ADR            0x1c000
+#define SETUP_MEMMGR_SIZE           0x04000
 
 /// Address tr table for setup.
 #define SETUP_PML4_PADR             0x20000
