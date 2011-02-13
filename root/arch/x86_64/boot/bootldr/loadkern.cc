@@ -1,19 +1,18 @@
-/**
- * @file    arch/x86_64/boot/bootldr/loadkern.cpp
- * @version 0.0.0.2
- * @author  Kato.T
- * @brief   カーネルをメモリに読み込む。
- */
-// (C) Kato.T 2010
+/// @file  loadkern.cpp
+/// @brief カーネルをメモリに読み込む。
+//
+// (C) 2010-2011 KATO Takeshi
+//
 
 #include "btypes.hh"
 #include "loadfat.hh"
 
 #include "boot.h"
 
+
 asm (".code16gcc");
 
-extern "C" unsigned long load_kernel(unsigned long);
+extern "C" unsigned long load_kernel();
 extern "C" int bios_block_copy(
 	unsigned long src_addr,
 	unsigned long dest_addr,
@@ -79,16 +78,14 @@ void keyboard_and_reboot()
 	asm volatile("int $0x16; int $0x19" : : "a"(0));
 }
 
-} /* end namespace */
+} // namespace
 
 /**
  * カーネルをメモリに読み込む
  * @return カーネルのサイズを返す。
  */
-unsigned long load_kernel(unsigned long x)
+unsigned long load_kernel()
 {
-	bios_put16_b16((_u16)x);
-
 	static const char couldnot_load[] =
 		"Could not load kernel ROOTCORE.BIN from disk.\r\n";
 	static const char copy_failed[] =
@@ -97,10 +94,11 @@ unsigned long load_kernel(unsigned long x)
 		"No kernel ROOTCORE.BIN found.\r\n";
 
 	// ブートセクタからブートローダへ渡されるパラメータ
-	const _u16 boot_drive
-		= *reinterpret_cast<_u16*>(BOOT_DRIVE);
-	const _u16 loaded_secs
-		= *reinterpret_cast<_u16*>(BOOTSECT_LOADED_SECS);
+	const u16 boot_drive = *reinterpret_cast<u16*>(BOOT_DRIVE);
+	const u16 loaded_secs = *reinterpret_cast<u16*>(BOOTSECT_LOADED_SECS);
+
+	bios_put16_b16(boot_drive);
+	bios_put16_b16(loaded_secs);
 
 	unsigned long kern_size = 0;
 
@@ -113,13 +111,13 @@ unsigned long load_kernel(unsigned long x)
 	 */
 
 	// RDE領域の終了位置
-	_u16 re_endsec = fatinfo.rootent_endsec();
+	u16 re_endsec = fatinfo.rootent_endsec();
 
 	// すでに読み込まれているアドレスの続きに読み込む。
 	fatinfo.read_secs(
 		loaded_secs,
 		re_endsec - loaded_secs,
-		0, BOOTSECT_ADR + 512 * loaded_secs);
+		BOOTLDR_SEG, BOOTSECT_ADR + 512 * loaded_secs);
 
 	// RDEから ROOTCORE.BIN を探す。
 	dir_entry* ker_ent = fatinfo.find_from_dir("ROOTCORE" "BIN");

@@ -1,8 +1,8 @@
-// @file    arch/x86_64/boot/bootsect/bootsect.S
-// @author  Kato Takeshi
-// @brief   Boot sector.
+/// @file  bootsect.S
+/// @brief Boot sector.
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010 KATO Takeshi
+//
 
 .code16
 
@@ -11,25 +11,34 @@
 .section .text
 
 .global _start
-
 _start:
 	cld
 	xorw  %ax, %ax
 	movw  %ax, %ds
+	movw  $BOOTLDR_SEG, %ax
 	movw  %ax, %es
+	movw  $BOOT_STACK_SEG, %ax
 	movw  %ax, %ss
-	movw  $BOOTSECT_ADR, %sp
+	movw  $BOOT_STACK_ADR, %sp
 
-	// ブートドライブ番号(%dl)を保存する -> (BOOTSECT_ADR - 2)
+	// store boot drive number(%dl) -> (BOOT_STACK_ADR - 2)
 	xorb  %dh, %dh
-	pushw %dx;
+	pushw %dx
 
 	movw  $loading_msg, %si
 	call  display
 
-	/* すでに 0x7c00 以降に先頭の 1 セクタが読み込まれている。
-	 * その続きの 17 セクタ(FD１周分)を 0x7e00 以降に読み込む。
-	 */
+// first 1sect(bootsect) was already loaded
+// to 0x7c00(=INIT_BOOTSECT_ADR) by BIOS.
+// copy bootsect to 0x1000(=BOOTLDR_SEG):0000(=BOOTLDR_ADR-1sect).
+
+	movw  $0x200 / 2, %cx
+	movw  $INIT_BOOTSECT_ADR, %si
+	movw  $BOOTSECT_ADR, %di
+1:	movsw   // *(es:di++) <- *(ds:si++)
+	loop  1b
+
+// and load next 17 sectors (= 1round of floppy) to BOOTLDR_SEG:BOOTLDR_ADR.
 
 	// 失敗しても 255 回までは試す
 	movw  $255, %di
@@ -44,8 +53,8 @@ load:
 	movw  $BOOTLDR_ADR, %bx
 	movw  $0x0211, %ax
 	movw  $0x0002, %cx
-	// ブートしたドライブから読み出す。
-	//xorw  %dx, %dx
+	// ブートしたドライブから読み出すため、dl はそのまま。
+	//xorw  %dl, %dl
 	int   $0x13
 
 	jnc   load_success
@@ -61,9 +70,8 @@ load:
 	int   $0x19
 
 load_success:
-	// ロード済みセクタ数 -> (0x7c00 - 4)
-	movw  $18, %ax
-	pushw %ax
+	// ロード済みセクタ数 -> (BOOT_STACK_ADR - 4)
+	pushw $18
 
 	ljmp  $BOOTLDR_SEG, $BOOTLDR_ADR
 

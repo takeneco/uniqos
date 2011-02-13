@@ -46,7 +46,7 @@ def build(x):
 	x.add_manual_dependency(ldr_target, linker_script)
 
 	ldr_linkflags2 = [x.env.LINK_PASS + f for f in ldr_linkflags]
-	ldr_linkflags2.append('-Wl,-Ttext=0x7e00')
+	ldr_linkflags2.append('-Wl,-Ttext=0x0400')
 
 	# assemble-->
 	rule_asm = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(ldr_asflags)
@@ -59,7 +59,7 @@ def build(x):
 
 		# .o を ldr_source に入れられないためリンクフラグに入れる。
 		ldr_linkflags2.append(objnode.abspath())
-		x.add_manual_dependency(ldr_target, srcnode)
+		x.add_manual_dependency(ldr_target, objnode)
 	# <--assemble
 
 	x.program(features='cxx cxxprogram',

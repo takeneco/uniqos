@@ -142,6 +142,8 @@ int cpu_init()
 	native::lgdt(&gdtptr);
 	native::set_ss(cpu0_gdt.kern_data_offset());
 
+//	dump()("EBDA = ").u(*(u16*)(arch::PHYSICAL_MEMMAP_BASEADR + 0x40e), 16)();
+
 	intr_init();
 
 	//pic_init();

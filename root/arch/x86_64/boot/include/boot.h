@@ -1,24 +1,41 @@
-// @file    arch/x86_64/boot/include/boot.h
-// @author  Kato Takeshi
-// @brief   各ブートフェーズで使用するメモリアドレスの定義。
+/// @file  boot.h
+/// @brief 各ブートフェーズで使用するメモリアドレスの定義。
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010 KATO Takeshi
+//
 
-#ifndef _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
-#define _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
+#ifndef ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
+#define ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
 
-/// Boot sector address.
-#define BOOTSECT_ADR        0x7c00
+/**
+ * メモリの使い方
+ * - 0x0000:0400-0x0000:04ff  BIOS Data Area (BDA)
+ * - 0x0000:7c00-0x0000:7dff  最初に bootsect がロードされる。
+ * - 0x1000:0000-0x1000:01ff  bootsect と bootldr がスタックとして使う。
+ * - 0x1000:0200-0x1000:03ff  bootsect が自分自身をコピーする。
+ *                            ここはファイルシステムヘッダでもある。
+ * - 0x1000:0400-0x1000:25ff  bootsect が bootsect の続きをロードする。
+ *                            この中に bootldr がいる。
+ */
+
+/// BIOS が bootsect をロードするアドレス。
+#define INIT_BOOTSECT_ADR   0x7c00
+
+#define BOOTLDR_SEG        0x1000
+/// bootsect が自分自身をコピーするアドレス。
+#define BOOTSECT_ADR        0x0200
+/// bootsect が bootldr をコピーするアドレス。
+#define BOOTLDR_ADR         (BOOTSECT_ADR + 512)
+
+/// bootsect と bootldr が使うスタック。
+#define BOOT_STACK_SEG      BOOTLDR_SEG
+#define BOOT_STACK_ADR      0x0200
 
 /// ブートセクタがブートローダへ伝える情報のアドレス
 // @{
-#define BOOTSECT_LOADED_SECS (BOOTSECT_ADR - 4)
-#define BOOT_DRIVE           (BOOTSECT_ADR - 2)
+#define BOOTSECT_LOADED_SECS (BOOT_STACK_ADR - 4)
+#define BOOT_DRIVE           (BOOT_STACK_ADR - 2)
 // @}
-
-/// Boot loader address.
-#define BOOTLDR_SEG        0x0000
-#define BOOTLDR_ADR         0x7e00
 
 /// Boot loader working area.
 #define BOOTLDR_WORK_SEG   0x2000
@@ -51,5 +68,6 @@
 // 最終的なカーネルの実行アドレス
 #define KERNEL_FINAL_ADR   0x100000
 
-#endif  // _ARCH_X86_64_BOOT_INCLUDE_BOOT_H_
+
+#endif  // Include guard
 

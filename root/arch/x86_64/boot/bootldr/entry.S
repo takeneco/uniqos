@@ -11,20 +11,17 @@
 .section .entry
 
 .global _start
-
 _start:
-/*
+	// スタックは bootsect のスタックをそのまま使う。
+
 	movw  %cs, %ax
-	movw  %ax, %ss
-	movw  $0x0000, %sp
 	movw  %ax, %ds
 	movw  %ax, %es
-*/
 
 	// enable a20 gate
         movw  $0x2401, %ax
         int   $0x15
-	pushl %eax
+	//pushl %eax
 
 	call  wait_kbc
 	movb  $0xd1, %al
@@ -54,7 +51,6 @@ wait_kbc:
 	jnz   wait_kbc
 	ret
 
-/*
 // 文字列を表示する
 // %si : 表示する文字列のポインタ
 // %si, %ax, %bx は破壊される
@@ -68,4 +64,3 @@ display:
 	jmp   display
 1:
 	ret
-*/
