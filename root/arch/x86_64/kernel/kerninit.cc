@@ -33,23 +33,8 @@ thread_state ts1, ts2;
 
 namespace {
 
-kout* kern_dump;
-unsigned int dump_mask;
-
 }  // End of anonymous namespace
 
-kout& dump(u8 i)
-{
-	return dump_mask & (1 << i) ? *kern_dump : *static_cast<kout*>(0);
-}
-
-void dump_set(u8 i, bool mask)
-{
-	if (mask)
-		dump_mask |= 1 << i;
-	else
-		dump_mask &= ~(1 << i);
-}
 
 
 void tmp_debug();
@@ -98,9 +83,7 @@ extern "C" int kern_init()
 	serial_kout_init();
 	//serial_output_init();
 
-	kern_dump = &serial_get_kout();
-	dump_mask = 0x000001;
-	dump_set(0, true);
+	dump_init(&serial_get_kout());
 	//serial_output* com1 = serial_get_out(0);
 	//kout=com1;
 

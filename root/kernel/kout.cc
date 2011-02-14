@@ -13,6 +13,28 @@ namespace {
 
 static const char base_number[] = "0123456789abcdef";
 
+kout* dump_target;
+unsigned int dump_mask;
+
+}
+
+void dump_init(kout* target)
+{
+	dump_target = target;
+	dump_mask = 0x00000001;
+}
+
+kout& dump(u8 i)
+{
+	return dump_mask & (1 << i) ? *dump_target : *static_cast<kout*>(0);
+}
+
+void dump_set(u8 i, bool mask)
+{
+	if (mask)
+		dump_mask |= 1 << i;
+	else
+		dump_mask &= ~(1 << i);
 }
 
 void kout::put_uhex(umax n, int bits)

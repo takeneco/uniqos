@@ -55,6 +55,10 @@ public:
 	virtual void write(char c);
 };
 
+void dump_init(kout* target);
+kout& dump(u8 i=0);
+void dump_set(u8 i, bool mask);
+
 //
 class kern_output : public filenode_interface
 {
