@@ -9,6 +9,8 @@
 
 #include "boot.h"
 
+#include "native_ops.hh"
+
 
 asm (".code16gcc");
 

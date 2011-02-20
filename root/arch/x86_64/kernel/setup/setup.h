@@ -2,6 +2,7 @@
 /// @brief   アセンブラとC++で共有するパラメータの定義
 //
 // (C) 2010 KATO Takeshi
+//
 
 #ifndef ARCH_X86_64_KERNEL_SETUP_SETUP_H_
 #define ARCH_X86_64_KERNEL_SETUP_SETUP_H_
@@ -53,6 +54,10 @@
 #define SETUP_FREEMEM_DUMP           0x0400
 /// Setupフェーズ終了後の使用メモリ情報
 #define SETUP_USEDMEM_DUMP           0x0500
+/// MP Floating Pointer Structure raw copy(16 bytes)
+#define SETUP_MP_FLOATING_POINTER    0x0600
+/// MP Configuration Table Header raw copy
+#define SETUP_MP_CONFIGURATION_TABLE 0x0610
 
 /// Full kernel load address by bootloader.
 #define SETUP_KERN_ADR             0x100000

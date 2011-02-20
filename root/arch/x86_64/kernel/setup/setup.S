@@ -118,6 +118,23 @@ _start:
 
 	ljmpl $2*8, $start32
 
+// search MP Floating Pointer Structure
+// @param[in] %ds:(%si)  start adr of search range
+// @param[in] %ds:(%di)  end adr of search range
+scan_mpfps:
+1:
+	movl  %ds:(%si), %eax
+	cmpl  $0x5f504d5f, %eax  // compare with "_MP_"
+	je    2f
+	addw  $4, %si
+	cmpw  %di, %si
+	jle   1b
+
+	// found
+	orw   %ax, %ax
+	ret
+2:
+
 	.align 16
 setup_gdt:
 	// 3.4.3(p.3-12)
