@@ -129,7 +129,7 @@ _start:
 	movw  %ax, %es
 	xorw  %di,%di
 	movw  $0x400, %cx
-	call  scan_mpfps
+	call  scan_MPFPS
 	jnc   1f
 
 	// search from 0xf0000-0xfffff
@@ -137,7 +137,7 @@ _start:
 	movw  %ax, %es
 	xorw  %di,%di
 	xorw  %cx,%cx  // means 0x10000
-	call  scan_mpfps
+	call  scan_MPFPS
 	jnc   1f
 
 	// search from 0x9fc00-0xa0000
@@ -145,7 +145,7 @@ _start:
 	movw  %ax, %es
 	xorw  %di,%di
 	movw  $0x400, %cx
-	call  scan_mpfps
+	call  scan_MPFPS
 	jnc   1f
 
 	// MPFPS not found
@@ -155,6 +155,14 @@ _start:
 1:
 	// MPFPS found
 	// search MP Configuration Table
+
+	movl  %fs:SETUP_MP_FLOATING_POINTER+4, %eax   // ptr to MPCTH
+	movw  %ax, %si
+	xorw  %ax, %ax
+	shrl  $4, %eax
+	movw  %ax, %ds
+
+	call  test_MPCT
 
 2:
 	popw  %ds
@@ -168,13 +176,13 @@ _start:
 	ljmpl $2*8, $start32
 
 
-// search MP Floating Pointer Structure.
+// search and copy MP Floating Pointer Structure.
 //
 // @param[in] %es:(%di)  start adr of search range
 // @param[in] %cx        byte size of search range
 // @return  not found if carry flag. else copy mpfps.
-// @note  breaks %ax %cx %si %di %ds
-scan_mpfps:
+// @note  breaks %ax %cx %si %di %ds %es
+scan_MPFPS:
 SIZEOF_MPFPS=16
 	// not searching last 12bytes, because mpfps is 16bytes.
 	subw  $SIZEOF_MPFPS-4, %cx
@@ -191,6 +199,10 @@ SIZEOF_MPFPS=16
 2:	// signature found
 	pushw %cx
 	movw  $SIZEOF_MPFPS, %cx  // sizeof mpfps
+	movw  %es, %ax
+	movw  %ax, %ds
+	movw  %di, %si
+	subw  $4, %si
 	call  checksum8
 	popw  %cx
 	jnz   1b
@@ -199,25 +211,49 @@ SIZEOF_MPFPS=16
 	// checksum8 set %ds <- %es
 	movw  %di, %si
 	subw  $4, %si
-	movw  %fs, %ax
-	movw  %ax, %es
+	pushw %fs
+	popw  %es
 	movw  $SETUP_MP_FLOATING_POINTER, %di
 	rep movsw 
 	clc
 	ret
 
+// test and copy MP Configuration Table.
+//
+// @param[in] %ds:(%si)  start adr of MPCTH
+// @note  destroy %eax %bl %cx %dx %si %di %es
+test_MPCT:
+TABLE_LENGTH_OFFSET=4
+	movl  %ds:(%si), %eax
+	cmpl  $0x504d4350, %eax
+	jne   1f
+
+	movw  %si, %dx
+	movw  %ds:TABLE_LENGTH_OFFSET(%si), %cx
+	call  checksum8
+	jnz   1f
+
+	movw  %dx, %si
+	movw  %ds:TABLE_LENGTH_OFFSET(%si), %cx
+	pushw %fs
+	popw  %es
+	movw  $SETUP_MP_CONFIGURATION_TABLE, %di
+	rep movsw
+
+	clc
+	ret
+
+1:	// MPCTH is ignore
+	stc
+	ret
 
 // calc checksum.
 //
-// @param[in] %es:-4(%di)  start adr of checksum range.
-// @param[in] %cx          byte size of checksum range.
+// @param[in] %ds:(%si)  start adr of checksum range.
+// @param[in] %cx        byte size of checksum range.
 // @return  %bl is checksum value. zero flag is enable.
-// @note  destroy %ax %cx %si %ds
+// @note  destroy %al %bl %cx
 checksum8:
-	movw  %es, %ax
-	movw  %ax, %ds
-	movw  %di, %si
-	subw  $4, %si
 	xorb  %bl, %bl
 1:
 	lodsb

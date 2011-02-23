@@ -398,7 +398,7 @@ void cpu_test()
 	u8* p;
 	setup_get_mp_info(&p);
 	dump()("p=")(p)();
-	for (int j = 0; j < 2; j++) {
+	for (int j = 0; j < 8; j++) {
 		for (int i = 0; i < 16; i++) {
 			dump()(" ").u(p[j*16+i], 16);
 		}
