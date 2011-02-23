@@ -10,11 +10,12 @@
  * - %ecx : カーネルのサイズ
  */
 
-/* (C) 2009-2011 KATO Takeshi */
+// (C) 2009-2011 KATO Takeshi
 
 #include "setup.h"
 
 PAGE_SIZE = 4096
+
 
 .section .entry
 
@@ -69,25 +70,29 @@ _start:
 	//      0x12 : 640x480x4bits
 	//      0x13 : 320x200x8bits
 	//      0x6a : 800x600x4bits
-//	movw  $0x0003, %ax
-//	int   $0x10
-
-//	calll setup16
+	//movw  $0x0003, %ax
+	//int   $0x10
 
 	movw  $SETUP_DATA_SEG, %ax
 	movw  %ax, %es
-	movl  $8, %es:SETUP_DISP_DEPTH    // ビット深度(グラフィックモード)
-//	movl  $320, %es:SETUP_DISP_WIDTH  // 画面の幅
-	movl  $80, %es:SETUP_DISP_WIDTH
-//	movl  $200, %es:SETUP_DISP_HEIGHT // 画面の高さ
-	movl  $25, %es:SETUP_DISP_HEIGHT
-//	movl  $0x000a0000, %es:SETUP_DISP_VRAM // VRAM
-	movl  $0x000b8000, %es:SETUP_DISP_VRAM
+	movw  %ax, %fs
+
+//
+// %fs のセグメントへC++からアクセスするデータを集める。
+//
+
+	movl  $8, %fs:SETUP_DISP_DEPTH    // ビット深度(グラフィックモード)
+	//movl  $320, %fs:SETUP_DISP_WIDTH  // 画面の幅
+	movl  $80, %fs:SETUP_DISP_WIDTH
+	//movl  $200, %fs:SETUP_DISP_HEIGHT // 画面の高さ
+	movl  $25, %fs:SETUP_DISP_HEIGHT
+	//movl  $0x000a0000, %fs:SETUP_DISP_VRAM // VRAM
+	movl  $0x000b8000, %fs:SETUP_DISP_VRAM
 
 	xorl  %eax, %eax
 	movb  $0x02, %ah
 	int   $0x16
-	movl  %eax, %es:SETUP_KEYB_LEDS // キーボードの LED
+	movl  %eax, %fs:SETUP_KEYB_LEDS // キーボードの LED
 
 	// テキストモードのカーソル位置を取得する。
 	movb  $0x03, %ah
@@ -95,20 +100,64 @@ _start:
 	int   $0x10
 	xorl  %eax, %eax
 	movb  %dl, %al
-	movl  %eax, %es:SETUP_DISP_CURCOL
+	movl  %eax, %fs:SETUP_DISP_CURCOL
 	movb  %dh, %al
-	movl  %eax, %es:SETUP_DISP_CURROW
+	movl  %eax, %fs:SETUP_DISP_CURROW
 
 	// kernel file size
 	popl  %eax
-	movl  %eax, %es:SETUP_KERNFILE_SIZE
+	movl  %eax, %fs:SETUP_KERNFILE_SIZE
 
 	movw  $SETUP_ACPI_MEMMAP, %di
 	call  acpi_get_memmap
 	//
 	// ここは %eax != 0xffffffff でエラーチェックが必要
 	//
-	movl  %eax, %es:SETUP_ACPI_MEMMAP_COUNT
+	movl  %eax, %fs:SETUP_ACPI_MEMMAP_COUNT
+
+//
+// collect MP info
+//
+	pushw %ds
+
+	// search MP Floating Pointer Structure
+
+	// search from EBDA(Extended BIOS Data Area) first 1KiB
+	xorw  %ax,%ax
+	movw  %ax, %ds
+	movw  %ds:0x40e, %ax
+	movw  %ax, %es
+	xorw  %di,%di
+	movw  $0x400, %cx
+	call  scan_mpfps
+	jnc   1f
+
+	// search from 0xf0000-0xfffff
+	movw  $0xf000, %ax
+	movw  %ax, %es
+	xorw  %di,%di
+	xorw  %cx,%cx  // means 0x10000
+	call  scan_mpfps
+	jnc   1f
+
+	// search from 0x9fc00-0xa0000
+	movw  $0x9fc0, %ax
+	movw  %ax, %es
+	xorw  %di,%di
+	movw  $0x400, %cx
+	call  scan_mpfps
+	jnc   1f
+
+	// MPFPS not found
+	xorl  %eax, %eax
+	movl  %eax, %fs:SETUP_MP_FLOATING_POINTER
+	jmp   2f
+1:
+	// MPFPS found
+	// search MP Configuration Table
+
+2:
+	popw  %ds
 
 	lgdtl setup_gdtr
 	lidtl setup_idtr
@@ -118,22 +167,65 @@ _start:
 
 	ljmpl $2*8, $start32
 
-// search MP Floating Pointer Structure
-// @param[in] %ds:(%si)  start adr of search range
-// @param[in] %ds:(%di)  end adr of search range
-scan_mpfps:
-1:
-	movl  %ds:(%si), %eax
-	cmpl  $0x5f504d5f, %eax  // compare with "_MP_"
-	je    2f
-	addw  $4, %si
-	cmpw  %di, %si
-	jle   1b
 
-	// found
-	orw   %ax, %ax
+// search MP Floating Pointer Structure.
+//
+// @param[in] %es:(%di)  start adr of search range
+// @param[in] %cx        byte size of search range
+// @return  not found if carry flag. else copy mpfps.
+// @note  breaks %ax %cx %si %di %ds
+scan_mpfps:
+SIZEOF_MPFPS=16
+	// not searching last 12bytes, because mpfps is 16bytes.
+	subw  $SIZEOF_MPFPS-4, %cx
+	shrw  $2, %cx   // %cx /= 4
+1:
+	movl  $0x5f504d5f, %eax  // "_MP_"
+	repne scasl   // compare %eax and %es:%di
+	je    2f
+
+	// not found
+	stc
 	ret
-2:
+
+2:	// signature found
+	pushw %cx
+	movw  $SIZEOF_MPFPS, %cx  // sizeof mpfps
+	call  checksum8
+	popw  %cx
+	jnz   1b
+	// checksum matched
+	movw  $SIZEOF_MPFPS/2, %cx
+	// checksum8 set %ds <- %es
+	movw  %di, %si
+	subw  $4, %si
+	movw  %fs, %ax
+	movw  %ax, %es
+	movw  $SETUP_MP_FLOATING_POINTER, %di
+	rep movsw 
+	clc
+	ret
+
+
+// calc checksum.
+//
+// @param[in] %es:-4(%di)  start adr of checksum range.
+// @param[in] %cx          byte size of checksum range.
+// @return  %bl is checksum value. zero flag is enable.
+// @note  destroy %ax %cx %si %ds
+checksum8:
+	movw  %es, %ax
+	movw  %ax, %ds
+	movw  %di, %si
+	subw  $4, %si
+	xorb  %bl, %bl
+1:
+	lodsb
+	addb  %al, %bl
+	loop  1b
+
+	ret
+
 
 	.align 16
 setup_gdt:

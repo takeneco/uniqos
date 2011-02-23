@@ -15,6 +15,8 @@ struct setup_memmgr_dumpdata;
 void setup_get_free_memdump(setup_memmgr_dumpdata** freedump, u32* num);
 void setup_get_used_memdump(setup_memmgr_dumpdata** useddump, u32* num);
 
+void setup_get_mp_info(u8** ptr);
+
 
 #endif  // Include guard.
 

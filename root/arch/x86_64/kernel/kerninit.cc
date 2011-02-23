@@ -7,7 +7,6 @@
 #include "arch.hh"
 #include "kerninit.hh"
 #include "output.hh"
-#include "setupdata.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
 

@@ -2,6 +2,8 @@
 /// @brief  Access to setup data.
 //
 // (C) KATO Takeshi 2010
+//
+/// @todo 物理メモリマップを使うようにする。
 
 #include "setupdata.hh"
 
@@ -32,3 +34,9 @@ void setup_get_used_memdump(setup_memmgr_dumpdata** useddump, u32* num)
 	*useddump = setup_get_ptr<setup_memmgr_dumpdata>(SETUP_USEDMEM_DUMP);
 	*num = setup_get_value<u32>(SETUP_USEDMEM_DUMP_COUNT);
 }
+
+void setup_get_mp_info(u8** ptr)
+{
+	*ptr = setup_get_ptr<u8>(SETUP_MP_FLOATING_POINTER);
+}
+

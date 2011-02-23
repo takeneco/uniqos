@@ -10,6 +10,7 @@
 #include "btypes.hh"
 #include "desctable.hh"
 #include "native_ops.hh"
+#include "setupdata.hh"
 
 #include "kout.hh"
 
@@ -394,6 +395,16 @@ int cpu_init()
 
 void cpu_test()
 {
+	u8* p;
+	setup_get_mp_info(&p);
+	dump()("p=")(p)();
+	for (int j = 0; j < 2; j++) {
+		for (int i = 0; i < 16; i++) {
+			dump()(" ").u(p[j*16+i], 16);
+		}
+		dump()();
+	}
+
 	dump()("mpfps=")(g_mpfps)();
 	dump()("mpfps->features1=").u(g_mpfps->features1)();
 	dump()("mpcth=").u(g_mpfps->mp_config_padr, 16)();

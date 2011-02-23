@@ -49,7 +49,7 @@ def build(bld):
 
 		# .o を setup_source に入れられないためリンクフラグに入れる。
 		setup_linkflags2.append(objnode.abspath())
-		bld.add_manual_dependency(setup_target, srcnode)
+		bld.add_manual_dependency(setup_target, objnode)
 	# <--assemble
 
 	map = bld.path.find_or_declare('setup.map')
@@ -57,7 +57,7 @@ def build(bld):
 
 	setup_source.append(bld.srcnode.find_node('external/lzma/C/LzmaDec.c'))
 	bld.program(
-	    target    = 'setup.bin',
+	    target    = setup_target,
 	    source    = setup_source,
 	    use       = 'SETUP',
 	    includes  = setup_includes,

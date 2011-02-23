@@ -67,6 +67,7 @@ def build(bld):
 
 		# .o を kern_source に入れられないためリンクフラグに入れる。
 		kern_linkflags2.append(objnode.abspath())
+		bld.add_manual_dependency(kern_target, objnode);
 	# <--assemble
 
 	bld.program(features='cxx cxxprogram',
