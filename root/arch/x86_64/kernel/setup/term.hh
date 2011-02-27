@@ -6,8 +6,15 @@
 #ifndef ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 #define ARCH_X86_64_KERNEL_SETUP_TERM_HH_
 
-#include "btypes.hh"
+#include "log.hh"
 
+
+/// @brief  output setup log to memory.
+class memory_log
+{
+public:
+
+};
 
 /// @brief  Output terminal base class.
 

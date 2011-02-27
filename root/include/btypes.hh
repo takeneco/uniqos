@@ -1,12 +1,14 @@
-/// @author  KATO Takeshi
-/// @brief   共通で使う型・関数など。
+/// @file  btypes.hh
+/// @brief 共通で使う型・関数など。
 //
 // (C) 2008-2010 KATO Takeshi
+//
 
 #ifndef BTYPES_HH_
 #define BTYPES_HH_
 
 #include "baseint.hh"
+
 
 typedef _s8   s8;
 typedef _u8   u8;
@@ -269,6 +271,7 @@ namespace cause
 /**
  * @brief  Log information.
  */
+/*
 namespace log
 {
 	enum level {
@@ -285,6 +288,7 @@ namespace log
 	inline bool IsHeavy(type x, type base) { return (x & 0x0f) <= base; }
 	inline bool IsLight(type x, type base) { return (x & 0x0f) >= base; }
 }
+*/
 
 
 #define __TOSTR(x) #x
@@ -297,5 +301,6 @@ namespace log
 # define LIKELY(x)   x
 # define UNLIKELY(x) x
 #endif  // __GNUC__
+
 
 #endif  // Include guards.

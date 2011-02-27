@@ -59,9 +59,9 @@ def build(bld):
 	bld.program(
 	    target    = setup_target,
 	    source    = setup_source,
-	    use       = 'SETUP',
+	    use       = ['setup_objs', 'SETUP'],
 	    includes  = setup_includes,
-	    cxxflags  = ['-fno-exceptions', '-fno-rtti', '-Os'],
+	    cxxflags  = [],
 	    linkflags = setup_linkflags2,
 	)
 

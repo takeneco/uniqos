@@ -12,7 +12,7 @@
 #include "native_ops.hh"
 #include "setupdata.hh"
 
-#include "kout.hh"
+#include "log.hh"
 
 
 namespace {
@@ -397,28 +397,28 @@ void cpu_test()
 {
 	u8* p;
 	setup_get_mp_info(&p);
-	dump()("p=")(p)();
+	log()("p=")(p)();
 	for (int j = 0; j < 8; j++) {
 		for (int i = 0; i < 16; i++) {
-			dump()(" ").u(p[j*16+i], 16);
+			log()(" ").u(p[j*16+i], 16);
 		}
-		dump()();
+		log()();
 	}
 
-	dump()("mpfps=")(g_mpfps)();
-	dump()("mpfps->features1=").u(g_mpfps->features1)();
-	dump()("mpcth=").u(g_mpfps->mp_config_padr, 16)();
+	log()("mpfps=")(g_mpfps)();
+	log()("mpfps->features1=").u(g_mpfps->features1)();
+	log()("mpcth=").u(g_mpfps->mp_config_padr, 16)();
 
 	mp_configuration_table_header* mpcth =
 	    (mp_configuration_table_header*)
 	    arch::PHYSICAL_MEMMAP_BASEADR + g_mpfps->mp_config_padr;
 
-	dump()("mpcth->test()=").u((u8)mpcth->test())();
-	dump()("mpcth->signature=").u(mpcth->signature)();
-	dump()("mpcth->entry_count=").u(mpcth->entry_count)();
+	log()("mpcth->test()=").u((u8)mpcth->test())();
+	log()("mpcth->signature=").u(mpcth->signature)();
+	log()("mpcth->entry_count=").u(mpcth->entry_count)();
 
 	for (u32 i = 0; i < cpu_count; i++) {
-		dump()("cpu").u(i,10)("=").u(processor[i].id)();
+		log()("cpu").u(i,10)("=").u(processor[i].id)();
 	}
 }
 

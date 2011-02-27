@@ -29,10 +29,14 @@ def configure_x86_64(conf):
 	conf.env.DEFINES_SETUP = [
 	    'ARCH_LE',
 	]
+	conf.env.CFLAGS_SETUP = [
+	    '-mno-sse',
+	    '-fomit-frame-pointer', '-Os',
+	]
 	conf.env.CXXFLAGS_SETUP = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
-	    '-fomit-frame-pointer',
+	    '-fomit-frame-pointer', '-Os',
 	]
 
 	conf.env.DEFINES_KERNEL = [
@@ -42,7 +46,6 @@ def configure_x86_64(conf):
 	    '-mno-sse',
 	    '-fomit-frame-pointer', '-O2',
 	]
-
 	conf.env.CXXFLAGS_KERNEL = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',

@@ -1,10 +1,10 @@
-/// @file   kout.cc
-/// @brief  Kernel debug message output destination.
+/// @file   log.cc
+/// @brief  Kernel log output destination.
 //
 // (C) 2009-2011 KATO Takeshi
 //
 
-#include "kout.hh"
+#include "log.hh"
 
 #include "string.hh"
 
@@ -13,79 +13,96 @@ namespace {
 
 static const char base_number[] = "0123456789abcdef";
 
-kout* dump_target;
-unsigned int dump_mask;
+kernel_log* log_target;
+unsigned int log_mask;
 
 }
 
-void dump_init(kout* target)
+void log_init(kernel_log* target)
 {
-	dump_target = target;
-	dump_mask = 0x00000001;
+	log_target = target;
+	log_mask = 0x00000001;
 }
 
-kout& dump(u8 i)
+kernel_log& log(u8 i)
 {
-	return dump_mask & (1 << i) ? *dump_target : *static_cast<kout*>(0);
+	return log_mask & (1 << i) ?
+	    *log_target : *static_cast<kernel_log*>(0);
 }
 
-void dump_set(u8 i, bool mask)
+void log_set(u8 i, bool mask)
 {
 	if (mask)
-		dump_mask |= 1 << i;
+		log_mask |= 1 << i;
 	else
-		dump_mask &= ~(1 << i);
+		log_mask &= ~(1 << i);
 }
 
-void kout::put_uhex(umax n, int bits)
+
+void kernel_log::put_uhex(umax n, int bits)
 {
+	char s[sizeof n * 2];
+	u32 m = 0;
 	for (int shift = bits - 4; shift >= 0; shift -= 4) {
 		const int x = static_cast<int>(n >> shift) & 0x0000000f;
-		write(base_number[x]);
+		s[m++] = base_number[x];
 	}
+	call_write(s, m);
 }
 
-void kout::put_uoct(umax n, int bits)
+void kernel_log::put_uoct(umax n, int bits)
 {
+	char s[(sizeof n * 8 + 2) / 3];
+	u32 m = 0;
 	for (int shift = bits - 3; shift >= 0; shift -= 3) {
 		const int x = static_cast<int>(n >> shift) & 0x00000007;
-		write(base_number[x]);
+		s[m++] = base_number[x];
 	}
+	call_write(s, m);
 }
 
-void kout::put_ubin(umax n, int bits)
+void kernel_log::put_ubin(umax n, int bits)
 {
+	char s[sizeof n * 8]; // BITS_PER_BYTE
+	u32 m = 0;
 	for (int shift = bits - 1; shift >= 0; shift -= 1) {
 		const int x = static_cast<int>(n >> shift) & 0x00000001;
-		write(base_number[x]);
+		s[m++] = base_number[x];
 	}
+	call_write(s, m);
 }
 
-void kout::put_udec(u64 n)
+void kernel_log::put_udec(u64 n)
 {
-	if (n == 0)
-		write('0');
+	if (n == 0) {
+		char zero = '0';
+		call_write(&zero, 1);
+		return;
+	}
 
+	char s[20];
+	u32 m = 0;
 	bool notzero = false;
 	for (u64 div = U64CAST(10000000000000000000); div > 0; div /= 10) {
 		const u64 x = n / div;
 		if (x != 0 || notzero) {
-			write(base_number[x]);
+			s[m++] = base_number[x];
 			n -= x * div;
 			notzero = true;
 		}
 	}
+	call_write(s, m);
 }
 
-kout& kout::c(char ch)
+kernel_log& kernel_log::c(char ch)
 {
 	if (this)
-		write(ch);
+		call_write(&ch, 1);
 
 	return *this;
 }
 
-kout& kout::str(const char* s)
+kernel_log& kernel_log::str(const char* s)
 {
 	if (this) {
 		if (!s) {
@@ -93,23 +110,42 @@ kout& kout::str(const char* s)
 			s = nullstr;
 		}
 
-		while (*s) {
-			write(*s);
-			s++;
-		}
+		call_write(s, string_get_length(s));
 	}
 
 	return *this;
 }
 
-kout& kout::s(s8 n, int base)
+namespace {
+
+inline void write_minus(kernel_log* self)
+{
+	const char minus = '-';
+	self->call_write(&minus, 1);
+}
+
+inline void write_plus(kernel_log* self)
+{
+	const char plus = '+';
+	self->call_write(&plus, 1);
+}
+
+inline void write_unknown(kernel_log* self)
+{
+	const char unknown = '?';
+	self->call_write(&unknown, 1);
+}
+
+} // namespace
+
+kernel_log& kernel_log::s(s8 n, int base)
 {
 	if (this) {
 		if (n < 0) {
-			write('-');
+			write_minus(this);
 			u(static_cast<u8>(-n), base);
 		} else {
-			write('+');
+			write_plus(this);
 			u(static_cast<u8>(n), base);
 		}
 	}
@@ -117,29 +153,29 @@ kout& kout::s(s8 n, int base)
 	return *this;
 }
 
-kout& kout::s(s16 n, int base)
+kernel_log& kernel_log::s(s16 n, int base)
 {
 	if (this) {
 		if (n < 0) {
-			write('-');
+			write_minus(this);
 			u(static_cast<u16>(-n), base);
 		} else {
-			write('+');
-			u(static_cast<u8>(n), base);
+			write_plus(this);
+			u(static_cast<u16>(n), base);
 		}
 	}
 
 	return *this;
 }
 
-kout& kout::s(s32 n, int base)
+kernel_log& kernel_log::s(s32 n, int base)
 {
 	if (this) {
 		if (n < 0) {
-			write('-');
+			write_minus(this);
 			u(static_cast<u32>(-n), base);
 		} else {
-			write('+');
+			write_plus(this);
 			u(static_cast<u32>(n), base);
 		}
 	}
@@ -147,22 +183,22 @@ kout& kout::s(s32 n, int base)
 	return *this;
 }
 
-kout& kout::s(s64 n, int base)
+kernel_log& kernel_log::s(s64 n, int base)
 {
 	if (this) {
 		if (n < 0) {
-			write('-');
+			write_minus(this);
 			u(static_cast<u64>(-n), base);
 		} else {
-			write('+');
-			u(static_cast<u32>(n), base);
+			write_plus(this);
+			u(static_cast<u64>(n), base);
 		}
 	}
 
 	return *this;
 }
 
-kout& kout::u(u8 n, int base)
+kernel_log& kernel_log::u(u8 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -170,13 +206,13 @@ kout& kout::u(u8 n, int base)
 		case 16: put_uhex(n, 8); break;
 		case 8:  put_uoct(n, 8); break;
 		case 2:  put_ubin(n, 8); break;
-		default: write('?'); break;
+		default: write_unknown(this); break;
 		}
 
 	return *this;
 }
 
-kout& kout::u(u16 n, int base)
+kernel_log& kernel_log::u(u16 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -184,13 +220,13 @@ kout& kout::u(u16 n, int base)
 		case 16: put_uhex(n, 16); break;
 		case 8:  put_uoct(n, 16); break;
 		case 2:  put_ubin(n, 16); break;
-		default: write('?'); break;
+		default: write_unknown(this); break;
 		}
 
 	return *this;
 }
 
-kout& kout::u(u32 n, int base)
+kernel_log& kernel_log::u(u32 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -198,13 +234,13 @@ kout& kout::u(u32 n, int base)
 		case 16: put_uhex(n, 32); break;
 		case 8:  put_uoct(n, 32); break;
 		case 2:  put_ubin(n, 32); break;
-		default: write('?'); break;
+		default: write_unknown(this); break;
 		}
 
 	return *this;
 }
 
-kout& kout::u(u64 n, int base)
+kernel_log& kernel_log::u(u64 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -212,26 +248,26 @@ kout& kout::u(u64 n, int base)
 		case 16: put_uhex(n, 64); break;
 		case 8:  put_uoct(n, 64); break;
 		case 2:  put_ubin(n, 64); break;
-		default: write('?'); break;
+		default: write_unknown(this); break;
 		}
 
 	return *this;
 }
 
-kout& kout::sdec(s64 n)
+kernel_log& kernel_log::sdec(s64 n)
 {
 	if (!this)
 		return *this;
 
 	if (n < 0) {
-		write('-');
+		writec_func(this, '-');
 		n = -n;
 	}
 
 	return udec(static_cast<u64>(n));
 }
 
-kout& kout::udec(u64 n)
+kernel_log& kernel_log::udec(u64 n)
 {
 	if (this)
 		put_udec(n);
@@ -239,7 +275,7 @@ kout& kout::udec(u64 n)
 	return *this;
 }
 
-kout& kout::u8hex(u8 n)
+kernel_log& kernel_log::u8hex(u8 n)
 {
 	if (this)
 		put_uhex(n, 8);
@@ -247,7 +283,7 @@ kout& kout::u8hex(u8 n)
 	return *this;
 }
 
-kout& kout::u16hex(u16 n)
+kernel_log& kernel_log::u16hex(u16 n)
 {
 	if (this)
 		put_uhex(n, 16);
@@ -255,7 +291,7 @@ kout& kout::u16hex(u16 n)
 	return *this;
 }
 
-kout& kout::u32hex(u32 n)
+kernel_log& kernel_log::u32hex(u32 n)
 {
 	if (this)
 		put_uhex(n, 32);
@@ -263,12 +299,19 @@ kout& kout::u32hex(u32 n)
 	return *this;
 }
 
-kout& kout::u64hex(u64 n)
+kernel_log& kernel_log::u64hex(u64 n)
 {
 	if (this)
 		put_uhex(n, 64);
 
 	return *this;
+}
+
+void kernel_log::default_write_func(
+    kernel_log* self, const void* data, u32 bytes)
+{
+	for (u32 i = 0; i < bytes; ++i)
+		self->writec_func(self, reinterpret_cast<const u8*>(data)[i]);
 }
 
 

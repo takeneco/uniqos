@@ -11,15 +11,16 @@
 /**
  * @brief  Constantly phisical address map.
  *
- * - 00001000 - 00006fff  Kernel head code.
- * - 00018000 - 0001bfff  Setup stack.
- * - 0001c000 - 0001ffff  Setup memmgr buffer.
- * - 00020000 - 0007ffff  Setup address tr table.
- * - 00080000 - 0008ffff  Setup collect params store by BIOS.
- * - 00100000 - 00ffffff  Compressed kernel body (15MiB).
- * - 01000000 - 010fffff  Kernel constant use PDPTEs (1MiB).
- * - 01100000 - 011fffff  Kernel constant use PDEs (1MiB).
- * - 01200000 -           Extracted kernel body.
+ * - 00001000-00006fff  Kernel head code.
+ * - 00018000-0001bfff  Setup stack.
+ * - 0001c000-0001ffff  Setup memmgr buffer.
+ * - 00020000-0002ffff  Setup log buffer.
+ * - 00030000-0007ffff  Setup address tr table.
+ * - 00080000-0008ffff  Setup collect params store by BIOS.
+ * - 00100000-00ffffff  Compressed kernel body (15MiB).
+ * - 01000000-010fffff  Kernel constant use PDPTEs (1MiB).
+ * - 01100000-011fffff  Kernel constant use PDEs (1MiB).
+ * - 01200000-          Extracted kernel body.
  */
 
 // Stack address : 0x18000-0x1bfff
@@ -29,13 +30,18 @@
 #define SETUP_MEMMGR_ADR            0x1c000
 #define SETUP_MEMMGR_SIZE           0x04000
 
+// log buffer.
+#define SETUP_LOGBUF_SEG            0x2000
+#define SETUP_LOGBUF_START           0x0000
+#define SETUP_LOGBUF_LIMIT           0xffff
+
 /// Address tr table for setup.
-#define SETUP_PML4_PADR             0x20000
+#define SETUP_PML4_PADR             0x30000
 /// セットアップ中に作るメモリマップテーブルの格納アドレス
 #define SETUP_PDE_HEAD_PADR         (SETUP_PML4_PADR + 0x1000)
 #define SETUP_PDE_TAIL_PADR         0x7ffff
 
-// セットアップ中にBIOSから集めたデータを格納するアドレス
+// setup から kernel へ渡すデータを格納するアドレス
 #define SETUP_DATA_SEG              0x8000
 #define SETUP_DISP_DEPTH             0x0000
 #define SETUP_DISP_WIDTH             0x0004
@@ -48,6 +54,8 @@
 #define SETUP_KERNFILE_SIZE          0x0020
 #define SETUP_FREEMEM_DUMP_COUNT     0x0024
 #define SETUP_USEDMEM_DUMP_COUNT     0x0028
+// end of log buffer. offset from SETUP_LOGBUF_START.
+#define SETUP_LOGBUF_CUR             0x002c
 /// ACPIから取得したメモリマップ
 #define SETUP_ACPI_MEMMAP            0x0100
 /// Setupフェーズ終了後の空きメモリ情報

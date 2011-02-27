@@ -39,34 +39,34 @@ namespace {
 
 void tmp_debug();
 
-kern_output* kout;
+kern_output* kout_;
 extern int kern_tail_addr;
 
 kern_output* kern_get_out()
 {
-	return kout;
+	return kout_;
 }
 
 void func()
 {
-	dump()("func")(1)();
+	log()("func")(1)();
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	dump()("func")(2)();
+	log()("func")(2)();
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	dump()("func")(3)();
+	log()("func")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	dump()("func")(4)();
+	log()("func")(4)();
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
 }
 
 extern "C" int kern_init()
 {
-	kout = 0;
+	kout_ = 0;
 
 	cpu_init();
 
 	VideoOutput vo;
-	kout = &vo;
+	kout_ = &vo;
 
 	u32 width, height, vram, row, col;
 	setup_get_display_mode(&width, &height, &vram);
@@ -83,7 +83,7 @@ extern "C" int kern_init()
 	serial_kout_init();
 	//serial_output_init();
 
-	dump_init(&serial_get_kout());
+	log_init(&serial_get_kout());
 	//serial_output* com1 = serial_get_out(0);
 	//kout=com1;
 
@@ -117,14 +117,14 @@ extern "C" int kern_init()
 	memory::init();
 	arch::apic_init();
 
-	dump()("ts1=")(&ts1)()("ts2=")(&ts2)();
+	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
 	create_thread(&ts2, func);
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	dump()("kerninit")(1)();
+	log()("kerninit")(1)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	dump()("kerninit")(2)();
+	log()("kerninit")(2)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	dump()("kerninit")(3)();
+	log()("kerninit")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 
 	cpu_test();

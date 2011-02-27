@@ -1,22 +1,36 @@
 
 kern_sources = [
     'fileif.cc',
-    'kout.cc',
+    'log.cc',
     'string.cc'
 ]
 
 kern_defines = []
 
+
+setup_sources = [
+    'log.cc',
+    'string.cc',
+]
+
+setup_defines = []
+
+
 def build(bld):
 	kern_defines.extend(bld.env.common_defines)
-
-	if bld.env.arch_name == 'x86_64':
-		kern_defines.append('ARCH_LE')
+	setup_defines.extend(bld.env.common_defines)
 
 	bld.objects(
 	    target   = 'kernel_objs',
 	    source   = kern_sources,
 	    defines  = kern_defines,
 	    use      = 'KERNEL'
+	)
+
+	bld.objects(
+	    target   = 'setup_objs',
+	    source   = setup_sources,
+	    defines  = setup_defines,
+	    use      = 'SETUP'
 	)
 

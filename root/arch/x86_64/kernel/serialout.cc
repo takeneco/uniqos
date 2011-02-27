@@ -52,6 +52,9 @@ void serial_kout_init()
 
 void serial_kout::init(u16 com_base_port)
 {
+	write_func = default_write_func;
+	writec_func = writec;
+
 	base_port = com_base_port;
 
 	native::cli();
@@ -82,15 +85,16 @@ void serial_kout::init(u16 com_base_port)
 	native::sti();
 }
 
-void serial_kout::write(char ch)
+void serial_kout::writec(kernel_log* self, u8 c)
 {
+	serial_kout* x = (serial_kout*)self;
 	for (;;) {
-		const u8 r = native::inb(base_port + LINE_STATUS);
+		const u8 r = native::inb(x->base_port + LINE_STATUS);
 		if (r & 0x40)
 			break;
 	}
 
-	native::outb(ch, base_port + TRANSMIT_DATA);
+	native::outb(c, x->base_port + TRANSMIT_DATA);
 }
 
 

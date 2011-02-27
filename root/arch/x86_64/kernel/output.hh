@@ -7,7 +7,7 @@
 #ifndef _ARCH_X86_64_KERNEL_OUTPUT_HH_
 #define _ARCH_X86_64_KERNEL_OUTPUT_HH_
 
-#include "kout.hh"
+#include "log.hh"
 
 
 /// @brief  Output only kernel video term.
@@ -56,11 +56,11 @@ public:
 
 	void init(u16 com_base_port);
 
-	virtual void write(char ch);
+	static void writec(kernel_log* self, u8 c);
 };
 
-inline kout& ko(u8 i=0) { return dump(i); }
-inline void ko_set(u8 i, bool mask) { dump_set(i, mask); }
+inline kout& ko(u8 i=0) { return log(i); }
+inline void ko_set(u8 i, bool mask) { log_set(i, mask); }
 
 serial_kout& serial_get_kout();
 void serial_kout_init();
