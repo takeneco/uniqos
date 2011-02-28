@@ -1,9 +1,10 @@
-/// @author  KATO Takeshi
-/// @brief   LZMA decode wrapper.
+/// @file  lzmadecwrap.cc
+/// @brief LZMA library decode wrapper.
 //
 // (C) 2009-2010 KATO Takeshi
+//
 
-#include "lzmadecwrap.hh"
+#include "misc.hh"
 
 extern "C" {
 #include "LzmaDec.h"

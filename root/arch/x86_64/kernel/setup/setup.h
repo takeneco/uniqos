@@ -32,8 +32,8 @@
 
 // log buffer.
 #define SETUP_LOGBUF_SEG            0x2000
-#define SETUP_LOGBUF_START           0x0000
-#define SETUP_LOGBUF_LIMIT           0xffff
+#define SETUP_LOGBUF_ADR             0x0000
+#define SETUP_LOGBUF_SIZE           0x10000
 
 /// Address tr table for setup.
 #define SETUP_PML4_PADR             0x30000

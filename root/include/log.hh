@@ -18,7 +18,9 @@ class kernel_log
 	void put_udec(umax n);
 
 protected:
-	void (*write_func)(kernel_log* self, const void* data, u32 bytes);
+	typedef void (*write_function)
+	    (kernel_log* self, const void* data, u32 bytes);
+	write_function write_func;
 	static void default_write_func(
 	    kernel_log* self, const void* data, u32 bytes);
 
@@ -28,6 +30,7 @@ protected:
 
 protected:
 	kernel_log() {}
+	kernel_log(write_function wf) : write_func(wf) {}
 
 public:
 	kernel_log& operator () (char ch) { return c(ch); }

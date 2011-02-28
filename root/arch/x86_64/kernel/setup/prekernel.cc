@@ -5,7 +5,7 @@
 //
 
 #include "access.hh"
-#include "lzmadecwrap.hh"
+#include "misc.hh"
 #include "pagetable.hh"
 #include "arch.hh"
 
