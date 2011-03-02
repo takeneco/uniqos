@@ -4,7 +4,7 @@
 //
 // (C) 2009-2010 Kato Takeshi.
 
-#include "mem.hh"
+#include "misc.hh"
 #include "term.hh"
 
 

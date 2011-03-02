@@ -10,8 +10,6 @@ extern "C" {
 #include "LzmaDec.h"
 }
 
-#include "mem.hh"
-
 
 namespace {
 

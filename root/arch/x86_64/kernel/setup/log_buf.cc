@@ -6,6 +6,7 @@
 
 #include "log.hh"
 #include "misc.hh"
+#include "placement_new.hh"
 #include "setup.h"
 
 

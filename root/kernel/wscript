@@ -2,7 +2,8 @@
 kern_sources = [
     'fileif.cc',
     'log.cc',
-    'string.cc'
+    'log_access.cc',
+    'string.cc',
 ]
 
 kern_defines = []

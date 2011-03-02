@@ -13,6 +13,7 @@ setup_linkflags = [
 ]
 
 setup_source = [
+    'log_access.cc',
     'lzmadecwrap.cc',
     'memmgr.cc',
     'memops.cc',
