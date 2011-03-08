@@ -1,6 +1,5 @@
 
 setup_asflags = [
-#    '-mcmodel=large',
 ]
 
 setup_includes = [
@@ -15,7 +14,7 @@ setup_linkflags = [
 setup_source = [
     'log_access.cc',
     'lzmadecwrap.cc',
-    'memmgr.cc',
+    'memory_alloc.cc',
     'memops.cc',
     'prekernel.cc',
     'termchain.cc',

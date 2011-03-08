@@ -1,7 +1,7 @@
-/// @file  memmgr.cc
-/// @brief Easy memory management implement used by setup.
+/// @file   memory_alloc.cc
+/// @brief  Easy memory allocation implement using setup.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #include "chain.hh"
@@ -17,83 +17,67 @@ extern term_chain* debug_tc;
 
 namespace {
 
-struct alloc_entry
+class alloc
 {
-	u64 head;
-	u64 bytes;  ///< unused if bytes == 0.
+	struct entry
+	{
+		u64 head;
+		u64 bytes;  ///< unused if bytes == 0.
 
-	bichain_link<alloc_entry> chain_link_;
+		bichain_link<entry> chain_link_;
+		bichain_link<entry>& chain_hook() { return chain_link_; }
 
-	bichain_link<alloc_entry>& chain_hook() {
-		return chain_link_;
-	}
+		void set(u64 head_, u64 bytes_) {
+			head = head_;
+			bytes = bytes_;
+		}
+		void unset() {
+			bytes = 0;
+		}
+	};
 
-	void set(u64 head_, u64 bytes_) {
-		head = head_;
-		bytes = bytes_;
-	}
-	void unset() {
-		bytes = 0;
-	}
-};
+	typedef bichain<entry, &entry::chain_hook> entry_chain;
 
-class memmgr
-{
-	typedef bichain<alloc_entry, &alloc_entry::chain_hook>
-	    alloc_entry_chain;
+	/// free memory list
+	entry_chain free_chain;
 
-	/// 空き領域リスト
-	alloc_entry_chain free_chain;
+	/// reserved or alloced memory list
+	entry_chain nofree_chain;
 
-	/// 割り当て済み領域リスト
-	alloc_entry_chain nofree_chain;
+	enum { ENTRY_BUF_COUNT = 256 };
+	entry entry_buf[ENTRY_BUF_COUNT];
 
-	static alloc_entry* const memmap_buf;
+private:
+	entry* new_entry();
+	void add_free_entry(const acpi_memmap* raw);
 
 public:
+	alloc() : free_chain(), nofree_chain() {}
+
 	void init();
-	alloc_entry* new_entry();
-	void add_free_entry(const acpi_memmap* raw);
 	void import();
 	void reserve_range(u64 r_head, u64 r_tail);
 	int freemem_dump(setup_memmgr_dumpdata* dumpto, int n);
 	int nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n);
-	void* memmgr_alloc(uptr size, uptr align);
-	void memmgr_free(void* p);
+	void* memory_alloc(uptr size, uptr align);
+	void memory_free(void* p);
 };
 
-// Work area.
-alloc_entry* const memmgr::memmap_buf
-	= reinterpret_cast<alloc_entry*>(SETUP_MEMMGR_ADR);
-enum {
-	// Size of work area.
-	MEMMAP_BUF_COUNT = SETUP_MEMMGR_SIZE / sizeof (alloc_entry),
-};
+// コンストラクタを呼ばせない。
+uptr alloc_buf_[sizeof (alloc) / sizeof (uptr)];
+inline alloc* get_alloc() { return reinterpret_cast<alloc*>(alloc_buf_); }
 
-uptr memmgr_buf_[sizeof (memmgr) / sizeof (uptr)];
-memmgr* memmgr_ptr;
-//inline memmgr* get_memmgr() { return reinterpret_cast<memmgr*>(memmgr_buf_); }
-inline memmgr* get_memmgr() { return memmgr_ptr; }
-
-/// @brief  Initialize work area.
-void memmgr::init()
+/// @brief  Search unused entry from entry_buf[].
+/// @return  If unused entry found, this func returns ptr to unused entry.
+/// @return  If unused entry not found, this func returns 0.
+alloc::entry* alloc::new_entry()
 {
-	for (int i = 0; i < MEMMAP_BUF_COUNT; i++)
-		memmap_buf[i].unset();
-}
+	entry* const buf = entry_buf;
 
-/// @brief  Search unused alloc_entry from memmap_buf.
-/// @return  If unused alloc_entry found, this func returns ptr
-/// @return  to unused alloc_entry.
-/// @return  If unused alloc_entry not found, this func returns 0.
-alloc_entry* memmgr::new_entry()
-{
-	alloc_entry* p = memmap_buf;
-
-	for (int i = 0; i < MEMMAP_BUF_COUNT; ++i) {
-		if (p[i].bytes == 0) {
-			p[i].bytes = 1;  // means using.
-			return &p[i];
+	for (int i = 0; i < ENTRY_BUF_COUNT; ++i) {
+		if (buf[i].bytes == 0) {
+			buf[i].bytes = 1;  // means using.
+			return &buf[i];
 		}
 	}
 
@@ -101,12 +85,12 @@ alloc_entry* memmgr::new_entry()
 }
 
 /// @brief  Add free memory info to free_chain from acpi_memmap.
-void memmgr::add_free_entry(const acpi_memmap* raw)
+void alloc::add_free_entry(const acpi_memmap* raw)
 {
 	if (raw->length == 0)
 		return;
 
-	alloc_entry* ent = new_entry();
+	entry* ent = new_entry();
 	if (ent == 0)
 		return;
 
@@ -115,8 +99,15 @@ void memmgr::add_free_entry(const acpi_memmap* raw)
 	free_chain.insert_head(ent);
 }
 
+/// @brief  Initialize work area.
+void alloc::init()
+{
+	for (int i = 0; i < ENTRY_BUF_COUNT; i++)
+		entry_buf[i].unset();
+}
+
 /// @brief  Import memory map by ACPI in real mode.
-void memmgr::import()
+void alloc::import()
 {
 	const acpi_memmap* rawmap =
 	    setup_get_ptr<acpi_memmap>(SETUP_ACPI_MEMMAP);
@@ -129,14 +120,14 @@ void memmgr::import()
 	}
 }
 
-/// @brief メモリ空間を memmgr->free_chain から取り除く。
+/// @brief メモリ空間を free_chain から取り除く。
 /// @param[in] r_head 取り除くメモリの先頭アドレス。
 /// @param[in] r_tail 取り除くメモリの終端アドレス。
-void memmgr::reserve_range(u64 r_head, u64 r_tail)
+void alloc::reserve_range(u64 r_head, u64 r_tail)
 {
 	r_tail += 1;
 
-	for (alloc_entry* ent = free_chain.get_head();
+	for (entry* ent = free_chain.get_head();
 	     ent;
 	     ent = free_chain.get_next(ent))
 	{
@@ -144,7 +135,7 @@ void memmgr::reserve_range(u64 r_head, u64 r_tail)
 		uptr e_tail = e_head + ent->bytes;
 
 		if (e_head < r_head && r_tail < e_tail) {
-			alloc_entry* ent2 = new_entry();
+			entry* ent2 = new_entry();
 			ent2->set(r_tail, e_tail - r_tail);
 			free_chain.insert_head(ent2);
 
@@ -170,16 +161,15 @@ void memmgr::reserve_range(u64 r_head, u64 r_tail)
 /// @param[out] dumpto  Ptr to dump destination.
 /// @param[in] n        dumpto entries.
 /// @return  Dumped count.
-int memmgr::freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int alloc::freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 {
-	const memmgr* const mm = get_memmgr();
+	const entry* ent = free_chain.get_head();
 
-	const alloc_entry* ent = mm->free_chain.get_head();
 	int i;
 	for (i = 0; ent && i < n; i++) {
 		dumpto[i].head = ent->head;
 		dumpto[i].bytes = ent->bytes;
-		ent = mm->free_chain.get_next(ent);
+		ent = free_chain.get_next(ent);
 	}
 
 	return i;
@@ -189,28 +179,26 @@ int memmgr::freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 /// @param[out] dumptp  Ptr to dump destination.
 /// @param[in] n        dumpto entries.
 /// @return  Dumped count.
-int memmgr::nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int alloc::nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 {
-	const memmgr* const mm = get_memmgr();
+	const entry* ent = nofree_chain.get_head();
 
-	const alloc_entry* ent = mm->nofree_chain.get_head();
 	int i;
 	for (i = 0; ent && i < n; i++) {
 		dumpto[i].head = ent->head;
 		dumpto[i].bytes = ent->bytes;
-		ent = mm->nofree_chain.get_next(ent);
+		ent = nofree_chain.get_next(ent);
 	}
 
 	return i;
 }
 
-void* memmgr::memmgr_alloc(uptr size, uptr align)
+void* alloc::memory_alloc(uptr size, uptr align)
 {
-	memmgr* const mm = get_memmgr();
-
-	for (alloc_entry* ent = mm->free_chain.get_head();
+	for (entry* ent = free_chain.get_head();
 	     ent;
-	     ent = mm->free_chain.get_next(ent)) {
+	     ent = free_chain.get_next(ent))
+	{
 		const u64 align_gap = up_align(ent->head, align) - ent->head;
 		if ((ent->bytes - align_gap) < size)
 			continue;
@@ -218,21 +206,21 @@ void* memmgr::memmgr_alloc(uptr size, uptr align)
 		u64 r;
 		if (ent->bytes == size) {
 			r = ent->head;
-			mm->free_chain.remove(ent);
-			mm->nofree_chain.insert_head(ent);
+			free_chain.remove(ent);
+			nofree_chain.insert_head(ent);
 		} else {
-			alloc_entry* newent = mm->new_entry();
+			entry* newent = new_entry();
 			if (newent == 0)
 				continue;
 
 			if (align_gap != 0) {
-				alloc_entry* newent2 = mm->new_entry();
+				entry* newent2 = new_entry();
 				if (newent2 == 0) {
 					newent->unset();
 					continue;
 				}
 				newent2->set(ent->head, align_gap);
-				mm->free_chain.insert_head(newent2);
+				free_chain.insert_head(newent2);
 
 				ent->head += align_gap;
 				ent->bytes -= align_gap;
@@ -240,7 +228,7 @@ void* memmgr::memmgr_alloc(uptr size, uptr align)
 
 			r = ent->head;
 			newent->set(ent->head, size);
-			mm->nofree_chain.insert_head(newent);
+			nofree_chain.insert_head(newent);
 
 			ent->head += size;
 			ent->bytes -= size;
@@ -252,12 +240,12 @@ void* memmgr::memmgr_alloc(uptr size, uptr align)
 	return 0;
 }
 
-void memmgr::memmgr_free(void* p)
+void alloc::memory_free(void* p)
 {
 	// 割り当て済みリストから p を探す。
 
 	u64 head = reinterpret_cast<u64>(p);
-	alloc_entry* ent;
+	entry* ent;
 	for (ent = nofree_chain.get_head();
 	     ent;
 	     ent = nofree_chain.get_next(ent))
@@ -275,7 +263,7 @@ void memmgr::memmgr_free(void* p)
 	// p と p の直後のアドレスを結合して ent とする。
 
 	u64 tail = head + ent->bytes;
-	for (alloc_entry* ent2 = free_chain.get_head();
+	for (entry* ent2 = free_chain.get_head();
 	     ent2;
 	     ent2 = free_chain.get_next(ent2))
 	{
@@ -291,7 +279,7 @@ void memmgr::memmgr_free(void* p)
 	// p と p の前のアドレスを結合する。
 
 	head = ent->head;
-	for (alloc_entry* ent2 = free_chain.get_head();
+	for (entry* ent2 = free_chain.get_head();
 	     ent2;
 	     ent2 = free_chain.get_next(ent2))
 	{
@@ -311,20 +299,18 @@ void memmgr::memmgr_free(void* p)
 
 
 /**
- * @brief  Initialize memmgr.
+ * @brief  Initialize alloc.
  */
 void memmgr_init()
 {
-	//memmgr* mm = new (get_memmgr()) memmgr;
-	memmgr* mm = new (reinterpret_cast<void*>(memmgr_buf_)) memmgr;
-	memmgr_ptr = mm;
+	alloc* mm = new (get_alloc()) alloc;
 
 	mm->init();
 
 	mm->import();
 
 	// 先頭の固定利用アドレスを予約領域とする。
-	// memmgr が NULL アドレスのメモリを確保することを防ぐ意味もある。
+	// alloc が NULL アドレスのメモリを確保することを防ぐ意味もある。
 	mm->reserve_range(0x00000000, SETUP_MEMMGR_RESERVED_PADR);
 }
 
@@ -336,24 +322,22 @@ void memmgr_init()
 /// @return If fails, this func returns NULL.
 void* memmgr_alloc(uptr size, uptr align)
 {
-	memmgr* const mm = get_memmgr();
-
-	return mm->memmgr_alloc(size, align);
+	return get_alloc()->memory_alloc(size, align);
 }
 
 /// @brief  Free memory.
 /// @param p Ptr to memory frees.
 void memmgr_free(void* p)
 {
-	return get_memmgr()->memmgr_free(p);
+	return get_alloc()->memory_free(p);
 }
 
 int memmgr_freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 {
-	return get_memmgr()->freemem_dump(dumpto, n);
+	return get_alloc()->freemem_dump(dumpto, n);
 }
 
 int memmgr_nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 {
-	return get_memmgr()->nofreemem_dump(dumpto, n);
+	return get_alloc()->nofreemem_dump(dumpto, n);
 }
