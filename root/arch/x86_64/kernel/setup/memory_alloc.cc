@@ -57,8 +57,8 @@ public:
 	void init();
 	void import();
 	void reserve_range(u64 r_head, u64 r_tail);
-	int freemem_dump(setup_memmgr_dumpdata* dumpto, int n);
-	int nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n);
+	int freemem_dump(setup_memory_dumpdata* dumpto, int n);
+	int nofreemem_dump(setup_memory_dumpdata* dumpto, int n);
 	void* memory_alloc(uptr size, uptr align);
 	void memory_free(void* p);
 };
@@ -161,7 +161,7 @@ void alloc::reserve_range(u64 r_head, u64 r_tail)
 /// @param[out] dumpto  Ptr to dump destination.
 /// @param[in] n        dumpto entries.
 /// @return  Dumped count.
-int alloc::freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int alloc::freemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
 	const entry* ent = free_chain.get_head();
 
@@ -179,7 +179,7 @@ int alloc::freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
 /// @param[out] dumptp  Ptr to dump destination.
 /// @param[in] n        dumpto entries.
 /// @return  Dumped count.
-int alloc::nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int alloc::nofreemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
 	const entry* ent = nofree_chain.get_head();
 
@@ -301,7 +301,7 @@ void alloc::memory_free(void* p)
 /**
  * @brief  Initialize alloc.
  */
-void memmgr_init()
+void memory_init()
 {
 	alloc* mm = new (get_alloc()) alloc;
 
@@ -320,24 +320,24 @@ void memmgr_init()
 ///     If align == 256, then return address is "0x....00".
 /// @return If succeeds, this func returns allocated memory address ptr.
 /// @return If fails, this func returns NULL.
-void* memmgr_alloc(uptr size, uptr align)
+void* memory_alloc(uptr size, uptr align)
 {
 	return get_alloc()->memory_alloc(size, align);
 }
 
 /// @brief  Free memory.
 /// @param p Ptr to memory frees.
-void memmgr_free(void* p)
+void memory_free(void* p)
 {
 	return get_alloc()->memory_free(p);
 }
 
-int memmgr_freemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int freemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
 	return get_alloc()->freemem_dump(dumpto, n);
 }
 
-int memmgr_nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n)
+int nofreemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
 	return get_alloc()->nofreemem_dump(dumpto, n);
 }

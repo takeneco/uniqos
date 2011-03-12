@@ -10,13 +10,13 @@
 
 
 // memory alloc
-void  memmgr_init();
-void* memmgr_alloc(uptr size, uptr align = 8);
-void  memmgr_free(void* p);
+void  memory_init();
+void* memory_alloc(uptr size, uptr align = 8);
+void  memory_free(void* p);
 
-struct setup_memmgr_dumpdata;
-int   memmgr_freemem_dump(setup_memmgr_dumpdata* dumpto, int n);
-int   memmgr_nofreemem_dump(setup_memmgr_dumpdata* dumpto, int n);
+struct setup_memory_dumpdata;
+int   freemem_dump(setup_memory_dumpdata* dumpto, int n);
+int   nofreemem_dump(setup_memory_dumpdata* dumpto, int n);
 
 void* memory_move(void* dest, const void* src, uptr size);
 

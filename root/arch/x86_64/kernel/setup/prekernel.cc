@@ -101,14 +101,14 @@ void fixed_allocs()
 // Kernel text body address mapping start
 
 	page_table_ent* pde = reinterpret_cast<page_table_ent*>
-	    (memmgr_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
+	    (memory_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
 
 	// pdpte_base[0x1fffc] -> 0x....ffff0.......
 	pdpte_base[0x1fffc].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
 	    page_table_ent::P | page_table_ent::RW);
 
 	//page_table_ent* pde = reinterpret_cast<page_table_ent*>(pde_adr);
-	char* p1 = (char*)memmgr_alloc(0x200000, 0x200000);
+	char* p1 = (char*)memory_alloc(0x200000, 0x200000);
 	// 0x....ffffc00.....
 	pde[0].set(reinterpret_cast<u64>(p1),
 	    page_table_ent::P |
@@ -121,7 +121,7 @@ void fixed_allocs()
 // Kernel text body address mapping end
 
 	pde = reinterpret_cast<page_table_ent*>
-	    (memmgr_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
+	    (memory_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
 
 	// pdpte_base[0x1ffff] -> 0x....ffffc.......
 	pdpte_base[0x1ffff].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
@@ -130,7 +130,7 @@ void fixed_allocs()
 	// Kernel stack memory
 
 	//pde = reinterpret_cast<page_table_ent*>(pde_adr);
-	char* p2 = (char*)memmgr_alloc(0x200000, 0x200000);
+	char* p2 = (char*)memory_alloc(0x200000, 0x200000);
 	// 0x....ffffffe.....
 	pde[511].set(reinterpret_cast<u64>(p2),
 	    page_table_ent::P |
@@ -189,7 +189,7 @@ extern "C" int prekernel()
 		->putc('\n');
 	}
 
-	memmgr_init();
+	memory_init();
 
 	// 最初に静的に使用するメモリを fixed_allocs() で先頭から割り当てる。
 	// その後で mm を動的メモリの確保に使用する。動的メモリは開放してから
@@ -210,12 +210,12 @@ extern "C" int prekernel()
 	setup_set_value<u32>(SETUP_DISP_CURROW, currow);
 	setup_set_value<u32>(SETUP_DISP_CURCOL, curcol);
 
-	int dumps = memmgr_freemem_dump(
-	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_FREEMEM_DUMP), 32);
+	int dumps = freemem_dump(
+	    setup_get_ptr<setup_memory_dumpdata>(SETUP_FREEMEM_DUMP), 32);
 	setup_set_value<u32>(SETUP_FREEMEM_DUMP_COUNT, dumps);
 
-	dumps = memmgr_nofreemem_dump(
-	    setup_get_ptr<setup_memmgr_dumpdata>(SETUP_USEDMEM_DUMP), 32);
+	dumps = nofreemem_dump(
+	    setup_get_ptr<setup_memory_dumpdata>(SETUP_USEDMEM_DUMP), 32);
 	setup_set_value<u32>(SETUP_USEDMEM_DUMP_COUNT, dumps);
 
 	return 0;

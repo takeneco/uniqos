@@ -13,18 +13,18 @@ extern "C" {
 
 namespace {
 
-	const uptr LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
+const uptr LZMA_HEADER_SIZE = LZMA_PROPS_SIZE + 8;
 
-	void* lzma_alloc(void*, uptr size)
-	{
-		void* p = memmgr_alloc(size);
-		return p;
-	}
+void* lzma_alloc(void*, uptr size)
+{
+	void* p = memory_alloc(size);
+	return p;
+}
 
-	void lzma_free(void*, void* addr)
-	{
-		memmgr_free(addr);
-	}
+void lzma_free(void*, void* addr)
+{
+	memory_free(addr);
+}
 
 }  // namespace
 

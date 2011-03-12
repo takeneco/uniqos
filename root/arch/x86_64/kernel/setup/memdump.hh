@@ -10,7 +10,7 @@
 #include "btypes.hh"
 
 
-struct setup_memmgr_dumpdata
+struct setup_memory_dumpdata
 {
 	u64 head;
 	u64 bytes;

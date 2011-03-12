@@ -32,7 +32,7 @@ void log_buf::write(kernel_log* , const u8* data, u32 bytes)
 	u32 cur = *current;
 	for (u32 i = 0; i < bytes; ++i) {
 		if (cur >= SETUP_LOGBUF_SIZE)
-			cur = 0;
+			cur %= SETUP_LOGBUF_SIZE;
 		buf_start[cur] = data[i];
 		++cur;
 	}

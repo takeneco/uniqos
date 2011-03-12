@@ -30,7 +30,7 @@ const uptr ADR_INVALID = U64CAST(0xffffffffffffffff);
 /// 最大のアドレスを物理メモリの末端アドレスとして計算する。
 u64 get_pmem_end()
 {
-	setup_memmgr_dumpdata* freemap;
+	setup_memory_dumpdata* freemap;
 	u32 freemap_num;
 	setup_get_free_memdump(&freemap, &freemap_num);
 
@@ -48,11 +48,11 @@ u64 get_pmem_end()
 ///        連続した物理メモリの空き領域を探す。
 //
 /// @param[in] size 必要な最小のメモリサイズ。
-/// @return 適当に見つけた setup_memmgr_dumpdata のポインタを返す。
+/// @return 適当に見つけた setup_memory_dumpdata のポインタを返す。
 /// @return 無い場合は nullptr を返す。
-setup_memmgr_dumpdata* search_free_pmem(u32 size)
+setup_memory_dumpdata* search_free_pmem(u32 size)
 {
-	setup_memmgr_dumpdata* freemap;
+	setup_memory_dumpdata* freemap;
 	u32 freemap_num;
 	setup_get_free_memdump(&freemap, &freemap_num);
 
@@ -482,7 +482,7 @@ bool physical_memory::init(uptr pmem_end_, void* buf)
 
 bool physical_memory::load_setupdump()
 {
-	setup_memmgr_dumpdata* freemap;
+	setup_memory_dumpdata* freemap;
 	u32 freemap_num;
 	setup_get_free_memdump(&freemap, &freemap_num);
 
@@ -554,7 +554,7 @@ cause::stype init()
 	    physical_memory::calc_workarea_size(pmem_end) +
 	    sizeof (physical_memory);
 
-	setup_memmgr_dumpdata* pmem_data = search_free_pmem(work_size);
+	setup_memory_dumpdata* pmem_data = search_free_pmem(work_size);
 	if (pmem_data == 0)
 		return cause::NO_MEMORY;
 

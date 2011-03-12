@@ -1,4 +1,4 @@
-/// @author  KATO Takeshi
+/// @file    setup.h
 /// @brief   アセンブラとC++で共有するパラメータの定義
 //
 // (C) 2010 KATO Takeshi
@@ -11,9 +11,9 @@
 /**
  * @brief  Constantly phisical address map.
  *
- * - 00001000-00006fff  Kernel head code.
+ * - 00001000-00006fff  Kernel head code including Setup.
  * - 00018000-0001bfff  Setup stack.
- * - 0001c000-0001ffff  Setup memmgr buffer.
+ * - 0001c000-0001ffff  Setup memory allocate buffer.
  * - 00020000-0002ffff  Setup log buffer.
  * - 00030000-0007ffff  Setup address tr table.
  * - 00080000-0008ffff  Setup collect params store by BIOS.
