@@ -45,7 +45,6 @@ public:
 		return str(path).c('(').udec(line).str("):").str(func);
 	}
 	kernel_log& operator () () { return endl(); }
-	kernel_log& endl() { return c('\n'); }
 
 	kernel_log& c(char ch);
 	kernel_log& str(const char* s);
@@ -63,6 +62,11 @@ public:
 	kernel_log& u16hex(u16 n);
 	kernel_log& u32hex(u32 n);
 	kernel_log& u64hex(u64 n);
+	kernel_log& endl() { return c('\n'); }
+	kernel_log& write(const void* data, u32 bytes) {
+		call_write(data, bytes);
+		return *this;
+	}
 
 	void call_write(const void* data, u32 bytes) {
 		write_func(this, data, bytes);

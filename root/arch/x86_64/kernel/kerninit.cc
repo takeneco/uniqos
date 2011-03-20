@@ -87,6 +87,14 @@ extern "C" int kern_init()
 	//serial_output* com1 = serial_get_out(0);
 	//kout=com1;
 
+	{
+	char* setup_log;
+	u32 setup_log_cur, setup_log_size;
+	setup::get_log(&setup_log, &setup_log_cur, &setup_log_size);
+	log().write(setup_log,
+	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
+	}
+
 	setup_memory_dumpdata* map;
 	u32 map_num;
 	setup_get_used_memdump(&map, &map_num);

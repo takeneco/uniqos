@@ -12,7 +12,9 @@ setup_linkflags = [
 ]
 
 setup_source = [
+    'hpet_timer.cc',
     'log_access.cc',
+    'log_buf.cc',
     'lzmadecwrap.cc',
     'memory_alloc.cc',
     'memops.cc',

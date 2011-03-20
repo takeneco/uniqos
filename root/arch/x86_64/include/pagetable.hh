@@ -3,8 +3,8 @@
 //
 // (C) 2010 KATO Takeshi
 
-#ifndef _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
-#define _ARCH_X86_64_INCLUDE_PAGETABLE_HH_
+#ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
+#define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
 #include "btypes.hh"
 
@@ -30,7 +30,7 @@ public:
 		//PAT  = 1L << 12, ///< Page attribute table enable if set (PDPTE,PDE).
 
 		/// Execute disable if set.
-		/// ¤³¤Î¥Õ¥é¥°¤¬»È¤¨¤ë¤Î¤Ï IA32_EFER.NXE = 1 ¤Î¤È¤­¤À¤±¡£
+		/// ã“ã®ãƒ•ãƒ©ã‚°ãŒä½¿ãˆã‚‹ã®ã¯ IA32_EFER.NXE = 1 ã®ã¨ãã ã‘ã€‚
 		XD   = 1L << 63,
 	};
 

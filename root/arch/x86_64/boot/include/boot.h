@@ -42,8 +42,8 @@
 
 // カーネルの先頭64KiBを読み込むアドレス
 #define SETUP_SEG          0x0000
-#define SETUP_ADR           0x1000
-#define SETUP_MAXSIZE       0x6000
+#define SETUP_ADR           0x0500
+#define SETUP_MAXSIZE       0x7000
 
 // Stack address : 0x20000-0x30000
 #define SETUP_STACK_ADR    0x30000

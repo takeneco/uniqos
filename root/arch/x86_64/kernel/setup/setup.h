@@ -11,7 +11,8 @@
 /**
  * @brief  Constantly phisical address map.
  *
- * - 00001000-00006fff  Kernel head code including Setup.
+ * - 00000000-000004ff  Reserved by BIOS, etc...
+ * - 00000500-00007fff  Kernel head code including Setup.
  * - 00018000-0001bfff  Setup stack.
  * - 0001c000-0001ffff  Setup memory allocate buffer.
  * - 00020000-0002ffff  Setup log buffer.

@@ -1,7 +1,7 @@
 /// @file  prekernel.cc
 /// @brief Kernel extend phase before execute.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #include "access.hh"
@@ -24,7 +24,7 @@ const char* acpi_memtype(int type)
 {
 	const static char* type_name[] = {
 		"unknown", "memory", "reserved",
-		"acpi", "nvs", "unusuable" };
+		"acpi", "nvs", "unusable" };
 
 	if (1 <= type && type <= 5)
 		return type_name[type];
@@ -47,13 +47,13 @@ bool kern_extract()
 	u8* const ext_kern_dest =
 		reinterpret_cast<u8*>(KERN_FINAL_VADR);
 
-	debug_tc->puts("&kern_body_start = ")->putu64x((u64)&kern_body_start)->putc('\n');
-	debug_tc->puts("&setup_body_start = ")->putu64x((u64)&setup_body_start)->putc('\n');
-	debug_tc->puts("setup_size = ")->putu64(setup_size)->putc('\n');
-	debug_tc->puts("comp_kern_src = ")->putu64x((u64)comp_kern_src)->putc('\n');
-	debug_tc->puts("comp_kern_size = ")->putu64(comp_kern_size)->putc('\n');
-	debug_tc->puts("ext_kern_size = ")->putu64(ext_kern_size)->putc('\n');
-	debug_tc->puts("ext_kern_dest = ")->putu64x((u64)ext_kern_dest)->putc('\n');
+	log()("&kern_body_start = ").u((u64)&kern_body_start, 16)();
+	log()("&setup_body_start = ").u((u64)&setup_body_start, 16)();
+	log()("setup_size = ").u(setup_size, 16)();
+	log()("comp_kern_src = ")(comp_kern_src)();
+	log()("comp_kern_size = ").u(comp_kern_size, 16)();
+	log()("ext_kern_size = ").u(ext_kern_size, 16)();
+	log()("ext_kern_dest = ")(ext_kern_dest)();
 
 	return lzma_decode(comp_kern_src, comp_kern_size,
 		ext_kern_dest, ext_kern_size);
@@ -141,7 +141,8 @@ void fixed_allocs()
 	//pde_adr += 8 * 512;
 }
 
-}  // End of anonymous namespace
+
+}  // namespace
 
 void intr_init();
 
@@ -152,6 +153,9 @@ void intr_init();
  */
 extern "C" int prekernel()
 {
+	on_memory_log oml;
+	log_init(&oml);
+
 	video_term vt;
 	vt.init(
 		setup_get_value<u32>(SETUP_DISP_WIDTH),
@@ -167,26 +171,22 @@ extern "C" int prekernel()
 
 	debug_tc = &tc;
 
-	tc.puts("Memorymap by ACPI : \n");
+	log()("Memorymap by ACPI :")();
 
 	const acpi_memmap* memmap_buf =
 		setup_get_ptr<const acpi_memmap>(SETUP_ACPI_MEMMAP);
-	const int memmaps = setup_get_value<u32>(SETUP_ACPI_MEMMAP_COUNT);
+	const s32 memmaps = setup_get_value<u32>(SETUP_ACPI_MEMMAP_COUNT);
 	if (memmaps < 0) {
 		return -1;
 	}
-	for (int i = 0; i < memmaps; i++) {
+	for (u32 i = 0; i < static_cast<u32>(memmaps); i++) {
 		const u64 base = memmap_buf[i].base;
 		const u64 length = memmap_buf[i].length;
 		const u32 type = memmap_buf[i].type;
-		tc.putu64(i)
-		->puts(" : ")
-		->putu64x(base)
-		->puts(" - ")
-		->putu64x(base + length)
-		->putc(' ')
-		->puts(acpi_memtype(type))
-		->putc('\n');
+		log().u(i)(" : ")
+		    .u(base, 16)(" - ")
+		    .u(base + length, 16)(' ')
+		    (acpi_memtype(type))();
 	}
 
 	memory_init();
@@ -199,7 +199,7 @@ extern "C" int prekernel()
 
 	if (kern_extract() == false)
 	{
-		tc.puts("x");
+		log()("x")();
 		return -1;
 	}
 
@@ -217,6 +217,8 @@ extern "C" int prekernel()
 	dumps = nofreemem_dump(
 	    setup_get_ptr<setup_memory_dumpdata>(SETUP_USEDMEM_DUMP), 32);
 	setup_set_value<u32>(SETUP_USEDMEM_DUMP_COUNT, dumps);
+
+	hpet_init();
 
 	return 0;
 }

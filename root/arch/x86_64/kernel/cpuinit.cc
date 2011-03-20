@@ -409,6 +409,14 @@ void cpu_test()
 	log()("mpfps->features1=").u(g_mpfps->features1)();
 	log()("mpcth=").u(g_mpfps->mp_config_padr, 16)();
 
+	p = (u8*)0xfdbe0;
+	for (int j = 0; j < 8; j++) {
+		for (int i = 0; i < 16; i++) {
+			log()(" ").u(p[j*16+i], 16);
+		}
+		log()();
+	}
+
 	mp_configuration_table_header* mpcth =
 	    (mp_configuration_table_header*)
 	    arch::PHYSICAL_MEMMAP_BASEADR + g_mpfps->mp_config_padr;

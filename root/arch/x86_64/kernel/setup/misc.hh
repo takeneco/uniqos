@@ -7,6 +7,7 @@
 #define ARCH_X86_64_KERNEL_SETUP_MISC_HH_
 
 #include "btypes.hh"
+#include "log.hh"
 
 
 // memory alloc
@@ -34,8 +35,17 @@ struct acpi_memmap {
 	u32 attr;
 };
 
-// log
-void setup_log();
+
+/// setup log
+class on_memory_log : public kernel_log
+{
+public:
+	on_memory_log();
+
+private:
+	static void write(kernel_log* , const void* data, u32 bytes);
+};
+
 
 // LZMA decode wrapper
 u64 lzma_decode_size(const u8* src);
@@ -44,6 +54,10 @@ bool lzma_decode(
     uptr src_len,
     u8*  dest,
     uptr dest_len);
+
+
+// HPET
+bool hpet_init();
 
 
 #endif  // Include guard
