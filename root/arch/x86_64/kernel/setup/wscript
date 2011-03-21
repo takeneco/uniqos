@@ -3,7 +3,6 @@ setup_asflags = [
 ]
 
 setup_includes = [
-    '.',
 ]
 
 setup_linkflags = [

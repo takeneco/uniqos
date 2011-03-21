@@ -16,7 +16,8 @@
  * - 00018000-0001bfff  Setup stack.
  * - 0001c000-0001ffff  Setup memory allocate buffer.
  * - 00020000-0002ffff  Setup log buffer.
- * - 00030000-0007ffff  Setup address tr table.
+ * - 00030000-00030fff  Kernel PML4 table.
+ * - 00031000-0007ffff  Setup address tr table.
  * - 00080000-0008ffff  Setup collect params store by BIOS.
  * - 00100000-00ffffff  Compressed kernel body (15MiB).
  * - 01000000-010fffff  Kernel constant use PDPTEs (1MiB).

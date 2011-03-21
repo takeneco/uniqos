@@ -20,6 +20,66 @@ term_chain* debug_tc;
 
 namespace {
 
+u64 get_memory_end()
+{
+	const acpi_memmap* mm =
+	    setup_get_ptr<const acpi_memmap>(SETUP_ACPI_MEMMAP);
+
+	const u32 n = setup_get_value<u32>(SETUP_ACPI_MEMMAP_COUNT);
+
+	u64 end = 0;
+	for (u32 i = 0; i < n; ++i) {
+		const u64 end_ = mm[i].base + mm[i].length;
+		if (end < end_)
+			end = end_;
+	}
+
+	return end;
+}
+
+void init_physical_memmap()
+{
+	const uptr end_padr = get_memory_end();
+	const uptr pde_count = up_div<uptr>(end_padr, arch::PAGE_L2_SIZE);
+	const uptr pde_table_count = up_div<uptr>(pde_count, 512);
+	const uptr pde_table_size = pde_table_count * arch::PAGE_L1_SIZE;
+
+	page_table_ent* pde = reinterpret_cast<page_table_ent*>(
+	    memory_alloc(pde_table_size, arch::PAGE_L1_SIZE));
+
+	if (!pde) {
+		log()(__FILE__, __LINE__)("memory_alloc() failed.")();
+		native::hlt();
+	}
+
+	// create PDE
+	uptr i;
+	for (i = 0; i < pde_count; ++i) {
+		pde[i].set(i * arch::PAGE_L2_SIZE,
+		    page_table_ent::P |
+		    page_table_ent::RW |
+		    page_table_ent::PS |
+		    page_table_ent::G);
+	}
+	for (; i < pde_table_count * 512; ++i) {
+		pde[i].set(0, 0);
+	}
+
+	// update PDPTE
+	page_table_ent* pdpte =
+	    reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
+
+	for (i = 0; i < pde_table_count; ++i) {
+		pdpte[i].set(reinterpret_cast<uptr>(&pde[i * 512]),
+		    page_table_ent::P |
+		    page_table_ent::RW |
+		    page_table_ent::G);
+	}
+
+	log()("pde = ")(pde)();
+	log()("pdpte = ")(pdpte)();
+}
+
 const char* acpi_memtype(int type)
 {
 	const static char* type_name[] = {
@@ -190,6 +250,7 @@ extern "C" int prekernel()
 	}
 
 	memory_init();
+	init_physical_memmap();
 
 	// 最初に静的に使用するメモリを fixed_allocs() で先頭から割り当てる。
 	// その後で mm を動的メモリの確保に使用する。動的メモリは開放してから

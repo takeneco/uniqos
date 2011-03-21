@@ -202,6 +202,18 @@ template <class uint_>
 inline uint_ up_align(const uint_& value, const uint_& align) {
 	return (value + align - 1) & ~(align - 1);
 }
+/// 余りを切り上げる割り算
+/// val1 + val2 が uint_ の上限を越えてはいけない。
+template <class uint_>
+inline uint_ up_div(const uint_& val1, const uint_& val2) {
+	return (val1 + val2 - 1) / val2;
+}
+/// 余りを切り上げる割り算
+template <class uint_>
+inline uint_ safe_up_div(const uint_& val1, const uint_& val2) {
+	uint_ x = val1 / val2;
+	return val1 % val2 == 0 ? x : x + 1;
+}
 
 template <class t_>
 inline const t_& min(const t_& x, const t_& y) {

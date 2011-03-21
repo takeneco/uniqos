@@ -432,6 +432,8 @@ start32:
 	cmpl  $SETUP_PDE_TAIL_PADR - (PAGE_SIZE * 2), %edi
 	jb    1b
 
+	//movl  $KERN_PDPTE_PADR, %edi
+
 	// 実行中のアドレスのメモリマップテーブルを作る。
 	// PML4
 	leal  0x007(%edi), %eax
@@ -443,7 +445,7 @@ start32:
 	// PDE
 	addl  $PAGE_SIZE, %edi
 	movl  $0 + 0x183, %eax
-	movl  $32, %ecx  // 64MiB
+	movl  $512, %ecx  // 1GiB
 1:	movl  %eax, (%edi)
 	movl  $0, 4(%edi)
 	addl  $8, %edi

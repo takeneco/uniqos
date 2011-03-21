@@ -1,7 +1,7 @@
 
 kern_defines = []
 
-kern_includes = ['../include']
+kern_includes = []
 
 kern_asflags = []
 

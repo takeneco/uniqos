@@ -346,7 +346,7 @@ int cpu_init()
 	g_mpfps = mpfps;
 	mp_configuration_table_header* mpcth =
 	    (mp_configuration_table_header*)
-	    arch::PHYSICAL_MEMMAP_BASEADR + mpfps->mp_config_padr;
+	    (arch::PHYSICAL_MEMMAP_BASEADR + mpfps->mp_config_padr);
 	const u8* entry = mpcth->first_entry();
 	u8 cpus = 0;
 	for (u16 i = 0; i < mpcth->entry_count; i++) {
@@ -419,7 +419,7 @@ void cpu_test()
 
 	mp_configuration_table_header* mpcth =
 	    (mp_configuration_table_header*)
-	    arch::PHYSICAL_MEMMAP_BASEADR + g_mpfps->mp_config_padr;
+	    (arch::PHYSICAL_MEMMAP_BASEADR + g_mpfps->mp_config_padr);
 
 	log()("mpcth->test()=").u((u8)mpcth->test())();
 	log()("mpcth->signature=").u(mpcth->signature)();
