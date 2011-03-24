@@ -20,7 +20,7 @@ term_chain* debug_tc;
 
 namespace {
 
-u64 get_memory_end()
+uptr get_memory_end()
 {
 	const acpi_memmap* mm =
 	    setup_get_ptr<const acpi_memmap>(SETUP_ACPI_MEMMAP);
@@ -34,9 +34,15 @@ u64 get_memory_end()
 			end = end_;
 	}
 
+	// Local APIC ã‚’ã‚«ãƒãƒ¼ã™ã‚‹ãŸã‚ã€æœ€å° 4GiB ã‚’è¿”ã™ã€‚
+	const uptr minimum = U64CAST(0x100000000);
+	if (end < minimum)
+		end = minimum;
+
 	return end;
 }
 
+/// create direct physical memory map.
 void init_physical_memmap()
 {
 	const uptr end_padr = get_memory_end();
@@ -47,10 +53,8 @@ void init_physical_memmap()
 	page_table_ent* pde = reinterpret_cast<page_table_ent*>(
 	    memory_alloc(pde_table_size, arch::PAGE_L1_SIZE));
 
-	if (!pde) {
-		log()(__FILE__, __LINE__)("memory_alloc() failed.")();
-		native::hlt();
-	}
+	// ã“ã“ã§å¤±æ•—ã™ã‚‹ã“ã¨ã¯ãªã„ã¯ãš
+	// if (!pde) native::hlt();
 
 	// create PDE
 	uptr i;
@@ -75,9 +79,6 @@ void init_physical_memmap()
 		    page_table_ent::RW |
 		    page_table_ent::G);
 	}
-
-	log()("pde = ")(pde)();
-	log()("pdpte = ")(pdpte)();
 }
 
 const char* acpi_memtype(int type)
@@ -108,50 +109,15 @@ bool kern_extract()
 		reinterpret_cast<u8*>(KERN_FINAL_VADR);
 
 	log()("&kern_body_start = ").u((u64)&kern_body_start, 16)();
-	log()("&setup_body_start = ").u((u64)&setup_body_start, 16)();
 	log()("setup_size = ").u(setup_size, 16)();
 	log()("comp_kern_src = ")(comp_kern_src)();
 	log()("comp_kern_size = ").u(comp_kern_size, 16)();
 	log()("ext_kern_size = ").u(ext_kern_size, 16)();
-	log()("ext_kern_dest = ")(ext_kern_dest)();
 
 	return lzma_decode(comp_kern_src, comp_kern_size,
 		ext_kern_dest, ext_kern_size);
 }
 
-/// ¥«¡¼¥Í¥ë¥á¥â¥ê¶õ´Ö¤ÎPDPTE¤òÊÖ¤¹¡£
-//  ¥«¡¼¥Í¥ë¥á¥â¥ê¶õ´Ö¤ÎPDPTE¤ÏÏ¢Â³¤¹¤ë¥á¥â¥ê¤Ë³ÊÇ¼¤µ¤ì¤Æ¤¤¤ë¡£
-inline page_table_ent* pdpte_base_addr()
-{
-	// pdpte_base[512 *   0] -> 0x....800.........
-	// pdpte_base[512 *   1] -> 0x....808.........
-	// pdpte_base[512 * 254] -> 0x....ff0.........
-	// pdpte_base[512 * 255] -> 0x....ff8.........
-	return reinterpret_cast<page_table_ent*>(KERN_PDPTE_PADR);
-}
-/*
-// not used
-void fixed_physical_memmap_alloc(u64* pde_adr)
-{
-	page_table_ent* pdpte_base = pdpte_base_addr();
-
-	// pdpte_base[0] -> 0x....80000.......
-	for (int i = 0; i < 4; i++) {  // 4GiB
-		pdpte_base[i].set(*pde_adr,
-		    page_table_ent::P | page_table_ent::RW);
-
-		page_table_ent* pde = reinterpret_cast<page_table_ent*>(*pde_adr);
-		for (int j = 0; j < 512; j++) {
-			pde[j].set(0x200000 * j,
-			    page_table_ent::P |
-			    page_table_ent::RW |
-			    page_table_ent::PS |
-			    page_table_ent::G);
-		}
-		*pde_adr += 8 * 512;
-	}
-}
-*/
 void fixed_allocs()
 {
 	page_table_ent* pdpte_base =
@@ -252,9 +218,9 @@ extern "C" int prekernel()
 	memory_init();
 	init_physical_memmap();
 
-	// ºÇ½é¤ËÀÅÅª¤Ë»ÈÍÑ¤¹¤ë¥á¥â¥ê¤ò fixed_allocs() ¤ÇÀèÆ¬¤«¤é³ä¤êÅö¤Æ¤ë¡£
-	// ¤½¤Î¸å¤Ç mm ¤òÆ°Åª¥á¥â¥ê¤Î³ÎÊİ¤Ë»ÈÍÑ¤¹¤ë¡£Æ°Åª¥á¥â¥ê¤Ï³«Êü¤·¤Æ¤«¤é
-	// kernel body ¤Ë¥¸¥ã¥ó¥×¤¹¤ë¡£
+	// æœ€åˆã«é™çš„ã«ä½¿ç”¨ã™ã‚‹ãƒ¡ãƒ¢ãƒªã‚’ fixed_allocs() ã§å…ˆé ­ã‹ã‚‰å‰²ã‚Šå½“ã¦ã‚‹ã€‚
+	// ãã®å¾Œã§ mm ã‚’å‹•çš„ãƒ¡ãƒ¢ãƒªã®ç¢ºä¿ã«ä½¿ç”¨ã™ã‚‹ã€‚å‹•çš„ãƒ¡ãƒ¢ãƒªã¯é–‹æ”¾ã—ã¦ã‹ã‚‰
+	// kernel body ã«ã‚¸ãƒ£ãƒ³ãƒ—ã™ã‚‹ã€‚
 
 	fixed_allocs();
 

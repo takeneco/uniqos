@@ -384,7 +384,7 @@ start32:
 	addl  $8, %edi
 	addl  $PAGE_SIZE, %eax
 	loop  1b
-
+/*
 	// カーネルメモリ空間の中に物理メモリマップを作る。
 	// 0xffff800000000000 -> 0x0000000000000000
 	// PDPTE
@@ -431,8 +431,8 @@ start32:
 	// SETUP_PDE_TAIL_PADR までの２ページは次に使う。
 	cmpl  $SETUP_PDE_TAIL_PADR - (PAGE_SIZE * 2), %edi
 	jb    1b
-
-	//movl  $KERN_PDPTE_PADR, %edi
+*/
+	movl  $KERN_PDPTE_PADR, %edi
 
 	// 実行中のアドレスのメモリマップテーブルを作る。
 	// PML4
