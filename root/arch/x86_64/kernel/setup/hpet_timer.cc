@@ -214,14 +214,82 @@ mpspec::const_mpfps* search_mpfps()
 	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0x9fc00), 0x400);
 	if (mpfps)
 		return mpfps;
+
+	return 0;
 }
+
+const mpspec::ioapic_entry* search_ioapic(mpspec::const_mpfps* mpfps)
+{
+	mpspec::const_mpcth* mpcth = reinterpret_cast<mpspec::const_mpcth*>(
+	    arch::pmem::direct_map(mpfps->mp_config_padr));
+
+	static const u16 type_size_map[] = {
+		sizeof (mpspec::processor_entry),
+		sizeof (mpspec::bus_entry),
+		sizeof (mpspec::ioapic_entry),
+		sizeof (mpspec::ioint_entry),
+		sizeof (mpspec::localint_entry),
+	};
+
+	const u8* ent = mpcth->first_entry();
+	for (int i = 0; i < mpcth->entry_count; ++i) {
+		if (*ent == mpspec::ENTRY_IOAPIC)
+			return
+			    reinterpret_cast<const mpspec::ioapic_entry*>(ent);
+		if (*ent >= 5)
+			break;
+		ent += type_size_map[*ent];
+	}
+
+	return 0;
+}
+
+class ioapic_control
+{
+	struct memmapped_regs {
+		u32 volatile ioregsel;
+		u32          unused[3];
+		u32 volatile iowin;
+	};
+	memmapped_regs* const regs;
+
+public:
+	ioapic_control(u32 padr) 
+	    : regs(reinterpret_cast<memmapped_regs*>(
+	           arch::pmem::direct_map(padr)))
+	{}
+	u32 read(u32 sel) {
+		regs->ioregsel = sel;
+		return regs->iowin;
+	}
+	void write(u32 sel, u32 data) {
+		regs->ioregsel = sel;
+		regs->iowin = data;
+	}
+	void mask(u32 index) {
+		write(0x10 + index * 2, 0x00010000);
+	}
+	void unmask(u32 index, u8 cpuid, u8 vec) {
+		// edge trigger, physical destination, fixd delivery
+		write(0x10 + index * 2 + 1, static_cast<u32>(cpuid) << 24);
+		write(0x10 + index * 2, vec);
+	}
+};
+
 
 /// I/O APIC が HPET の割り込みを受け入れるよう設定する。
 bool ioapic_setup(const rsdt_header* rsdth)
 {
 	mpspec::const_mpfps* mpfps = search_mpfps();
-	log()("mpfps = ")(mpfps)();
+	if (mpfps == 0)
+		return false;
 
+	const mpspec::ioapic_entry* ioapic_etr = search_ioapic(mpfps);
+	if (ioapic_etr == 0)
+		return false;
+
+	rsdth = rsdth;
+/*
 	const madt* desc = reinterpret_cast<const madt*>(
 	    search_desc_by_sig(sig32('A', 'P', 'I', 'C'), rsdth));
 	if (!desc)
@@ -232,29 +300,18 @@ bool ioapic_setup(const rsdt_header* rsdth)
 	    desc->get_structure_length());
 	if (!ioapic_desc)
 		return false;
+*/
 
-	log()("ioapic id = ").u(ioapic_desc[2])();
-	log()("ioapic adr = ").
-		u(ioapic_desc[7], 16).
-		u(ioapic_desc[6], 16).
-		u(ioapic_desc[5], 16).
-		u(ioapic_desc[4], 16)();
-	log()("ioapic gsib = ").
-		u(ioapic_desc[11], 16).
-		u(ioapic_desc[10], 16).
-		u(ioapic_desc[9], 16).
-		u(ioapic_desc[8], 16)();
+	ioapic_control ioapic(ioapic_etr->ioapic_map_padr);
+	log()("ioapic id = ").u(ioapic.read(0), 16)();
+	log()("ioapic ver = ").u(ioapic.read(1), 16)();
+	log()("red 10 = ").u(ioapic.read(0x10), 16)();
+	log()("red 11 = ").u(ioapic.read(0x11), 16)();
+	log()("red 12 = ").u(ioapic.read(0x12), 16)();
+	log()("red 13 = ").u(ioapic.read(0x13), 16)();
+	log()("red 14 = ").u(ioapic.read(0x14), 16)();
+	log()("red 15 = ").u(ioapic.read(0x15), 16)();
 
-	u32 adr = le32_to_cpu(ioapic_desc[4], ioapic_desc[5], ioapic_desc[6], ioapic_desc[7]);
-	u32* ptr = (u32*)adr;
-	log()("adr[0] = ").u(ptr[0])();
-	log()("adr[1] = ").u(ptr[1])();
-	log()("adr[2] = ").u(ptr[2])();
-	log()("adr[3] = ").u(ptr[3])();
-	log()("adr[4] = ").u(ptr[4])();
-	log()("adr[5] = ").u(ptr[5])();
-	log()("adr[6] = ").u(ptr[6])();
-	log()("adr[7] = ").u(ptr[7])();
 
 	return true;
 }
@@ -285,9 +342,8 @@ bool hpet_init()
 		    (dh->signature[3])();
 	}
 
-	log()("entry[0] = ").u(((const u32*)(0xffff800000000000 + (const char*)e))[0], 16)();
-	if (!ioapic_setup(rsdth)) {
-	}
+	if (!ioapic_setup(rsdth))
+		return false;
 
 	return true;
 }

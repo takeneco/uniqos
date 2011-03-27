@@ -50,13 +50,22 @@ struct mp_configuration_table_header
 		return reinterpret_cast<const u8*>(this + 1);
 	}
 };
+typedef const mp_configuration_table_header const_mpcth;
+
+enum {
+	ENTRY_PROCESSOR = 0,
+	ENTRY_BUS,
+	ENTRY_IOAPIC,
+	ENTRY_IOINT,
+	ENTRY_LOCALINT,
+};
 
 /// Processor entry
 struct processor_entry
 {
 	u8  entry_type;  ///< =0
-	u8  local_apic_id;
-	u8  local_apic_version;
+	u8  localapic_id;
+	u8  localapic_version;
 	u8  cpu_flags;
 	u32 cpu_signature;
 	u32 feature_flags;
@@ -82,13 +91,13 @@ struct bus_entry
 
 
 /// I/O APIC entry
-struct io_apic_entry
+struct ioapic_entry
 {
 	u8  entry_type;  ///< =2
-	u8  io_apic_id;
-	u8  io_apic_version;
-	u8  io_apic_flags;
-	u32 io_apic_map_padr;
+	u8  ioapic_id;
+	u8  ioapic_version;
+	u8  ioapic_flags;
+	u32 ioapic_map_padr;
 
 	const u8* next_entry() const {
 		return reinterpret_cast<const u8*>(this + 1);
@@ -97,15 +106,15 @@ struct io_apic_entry
 
 
 /// I/O interrupt assignment entry
-struct io_int_entry
+struct ioint_entry
 {
 	u8  entry_type;  ///< =3
 	u8  int_type;
-	u16 io_int_flags;
+	u16 ioint_flags;
 	u8  source_bus_id;
 	u8  source_bus_irq;
-	u8  dest_io_apic_id;
-	u8  dest_io_apic_intin;
+	u8  dest_ioapic_id;
+	u8  dest_ioapic_intin;
 
 	const u8* next_entry() const {
 		return reinterpret_cast<const u8*>(this + 1);
@@ -114,15 +123,15 @@ struct io_int_entry
 
 
 /// Local interrupt assignment entry
-struct local_int_entry
+struct localint_entry
 {
 	u8  entry_type;  ///< =4
 	u8  int_type;
-	u16 local_int_flags;
+	u16 localint_flags;
 	u8  source_bus_id;
 	u8  source_bus_irq;
-	u8  dest_local_apic_id;
-	u8  dest_local_apic_intin;
+	u8  dest_localapic_id;
+	u8  dest_localapic_intin;
 
 	const u8* next_entry() const {
 		return reinterpret_cast<const u8*>(this + 1);
