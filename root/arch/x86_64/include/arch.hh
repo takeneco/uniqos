@@ -38,6 +38,9 @@ enum {
 namespace pmem
 {
 
+inline void* direct_map(uptr adr) {
+	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR + adr);
+}
 cause::stype alloc_page(u64* padr);
 
 }  // namespace pmem

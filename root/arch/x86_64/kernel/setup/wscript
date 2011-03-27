@@ -11,6 +11,7 @@ setup_linkflags = [
 ]
 
 setup_source = [
+    '../mpspec.cc',
     'hpet_timer.cc',
     'log_access.cc',
     'log_buf.cc',

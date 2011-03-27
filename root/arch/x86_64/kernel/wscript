@@ -16,6 +16,7 @@ kern_source = [
     'intr.cc',
     'kerninit.cc',
     'kernel_memory.cc',
+    'mpspec.cc',
     'physical_memory.cc',
     'serialout.cc',
     'setupdata.cc',

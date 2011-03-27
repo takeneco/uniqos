@@ -7,6 +7,7 @@
 
 #include "arch.hh"
 #include "misc.hh"
+#include "mpspec.hh"
 
 
 namespace {
@@ -196,9 +197,31 @@ const u8* search_ioapic_struct(const u8* table, u32 length)
 	return 0;
 }
 
+mpspec::const_mpfps* search_mpfps()
+{
+	mpspec::const_mpfps* mpfps;
+
+	const uptr ebda =
+	    *reinterpret_cast<u16*>(arch::pmem::direct_map(0x40e)) << 4;
+	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(ebda), 0x400);
+	if (mpfps)
+		return mpfps;
+
+	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0xf0000), 0x10000);
+	if (mpfps)
+		return mpfps;
+
+	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0x9fc00), 0x400);
+	if (mpfps)
+		return mpfps;
+}
+
 /// I/O APIC が HPET の割り込みを受け入れるよう設定する。
 bool ioapic_setup(const rsdt_header* rsdth)
 {
+	mpspec::const_mpfps* mpfps = search_mpfps();
+	log()("mpfps = ")(mpfps)();
+
 	const madt* desc = reinterpret_cast<const madt*>(
 	    search_desc_by_sig(sig32('A', 'P', 'I', 'C'), rsdth));
 	if (!desc)
