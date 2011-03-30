@@ -6,11 +6,20 @@
 //
 
 #include "arch.hh"
+#include "idte.hh"
 #include "misc.hh"
 #include "mpspec.hh"
+#include "native_ops.hh"
+#include "string.hh"
 
+
+extern "C" void interrupt_timer_handler();
 
 namespace {
+
+enum {
+	INTR_TIMER_VEC = 0x22,
+};
 
 /// checksum
 u8 sum8(const void* ptr, u32 length)
@@ -27,6 +36,10 @@ u8 sum8(const void* ptr, u32 length)
 inline u32 sig32(u32 c1, u32 c2, u32 c3, u32 c4)
 {
 	return c1 | c2 << 8 | c3 << 16 | c4 << 24;
+}
+inline u32 sig32(const char s[4])
+{
+	return s[0] | (s[1] << 8) | (s[2] << 16) | (s[3] << 24);
 }
 
 /// Root System Description Pointer Structure
@@ -276,6 +289,24 @@ public:
 	}
 };
 
+void init_idt()
+{
+	static arch::idte idt[256];
+
+	memory_fill(0, idt, sizeof idt);
+
+	idt[INTR_TIMER_VEC].set(
+	    reinterpret_cast<u64>(interrupt_timer_handler),
+	    8 * 1, // by setup.S
+	    0,
+	    0,
+	    arch::idte::INTR);
+
+	native::idt_ptr64 idtptr;
+	idtptr.init(sizeof idt, idt);
+
+	native::lidt(&idtptr);
+}
 
 /// I/O APIC が HPET の割り込みを受け入れるよう設定する。
 bool ioapic_setup(const rsdt_header* rsdth)
@@ -301,6 +332,9 @@ bool ioapic_setup(const rsdt_header* rsdth)
 	if (!ioapic_desc)
 		return false;
 */
+	init_idt();
+
+	const u8 cpuid = *(u8*)arch::pmem::direct_map(0xfee00020);
 
 	ioapic_control ioapic(ioapic_etr->ioapic_map_padr);
 	log()("ioapic id = ").u(ioapic.read(0), 16)();
@@ -311,10 +345,20 @@ bool ioapic_setup(const rsdt_header* rsdth)
 	log()("red 13 = ").u(ioapic.read(0x13), 16)();
 	log()("red 14 = ").u(ioapic.read(0x14), 16)();
 	log()("red 15 = ").u(ioapic.read(0x15), 16)();
-
+	ioapic.unmask(2, cpuid, INTR_TIMER_VEC);
 
 	return true;
 }
+
+struct hpet_desc
+{
+	DESCRIPTION_HEADER header;
+	u32  eventtimer_block_id;
+	u32  base_adr[3];  // 12bytes
+	u8   hpet_number;
+	u16  minimum_clock_tick_in_periodic;
+	u8   attributes;
+};
 
 }  // namespace
 
@@ -340,6 +384,8 @@ bool hpet_init()
 		    (dh->signature[1])
 		    (dh->signature[2])
 		    (dh->signature[3])();
+		if (sig32(dh->signature) == sig32('H', 'P', 'E', 'T')) {
+		}
 	}
 
 	if (!ioapic_setup(rsdth))
@@ -352,3 +398,9 @@ void hpet_uninit()
 {
 }
 
+
+extern "C" void on_interrupt_timer()
+{
+	u32* eoi = reinterpret_cast<u32*>(0xfee000b0);
+	*eoi = 0;
+}

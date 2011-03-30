@@ -143,9 +143,15 @@ void intr_init()
 		idt_vec[i].disable();
 	}
 
+	idt_vec[0x20].set(
+	    reinterpret_cast<u64>(interrupt_20_handler),
+	    8 * 1, 0, 0, idte::INTR);
+	idt_vec[0x22].set(
+	    reinterpret_cast<u64>(interrupt_20_handler),
+	    8 * 1, 0, 0, idte::INTR);
 	idt_vec[0x30].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, idte::INTR);
 
 	intr_update();
 }

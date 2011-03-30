@@ -36,7 +36,8 @@ def configure_x86_64(conf):
 	conf.env.CXXFLAGS_SETUP = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
-	    '-fomit-frame-pointer', '-Os',
+	    '-fomit-frame-pointer',
+	    '-Os',
 	]
 
 	conf.env.DEFINES_KERNEL = [
@@ -49,7 +50,8 @@ def configure_x86_64(conf):
 	conf.env.CXXFLAGS_KERNEL = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
-	    '-fomit-frame-pointer', '-O2',
+#	    '-fomit-frame-pointer',
+	    '-O2',
 	]
 
 	if conf.options.compiler == 'clang':

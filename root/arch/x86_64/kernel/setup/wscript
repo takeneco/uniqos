@@ -25,6 +25,7 @@ setup_source = [
 
 setup_asm_source = [
     'a20.S',
+    'interrupt_handler.S',
     'setup.S',
 ]
 
