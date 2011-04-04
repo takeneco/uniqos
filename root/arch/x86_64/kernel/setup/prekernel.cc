@@ -60,6 +60,7 @@ void init_physical_memmap()
 	uptr i;
 	for (i = 0; i < pde_count; ++i) {
 		pde[i].set(i * arch::PAGE_L2_SIZE,
+		    page_table_ent::PWT | // write through
 		    page_table_ent::P |
 		    page_table_ent::RW |
 		    page_table_ent::PS |
@@ -75,6 +76,7 @@ void init_physical_memmap()
 
 	for (i = 0; i < pde_table_count; ++i) {
 		pdpte[i].set(reinterpret_cast<uptr>(&pde[i * 512]),
+		    page_table_ent::PWT | // write through
 		    page_table_ent::P |
 		    page_table_ent::RW |
 		    page_table_ent::G);

@@ -37,10 +37,6 @@ inline u32 sig32(u32 c1, u32 c2, u32 c3, u32 c4)
 {
 	return c1 | c2 << 8 | c3 << 16 | c4 << 24;
 }
-inline u32 sig32(const char s[4])
-{
-	return s[0] | (s[1] << 8) | (s[2] << 16) | (s[3] << 24);
-}
 
 /// Root System Description Pointer Structure
 struct rsdp
@@ -335,6 +331,7 @@ bool ioapic_setup(const rsdt_header* rsdth)
 	init_idt();
 
 	const u8 cpuid = *(u8*)arch::pmem::direct_map(0xfee00020);
+	log()("cpuid = ").u(cpuid)();
 
 	ioapic_control ioapic(ioapic_etr->ioapic_map_padr);
 	log()("ioapic id = ").u(ioapic.read(0), 16)();
@@ -360,36 +357,118 @@ struct hpet_desc
 	u8   attributes;
 };
 
+struct hpet_regs
+{
+	u32          caps_l32;
+	u32          caps_h32;
+	u64          reserved1;
+	u64 volatile configs;
+	u64          reserved2;
+	u64 volatile intr_status;
+	u64          reserved3[25];
+	u64 volatile counter;
+	u64          reserved4;
+
+	struct timer_regs {
+		u32 volatile config_l32;
+		u32 volatile config_h32;
+		u64 volatile comparator;
+		u64 volatile fsb_intr;
+		u64          reserved;
+
+	};
+	timer_regs timer[32];
+
+	void enable_legrep() { configs |= 0x3; }
+	void disable() { configs &= ~0x3; }
+
+	/// @brief  enable timer.
+	/// - non periodic mode.
+	/// - not FSB delivery.
+	/// - 64bit timer
+	/// - edge trigger.
+	/// @param  i  index of timer.
+	/// @param  intr_route  I/O APIC input pin number.
+	///   range : 0-31
+	///   ignored in LegacyReplacement mode.
+	void enable_nonperiodic(int i, u32 intr_route=0) {
+		timer[i].config_l32 =
+		    (timer[i].config_l32 & 0xffff8030) |
+		    0x00000004 |
+		    (intr_route << 9);
+	}
+	/// @param  usecs  micro secs.
+	void set_time(int i, u64 usecs) {
+		timer[i].comparator = counter + usecs * 1000000000 / caps_h32;
+	}
+};
+
 }  // namespace
 
 
 bool hpet_init()
 {
 	const rsdp* rsdp = search_rsdp();
+	if (!rsdp) {
+		log()("RSDP search failed.")();
+		return false;
+	}
 
 	const rsdt_header* rsdth =
 	    reinterpret_cast<const rsdt_header*>(rsdp->rsdt_adr);
-
-	if (!rsdth->test())
+	if (!rsdth->test()) {
 		log()("RSDT test failed.")();
-
-	const u32* e = rsdth->get_entry_table();
-	for (u32 i = 0; i < rsdth->get_entry_count(); ++i) {
-		log()("entry[").u(i)("] = ").u(e[i], 16)();
-		DESCRIPTION_HEADER* dh = (DESCRIPTION_HEADER*)e[i];
-		if (!dh->test())
-			log()("DESCRIPTION_HEADER[").u(i)("] test failed.")();
-		log()("dh[").u(i)("].signature = ")
-		    (dh->signature[0])
-		    (dh->signature[1])
-		    (dh->signature[2])
-		    (dh->signature[3])();
-		if (sig32(dh->signature) == sig32('H', 'P', 'E', 'T')) {
-		}
+		return false;
 	}
 
+	const u32* e = rsdth->get_entry_table();
+	hpet_desc* hpetdesc = 0;
+	for (u32 i = 0; i < rsdth->get_entry_count(); ++i) {
+		DESCRIPTION_HEADER* dh =
+		    reinterpret_cast<DESCRIPTION_HEADER*>(e[i]);
+		if (!dh->test()) {
+			log()("DESCRIPTION_HEADER ")(dh)(" test failed.")();
+			return false;
+		}
+		if (dh->signature32 == sig32('H', 'P', 'E', 'T')) {
+			hpetdesc = reinterpret_cast<hpet_desc*>(dh);
+			break;
+		}
+	}
+	if (!hpetdesc) {
+		log()("HPET not found.")();
+		return false;
+	}
+
+	const u64 hpet_regadr =
+	    static_cast<u64>(hpetdesc->base_adr[1]) |
+	    static_cast<u64>(hpetdesc->base_adr[2]) << 32;
+	hpet_regs* hpetregs =
+	    reinterpret_cast<hpet_regs*>(arch::pmem::direct_map(hpet_regadr));
+
+	log()("hpet = ")((const void*)hpetregs)();
+	log()("hpet caps = ").u(hpetregs->caps_l32, 16)();
+	log()("hpet 0cap = ").u(hpetregs->timer[0].config_h32, 16)();
+	log()("hpet 1cap = ").u(hpetregs->timer[1].config_h32, 16)();
+	log()("hpet 2cap = ").u(hpetregs->timer[2].config_h32, 16)();
+	native::sti();
 	if (!ioapic_setup(rsdth))
 		return false;
+
+	hpetregs->enable_legrep();
+	log()("hpet count = ").u(hpetregs->counter)();
+
+	hpetregs->enable_nonperiodic(0);
+	hpetregs->set_time(0, 10000);
+	hpetregs->enable_nonperiodic(1);
+	hpetregs->set_time(1, 10000);
+	hpetregs->enable_nonperiodic(2, 2);
+	hpetregs->set_time(2, 10000);
+	log()("timer0 = ").u(hpetregs->timer[0].comparator)();
+
+native::hlt();
+
+	log()("hpet count = ").u(hpetregs->counter)();
 
 	return true;
 }
