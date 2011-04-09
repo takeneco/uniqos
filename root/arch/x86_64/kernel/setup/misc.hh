@@ -58,6 +58,8 @@ bool lzma_decode(
 
 // HPET
 bool hpet_init();
+void hpet_uninit();
+void timer_sleep(u32 msecs);
 
 
 #endif  // Include guard

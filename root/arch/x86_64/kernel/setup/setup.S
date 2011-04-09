@@ -24,6 +24,7 @@ PAGE_SIZE = 4096
 
 _start:
 .code16
+	cli
 	pushw %cs
 	popw  %ds
 	movw  $SETUP_STACK_ADR >> 4, %ax
@@ -36,14 +37,14 @@ _start:
 
 	movw  $setup_msg, %si
 	call  display16
-
+/*
+	// 8259
 	// Protect I/O interrupt
 	movb  $0xff, %al
 	outb  %al, $0x21
 	nop
 	outb  %al, $0xa1
-	cli
-
+*/
 	// A20 はブートローダが開くので本当はここは不要。
 	call  a20_test_bios
 	movw  %ax, %si

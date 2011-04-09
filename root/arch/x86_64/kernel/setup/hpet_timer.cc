@@ -14,6 +14,7 @@
 
 
 extern "C" void interrupt_timer_handler();
+extern "C" void interrupt_08_handler();
 
 namespace {
 
@@ -291,6 +292,13 @@ void init_idt()
 
 	memory_fill(0, idt, sizeof idt);
 
+	idt[0x08].set(
+	    reinterpret_cast<u64>(interrupt_08_handler),
+	    8 * 1, // by setup.S
+	    0,
+	    0,
+	    arch::idte::TRAP);
+
 	idt[INTR_TIMER_VEC].set(
 	    reinterpret_cast<u64>(interrupt_timer_handler),
 	    8 * 1, // by setup.S
@@ -336,12 +344,6 @@ bool ioapic_setup(const rsdt_header* rsdth)
 	ioapic_control ioapic(ioapic_etr->ioapic_map_padr);
 	log()("ioapic id = ").u(ioapic.read(0), 16)();
 	log()("ioapic ver = ").u(ioapic.read(1), 16)();
-	log()("red 10 = ").u(ioapic.read(0x10), 16)();
-	log()("red 11 = ").u(ioapic.read(0x11), 16)();
-	log()("red 12 = ").u(ioapic.read(0x12), 16)();
-	log()("red 13 = ").u(ioapic.read(0x13), 16)();
-	log()("red 14 = ").u(ioapic.read(0x14), 16)();
-	log()("red 15 = ").u(ioapic.read(0x15), 16)();
 	ioapic.unmask(2, cpuid, INTR_TIMER_VEC);
 
 	return true;
@@ -357,7 +359,7 @@ struct hpet_desc
 	u8   attributes;
 };
 
-struct hpet_regs
+struct hpet_register
 {
 	u32          caps_l32;
 	u32          caps_h32;
@@ -382,8 +384,11 @@ struct hpet_regs
 	void enable_legrep() { configs |= 0x3; }
 	void disable() { configs &= ~0x3; }
 
-	/// @brief  enable timer.
-	/// - non periodic mode.
+	u64 usecs_to_count(u64 usecs) const {
+		return usecs * 1000000000 / caps_h32;
+	}
+
+	/// @brief  enable nonperiodic timer.
 	/// - not FSB delivery.
 	/// - 64bit timer
 	/// - edge trigger.
@@ -391,17 +396,34 @@ struct hpet_regs
 	/// @param  intr_route  I/O APIC input pin number.
 	///   range : 0-31
 	///   ignored in LegacyReplacement mode.
-	void enable_nonperiodic(int i, u32 intr_route=0) {
+	void set_nonperiodic_timer(int i, u32 intr_route=0) {
 		timer[i].config_l32 =
 		    (timer[i].config_l32 & 0xffff8030) |
 		    0x00000004 |
 		    (intr_route << 9);
 	}
+	/// @brief  enable periodic timer
+	/// 周期タイマを使うときは初期化手順が決まっている。
+	void set_periodic_timer(int i, u64 interval_usecs, u32 intr_route=0) {
+		timer[i].config_l32 =
+		    (timer[i].config_l32 & 0xffff8030) |
+		    0x0000004c |
+		    (intr_route << 9);
+		timer[i].comparator =
+		    interval_usecs * 1000000000 / caps_h32;
+	}
+	void unset_timer(int i) {
+		timer[i].config_l32 = timer[i].config_l32 & 0xffff8030;
+		timer[i].comparator = U64CAST(0xffffffffffffffff);
+	}
+	/// set time on nonperiodicmode
 	/// @param  usecs  micro secs.
-	void set_time(int i, u64 usecs) {
+	void set_oneshot_time(int i, u64 usecs) {
 		timer[i].comparator = counter + usecs * 1000000000 / caps_h32;
 	}
 };
+
+hpet_register* hpet_regs;
 
 }  // namespace
 
@@ -443,32 +465,21 @@ bool hpet_init()
 	const u64 hpet_regadr =
 	    static_cast<u64>(hpetdesc->base_adr[1]) |
 	    static_cast<u64>(hpetdesc->base_adr[2]) << 32;
-	hpet_regs* hpetregs =
-	    reinterpret_cast<hpet_regs*>(arch::pmem::direct_map(hpet_regadr));
+	hpet_register* hpetregs = reinterpret_cast<hpet_register*>(
+	    arch::pmem::direct_map(hpet_regadr));
 
-	log()("hpet = ")((const void*)hpetregs)();
-	log()("hpet caps = ").u(hpetregs->caps_l32, 16)();
-	log()("hpet 0cap = ").u(hpetregs->timer[0].config_h32, 16)();
-	log()("hpet 1cap = ").u(hpetregs->timer[1].config_h32, 16)();
-	log()("hpet 2cap = ").u(hpetregs->timer[2].config_h32, 16)();
-	native::sti();
 	if (!ioapic_setup(rsdth))
 		return false;
+	native::sti();
 
 	hpetregs->enable_legrep();
-	log()("hpet count = ").u(hpetregs->counter)();
 
-	hpetregs->enable_nonperiodic(0);
-	hpetregs->set_time(0, 10000);
-	hpetregs->enable_nonperiodic(1);
-	hpetregs->set_time(1, 10000);
-	hpetregs->enable_nonperiodic(2, 2);
-	hpetregs->set_time(2, 10000);
-	log()("timer0 = ").u(hpetregs->timer[0].comparator)();
+	volatile u32* svr = (u32*)arch::pmem::direct_map(0xfee000f0);
+	*svr |= 0x0100;
 
-native::hlt();
-
-	log()("hpet count = ").u(hpetregs->counter)();
+	hpet_regs = hpetregs;
+void timer_sleep(u32);
+	timer_sleep(10);
 
 	return true;
 }
@@ -477,9 +488,27 @@ void hpet_uninit()
 {
 }
 
+/// @param usecs  mili secs.
+void timer_sleep(u32 msecs)
+{
+	hpet_regs->set_nonperiodic_timer(0);
+	hpet_regs->set_oneshot_time(0, msecs * 1000);
+	native::hlt();
+
+	u32 i=0;
+	while (hpet_regs->counter < hpet_regs->timer[0].comparator) {
+		++i;
+	}
+
+	hpet_regs->unset_timer(0);
+}
 
 extern "C" void on_interrupt_timer()
 {
-	u32* eoi = reinterpret_cast<u32*>(0xfee000b0);
+	volatile u32* irr = (u32*)arch::pmem::direct_map(0xfee00200);
+	volatile u32* isr = (u32*)arch::pmem::direct_map(0xfee00100);
+log()()("irr=").u(irr[0], 16)(" ").u(irr[4], 16)(" ").u(irr[8], 16)(" ").u(irr[12], 16)();
+log()("isr=").u(isr[0], 16)(" ").u(isr[4], 16)(" ").u(isr[8], 16)(" ").u(isr[12], 16)();
+	volatile u32* eoi = reinterpret_cast<u32*>(arch::pmem::direct_map(0xfee000b0));
 	*eoi = 0;
 }
