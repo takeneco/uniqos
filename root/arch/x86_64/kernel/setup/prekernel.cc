@@ -5,9 +5,11 @@
 //
 
 #include "access.hh"
+#include "idte.hh"
 #include "misc.hh"
 #include "pagetable.hh"
 #include "arch.hh"
+#include "string.hh"
 
 #include "term.hh"
 #include "native_ops.hh"
@@ -15,10 +17,17 @@
 
 extern char setup_body_start;
 extern char kern_body_start;
+extern "C" void interrupt_trap_handler();
+extern "C" void interrupt_intr_handler();
+
 
 term_chain* debug_tc;
 
 namespace {
+
+enum {
+	INTR_TIMER_VEC = 0x22,
+};
 
 uptr get_memory_end()
 {
@@ -169,6 +178,39 @@ void fixed_allocs()
 	//pde_adr += 8 * 512;
 }
 
+void init_idt()
+{
+	static arch::idte idt[256];
+
+	memory_fill(0, idt, sizeof idt);
+
+	// QEMUでは謎の割り込み 08h が入る。
+	// RTC の名残りの 70h が入ることもある。
+
+	for (int i = 0; i <= 0x1f; ++i) {
+		idt[i].set(
+		    reinterpret_cast<u64>(interrupt_trap_handler),
+		    8 * 1, // by setup.S
+		    0,
+		    0,
+		    arch::idte::TRAP);
+	}
+
+	for (int i = 0x20; i <= 0xff; ++i) {
+		idt[i].set(
+		    reinterpret_cast<u64>(interrupt_intr_handler),
+		    8 * 1, // by setup.S
+		    0,
+		    0,
+		    arch::idte::INTR);
+	}
+
+	native::idt_ptr64 idtptr;
+	idtptr.init(sizeof idt, idt);
+
+	native::lidt(&idtptr);
+}
+
 
 }  // namespace
 
@@ -247,7 +289,25 @@ extern "C" int prekernel()
 	    setup_get_ptr<setup_memory_dumpdata>(SETUP_USEDMEM_DUMP), 32);
 	setup_set_value<u32>(SETUP_USEDMEM_DUMP_COUNT, dumps);
 
+	// init I/O APIC
+	const u8 cpuid = *(u8*)arch::pmem::direct_map(0xfee00020);
+	void* ioapic_base_adr = ioapic_base();
+	if (!ioapic_base_adr)
+		return 0;
+
+	ioapic_control ioapic(ioapic_base_adr);
+	ioapic.unmask(2, cpuid, INTR_TIMER_VEC);
+	ioapic.unmask(8, cpuid, INTR_TIMER_VEC+1);
+
+	init_idt();
+
 	hpet_init();
+
+	//volatile u32* svr = (u32*)arch::pmem::direct_map(0xfee000f0);
+	//*svr |= 0x0100;
+
+void timer_sleep(u32);
+	timer_sleep(10);
 
 	return 0;
 }

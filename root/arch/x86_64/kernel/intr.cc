@@ -260,8 +260,8 @@ extern "C" void on_exception_intr_8()
 		kout->PutStr("exception 8");
 	}
 
-	for (;;)
-		native::hlt();
+	//for (;;)
+	//	native::hlt();
 }
 
 extern "C" void on_exception_intr_9()

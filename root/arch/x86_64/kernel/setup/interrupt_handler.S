@@ -6,13 +6,12 @@
 
 .section .text
 
-.globl interrupt_08_handler
-interrupt_08_handler:
+.globl interrupt_trap_handler
+interrupt_trap_handler:
 	iretq
 
-.globl interrupt_timer_handler
-interrupt_timer_handler:
-
+.globl interrupt_intr_handler
+interrupt_intr_handler:
 	pushq %rbx
 	pushq %rbp
 	pushq %rsi
@@ -29,7 +28,7 @@ interrupt_timer_handler:
 	pushq %r9
 	pushq %r10
 	pushq %r11
-	call  on_interrupt_timer
+	call  on_interrupt
 	popq  %r11
 	popq  %r10
 	popq  %r9

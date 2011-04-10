@@ -6,20 +6,17 @@
 //
 
 #include "arch.hh"
-#include "idte.hh"
 #include "misc.hh"
 #include "mpspec.hh"
 #include "native_ops.hh"
-#include "string.hh"
 
-
-extern "C" void interrupt_timer_handler();
-extern "C" void interrupt_08_handler();
 
 namespace {
 
-enum {
-	INTR_TIMER_VEC = 0x22,
+enum timer_index
+{
+	TIMER_0 = 0,
+	TIMER_1 = 1,
 };
 
 /// checksum
@@ -158,6 +155,8 @@ struct DESCRIPTION_HEADER
 	}
 };
 
+// ここから ACPI
+///////////////////////////////////////////////////////////////////////////////
 
 /// MADT (Multiple APIC Description Table)
 struct madt
@@ -207,147 +206,8 @@ const u8* search_ioapic_struct(const u8* table, u32 length)
 	return 0;
 }
 
-mpspec::const_mpfps* search_mpfps()
-{
-	mpspec::const_mpfps* mpfps;
-
-	const uptr ebda =
-	    *reinterpret_cast<u16*>(arch::pmem::direct_map(0x40e)) << 4;
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(ebda), 0x400);
-	if (mpfps)
-		return mpfps;
-
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0xf0000), 0x10000);
-	if (mpfps)
-		return mpfps;
-
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0x9fc00), 0x400);
-	if (mpfps)
-		return mpfps;
-
-	return 0;
-}
-
-const mpspec::ioapic_entry* search_ioapic(mpspec::const_mpfps* mpfps)
-{
-	mpspec::const_mpcth* mpcth = reinterpret_cast<mpspec::const_mpcth*>(
-	    arch::pmem::direct_map(mpfps->mp_config_padr));
-
-	static const u16 type_size_map[] = {
-		sizeof (mpspec::processor_entry),
-		sizeof (mpspec::bus_entry),
-		sizeof (mpspec::ioapic_entry),
-		sizeof (mpspec::ioint_entry),
-		sizeof (mpspec::localint_entry),
-	};
-
-	const u8* ent = mpcth->first_entry();
-	for (int i = 0; i < mpcth->entry_count; ++i) {
-		if (*ent == mpspec::ENTRY_IOAPIC)
-			return
-			    reinterpret_cast<const mpspec::ioapic_entry*>(ent);
-		if (*ent >= 5)
-			break;
-		ent += type_size_map[*ent];
-	}
-
-	return 0;
-}
-
-class ioapic_control
-{
-	struct memmapped_regs {
-		u32 volatile ioregsel;
-		u32          unused[3];
-		u32 volatile iowin;
-	};
-	memmapped_regs* const regs;
-
-public:
-	ioapic_control(u32 padr) 
-	    : regs(reinterpret_cast<memmapped_regs*>(
-	           arch::pmem::direct_map(padr)))
-	{}
-	u32 read(u32 sel) {
-		regs->ioregsel = sel;
-		return regs->iowin;
-	}
-	void write(u32 sel, u32 data) {
-		regs->ioregsel = sel;
-		regs->iowin = data;
-	}
-	void mask(u32 index) {
-		write(0x10 + index * 2, 0x00010000);
-	}
-	void unmask(u32 index, u8 cpuid, u8 vec) {
-		// edge trigger, physical destination, fixd delivery
-		write(0x10 + index * 2 + 1, static_cast<u32>(cpuid) << 24);
-		write(0x10 + index * 2, vec);
-	}
-};
-
-void init_idt()
-{
-	static arch::idte idt[256];
-
-	memory_fill(0, idt, sizeof idt);
-
-	idt[0x08].set(
-	    reinterpret_cast<u64>(interrupt_08_handler),
-	    8 * 1, // by setup.S
-	    0,
-	    0,
-	    arch::idte::TRAP);
-
-	idt[INTR_TIMER_VEC].set(
-	    reinterpret_cast<u64>(interrupt_timer_handler),
-	    8 * 1, // by setup.S
-	    0,
-	    0,
-	    arch::idte::INTR);
-
-	native::idt_ptr64 idtptr;
-	idtptr.init(sizeof idt, idt);
-
-	native::lidt(&idtptr);
-}
-
-/// I/O APIC が HPET の割り込みを受け入れるよう設定する。
-bool ioapic_setup(const rsdt_header* rsdth)
-{
-	mpspec::const_mpfps* mpfps = search_mpfps();
-	if (mpfps == 0)
-		return false;
-
-	const mpspec::ioapic_entry* ioapic_etr = search_ioapic(mpfps);
-	if (ioapic_etr == 0)
-		return false;
-
-	rsdth = rsdth;
-/*
-	const madt* desc = reinterpret_cast<const madt*>(
-	    search_desc_by_sig(sig32('A', 'P', 'I', 'C'), rsdth));
-	if (!desc)
-		return false;
-
-	const u8* ioapic_desc = search_ioapic_struct(
-	    desc->get_structure_table(),
-	    desc->get_structure_length());
-	if (!ioapic_desc)
-		return false;
-*/
-	init_idt();
-
-	const u8 cpuid = *(u8*)arch::pmem::direct_map(0xfee00020);
-	log()("cpuid = ").u(cpuid)();
-
-	ioapic_control ioapic(ioapic_etr->ioapic_map_padr);
-	log()("ioapic id = ").u(ioapic.read(0), 16)();
-	log()("ioapic ver = ").u(ioapic.read(1), 16)();
-	ioapic.unmask(2, cpuid, INTR_TIMER_VEC);
-
-	return true;
-}
+///////////////////////////////////////////////////////////////////////////////
+// ここまで ACPI
 
 struct hpet_desc
 {
@@ -355,7 +215,7 @@ struct hpet_desc
 	u32  eventtimer_block_id;
 	u32  base_adr[3];  // 12bytes
 	u8   hpet_number;
-	u16  minimum_clock_tick_in_periodic;
+	u8   minimum_clock_tick_in_periodic[2];
 	u8   attributes;
 };
 
@@ -377,7 +237,6 @@ struct hpet_register
 		u64 volatile comparator;
 		u64 volatile fsb_intr;
 		u64          reserved;
-
 	};
 	timer_regs timer[32];
 
@@ -396,15 +255,20 @@ struct hpet_register
 	/// @param  intr_route  I/O APIC input pin number.
 	///   range : 0-31
 	///   ignored in LegacyReplacement mode.
-	void set_nonperiodic_timer(int i, u32 intr_route=0) {
+	void set_nonperiodic_timer(timer_index i, u32 intr_route=0)
+	{
 		timer[i].config_l32 =
 		    (timer[i].config_l32 & 0xffff8030) |
 		    0x00000004 |
 		    (intr_route << 9);
 	}
+
 	/// @brief  enable periodic timer
-	/// 周期タイマを使うときは初期化手順が決まっている。
-	void set_periodic_timer(int i, u64 interval_usecs, u32 intr_route=0) {
+	/// 周期タイマを使うときはこの関数だけでは設定できない。
+	/// 初期化手順から合わせる必要がある。
+	void set_periodic_timer(
+	    timer_index i, u64 interval_usecs, u32 intr_route=0)
+	{
 		timer[i].config_l32 =
 		    (timer[i].config_l32 & 0xffff8030) |
 		    0x0000004c |
@@ -412,35 +276,34 @@ struct hpet_register
 		timer[i].comparator =
 		    interval_usecs * 1000000000 / caps_h32;
 	}
-	void unset_timer(int i) {
+
+	void unset_timer(timer_index i) {
 		timer[i].config_l32 = timer[i].config_l32 & 0xffff8030;
 		timer[i].comparator = U64CAST(0xffffffffffffffff);
 	}
+
 	/// set time on nonperiodicmode
-	/// @param  usecs  micro secs.
-	void set_oneshot_time(int i, u64 usecs) {
-		timer[i].comparator = counter + usecs * 1000000000 / caps_h32;
+	/// @param  usecs  specify micro secs.
+	u64 set_oneshot_time(timer_index i, u64 usecs) {
+		const u64 time = counter + usecs_to_count(usecs);
+		timer[i].comparator = time;
+		return time;
 	}
 };
 
-hpet_register* hpet_regs;
-
-}  // namespace
-
-
-bool hpet_init()
+hpet_register* hpet_detect()
 {
 	const rsdp* rsdp = search_rsdp();
 	if (!rsdp) {
 		log()("RSDP search failed.")();
-		return false;
+		return 0;
 	}
 
 	const rsdt_header* rsdth =
 	    reinterpret_cast<const rsdt_header*>(rsdp->rsdt_adr);
 	if (!rsdth->test()) {
 		log()("RSDT test failed.")();
-		return false;
+		return 0;
 	}
 
 	const u32* e = rsdth->get_entry_table();
@@ -450,7 +313,7 @@ bool hpet_init()
 		    reinterpret_cast<DESCRIPTION_HEADER*>(e[i]);
 		if (!dh->test()) {
 			log()("DESCRIPTION_HEADER ")(dh)(" test failed.")();
-			return false;
+			return 0;
 		}
 		if (dh->signature32 == sig32('H', 'P', 'E', 'T')) {
 			hpetdesc = reinterpret_cast<hpet_desc*>(dh);
@@ -459,56 +322,58 @@ bool hpet_init()
 	}
 	if (!hpetdesc) {
 		log()("HPET not found.")();
-		return false;
+		return 0;
 	}
 
 	const u64 hpet_regadr =
 	    static_cast<u64>(hpetdesc->base_adr[1]) |
 	    static_cast<u64>(hpetdesc->base_adr[2]) << 32;
-	hpet_register* hpetregs = reinterpret_cast<hpet_register*>(
+
+	return reinterpret_cast<hpet_register*>(
 	    arch::pmem::direct_map(hpet_regadr));
+}
 
-	if (!ioapic_setup(rsdth))
-		return false;
-	native::sti();
+hpet_register* hpet_regs;
 
-	hpetregs->enable_legrep();
+}  // namespace
 
-	volatile u32* svr = (u32*)arch::pmem::direct_map(0xfee000f0);
-	*svr |= 0x0100;
 
+bool hpet_init()
+{
+	hpet_register* hpetregs = hpet_detect();
 	hpet_regs = hpetregs;
-void timer_sleep(u32);
-	timer_sleep(10);
+
+	if (hpetregs == 0)
+		return false;
+
+	// setup periodic timer
+	hpetregs->disable();
+	hpetregs->counter = 0;
+	hpetregs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
+	hpetregs->enable_legrep();
 
 	return true;
 }
 
-void hpet_uninit()
-{
-}
-
-/// @param usecs  mili secs.
+/// @param usecs  specify mili secs.
 void timer_sleep(u32 msecs)
 {
-	hpet_regs->set_nonperiodic_timer(0);
-	hpet_regs->set_oneshot_time(0, msecs * 1000);
-	native::hlt();
+	native::sti();
 
-	u32 i=0;
-	while (hpet_regs->counter < hpet_regs->timer[0].comparator) {
-		++i;
-	}
+	hpet_regs->set_nonperiodic_timer(TIMER_1, 8);
+	const u64 limit = hpet_regs->set_oneshot_time(TIMER_1, 1000 * msecs);
 
-	hpet_regs->unset_timer(0);
+	do {
+		native::hlt();
+	} while (hpet_regs->counter < limit);
+
+	hpet_regs->unset_timer(TIMER_1);
+
+	native::cli();
 }
 
-extern "C" void on_interrupt_timer()
+extern "C" void on_interrupt()
 {
-	volatile u32* irr = (u32*)arch::pmem::direct_map(0xfee00200);
-	volatile u32* isr = (u32*)arch::pmem::direct_map(0xfee00100);
-log()()("irr=").u(irr[0], 16)(" ").u(irr[4], 16)(" ").u(irr[8], 16)(" ").u(irr[12], 16)();
-log()("isr=").u(isr[0], 16)(" ").u(isr[4], 16)(" ").u(isr[8], 16)(" ").u(isr[12], 16)();
 	volatile u32* eoi = reinterpret_cast<u32*>(arch::pmem::direct_map(0xfee000b0));
 	*eoi = 0;
 }
