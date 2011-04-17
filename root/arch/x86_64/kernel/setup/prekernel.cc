@@ -69,7 +69,6 @@ void init_physical_memmap()
 	uptr i;
 	for (i = 0; i < pde_count; ++i) {
 		pde[i].set(i * arch::PAGE_L2_SIZE,
-		    page_table_ent::PWT | // write through
 		    page_table_ent::P |
 		    page_table_ent::RW |
 		    page_table_ent::PS |
@@ -85,10 +84,8 @@ void init_physical_memmap()
 
 	for (i = 0; i < pde_table_count; ++i) {
 		pdpte[i].set(reinterpret_cast<uptr>(&pde[i * 512]),
-		    page_table_ent::PWT | // write through
 		    page_table_ent::P |
-		    page_table_ent::RW |
-		    page_table_ent::G);
+		    page_table_ent::RW);
 	}
 }
 
@@ -290,14 +287,14 @@ extern "C" int prekernel()
 	setup_set_value<u32>(SETUP_USEDMEM_DUMP_COUNT, dumps);
 
 	// init I/O APIC
-	const u8 cpuid = *(u8*)arch::pmem::direct_map(0xfee00020);
+	const u32 cpuid = *(u32*)arch::pmem::direct_map(0xfee00020);
 	void* ioapic_base_adr = ioapic_base();
 	if (!ioapic_base_adr)
 		return 0;
 
 	ioapic_control ioapic(ioapic_base_adr);
-	ioapic.unmask(2, cpuid, INTR_TIMER_VEC);
-	ioapic.unmask(8, cpuid, INTR_TIMER_VEC+1);
+	ioapic.unmask(2, cpuid >> 24, INTR_TIMER_VEC);
+	ioapic.unmask(8, cpuid >> 24, INTR_TIMER_VEC+1);
 
 	init_idt();
 
@@ -307,7 +304,7 @@ extern "C" int prekernel()
 	//*svr |= 0x0100;
 
 void timer_sleep(u32);
-	timer_sleep(10);
+	//timer_sleep(10);
 
 	return 0;
 }

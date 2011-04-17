@@ -48,15 +48,15 @@ inline u32* local_apic_reg(uptr offset) {
 cause::stype local_apic_init()
 {
 	volatile u32* reg;
-	volatile u32  tmp;
 
 	kern_get_out()->put_str("local apic version = ")->
 	    put_u64hex(*local_apic_reg(LOCAL_APIC_VERSION))->put_endl();
 
 	// Local APIC enable
 	reg = local_apic_reg(LOCAL_APIC_SVR);
-	tmp = *reg | 0x0100;
-	*reg = tmp;
+	// 32bit アクセスは必須。
+	// コンパイラの最適化で 64bit アクセスにならないように注意。
+	*reg |= 0x0100;
 
 	*local_apic_reg(LOCAL_APIC_ID) = 0;
 	*local_apic_reg(LOCAL_APIC_LDR) = 0x1000000;

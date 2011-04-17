@@ -142,9 +142,9 @@ unsigned long load_kernel()
 		int r = bios_block_copy(
 			static_cast<unsigned long>(BOOTLDR_WORK_SEG) << 4,
 			dest, block_size / 2);
-		if (r != 0) {
+		if (r < 0) {
 			bios_putstr(copy_failed);
-			bios_put8_b16(static_cast<_u8>(r & 0xff));
+			bios_put16_b16(static_cast<u16>(r));
 			keyboard_and_reboot();
 		}
 		dest += block_size;
