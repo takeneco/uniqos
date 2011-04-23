@@ -19,7 +19,7 @@ enum {
 namespace arch
 {
 
-struct tss
+struct tss64
 {
 	u32 reserved1;  // 0x00
 
@@ -52,7 +52,13 @@ struct tss
 	u32 reserved5;
 
 	u16 reserved6;  // 0x64
-	u16 iomap_offset;
+	u16 ioperm_map_offset;
+
+	u8  intr_redir_map[32];
+
+	void init_iomap_offset() {
+		iomap_offset = sizeof (tss64);
+	}
 };
 
 /// LDT and TSS descriptor
