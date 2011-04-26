@@ -9,6 +9,7 @@
 #include "misc.hh"
 #include "pagetable.hh"
 #include "arch.hh"
+#include "desctable.hh"
 #include "string.hh"
 
 #include "term.hh"
@@ -27,6 +28,10 @@ namespace {
 
 enum {
 	INTR_TIMER_VEC = 0x22,
+};
+
+enum {
+	IST1 = U64(0xffffffffffffc000),
 };
 
 uptr get_memory_end()
@@ -203,11 +208,43 @@ void init_idt()
 	}
 
 	native::idt_ptr64 idtptr;
-	idtptr.init(sizeof idt, idt);
+	idtptr.set(sizeof idt, idt);
 
 	native::lidt(&idtptr);
 }
 
+void init_tss()
+{
+	static arch::tss64 tss;
+
+	memory_fill(0, &tss, sizeof tss);
+
+	tss.init_iomap_offset();
+	tss.ist1_l = static_cast<u32>(IST1);
+	tss.ist1_h = static_cast<u32>(IST1 >> 32);
+
+	memory_fill(0xff, tss.intr_redir_map, sizeof tss.intr_redir_map);
+
+	native::gdt_ptr64 gdt_ptr;
+	native::sgdt(&gdt_ptr);
+
+	u16 gdt_len;
+	u8* gdt_table;
+	gdt_ptr.get(&gdt_len, reinterpret_cast<void**>(&gdt_table));
+
+	arch::tss_desc* tss_desc =
+	    reinterpret_cast<arch::tss_desc*>(gdt_table + 0x20);
+
+	tss_desc->set(
+	    reinterpret_cast<uptr>(&tss),
+	    sizeof tss - 1,
+	    0,
+	    tss_desc->TSS | tss_desc->P);
+
+	asm volatile(
+	    "movw $0x20, %%ax\n"
+	    "ltr %%ax" : : : "%ax");
+}
 
 }  // namespace
 
@@ -296,6 +333,7 @@ extern "C" int prekernel()
 	ioapic.unmask(2, cpuid >> 24, INTR_TIMER_VEC);
 	ioapic.unmask(8, cpuid >> 24, INTR_TIMER_VEC+1);
 
+	init_tss();
 	init_idt();
 
 	hpet_init();
@@ -304,7 +342,7 @@ extern "C" int prekernel()
 	//*svr |= 0x0100;
 
 void timer_sleep(u32);
-	//timer_sleep(10);
+	timer_sleep(10);
 
 	return 0;
 }

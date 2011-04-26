@@ -222,9 +222,9 @@ struct gidt_ptr64 {
 	u16 length;
 	u16 ptr[4];
 
-	void init(
-		u16   len,    ///< sizeof gdt/idt table
-		void* table)  ///< Phisical address to gdt/idt table
+	void set(
+	    u16   len,    ///< sizeof gdt/idt table
+	    void* table)  ///< Phisical address to gdt/idt table
 	{
 		length = len - 1;
 		const u64 p = reinterpret_cast<u64>(table);
@@ -233,6 +233,18 @@ struct gidt_ptr64 {
 		ptr[2] = static_cast<u16>(p >> 32);
 		ptr[3] = static_cast<u16>(p >> 48);
 	}
+
+	void get(
+	    u16*   len,
+	    void** table)
+	{
+		*len = length;
+		*table = reinterpret_cast<void*>(
+		    (static_cast<u64>(ptr[0])) |
+		    (static_cast<u64>(ptr[1]) << 16) |
+		    (static_cast<u64>(ptr[2]) << 32) |
+		    (static_cast<u64>(ptr[3]) << 48));
+	}
 };
 typedef gidt_ptr64 gdt_ptr64;
 typedef gidt_ptr64 idt_ptr64;
@@ -240,6 +252,10 @@ typedef gidt_ptr64 idt_ptr64;
 // @brief lgdt を実行する。
 inline void lgdt(gdt_ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
+}
+
+inline void sgdt(gdt_ptr64* ptr) {
+	asm volatile ("sgdt %0" : "=m"(*ptr));
 }
 
 // @brief lidt を実行する。

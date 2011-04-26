@@ -57,7 +57,7 @@ struct tss64
 	u8  intr_redir_map[32];
 
 	void init_iomap_offset() {
-		iomap_offset = sizeof (tss64);
+		ioperm_map_offset = sizeof (tss64);
 	}
 };
 
@@ -87,8 +87,9 @@ public:
 		       (limit & 0x000f0000) << 32 |
 		       (dpl & 3) << 45 |
 		       flags;
-		e[1] = base & U64CAST(0xffffffff00000000) >> 32;
+		e[1] = (base & U64(0xffffffff00000000)) >> 32;
 	}
+	u64 get(int i) const { return e[i]; }
 };
 
 typedef ldttss_desc tss_desc;

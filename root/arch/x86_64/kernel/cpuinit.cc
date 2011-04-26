@@ -337,7 +337,7 @@ int cpu_init()
 	cpu0_gdt.user_code.set(3);
 	cpu0_gdt.user_data.set(3);
 	native::gdt_ptr64 gdtptr;
-	gdtptr.init(sizeof cpu0_gdt, &cpu0_gdt);
+	gdtptr.set(sizeof cpu0_gdt, &cpu0_gdt);
 	native::lgdt(&gdtptr);
 	native::set_ss(cpu0_gdt.kern_data_offset());
 

@@ -266,22 +266,28 @@ checksum8:
 
 	.align 16
 setup_gdt:
-	// 3.4.3(p.3-12)
+	// [0x00] nullセグメント
 	.byte 0, 0, 0, 0, 0, 0, 0, 0
+
 	// base  0x00000000
 	// limit 0xffffff
-	// [1]64bitコードセグメント
+	// [0x08] 64bitコードセグメント
 	.word 0xffff, 0x0000, 0x9a00, 0x00af
-	// [2]32bitコードセグメント
+
+	// [0x10] 32bitコードセグメント
 	//    base : 0x00000
 	.word 0xffff, 0x0000, 0x9a00, 0x00cf
-	// [3]32bitデータセグメント
+
+	// [0x18] 32bitデータセグメント
 	//    base : 0x00000
 	.word 0xffff, 0x0000, 0x9200, 0x00cf
 
+	// [0x20] 後で 64bit TSS になる
+	.long 0, 0, 0, 0
+
 	.align 4
 setup_gdtr:
-	.short 8*4 - 1
+	.short 0x30 - 1
 	.long setup_gdt
 setup_idtr:
 	.short 0

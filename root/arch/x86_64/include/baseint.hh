@@ -29,6 +29,7 @@ typedef _u32 _uptr;
 typedef _s32 _sptr;
 
 #  define _u64cast(n)  n ## ULL
+#  define u64cast_(n)  n ## ULL
 
 #else  // !ARCH_W32 && !ARCH_IA32
 
@@ -51,6 +52,7 @@ typedef _u64 _uptr;
 typedef _s64 _sptr;
 
 #  define _u64cast(n)  n ## UL
+#  define u64cast_(n)  n ## UL
 
 #endif  // ARCH_IA32
 

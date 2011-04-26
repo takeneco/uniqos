@@ -5,6 +5,8 @@
 
 #include "kerninit.hh"
 
+#include "idte.hh"
+#include "log.hh"
 #include "native_ops.hh"
 #include "output.hh"
 #include "string.hh"
@@ -12,38 +14,12 @@
 
 namespace {
 
-class idte
-{
-	typedef u64 type;
-	type e[2];
-public:
-	enum FLAGS {
-		INTR = 0x0e0000000000,
-		TRAP = 0x0f0000000000,
-	};
-	void set(type offset, type seg, type ist, type dpl, type flags) {
-		e[0] = (offset & 0x000000000000ffff)       |
-		       (offset & 0x00000000ffff0000) << 32 |
-		       (seg    & 0x000000000000ffff) << 16 |
-		       (ist    & 0x0000000000000007) << 32 |
-		       (dpl    & 0x0000000000000003) << 45 |
-		       (flags  & 0x00001f0000000000)       |
-		       (         0x0000800000000000); // Enable(P) flag.
-		e[1] = (offset & 0xffffffff00000000) >> 32;
-	}
-	void disable() {
-		e[0] = e[1] = 0;
-	}
-
-	u64 get(int i) const { return e[i]; }
-};
-
-idte idt_vec[256];
+arch::idte idt_vec[256];
 
 void intr_update()
 {
 	native::idt_ptr64 idtptr;
-	idtptr.init(sizeof (idte) * 256, &idt_vec[0]);
+	idtptr.set(sizeof (arch::idte) * 256, &idt_vec[0]);
 
 	native::lidt(&idtptr);
 }
@@ -80,64 +56,64 @@ void intr_init()
 {
 	idt_vec[0].set(
 	    reinterpret_cast<u64>(exception_intr_0_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[1].set(
 	    reinterpret_cast<u64>(exception_intr_1_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[2].set(
 	    reinterpret_cast<u64>(exception_intr_2_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[3].set(
 	    reinterpret_cast<u64>(exception_intr_3_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[4].set(
 	    reinterpret_cast<u64>(exception_intr_4_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[5].set(
 	    reinterpret_cast<u64>(exception_intr_5_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[6].set(
 	    reinterpret_cast<u64>(exception_intr_6_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[7].set(
 	    reinterpret_cast<u64>(exception_intr_7_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[8].set(
 	    reinterpret_cast<u64>(exception_intr_8_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 1, 0, arch::idte::TRAP);
 	idt_vec[9].set(
 	    reinterpret_cast<u64>(exception_intr_9_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[10].set(
 	    reinterpret_cast<u64>(exception_intr_10_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[11].set(
 	    reinterpret_cast<u64>(exception_intr_11_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[12].set(
 	    reinterpret_cast<u64>(exception_intr_12_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[13].set(
 	    reinterpret_cast<u64>(exception_intr_13_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[14].set(
 	    reinterpret_cast<u64>(exception_intr_14_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[15].set(
 	    reinterpret_cast<u64>(exception_intr_15_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[16].set(
 	    reinterpret_cast<u64>(exception_intr_16_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[17].set(
 	    reinterpret_cast<u64>(exception_intr_17_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[18].set(
 	    reinterpret_cast<u64>(exception_intr_18_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[19].set(
 	    reinterpret_cast<u64>(exception_intr_19_handler),
-	    8 * 1, 0, 0, idte::TRAP);
+	    8 * 1, 0, 0, arch::idte::TRAP);
 
 	for (int i = 20; i < 256; i++) {
 		idt_vec[i].disable();
@@ -145,13 +121,13 @@ void intr_init()
 
 	idt_vec[0x20].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
-	    8 * 1, 0, 0, idte::INTR);
+	    8 * 1, 0, 0, arch::idte::INTR);
 	idt_vec[0x22].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
-	    8 * 1, 0, 0, idte::INTR);
+	    8 * 1, 0, 0, arch::idte::INTR);
 	idt_vec[0x30].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
-	    8 * 1, 0, 0, idte::INTR);
+	    8 * 1, 0, 0, arch::idte::INTR);
 
 	intr_update();
 }
@@ -160,7 +136,7 @@ void intr_set_handler(int intr, intr_handler handler)
 {
 	idt_vec[intr].set(
 	    reinterpret_cast<u64>(handler),
-	    8 * 1, 0, 0, idte::INTR);
+	    8 * 1, 0, 0, arch::idte::INTR);
 
 	intr_update();
 }
@@ -259,6 +235,8 @@ extern "C" void on_exception_intr_8()
 	if (kout) {
 		kout->PutStr("exception 8");
 	}
+
+	kout->PutU64Hex((u64)(&kout));
 
 	//for (;;)
 	//	native::hlt();

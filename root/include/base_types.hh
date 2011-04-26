@@ -25,6 +25,7 @@ typedef _umax umax;
 typedef _sptr sptr;
 typedef _uptr uptr;
 #define U64CAST(n) _u64cast(n)
+#define U64(n) u64cast_(n)
 
 inline _u16 _swap16(_u16 x) {
 	return (x >> 8) | (x << 8);

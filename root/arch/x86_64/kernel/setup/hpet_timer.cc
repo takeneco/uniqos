@@ -376,4 +376,6 @@ extern "C" void on_interrupt()
 {
 	volatile u32* eoi = reinterpret_cast<u32*>(arch::pmem::direct_map(0xfee000b0));
 	*eoi = 0;
+
+	log()("intr &eoi = ")(&eoi)();
 }
