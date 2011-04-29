@@ -14,6 +14,57 @@
 
 namespace {
 
+struct reg_stack
+{
+	u64 rax;
+	u64 rbx;
+	u64 rcx;
+	u64 rdx;
+	u64 rbp;
+	u64 rsi;
+	u64 rdi;
+	u64 r8;
+	u64 r9;
+	u64 r10;
+	u64 r11;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
+
+	u64 rip;
+	u64 cs;
+	u64 rf;
+	u64 rsp;
+	u64 ss;
+};
+
+struct reg_stack_witherr
+{
+	u64 rax;
+	u64 rbx;
+	u64 rcx;
+	u64 rdx;
+	u64 rbp;
+	u64 rsi;
+	u64 rdi;
+	u64 r8;
+	u64 r9;
+	u64 r10;
+	u64 r11;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
+
+	u64 error_code;
+	u64 rip;
+	u64 cs;
+	u64 rf;
+	u64 rsp;
+	u64 ss;
+};
+
 arch::idte idt_vec[256];
 
 void intr_update()
@@ -95,7 +146,7 @@ void intr_init()
 	    8 * 1, 0, 0, arch::idte::TRAP);
 	idt_vec[13].set(
 	    reinterpret_cast<u64>(exception_intr_13_handler),
-	    8 * 1, 0, 0, arch::idte::TRAP);
+	    8 * 1, 1, 0, arch::idte::TRAP);
 	idt_vec[14].set(
 	    reinterpret_cast<u64>(exception_intr_14_handler),
 	    8 * 1, 0, 0, arch::idte::TRAP);
@@ -292,6 +343,30 @@ extern "C" void on_exception_intr_13()
 	if (kout) {
 		kout->PutStr("exception 13");
 	}
+	log()("&kout=")(kout)();
+	u64* stack=(u64*)0xffffffffffffc000;
+	stack--;
+	log()("ss =").u(*stack--, 16)();
+	log()("rsp=").u(*stack--, 16)();
+	log()("rf =").u(*stack--, 16)();
+	log()("cs =").u(*stack--, 16)();
+	log()("rip=").u(*stack--, 16)();
+	log()("err=").u(*stack--, 16)();
+	log()("r15=").u(*stack--, 16)();
+	log()("r14=").u(*stack--, 16)();
+	log()("r13=").u(*stack--, 16)();
+	log()("r12=").u(*stack--, 16)();
+	log()("r11=").u(*stack--, 16)();
+	log()("r10=").u(*stack--, 16)();
+	log()("r9 =").u(*stack--, 16)();
+	log()("r8 =").u(*stack--, 16)();
+	log()("rdi=").u(*stack--, 16)();
+	log()("rsi=").u(*stack--, 16)();
+	log()("rbp=").u(*stack--, 16)();
+	log()("rdx=").u(*stack--, 16)();
+	log()("rcx=").u(*stack--, 16)();
+	log()("rbx=").u(*stack--, 16)();
+	log()("rax=").u(*stack--, 16)();
 
 	for (;;)
 		native::hlt();
