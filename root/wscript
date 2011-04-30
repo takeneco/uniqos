@@ -96,6 +96,7 @@ def options(opt):
 	    default = 'clang',
 	    action  = 'store',
 	    help    = 'compiler family (llvm,gnu)')
+	opt.recurse('arch')
 
 def configure(conf):
 	configure_x86_64(conf)

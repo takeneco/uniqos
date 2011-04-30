@@ -1,4 +1,6 @@
+# (C) 2011 KATO Takeshi
 
-def build(bld):
-	bld.recurse('bootsect')
-	bld.recurse('bootldr')
+
+def build(x):
+	if x.env.boot_fd:
+		x.recurse('fd')

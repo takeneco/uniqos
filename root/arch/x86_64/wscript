@@ -1,39 +1,47 @@
+# @file  wscript
+# @brief x86_64固有のコード
 
-def configure(conf):
-	conf.find_program('mcopy', var='MCOPY')
-	conf.recurse('kernel')
+# (C) 2011 KATO Takeshi
+
+
+def options(x):
+	x.add_option('--boot-fd',
+	    action  = 'store_true',
+	    default = False,
+	    help    = 'create boot floppy image.')
+
+def configure(x):
+	x.find_program('mcopy', var='MCOPY')
+	x.recurse('kernel')
+	x.env.boot_fd = x.options.boot_fd
 
 def build(x):
 	x.recurse('boot')
 	x.recurse('kernel')
 
-	x (
-	    target = 'root.bin',
-	    source = ['kernel/setup/setup.bin', 'kernel/kernel.bin.lzma'],
-	    rule   = 'cat ${SRC[0].abspath()} ${SRC[1].abspath()} > ${TGT}',
+	x(target = 'root.bin',
+	  source = ['kernel/setup/setup.bin', 'kernel/kernel.bin.lzma'],
+	  rule   = 'cat ${SRC[0].abspath()} ${SRC[1].abspath()} > ${TGT}',
 	)
-	x (
-	    target = 'fd1440.img',
-	    source = '../../tools/mkfdimg',
-	    rule   = '${SRC[0].abspath()} -r 7 ${TGT}',
-	    name   = 'fdimg1',
-	)
-	x (
-	    target = 'fd1440.img',
-	    source = ['../../tools/putimg', 'boot/bootsect/bootsect'],
-	    rule   = '${SRC[0].abspath()} -t 0x3e ${SRC[1].abspath()} ${TGT}',
-	    after  = 'fdimg1',
-	)
-	x (
-	    target = 'fd1440.img',
-	    source = ['../../tools/putimg', 'boot/bootldr/bootldr.bin'],
-	    rule   = '${SRC[0].abspath()} -t 0x0200 ${SRC[1].abspath()} ${TGT}',
-	    after  = 'fdimg1',
-	)
-	x (
-	    target = 'fd1440.img',
-	    source = 'root.bin',
-	    rule   = '${MCOPY} -i ${TGT} ${SRC} ::ROOTCORE.BIN',
-	    after  = 'fdimg1',
-	)
+	if x.env.boot_fd:
+		x(target = 'fd1440.img',
+		  source = '../../tools/mkfdimg',
+		  rule   = '${SRC[0].abspath()} -r 7 ${TGT}',
+		  name   = 'fdimg1',
+		)
+		x(target = 'fd1440.img',
+		  source = ['../../tools/putimg', 'boot/fd/bootsect/bootsect'],
+		  rule   = '${SRC[0].abspath()} -t 0x3e ${SRC[1].abspath()} ${TGT}',
+		  after  = 'fdimg1',
+		)
+		x(target = 'fd1440.img',
+		  source = ['../../tools/putimg', 'boot/fd/bootldr/bootldr.bin'],
+		  rule   = '${SRC[0].abspath()} -t 0x0200 ${SRC[1].abspath()} ${TGT}',
+		  after  = 'fdimg1',
+		)
+		x(target = 'fd1440.img',
+		  source = 'root.bin',
+		  rule   = '${MCOPY} -i ${TGT} ${SRC} ::ROOTCORE.BIN',
+		  after  = 'fdimg1',
+		)
 

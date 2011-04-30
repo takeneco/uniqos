@@ -1,6 +1,9 @@
 
-def configure(conf):
-	conf.recurse(conf.env.arch_name)
+def options(x):
+	x.recurse('x86_64')
 
-def build(bld):
-	bld.recurse(bld.env.arch_name)
+def configure(x):
+	x.recurse(x.env.arch_name)
+
+def build(x):
+	x.recurse(x.env.arch_name)

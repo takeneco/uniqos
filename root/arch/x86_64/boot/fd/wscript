@@ -1,0 +1,9 @@
+# @file  wscript
+# @brief x86_64固有のブート処理をコンパイルする
+
+# (C) 2011 KATO Takeshi
+
+
+def build(x):
+	x.recurse('bootsect')
+	x.recurse('bootldr')
