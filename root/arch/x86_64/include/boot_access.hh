@@ -1,11 +1,11 @@
-/// @file    setup.h
-/// @brief   アセンブラとC++で共有するパラメータの定義
+/// @file  boot_access.h
+/// @brief セットアップコードとカーネルが共有する宣言
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_KERNEL_SETUP_SETUP_H_
-#define ARCH_X86_64_KERNEL_SETUP_SETUP_H_
+#ifndef ARCH_X86_64_INCLUDE_BOOT_ACCESS_HH_
+#define ARCH_X86_64_INCLUDE_BOOT_ACCESS_HH_
 
 
 /**
@@ -94,5 +94,32 @@
 #define KERN_FINAL_SIZE  0x0000000100000000
 
 
-#endif  // Include guard.
+#ifndef ASM_SOUCE
+
+#include "btypes.hh"
+
+// setup data access methods.
+
+template<class T> inline T setup_get_value(u64 off) {
+	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
+}
+template<class T> inline void setup_set_value(u64 off, T val) {
+	*reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off) = val;
+}
+template<class T> inline T* setup_get_ptr(u64 off) {
+	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
+}
+
+// free memory info.
+
+struct setup_memory_dumpdata
+{
+	u64 head;
+	u64 bytes;
+};
+
+#endif  // ASM_SOURCE
+
+
+#endif  // include guard.
 

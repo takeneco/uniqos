@@ -7,3 +7,4 @@
 def build(x):
 	x.recurse('bootsect')
 	x.recurse('bootldr')
+	x.recurse('setup')

@@ -13,7 +13,7 @@
 #include "memory_allocate.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
-#include "setup/memdump.hh"
+#include "boot_access.hh"
 
 #include "output.hh"
 

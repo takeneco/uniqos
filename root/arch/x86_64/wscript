@@ -20,7 +20,7 @@ def build(x):
 	x.recurse('kernel')
 
 	x(target = 'root.bin',
-	  source = ['kernel/setup/setup.bin', 'kernel/kernel.bin.lzma'],
+	  source = ['boot/fd/setup/setup.bin', 'kernel/kernel.bin.lzma'],
 	  rule   = 'cat ${SRC[0].abspath()} ${SRC[1].abspath()} > ${TGT}',
 	)
 	if x.env.boot_fd:

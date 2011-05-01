@@ -1,13 +1,13 @@
-/// @author KATO Takeshi
+/// @file  setupdata.cc
 /// @brief  Access to setup data.
 //
 // (C) KATO Takeshi 2010
 //
-/// @todo ʪ������ޥåפ�Ȥ��褦�ˤ��롣
+/// @todo 物理メモリマップを使うようにする。
 
 #include "setupdata.hh"
 
-#include "setup/access.hh"
+#include "boot_access.hh"
 
 
 void setup_get_display_mode(u32* width, u32* height, u32* vram)

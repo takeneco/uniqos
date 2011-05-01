@@ -11,7 +11,7 @@
 #include "native_ops.hh"
 
 #include "setupdata.hh"
-#include "setup/memdump.hh"
+#include "boot_access.hh"
 
 
 void test();
