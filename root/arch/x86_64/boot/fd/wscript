@@ -1,5 +1,5 @@
 # @file  wscript
-# @brief x86_64固有のブート処理をコンパイルする
+# @brief FDDブートのブート処理をコンパイルする
 
 # (C) 2011 KATO Takeshi
 
@@ -8,3 +8,30 @@ def build(x):
 	x.recurse('bootsect')
 	x.recurse('bootldr')
 	x.recurse('setup')
+
+	tools = '../../../../tools'
+
+	x(target = 'root.bin',
+	  source = ['setup/setup.bin', '../../kernel/kernel.bin.lzma'],
+	  rule   = 'cat ${SRC[0].abspath()} ${SRC[1].abspath()} > ${TGT}',
+	)
+	x(target = 'fd1440.img',
+	  source = tools + '/mkfdimg',
+	  rule   = '${SRC[0].abspath()} -r 7 ${TGT}',
+	  name   = 'fdimg1',
+	)
+	x(target = 'fd1440.img',
+	  source = [tools + '/putimg', 'bootsect/bootsect'],
+	  rule   = '${SRC[0].abspath()} -t 0x3e ${SRC[1].abspath()} ${TGT}',
+	  after  = 'fdimg1',
+	)
+	x(target = 'fd1440.img',
+	  source = [tools + '/putimg', 'bootldr/bootldr.bin'],
+	  rule   = '${SRC[0].abspath()} -t 0x0200 ${SRC[1].abspath()} ${TGT}',
+	  after  = 'fdimg1',
+	)
+	x(target = 'fd1440.img',
+	  source = 'root.bin',
+	  rule   = '${MCOPY} -i ${TGT} ${SRC} ::ROOTCORE.BIN',
+	  after  = 'fdimg1',
+	)

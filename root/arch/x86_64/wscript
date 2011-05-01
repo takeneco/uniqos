@@ -9,39 +9,21 @@ def options(x):
 	    action  = 'store_true',
 	    default = False,
 	    help    = 'create boot floppy image.')
+	x.add_option('--boot-multiboot',
+	    action  = 'store_true',
+	    default = True,
+	    help    = 'create multiboot kernel (default enable)')
 
 def configure(x):
-	x.find_program('mcopy', var='MCOPY')
-	x.recurse('kernel')
 	x.env.boot_fd = x.options.boot_fd
+	x.env.boot_multiboot = x.options.boot_multiboot
+
+	if x.env.boot_fd:
+		x.find_program('mcopy', var='MCOPY')
+
+	x.recurse('kernel')
 
 def build(x):
-	x.recurse('boot')
 	x.recurse('kernel')
-
-	x(target = 'root.bin',
-	  source = ['boot/fd/setup/setup.bin', 'kernel/kernel.bin.lzma'],
-	  rule   = 'cat ${SRC[0].abspath()} ${SRC[1].abspath()} > ${TGT}',
-	)
-	if x.env.boot_fd:
-		x(target = 'fd1440.img',
-		  source = '../../tools/mkfdimg',
-		  rule   = '${SRC[0].abspath()} -r 7 ${TGT}',
-		  name   = 'fdimg1',
-		)
-		x(target = 'fd1440.img',
-		  source = ['../../tools/putimg', 'boot/fd/bootsect/bootsect'],
-		  rule   = '${SRC[0].abspath()} -t 0x3e ${SRC[1].abspath()} ${TGT}',
-		  after  = 'fdimg1',
-		)
-		x(target = 'fd1440.img',
-		  source = ['../../tools/putimg', 'boot/fd/bootldr/bootldr.bin'],
-		  rule   = '${SRC[0].abspath()} -t 0x0200 ${SRC[1].abspath()} ${TGT}',
-		  after  = 'fdimg1',
-		)
-		x(target = 'fd1440.img',
-		  source = 'root.bin',
-		  rule   = '${MCOPY} -i ${TGT} ${SRC} ::ROOTCORE.BIN',
-		  after  = 'fdimg1',
-		)
+	x.recurse('boot')
 
