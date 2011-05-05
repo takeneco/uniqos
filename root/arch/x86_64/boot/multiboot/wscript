@@ -1,0 +1,7 @@
+# @brief  build boot phase for multiboot
+
+# (C) 2011 KATO Takeshi
+
+
+def build(x):
+	pass
