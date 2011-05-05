@@ -4,3 +4,6 @@
 def build(x):
 	if x.env.boot_fd:
 		x.recurse('fd')
+
+	if x.env.boot_multiboot:
+		x.recurse('multiboot')
