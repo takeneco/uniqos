@@ -69,39 +69,8 @@ void serial_kout_init();
 extern "C" void on_serial_intr_com1();
 extern "C" void on_serial_intr_com2();
 
-/// @brief  Output only serial port term.
-
-class serial_output : public kern_output
-{
-	friend void on_serial_intr_com1();
-	friend void on_serial_intr_com2();
-
-	u16 base_port;
-	u16 pic_irq;
-	u16 txfifo_left;
-	bool txfifo_intr_empty;
-public:
-	enum {
-		COM1_BASEPORT = 0x03f8,
-		COM2_BASEPORT = 0x02f8,
-
-		COM1_PICIRQ = 4,
-		COM2_PICIRQ = 3,
-
-		OUT_BUF_SIZE = 14,
-	};
-
-	void init(u16 com_base_port, u16 com_pic_irq);
-
-	virtual int write(
-	    const io_vector* vectors,
-	    int              vector_count,
-	    ucpu             offset);
-};
 
 kern_output* kern_get_out();
-serial_output* serial_get_out(int i);
-void serial_output_init();
 
 
 #endif  // Include guard.

@@ -82,11 +82,7 @@ extern "C" int kern_init()
 	   put_c('\n');
 
 	serial_kout_init();
-	//serial_output_init();
-
 	log_init(&serial_get_kout());
-	//serial_output* com1 = serial_get_out(0);
-	//kout=com1;
 
 	{
 	char* setup_log;
@@ -124,6 +120,11 @@ extern "C" int kern_init()
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
 	memory::init();
+
+	file_interface* serial = create_serial();
+	log_file lf(serial);
+	log_init(&lf);
+
 	arch::apic_init();
 
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
@@ -135,18 +136,10 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 	log()("kerninit")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-/*
+
 	cpu_test();
 
 	test();
-*/
-
-	file_interface* serial = create_serial();
-
-	serial->ops->write(serial, "X", 1, 0);
-	log_file lf(serial);
-	log_init(&lf);
-	log()("Y")();
 
 	return 0;
 }
