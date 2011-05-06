@@ -18,10 +18,10 @@ class kernel_log
 	void put_udec(umax n);
 
 protected:
-	typedef void (*write_function)
+	typedef cause::stype (*write_function)
 	    (kernel_log* self, const void* data, u32 bytes);
 	write_function write_func;
-	static void default_write_func(
+	static cause::stype default_write_func(
 	    kernel_log* self, const void* data, u32 bytes);
 
 	void (*writec_func)(kernel_log* self, u8 c);
@@ -72,6 +72,21 @@ public:
 		write_func(this, data, bytes);
 	}
 };
+
+// @brief  log to file_interface
+class log_file : public kernel_log
+{
+	file_interface* file;
+
+	static cause::stype write(
+	    kernel_log* self, const void* data, u32 bytes);
+
+public:
+	log_file(file_interface* file_) : file(file_) {
+		write_func = write;
+	}
+};
+
 
 typedef kernel_log kout;
 

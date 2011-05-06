@@ -18,6 +18,7 @@ kern_source = [
     'kerninit.cc',
     'kernel_memory.cc',
     'physical_memory.cc',
+    'serial.cc',
     'serialout.cc',
     'setupdata.cc',
     'videoout.cc',

@@ -16,6 +16,7 @@
 
 void test();
 void cpu_test();
+file_interface* create_serial();
 
 #include "task.hh"
 extern "C" void task_switch(thread_state*, thread_state*);
@@ -134,10 +135,18 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 	log()("kerninit")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-
+/*
 	cpu_test();
 
 	test();
+*/
+
+	file_interface* serial = create_serial();
+
+	serial->ops->write(serial, "X", 1, 0);
+	log_file lf(serial);
+	log_init(&lf);
+	log()("Y")();
 
 	return 0;
 }

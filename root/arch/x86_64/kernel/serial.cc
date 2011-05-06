@@ -27,27 +27,24 @@ enum {
 	MODEM_STATUS  = 6
 };
 
-class serial_ctrl : public io_interface
+class serial_ctrl : public file_interface
 {
 	const u16 base_port;
 	const u16 irq_num;
 
 public:
-	static io_ops serial_ops;
+	static file_ops serial_ops;
 
 public:
 	serial_ctrl(u16 base_port_, u16 irq_num_);
 
 	cause::stype configure();
 
-	static int write(
-	    io_interface*    self,
-	    const io_vector* vecs,
-	    int              vec_count,
-	    u64              offset);
+	static cause::stype write(
+	    file_interface* self, const void* data, uptr size, uptr offset);
 };
 
-io_ops serial_ctrl::serial_ops;
+file_ops serial_ctrl::serial_ops;
 
 serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
     base_port(base_port_),
@@ -84,32 +81,31 @@ cause::stype serial_ctrl::configure()
 	return cause::OK;
 }
 
-int serial_ctrl::write(
-    io_interface*    self,
-    const io_vector* vecs,
-    int              vec_count,
-    u64              offset)
+cause::stype serial_ctrl::write(
+    file_interface* self, const void* data, uptr size, uptr offset)
 {
+	offset = offset;
+
 	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(self);
 
-	io_vector_iterator itr(vecs, vec_count);
+	const u8* p = reinterpret_cast<const u8*>(data);
+	for (uptr i = 0; i < size; ++i) {
+		for (;;) {
+			const u8 r = native::inb(
+			    serial->base_port + LINE_STATUS);
+			if (r & 0x40)
+				break;
+		}
 
-	const u8* c = itr.next_u8();
-	if (c == 0)
-		return 0;
-	native::outb(*c, serial->base_port + TRANSMIT_DATA);
+		native::outb(p[i], serial->base_port + TRANSMIT_DATA);
+	}
 
-	c = itr.next_u8();
-	if (c == 0)
-		return 0;
-	native::outb(*c, serial->base_port + TRANSMIT_DATA);
-
-	return 0;
+	return cause::OK;
 };
 
 }
 
-io_interface* create_serial()
+file_interface* create_serial()
 {
 	///////
 	serial_ctrl::serial_ops.write = serial_ctrl::write;

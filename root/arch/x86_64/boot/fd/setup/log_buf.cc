@@ -28,7 +28,7 @@ on_memory_log::on_memory_log()
 	*get_current() = 0;
 }
 
-void on_memory_log::write(kernel_log* , const void* data, u32 bytes)
+cause::stype on_memory_log::write(kernel_log* , const void* data, u32 bytes)
 {
 	u8* buf_start = get_buf_start();
 	u32* current = get_current();
@@ -42,5 +42,7 @@ void on_memory_log::write(kernel_log* , const void* data, u32 bytes)
 	}
 
 	*current += bytes;
+
+	return cause::OK;
 }
 

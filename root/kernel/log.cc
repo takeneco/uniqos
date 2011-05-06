@@ -9,6 +9,8 @@
 #include "string.hh"
 
 
+// kernel_log
+
 namespace {
 
 static const char base_number[] = "0123456789abcdef";
@@ -283,13 +285,22 @@ kernel_log& kernel_log::u64hex(u64 n)
 	return *this;
 }
 
-void kernel_log::default_write_func(
+cause::stype kernel_log::default_write_func(
     kernel_log* self, const void* data, u32 bytes)
 {
 	for (u32 i = 0; i < bytes; ++i)
 		self->writec_func(self, reinterpret_cast<const u8*>(data)[i]);
+	return cause::OK;
 }
 
+// log_io
+
+cause::stype log_file::write(kernel_log* self, const void* data, u32 bytes)
+{
+	log_file* this_ = reinterpret_cast<log_file*>(self);
+
+	return this_->file->ops->write(this_->file, data, bytes, 0);
+}
 
 
 

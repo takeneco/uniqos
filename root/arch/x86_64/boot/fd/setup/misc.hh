@@ -43,7 +43,7 @@ public:
 	on_memory_log();
 
 private:
-	static void write(kernel_log* , const void* data, u32 bytes);
+	static cause::stype write(kernel_log* , const void* data, u32 bytes);
 };
 
 

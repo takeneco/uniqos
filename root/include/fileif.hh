@@ -8,7 +8,7 @@
 #ifndef _INCLUDE_FILEIF_HH_
 #define _INCLUDE_FILEIF_HH_
 
-#include "btypes.hh"
+#include "base_types.hh"
 
 
 struct io_vector
@@ -46,36 +46,36 @@ public:
 };
 
 
-class filenode_interface;
+class file_interface;
 
-struct filenode_ops
+struct file_ops
 {
-	int (*write)(
-	    filenode_interface* self,
-	    const io_vector*    vectors,
-	    int                 vector_count,
-	    ucpu                offset);
+	cause::stype (*write)(
+	    file_interface* self, const void* data, uptr size, uptr offset);
 };
 
-// @brief  File node interface base class.
+// @brief  file like interface base class.
 
-class filenode_interface
+class file_interface
 {
 protected:
-	filenode_interface() {}
+	file_interface() {}
 
 private:
-	filenode_interface(const filenode_interface&);
-	void operator = (const filenode_interface&);
+	file_interface(const file_interface&);
+	void operator = (const file_interface&);
 
 public:
+	file_ops* ops;
+
 	virtual int write(
 	    const io_vector* vectors,
 	    int              vector_count,
-	    ucpu             offset) =0;
-
-	filenode_ops* ops;
+	    ucpu             offset);
 };
+
+typedef file_interface filenode_interface;
+typedef file_ops filenode_ops;
 
 
 #endif  // Include guard.
