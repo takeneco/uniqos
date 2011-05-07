@@ -37,9 +37,6 @@ namespace {
 }  // End of anonymous namespace
 
 
-
-void tmp_debug();
-
 kern_output* kout_;
 extern int kern_tail_addr;
 

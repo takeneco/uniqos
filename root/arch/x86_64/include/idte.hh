@@ -31,6 +31,9 @@ public:
 		       (         0x0000800000000000); // Enable(P) flag.
 		e[1] = (offset & 0xffffffff00000000) >> 32;
 	}
+	void set(void (*method)(), type seg, type ist, type dpl, type flags) {
+		set(reinterpret_cast<type>(method), seg, ist, dpl, flags);
+	}
 	void disable() {
 		e[0] = e[1] = 0;
 	}

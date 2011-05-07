@@ -100,6 +100,7 @@ void exception_intr_17_handler();
 void exception_intr_18_handler();
 void exception_intr_19_handler();
 void interrupt_20_handler();
+void interrupt_5f_handler();
 
 }
 
@@ -179,6 +180,9 @@ void intr_init()
 	idt_vec[0x30].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
 	    8 * 1, 0, 0, arch::idte::INTR);
+
+	idt_vec[0x5f].set(
+	    interrupt_5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
 
 	intr_update();
 }
@@ -437,3 +441,8 @@ extern "C" void on_exception_intr_19()
 	for (;;)
 		native::hlt();
 }
+
+extern "C" void on_interrupt_5f()
+{
+}
+

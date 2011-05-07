@@ -4,40 +4,31 @@
 // (C) 2010-2011 KATO Takeshi
 //
 
+
+#define EXPORT(symbol) .globl symbol; symbol:
+
 .macro REG_STORE
-	pushq %r15
-	pushq %r14
-	pushq %r13
-	pushq %r12
 	pushq %r11
 	pushq %r10
 	pushq %r9
 	pushq %r8
 	pushq %rdi
 	pushq %rsi
-	pushq %rbp
 	pushq %rdx
 	pushq %rcx
-	pushq %rbx
 	pushq %rax
 .endm
 
 .macro REG_LOAD
 	popq  %rax
-	popq  %rbx
 	popq  %rcx
 	popq  %rdx
-	popq  %rbp
 	popq  %rsi
 	popq  %rdi
 	popq  %r8
 	popq  %r9
 	popq  %r10
 	popq  %r11
-	popq  %r12
-	popq  %r13
-	popq  %r14
-	popq  %r15
 .endm
 
 .section .text
@@ -146,40 +137,19 @@ exception_intr_19_handler:
 
 .globl interrupt_20_handler
 interrupt_20_handler:
-
-	pushq %rbx
-	pushq %rbp
-	pushq %rsi
-	pushq %rdi
-	pushq %r12
-	pushq %r13
-	pushq %r14
-	pushq %r15
-
-	pushq %rax
-	pushq %rcx
-	pushq %rdx
-	pushq %r8
-	pushq %r9
-	pushq %r10
-	pushq %r11
+	REG_STORE
 	call  interrupt_timer
-	popq  %r11
-	popq  %r10
-	popq  %r9
-	popq  %r8
-	popq  %rdx
-	popq  %rcx
-	popq  %rax
-
-	popq  %r15
-	popq  %r14
-	popq  %r13
-	popq  %r12
-	popq  %rdi
-	popq  %rsi
-	popq  %rbp
-	popq  %rbx
-
+	REG_LOAD
 	iretq
+
+.macro INTERRUPT_ENTRY method
+	REG_STORE
+	call \method
+	REG_LOAD
+	iretq
+.endm
+
+EXPORT(interrupt_5f_handler)
+	INTERRUPT_ENTRY on_interrupt_5f
+
 
