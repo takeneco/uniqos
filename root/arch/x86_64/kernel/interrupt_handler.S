@@ -5,8 +5,6 @@
 //
 
 
-#define EXPORT(symbol) .globl symbol; symbol:
-
 .macro REG_STORE
 	pushq %r11
 	pushq %r10
@@ -149,7 +147,44 @@ interrupt_20_handler:
 	iretq
 .endm
 
-EXPORT(interrupt_5f_handler)
-	INTERRUPT_ENTRY on_interrupt_5f
+store_register:
+	movq %rax, 0x08(%rsp)
+	movq %rcx, 0x10(%rsp)
+	movq %rdx, 0x18(%rsp)
+	movq %rsi, 0x20(%rsp)
+	movq %rdi, 0x28(%rsp)
+	movq %r8,  0x30(%rsp)
+	movq %r9,  0x38(%rsp)
+	movq %r10, 0x40(%rsp)
+	movq %r11, 0x48(%rsp)
+	ret
 
+load_register:
+	movq 0x08(%rsp), %rax
+	movq 0x10(%rsp), %rcx
+	movq 0x18(%rsp), %rdx
+	movq 0x20(%rsp), %rsi
+	movq 0x28(%rsp), %rdi
+	movq 0x30(%rsp), %r8
+	movq 0x38(%rsp), %r9
+	movq 0x40(%rsp), %r10
+	movq 0x48(%rsp), %r11
+	ret
+
+#define ENTRY_START(symbol) .globl symbol; symbol:
+#define ENTRY_END(symbol) .size symbol, .-symbol
+
+.macro interrupt_method vector
+	subq $8*9, %rsp
+	call store_register
+	movl $\vector, %edi
+	call on_interrupt
+	call load_register
+	addq $8*9, %rsp
+	iretq
+.endm
+
+ENTRY_START(interrupt_5f_handler)
+	interrupt_method 0x5f
+ENTRY_END(interrupt_5f_handler)
 

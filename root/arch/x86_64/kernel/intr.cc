@@ -442,7 +442,8 @@ extern "C" void on_exception_intr_19()
 		native::hlt();
 }
 
-extern "C" void on_interrupt_5f()
+extern "C" void on_interrupt(u32 vector)
 {
+	log()("intr=").u(vector)();
 }
 

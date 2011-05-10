@@ -5,7 +5,7 @@
 //
 
 #include "arch.hh"
-#include "misc.hh"
+#include "log.hh"
 #include "mpspec.hh"
 
 
