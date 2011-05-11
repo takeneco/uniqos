@@ -9,7 +9,7 @@
 
 
 class physical_memory;
-class kernel_memory;
+class core_class;
 
 
 namespace global_variable {
@@ -17,7 +17,7 @@ namespace global_variable {
 
 struct global_variable_ {
 	physical_memory* pmem_ctrl;
-	kernel_memory*   kmem_ctrl;
+	core_class*      core;
 };
 
 

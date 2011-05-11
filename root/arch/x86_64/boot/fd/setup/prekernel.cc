@@ -6,6 +6,7 @@
 
 #include "access.hh"
 #include "idte.hh"
+#include "ioapic.hh"
 #include "misc.hh"
 #include "pagetable.hh"
 #include "arch.hh"
