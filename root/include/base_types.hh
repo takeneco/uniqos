@@ -270,9 +270,11 @@ namespace cause
 		NO_MEMORY = 2,
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,
+		NOT_FOUND,
 		INVALID_PARAMS,
 		INVALID_OPERATION,
 		NO_IMPLEMENTS,
+		NI = NO_IMPLEMENTS,
 		UNKNOWN = 1000,
 	};
 

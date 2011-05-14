@@ -326,11 +326,11 @@ extern "C" int prekernel()
 
 	// init I/O APIC
 	const u32 cpuid = *(u32*)arch::pmem::direct_map(0xfee00020);
-	void* ioapic_base_adr = ioapic_base();
+	void* ioapic_base_adr = arch::ioapic_base();
 	if (!ioapic_base_adr)
 		return 0;
 
-	ioapic_control ioapic(ioapic_base_adr);
+	arch::ioapic_control ioapic(ioapic_base_adr);
 	ioapic.unmask(2, cpuid >> 24, INTR_TIMER_VEC);
 	ioapic.unmask(8, cpuid >> 24, INTR_TIMER_VEC+1);
 

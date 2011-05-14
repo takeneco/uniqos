@@ -60,6 +60,7 @@ const mpspec::ioapic_entry* search_ioapic(mpspec::const_mpfps* mpfps)
 
 }  // namespace
 
+namespace arch {
 
 void* ioapic_base()
 {
@@ -77,4 +78,7 @@ void* ioapic_base()
 
 	return arch::pmem::direct_map(ioapic_etr->ioapic_map_padr);
 }
+
+}  // namespace arch
+
 
