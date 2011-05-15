@@ -11,10 +11,12 @@ kern_linkflags = [
 ]
 
 kern_source = [
+    '../lib/ioapic.cc',
     '../lib/mpspec.cc',
     'apic.cc',
     'global_variables.cc',
     'intr.cc',
+    'irq_control.cc',
     'kerninit.cc',
     'kernel_memory.cc',
     'physical_memory.cc',

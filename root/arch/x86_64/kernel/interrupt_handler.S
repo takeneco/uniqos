@@ -184,6 +184,10 @@ load_register:
 	iretq
 .endm
 
+ENTRY_START(interrupt_5e_handler)
+	interrupt_method 0x5e
+ENTRY_END(interrupt_5e_handler)
+
 ENTRY_START(interrupt_5f_handler)
 	interrupt_method 0x5f
 ENTRY_END(interrupt_5f_handler)

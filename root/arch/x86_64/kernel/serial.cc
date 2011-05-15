@@ -5,6 +5,7 @@
 //
 
 #include "fileif.hh"
+#include "irq_control.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
 #include "placement_new.hh"
@@ -74,9 +75,12 @@ cause::stype serial_ctrl::configure()
 	native::outb(0xcf, base_port + FIFO_CTRL);
 
 	// 割り込みを有効化
-	//native::outb(0x03, base_port + INTR_ENABLE);
+	native::outb(0x03, base_port + INTR_ENABLE);
 	// 無効化
-	native::outb(0x00, base_port + INTR_ENABLE);
+	//native::outb(0x00, base_port + INTR_ENABLE);
+
+	u32 vec;
+	arch::irq_interrupt_map(4, &vec);
 
 	return cause::OK;
 }

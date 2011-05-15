@@ -4,33 +4,33 @@
 // (C) 2010 KATO Takeshi
 
 #include "kerninit.hh"
-
+#include "chain.hh"
 #include "idte.hh"
+#include "interrupt_control.hh"
 #include "log.hh"
 #include "native_ops.hh"
 #include "output.hh"
 #include "string.hh"
 
 
+/// interrupt vector map
+/// - 0x00-0x1f cpu reserved
+/// - 0x20-0x5f device interrupts
+/// - 0x60-0xff unused
+
 namespace {
 
 struct reg_stack
 {
 	u64 rax;
-	u64 rbx;
 	u64 rcx;
 	u64 rdx;
-	u64 rbp;
 	u64 rsi;
 	u64 rdi;
 	u64 r8;
 	u64 r9;
 	u64 r10;
 	u64 r11;
-	u64 r12;
-	u64 r13;
-	u64 r14;
-	u64 r15;
 
 	u64 rip;
 	u64 cs;
@@ -42,20 +42,14 @@ struct reg_stack
 struct reg_stack_witherr
 {
 	u64 rax;
-	u64 rbx;
 	u64 rcx;
 	u64 rdx;
-	u64 rbp;
 	u64 rsi;
 	u64 rdi;
 	u64 r8;
 	u64 r9;
 	u64 r10;
 	u64 r11;
-	u64 r12;
-	u64 r13;
-	u64 r14;
-	u64 r15;
 
 	u64 error_code;
 	u64 rip;
@@ -100,6 +94,7 @@ void exception_intr_17_handler();
 void exception_intr_18_handler();
 void exception_intr_19_handler();
 void interrupt_20_handler();
+void interrupt_5e_handler();
 void interrupt_5f_handler();
 
 }
@@ -181,6 +176,8 @@ void intr_init()
 	    reinterpret_cast<u64>(interrupt_20_handler),
 	    8 * 1, 0, 0, arch::idte::INTR);
 
+	idt_vec[0x5e].set(
+	    interrupt_5e_handler, 8 * 1, 0, 0, arch::idte::INTR);
 	idt_vec[0x5f].set(
 	    interrupt_5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
 
@@ -356,20 +353,14 @@ extern "C" void on_exception_intr_13()
 	log()("cs =").u(*stack--, 16)();
 	log()("rip=").u(*stack--, 16)();
 	log()("err=").u(*stack--, 16)();
-	log()("r15=").u(*stack--, 16)();
-	log()("r14=").u(*stack--, 16)();
-	log()("r13=").u(*stack--, 16)();
-	log()("r12=").u(*stack--, 16)();
 	log()("r11=").u(*stack--, 16)();
 	log()("r10=").u(*stack--, 16)();
 	log()("r9 =").u(*stack--, 16)();
 	log()("r8 =").u(*stack--, 16)();
 	log()("rdi=").u(*stack--, 16)();
 	log()("rsi=").u(*stack--, 16)();
-	log()("rbp=").u(*stack--, 16)();
 	log()("rdx=").u(*stack--, 16)();
 	log()("rcx=").u(*stack--, 16)();
-	log()("rbx=").u(*stack--, 16)();
 	log()("rax=").u(*stack--, 16)();
 
 	for (;;)
@@ -445,5 +436,25 @@ extern "C" void on_exception_intr_19()
 extern "C" void on_interrupt(u32 vector)
 {
 	log()("intr=").u(vector)();
+}
+
+
+cause::stype interrupt_control::init()
+{
+	return cause::OK;
+}
+
+cause::stype interrupt_control::add_handler(u8 vec, interrupt_handler* h)
+{
+	vec -= 0x20;
+	if (vec >= 0x40)
+		return cause::INVALID_PARAMS;
+
+	if (!h || !h->handler)
+		return cause::INVALID_PARAMS;
+
+	handler_table[vec].insert_head(h);
+
+	return cause::OK;
 }
 

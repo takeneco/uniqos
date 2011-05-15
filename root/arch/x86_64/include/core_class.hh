@@ -6,8 +6,11 @@
 #ifndef ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
 #define ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
 
+#include "arch.hh"
 #include "base_types.hh"
 #include "chain.hh"
+#include "interrupt_control.hh"
+#include "irq_control.hh"
 
 
 namespace arch {
@@ -240,6 +243,10 @@ class core_class
 {
 public:
 	arch::kmem::kernel_memory kmem_ctrl;
+
+	arch::irq_control irq_ctrl;
+
+	interrupt_control intr_ctrl;
 };
 
 

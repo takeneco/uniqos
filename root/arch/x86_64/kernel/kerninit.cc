@@ -5,6 +5,8 @@
 //
 
 #include "arch.hh"
+#include "core_class.hh"
+#include "global_variables.hh"
 #include "kerninit.hh"
 #include "output.hh"
 #include "memory_allocate.hh"
@@ -117,6 +119,9 @@ extern "C" int kern_init()
 	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
 
 	memory::init();
+
+	global_variable::gv.core->irq_ctrl.init();
+	global_variable::gv.core->intr_ctrl.init();
 
 	file_interface* serial = create_serial();
 	log_file lf(serial);

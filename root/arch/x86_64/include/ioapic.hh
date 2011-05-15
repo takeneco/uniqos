@@ -40,8 +40,9 @@ public:
 	ioapic_control(void* base) 
 	    : regs(reinterpret_cast<memmapped_regs*>(base))
 	{}
-	cause::stype detect() {
+	cause::stype init_detect() {
 		regs = reinterpret_cast<memmapped_regs*>(ioapic_base());
+		return regs != 0 ? cause::OK : cause::NOT_FOUND;
 	}
 
 	u32 read(u32 sel) {
