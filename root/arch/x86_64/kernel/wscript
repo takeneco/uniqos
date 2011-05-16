@@ -15,7 +15,7 @@ kern_source = [
     '../lib/mpspec.cc',
     'apic.cc',
     'global_variables.cc',
-    'intr.cc',
+    'interrupt_control.cc',
     'irq_control.cc',
     'kerninit.cc',
     'kernel_memory.cc',

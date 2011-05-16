@@ -6,6 +6,8 @@
 #ifndef ARCH_X86_64_INCLUDE_INTERRUPT_CONTROL_HH_
 #define ARCH_X86_64_INCLUDE_INTERRUPT_CONTROL_HH_
 
+#include "chain.hh"
+
 
 class interrupt_handler
 {
@@ -20,12 +22,14 @@ public:
 
 class interrupt_control
 {
-	chain<interrupt_handler, &interrupt_handler::chain_hook>
-	    handler_table[0x40];
+	typedef chain<interrupt_handler, &interrupt_handler::chain_hook>
+	    intr_handler_chain;
+	intr_handler_chain handler_table[0x40];
 
 public:
 	cause::stype init();
 	cause::stype add_handler(u8 vec, interrupt_handler* h);
+	void call_interrupt(u32 vector);
 };
 
 

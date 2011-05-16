@@ -4,7 +4,10 @@
 // (C) 2011 KATO Takeshi
 //
 
+#include "core_class.hh"
 #include "fileif.hh"
+#include "global_variables.hh"
+#include "interrupt_control.hh"
 #include "irq_control.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
@@ -27,6 +30,8 @@ enum {
 	LINE_STATUS   = 5,
 	MODEM_STATUS  = 6
 };
+
+void on_serial_intr(void* param);
 
 class serial_ctrl : public file_interface
 {
@@ -82,6 +87,11 @@ cause::stype serial_ctrl::configure()
 	u32 vec;
 	arch::irq_interrupt_map(4, &vec);
 
+	static interrupt_handler ih;
+	ih.param = 0;
+	ih.handler = on_serial_intr;
+	global_variable::gv.core->intr_ctrl.add_handler(vec, &ih);
+
 	return cause::OK;
 }
 
@@ -106,6 +116,10 @@ cause::stype serial_ctrl::write(
 
 	return cause::OK;
 };
+
+void on_serial_intr(void* param)
+{
+}
 
 }
 

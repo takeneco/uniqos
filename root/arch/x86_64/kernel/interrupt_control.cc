@@ -1,10 +1,13 @@
-/// @author KATO Takeshi
-/// @brief  IDT ops.
+/// @file   interrupt_control.cc
+/// @brief  interrupt.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
+//
 
 #include "kerninit.hh"
 #include "chain.hh"
+#include "core_class.hh"
+#include "global_variables.hh"
 #include "idte.hh"
 #include "interrupt_control.hh"
 #include "log.hh"
@@ -435,7 +438,7 @@ extern "C" void on_exception_intr_19()
 
 extern "C" void on_interrupt(u32 vector)
 {
-	log()("intr=").u(vector)();
+	global_variable::gv.core->intr_ctrl.call_interrupt(vector);
 }
 
 
@@ -453,8 +456,25 @@ cause::stype interrupt_control::add_handler(u8 vec, interrupt_handler* h)
 	if (!h || !h->handler)
 		return cause::INVALID_PARAMS;
 
+	log()("add_handler:h = ")(h)()("h->handler=")((void*)h->handler)();
 	handler_table[vec].insert_head(h);
 
 	return cause::OK;
+}
+
+extern "C" void interrupt_timer();
+
+void interrupt_control::call_interrupt(u32 vector)
+{
+	vector -= 0x20;
+	intr_handler_chain& ihc = handler_table[vector];
+	for (interrupt_handler* ih = ihc.get_head();
+	     ih;
+	     ih = ihc.get_next(ih))
+	{
+		ih->handler(ih->param);
+	}
+
+	interrupt_timer();
 }
 
