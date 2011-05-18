@@ -6,8 +6,6 @@
 
 #include "kerninit.hh"
 #include "chain.hh"
-#include "core_class.hh"
-#include "global_variables.hh"
 #include "idte.hh"
 #include "interrupt_control.hh"
 #include "log.hh"
@@ -72,7 +70,7 @@ void intr_update()
 	native::lidt(&idtptr);
 }
 
-}  // End of anonymous namespace
+}  // namespace
 
 extern "C" {
 
@@ -436,45 +434,4 @@ extern "C" void on_exception_intr_19()
 		native::hlt();
 }
 
-extern "C" void on_interrupt(u32 vector)
-{
-	global_variable::gv.core->intr_ctrl.call_interrupt(vector);
-}
-
-
-cause::stype interrupt_control::init()
-{
-	return cause::OK;
-}
-
-cause::stype interrupt_control::add_handler(u8 vec, interrupt_handler* h)
-{
-	vec -= 0x20;
-	if (vec >= 0x40)
-		return cause::INVALID_PARAMS;
-
-	if (!h || !h->handler)
-		return cause::INVALID_PARAMS;
-
-	log()("add_handler:h = ")(h)()("h->handler=")((void*)h->handler)();
-	handler_table[vec].insert_head(h);
-
-	return cause::OK;
-}
-
-extern "C" void interrupt_timer();
-
-void interrupt_control::call_interrupt(u32 vector)
-{
-	vector -= 0x20;
-	intr_handler_chain& ihc = handler_table[vector];
-	for (interrupt_handler* ih = ihc.get_head();
-	     ih;
-	     ih = ihc.get_next(ih))
-	{
-		ih->handler(ih->param);
-	}
-
-	interrupt_timer();
-}
 

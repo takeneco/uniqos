@@ -178,7 +178,7 @@ load_register:
 	subq $8*9, %rsp
 	call store_register
 	movl $\vector, %edi
-	call on_interrupt
+	call on_external_interrupt
 	call load_register
 	addq $8*9, %rsp
 	iretq

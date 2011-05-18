@@ -15,7 +15,7 @@ kern_source = [
     '../lib/mpspec.cc',
     'apic.cc',
     'global_variables.cc',
-    'interrupt_control.cc',
+    'interrupt_entry.cc',
     'irq_control.cc',
     'kerninit.cc',
     'kernel_memory.cc',
@@ -35,7 +35,7 @@ kern_source = [
 
 kern_asm_source = [
     'entry.S',
-    'interrupt_handler.S',
+    'interrupt_native.S',
     'serialh.S',
     'task_switch.S',
 ]
