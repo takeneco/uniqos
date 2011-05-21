@@ -95,8 +95,8 @@ void exception_intr_17_handler();
 void exception_intr_18_handler();
 void exception_intr_19_handler();
 void interrupt_20_handler();
-void interrupt_5e_handler();
-void interrupt_5f_handler();
+void interrupt_0x5e_handler();
+void interrupt_0x5f_handler();
 
 }
 
@@ -178,9 +178,9 @@ void intr_init()
 	    8 * 1, 0, 0, arch::idte::INTR);
 
 	idt_vec[0x5e].set(
-	    interrupt_5e_handler, 8 * 1, 0, 0, arch::idte::INTR);
+	    interrupt_0x5e_handler, 8 * 1, 0, 0, arch::idte::INTR);
 	idt_vec[0x5f].set(
-	    interrupt_5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
+	    interrupt_0x5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
 
 	intr_update();
 }

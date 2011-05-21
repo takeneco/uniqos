@@ -178,17 +178,17 @@ load_register:
 	subq $8*9, %rsp
 	call store_register
 	movl $\vector, %edi
-	call on_external_interrupt
+	call on_interrupt
 	call load_register
 	addq $8*9, %rsp
 	iretq
 .endm
 
-ENTRY_START(interrupt_5e_handler)
+ENTRY_START(interrupt_0x5e_handler)
 	interrupt_method 0x5e
 ENTRY_END(interrupt_5e_handler)
 
-ENTRY_START(interrupt_5f_handler)
+ENTRY_START(interrupt_0x5f_handler)
 	interrupt_method 0x5f
 ENTRY_END(interrupt_5f_handler)
 

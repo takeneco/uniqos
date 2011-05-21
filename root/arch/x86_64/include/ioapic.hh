@@ -64,6 +64,9 @@ public:
 	}
 };
 
+
+void lapic_eoi();
+
 }  // namespace arch
 
 

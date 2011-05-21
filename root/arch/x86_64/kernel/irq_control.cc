@@ -8,6 +8,8 @@
 #include "base_types.hh"
 #include "core_class.hh"
 #include "global_variables.hh"
+#include "interrupt_control.hh"
+#include "ioapic.hh"
 #include "irq_control.hh"
 
 
@@ -51,3 +53,11 @@ cause::stype irq_interrupt_map(u32 irq, u32* intr_vec)
 }
 
 }  // namespace arch
+
+extern "C" void on_irq()
+{
+	on_interrupt();
+
+	arch::lapic_eoi();
+}
+

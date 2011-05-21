@@ -13,7 +13,7 @@ def configure_x86_64(conf):
 	conf.recurse('arch')
 
 	conf.env.ASFLAGS = [
-	    '-pipe', '-Wall', '-Wextra',
+	    '-DASM_SOURCE_',
 	]
 	conf.env.CFLAGS = [
 	    '-pipe', '-Wall', '-Wextra',
@@ -60,6 +60,8 @@ def configure_x86_64(conf):
 		conf.env.LINKFLAGS_KERNEL.append('-native')
 		conf.find_program('clang', var='CC')
 		conf.find_program('clang++', var='CXX')
+		conf.find_program('clang', var='AS')
+		conf.env.ASFLAGS.append('-c')
 		conf.env.LINK_PASS = ''
 		conf.env.LINK_PASS2 = '-Wl,'
 

@@ -16,6 +16,7 @@ kern_source = [
     'apic.cc',
     'global_variables.cc',
     'interrupt_entry.cc',
+    'interrupt_native.S',
     'irq_control.cc',
     'kerninit.cc',
     'kernel_memory.cc',
@@ -35,7 +36,6 @@ kern_source = [
 
 kern_asm_source = [
     'entry.S',
-    'interrupt_native.S',
     'serialh.S',
     'task_switch.S',
 ]

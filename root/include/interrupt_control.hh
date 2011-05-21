@@ -27,16 +27,11 @@ public:
 /// @note  must init by constructor.
 class interrupt_control
 {
-	enum {
-		EXTERNAL_INTR_COUNT =
-		    arch::EXTERNAL_INTR_UPPER - arch::EXTERNAL_INTR_LOWER + 1,
-	};
-
 	typedef
 	    chain<interrupt_handler, &interrupt_handler::chain_hook>
 	    intr_handler_chain;
 
-	intr_handler_chain handler_table[EXTERNAL_INTR_COUNT];
+	intr_handler_chain handler_table[arch::INTR_COUNT];
 
 public:
 	/// @internal  initialize handler_table[]
@@ -47,7 +42,7 @@ public:
 	void call_interrupt(u32 vector);
 };
 
-extern "C" void on_external_interrupt(arch::intr_vec index);
+void on_interrupt(arch::intr_vec index);
 
 
 #endif  // include guard
