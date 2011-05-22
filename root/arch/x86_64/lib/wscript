@@ -1,0 +1,31 @@
+# @file   wscript
+# @brief  カーネル本体とsetupコードから参照されるコード
+#
+# コンパイルオプションが違うので別々にコンパイルする。
+#
+# (C) 2011 KATO Takeshi
+#
+
+
+kern_sources = [
+    'mpspec.cc',
+    'ioapic.cc',
+]
+
+setup_sources = [
+    'mpspec.cc',
+    'ioapic.cc',
+]
+
+def build(x):
+	x.objects(
+	    target = 'kernel_libs',
+	    source = kern_sources,
+	    use = 'KERNEL',
+	)
+
+	x.objects(
+	    target = 'setup_libs',
+	    source = setup_sources,
+	    use = 'SETUP',
+	)

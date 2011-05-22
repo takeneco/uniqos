@@ -1,7 +1,8 @@
 # @file  wscript
 # @brief x86_64固有のコード
-
+#
 # (C) 2011 KATO Takeshi
+#
 
 
 def options(x):
@@ -24,6 +25,7 @@ def configure(x):
 	x.recurse('kernel')
 
 def build(x):
+	x.recurse('lib')
 	x.recurse('kernel')
 	x.recurse('boot')
 

@@ -1,3 +1,9 @@
+# @file   wscript
+# @brief  FD boot setup code
+#
+# (C) 2011 KATO Takeshi
+#
+
 
 setup_asflags = [
 ]
@@ -11,8 +17,6 @@ setup_linkflags = [
 ]
 
 setup_source = [
-    '../../../lib/ioapic.cc',
-    '../../../lib/mpspec.cc',
     'hpet_timer.cc',
     'log_access.cc',
     'log_buf.cc',
@@ -63,7 +67,7 @@ def build(bld):
 	bld.program(
 	    target    = setup_target,
 	    source    = setup_source,
-	    use       = ['setup_objs', 'SETUP'],
+	    use       = ['setup_libs', 'setup_objs', 'SETUP'],
 	    includes  = setup_includes,
 	    cxxflags  = [],
 	    linkflags = setup_linkflags2,
