@@ -45,7 +45,9 @@ cause::stype alloc_page(u64* padr);
 
 }  // namespace pmem
 
+void halt();
+
 }  // namespace arch
 
 
-#endif  // Include guard.
+#endif  // include guard

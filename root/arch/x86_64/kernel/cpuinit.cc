@@ -430,3 +430,10 @@ void cpu_test()
 	}
 }
 
+namespace arch {
+
+void halt() {
+	native::hlt();
+}
+
+}  // namespace arch

@@ -10,6 +10,7 @@
 
 class physical_memory;
 class core_class;
+class event_queue;
 
 
 namespace global_variable {
@@ -18,6 +19,7 @@ namespace global_variable {
 struct global_variable_ {
 	physical_memory* pmem_ctrl;
 	core_class*      core;
+	event_queue*     events;
 };
 
 

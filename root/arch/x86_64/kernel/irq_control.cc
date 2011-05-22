@@ -54,10 +54,3 @@ cause::stype irq_interrupt_map(u32 irq, u32* intr_vec)
 
 }  // namespace arch
 
-extern "C" void on_irq()
-{
-	on_interrupt();
-
-	arch::lapic_eoi();
-}
-

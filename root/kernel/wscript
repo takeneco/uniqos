@@ -1,5 +1,11 @@
+# architecture independent kernel codes.
+#
+# (C) 2011 KATO Takeshi
+#
+
 
 kern_sources = [
+    'drive.cc',
     'fileif.cc',
     'interrupt_control.cc',
     'log.cc',
@@ -18,18 +24,18 @@ setup_sources = [
 setup_defines = []
 
 
-def build(bld):
-	kern_defines.extend(bld.env.common_defines)
-	setup_defines.extend(bld.env.common_defines)
+def build(x):
+	kern_defines.extend(x.env.common_defines)
+	setup_defines.extend(x.env.common_defines)
 
-	bld.objects(
+	x.objects(
 	    target   = 'kernel_objs',
 	    source   = kern_sources,
 	    defines  = kern_defines,
 	    use      = 'KERNEL'
 	)
 
-	bld.objects(
+	x.objects(
 	    target   = 'setup_objs',
 	    source   = setup_sources,
 	    defines  = setup_defines,

@@ -19,6 +19,7 @@
 void test();
 void cpu_test();
 file_interface* create_serial();
+void drive();
 
 #include "task.hh"
 extern "C" void task_switch(thread_state*, thread_state*);
@@ -140,7 +141,7 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 
 	cpu_test();
-
+	drive();
 	test();
 
 	return 0;

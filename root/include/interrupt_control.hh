@@ -30,19 +30,29 @@ class interrupt_control
 	typedef
 	    chain<interrupt_handler, &interrupt_handler::chain_hook>
 	    intr_handler_chain;
+	typedef void (* post_intr_handler)();
 
-	intr_handler_chain handler_table[arch::INTR_COUNT];
+	struct intr_tasks
+	{
+		intr_handler_chain handler_chain;
+		post_intr_handler post_handler;
+
+		intr_tasks() : post_handler(0) {}
+	};
+
+	intr_tasks handler_table[arch::INTR_COUNT];
 
 public:
 	/// @internal  initialize handler_table[]
 	interrupt_control() {}
 
 	cause::stype init();
-	cause::stype add_handler(u8 vec, interrupt_handler* h);
+	cause::stype add_handler(arch::intr_vec vec, interrupt_handler* h);
+	cause::stype set_post_handler(arch::intr_vec vec, post_intr_handler h);
 	void call_interrupt(u32 vector);
 };
 
-void on_interrupt(arch::intr_vec index);
+extern "C" void on_interrupt(arch::intr_vec index);
 
 
 #endif  // include guard
