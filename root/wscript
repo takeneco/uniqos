@@ -63,7 +63,6 @@ def configure_x86_64(conf):
 		conf.find_program('clang', var='AS')
 		conf.env.ASFLAGS.append('-c')
 		conf.env.LINK_PASS = ''
-		conf.env.LINK_PASS2 = '-Wl,'
 
 	elif conf.options.compiler == 'llvm':
 		conf.env.CFLAGS_KERNEL.append('-emit-llvm')
@@ -76,15 +75,15 @@ def configure_x86_64(conf):
 		conf.env.LINK_CXX = conf.env.LINK_CC
 		conf.env.LINKFLAGS = ['-code-model=large', '-native']
 		conf.env.LINK_PASS = '-Xlinker='
-		conf.env.LINK_PASS2 = '-Xlinker='
 
 	elif conf.options.compiler == 'gnu':
 		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
 		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
 		conf.find_program('gcc', var='CC')
 		conf.find_program('g++', var='CXX')
+		conf.find_program('gcc', var='AS')
+		conf.env.ASFLAGS.append('-c')
 		conf.env.LINK_PASS = ''
-		conf.env.LINK_PASS2 = '-Wl,'
 
 	else:
 		conf.fatal('unknown compiler : ' + conf.options.compiler)

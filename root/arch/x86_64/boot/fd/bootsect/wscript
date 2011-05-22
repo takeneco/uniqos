@@ -1,40 +1,39 @@
+# build boot sector.
+#
+# (C) 2011 KATO Takeshi
+#
 
 sect_asflags = [
-    '-m64', '-fno-exceptions',
-    '-fomit-frame-pointer', '-Os',
+    '-m64',
+    '-fno-exceptions',
+    '-fomit-frame-pointer',
+    '-Os',
 ]
 
 sect_includes = ['../include']
 
 sect_linkflags = [
-    '-nostdlib', '-static', '-Wl,-Ttext=0x7c3e',
+    '-nostdlib',
+    '-static',
+    '-Wl,-Ttext=0x7c3e',
 ]
 
 linker_script = 'bootsect.ld'
 
 
 def build(x):
-	for i in sect_includes:
-		sect_asflags.append('-I' + x.path.find_dir(i).abspath())
-
-	rule_c_sect = '${CC} ${ASFLAGS} -c ${SRC} -o ${TGT} ' + ' '.join(sect_asflags)
-	x (
-	    target = 'bootsect.o',
-	    source = 'bootsect.S',
-	    rule   = rule_c_sect
-	)
+	sect_target = x.path.find_or_declare('bootsect')
 
 	sect_linkflags.append(
 	    '-Wl,-T,' + x.path.find_node(linker_script).abspath())
-
-	rule_sect = '${CC} ${ASFLAGS} ${SRC} -o ${TGT} ' + ' '.join(sect_linkflags)
-	sect_target = x.path.find_or_declare('bootsect')
-	x (
-	    target = sect_target,
-	    source = 'bootsect.o',
-	    rule   = rule_sect
-	)
 	x.add_manual_dependency(
-	    sect_target,
-	    x.path.find_node(linker_script))
+	    sect_target, x.path.find_node(linker_script))
+
+	x(  features  = 'c cprogram asm',
+	    target    = sect_target,
+	    source    = 'bootsect.S',
+	    includes  = sect_includes,
+	    asflags   = sect_asflags,
+	    linkflags = sect_linkflags,
+	)
 
