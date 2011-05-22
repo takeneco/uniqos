@@ -1,19 +1,17 @@
+# @file   wscript
+# @brief  x86_64固有カーネルコード
+#
+# (C) 2011 KATO Takeshi
+#
 
-kern_defines = []
-
-kern_includes = []
-
-kern_asflags = []
 
 kern_linkflags = [
     '-nostdlib', '-static',
-    '-mcmodel=large'
 ]
 
 kern_source = [
-    '../lib/ioapic.cc',
-    '../lib/mpspec.cc',
     'apic.cc',
+    'entry.S',
     'global_variables.cc',
     'interrupt_entry.cc',
     'interrupt_native.S',
@@ -22,8 +20,10 @@ kern_source = [
     'kernel_memory.cc',
     'physical_memory.cc',
     'serial.cc',
+    'serialh.S',
     'serialout.cc',
     'setupdata.cc',
+    'task_switch.S',
     'videoout.cc',
     'cpuinit.cc',
 
@@ -34,53 +34,27 @@ kern_source = [
     'test.cc',
 ]
 
-kern_asm_source = [
-    'entry.S',
-    'serialh.S',
-    'task_switch.S',
-]
 
-def configure(conf):
-	conf.find_program('lzma', var='LZMA')
+def configure(x):
+	x.find_program('lzma', var='LZMA')
 
-def build(bld):
-	kern_target = bld.path.find_or_declare('kernel.bin')
+def build(x):
+	kern_target = x.path.find_or_declare('kernel.bin')
 
-	kern_defines.extend(bld.env.common_defines)
-	kern_asflags.extend(bld.env.common_asflags)
+	linker_script = x.path.find_node('kernel.ld')
+	kern_linkflags.append('-T' + linker_script.abspath())
+	x.add_manual_dependency(kern_target, linker_script)
 
-	linker_script = bld.path.find_node('kernel.ld')
-	kern_linkflags.append('-T'+linker_script.abspath())
-	bld.add_manual_dependency(kern_target, linker_script)
+	mapfile = x.path.find_or_declare('kernel.map')
+	kern_linkflags.append('-Wl,-Map,' + mapfile.abspath())
 
-	kern_linkflags2 = [bld.env.LINK_PASS + f for f in kern_linkflags]
+	x(  features  = 'asm c cxx cxxprogram',
+	    target    = kern_target,
+	    source    = kern_source,
+	    use       = ['kernel_libs', 'kernel_objs', 'KERNEL'],
+	    linkflags = kern_linkflags)
 
-	map = bld.path.find_or_declare('kernel.map')
-	kern_linkflags2.append('-Wl,-Map,'+map.abspath())
-
-	# assemble-->
-	kern_rule_a = '${CC} -c ${SRC} -o ${TGT} ' + ' '.join(kern_asflags)
-
-	for asm_src in kern_asm_source:
-		srcnode = bld.path.find_node(asm_src)
-		objnode = srcnode.change_ext('.o')
-
-		bld(target=objnode, source=srcnode, rule=kern_rule_a)
-
-		# .o を kern_source に入れられないためリンクフラグに入れる。
-		kern_linkflags2.append(objnode.abspath())
-		bld.add_manual_dependency(kern_target, objnode);
-	# <--assemble
-
-	bld.program(features='cxx cxxprogram',
-	    target   = kern_target,
-	    source   = kern_source,
-	    use      = ['kernel_objs', 'KERNEL'],
-	    defines  = kern_defines,
-	    linkflags= kern_linkflags2)
-
-	bld(
-	    target   = 'kernel.bin.lzma',
+	x(  target   = 'kernel.bin.lzma',
 	    source   = 'kernel.bin',
 	    rule     = '${LZMA} -c ${SRC} > ${TGT}')
 
