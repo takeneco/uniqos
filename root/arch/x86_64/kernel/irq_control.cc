@@ -36,6 +36,7 @@ cause::stype irq_control::interrupt_map(u32 irq, u32* intr_vec)
 	}
 
 	ioapic.unmask(irq, 0, vec);
+	global_variable::gv.core->intr_ctrl.set_post_handler(vec, lapic_eoi);
 
 	*intr_vec = vec;
 

@@ -85,6 +85,8 @@ public:
 	log_file(file_interface* file_) : file(file_) {
 		write_func = write;
 	}
+
+	file_interface* get_file() { return file; }
 };
 
 

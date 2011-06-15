@@ -21,5 +21,7 @@ public:
 	void* param;
 };
 
+void post_event(event_item* event);
+
 
 #endif  // include guard

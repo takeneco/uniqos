@@ -32,15 +32,15 @@ class interrupt_control
 	    intr_handler_chain;
 	typedef void (* post_intr_handler)();
 
-	struct intr_tasks
+	struct intr_task
 	{
 		intr_handler_chain handler_chain;
 		post_intr_handler post_handler;
 
-		intr_tasks() : post_handler(0) {}
+		intr_task() : post_handler(0) {}
 	};
 
-	intr_tasks handler_table[arch::INTR_COUNT];
+	intr_task handler_table[arch::INTR_COUNT];
 
 public:
 	/// @internal  initialize handler_table[]

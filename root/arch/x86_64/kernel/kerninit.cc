@@ -14,12 +14,15 @@
 
 #include "setupdata.hh"
 #include "boot_access.hh"
+#include "event_queue.hh"
+#include "placement_new.hh"
 
 
 void test();
 void cpu_test();
 file_interface* create_serial();
 void drive();
+void serial_dump(void*);
 
 #include "task.hh"
 extern "C" void task_switch(thread_state*, thread_state*);
@@ -63,6 +66,7 @@ void func()
 extern "C" int kern_init()
 {
 	kout_ = 0;
+	native::sti();
 
 	cpu_init();
 
@@ -81,9 +85,9 @@ extern "C" int kern_init()
 	   PutStr(":vram=")->PutU32Hex(vram)->
 	   put_c('\n');
 
-	serial_kout_init();
-	log_init(&serial_get_kout());
-
+	//serial_kout_init();
+	//log_init(&serial_get_kout());
+/*
 	{
 	char* setup_log;
 	u32 setup_log_cur, setup_log_size;
@@ -91,7 +95,7 @@ extern "C" int kern_init()
 	log().write(setup_log,
 	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
 	}
-
+*/
 	setup_memory_dumpdata* map;
 	u32 map_num;
 	setup_get_used_memdump(&map, &map_num);
@@ -123,10 +127,19 @@ extern "C" int kern_init()
 
 	global_variable::gv.core->irq_ctrl.init();
 	global_variable::gv.core->intr_ctrl.init();
+	global_variable::gv.events =
+		new (memory::alloc(sizeof (event_queue))) event_queue;
 
 	file_interface* serial = create_serial();
 	log_file lf(serial);
 	log_init(&lf);
+	{
+	char* setup_log;
+	u32 setup_log_cur, setup_log_size;
+	setup::get_log(&setup_log, &setup_log_cur, &setup_log_size);
+	log().write(setup_log,
+	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
+	}
 
 	arch::apic_init();
 
@@ -141,6 +154,7 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 
 	cpu_test();
+	serial_dump(serial);
 	drive();
 	test();
 

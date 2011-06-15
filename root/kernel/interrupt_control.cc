@@ -4,6 +4,7 @@
 // (C) 2010-2011 KATO Takeshi
 //
 
+#include "arch_specs.hh"
 #include "core_class.hh"
 #include "global_variables.hh"
 #include "interrupt_control.hh"
@@ -25,7 +26,7 @@ cause::stype interrupt_control::init()
 cause::stype
 interrupt_control::add_handler(arch::intr_vec vec, interrupt_handler* h)
 {
-	if (vec >= 0x40)
+	if (vec > arch::INTR_UPPER)
 		return cause::INVALID_PARAMS;
 
 	if (!h || !h->handler)
@@ -44,11 +45,14 @@ interrupt_control::set_post_handler(arch::intr_vec vec, post_intr_handler h)
 	return cause::OK;
 }
 
-extern "C" void interrupt_timer();
+#include "log.hh"
+kern_output* kern_get_out();
+
 
 void interrupt_control::call_interrupt(u32 vector)
 {
-	intr_handler_chain& ihc = handler_table[vector].handler_chain;
+	intr_task& it = handler_table[vector];
+	intr_handler_chain& ihc = it.handler_chain;
 	for (interrupt_handler* ih = ihc.get_head();
 	     ih;
 	     ih = ihc.get_next(ih))
@@ -56,6 +60,7 @@ void interrupt_control::call_interrupt(u32 vector)
 		ih->handler(ih->param);
 	}
 
-	interrupt_timer();
+	if (it.post_handler)
+		handler_table[vector].post_handler();
 }
 

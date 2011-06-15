@@ -11,6 +11,9 @@
 
 class event_queue
 {
+///
+public:
+///
 	dechain<event_item, &event_item::chain_hook> event_chain;
 public:
 	void push(event_item* e) { event_chain.insert_tail(e); }

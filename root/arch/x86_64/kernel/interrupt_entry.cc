@@ -291,8 +291,8 @@ extern "C" void on_exception_intr_8()
 
 	kout->PutU64Hex((u64)(&kout));
 
-	//for (;;)
-	//	native::hlt();
+//	for (;;)
+//		native::hlt();
 }
 
 extern "C" void on_exception_intr_9()
@@ -345,6 +345,7 @@ extern "C" void on_exception_intr_13()
 	if (kout) {
 		kout->PutStr("exception 13");
 	}
+/*
 	log()("&kout=")(kout)();
 	u64* stack=(u64*)0xffffffffffffc000;
 	stack--;
@@ -363,7 +364,7 @@ extern "C" void on_exception_intr_13()
 	log()("rdx=").u(*stack--, 16)();
 	log()("rcx=").u(*stack--, 16)();
 	log()("rax=").u(*stack--, 16)();
-
+*/
 	for (;;)
 		native::hlt();
 }
