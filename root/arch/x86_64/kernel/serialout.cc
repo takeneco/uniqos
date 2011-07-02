@@ -69,7 +69,8 @@ void serial_kout::init(u16 com_base_port)
 	native::outb(0x03, base_port + LINE_CTRL);
 
 	// 制御ピン設定
-	native::outb(0x0b, base_port + MODEM_CTRL);
+	//native::outb(0x0b, base_port + MODEM_CTRL); // 割り込み有効
+	native::outb(0x03, base_port + MODEM_CTRL);
 
 	// 16550互換モードに設定
 	// FIFOが14bytesになる。

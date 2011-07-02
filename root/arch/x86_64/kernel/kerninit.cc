@@ -22,6 +22,7 @@ void test();
 void cpu_test();
 file_interface* create_serial();
 void drive();
+void lapic_dump();
 void serial_dump(void*);
 
 #include "task.hh"
@@ -84,10 +85,10 @@ extern "C" int kern_init()
 	   PutStr(":height=")->PutUDec(height)->
 	   PutStr(":vram=")->PutU32Hex(vram)->
 	   put_c('\n');
-
-	//serial_kout_init();
-	//log_init(&serial_get_kout());
 /*
+	serial_kout_init();
+	log_init(&serial_get_kout());
+
 	{
 	char* setup_log;
 	u32 setup_log_cur, setup_log_size;
@@ -130,9 +131,12 @@ extern "C" int kern_init()
 	global_variable::gv.events =
 		new (memory::alloc(sizeof (event_queue))) event_queue;
 
+	arch::apic_init();
+
 	file_interface* serial = create_serial();
 	log_file lf(serial);
 	log_init(&lf);
+
 	{
 	char* setup_log;
 	u32 setup_log_cur, setup_log_size;
@@ -140,8 +144,6 @@ extern "C" int kern_init()
 	log().write(setup_log,
 	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
 	}
-
-	arch::apic_init();
 
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
 	create_thread(&ts2, func);

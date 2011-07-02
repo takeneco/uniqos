@@ -15,6 +15,7 @@
 #include "placement_new.hh"
 
 #include "output.hh"
+void lapic_dump();
 
 namespace {
 
@@ -97,6 +98,18 @@ serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 
 cause::stype serial_ctrl::configure()
 {
+	u32 vec;
+	arch::irq_interrupt_map(4, &vec);
+
+	static interrupt_handler ih;
+	ih.param = this;
+	ih.handler = intr_handler;
+	global_variable::gv.core->intr_ctrl.add_handler(vec, &ih);
+
+	intr_event.handler = on_intr_event_;
+	intr_event.param = this;
+	intr_posted = false;
+
 	// 通信スピード設定開始
 	native::outb(0x80, base_port + LINE_CTRL);
 
@@ -119,18 +132,6 @@ cause::stype serial_ctrl::configure()
 	native::outb(0x03, base_port + INTR_ENABLE);
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
-
-	u32 vec;
-	arch::irq_interrupt_map(4, &vec);
-
-	static interrupt_handler ih;
-	ih.param = this;
-	ih.handler = intr_handler;
-	global_variable::gv.core->intr_ctrl.add_handler(vec, &ih);
-
-	intr_event.handler = on_intr_event_;
-	intr_event.param = this;
-	intr_posted = false;
 
 	return cause::OK;
 }

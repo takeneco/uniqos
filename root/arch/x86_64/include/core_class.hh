@@ -140,7 +140,8 @@ class allocatable_page
 {
 	/// ページが含む最も大きい空きメモリサイズ。
 	u32  max_free_bytes;
-	int  dummy___;
+	/// allocatable_page_array からのオフセット
+	u32  array_offset;
 	/// ページの先頭アドレス。
 	uptr page_adr;
 
@@ -148,6 +149,12 @@ class allocatable_page
 
 public:
 	allocatable_page() : max_free_bytes(NOT_CAPTURED) {}
+
+	void init(void* array) {
+		const u8* const a = reinterpret_cast<const u8*>(array);
+		const u8* const b = reinterpret_cast<const u8*>(this);
+		array_offset = b - a;
+	}
 
 	bool is_captured() const {
 		return max_free_bytes != NOT_CAPTURED;
@@ -202,7 +209,7 @@ private:
 	allocatable_page* new_entry();
 
 public:
-	allocatable_page_array() : info() {}
+	allocatable_page_array();
 
 	bichain_link<allocatable_page_array>& chain_hook() {
 		return info.chain_link_;
@@ -212,6 +219,12 @@ public:
 	hold_piece_header* alloc(uptr bytes);
 };
 
+inline allocatable_page_array::allocatable_page_array()
+	: info()
+{
+	for (int i = 0; i < ARRAY_LENGTH; ++i)
+		page_array[i].init(this);
+}
 
 /// @brief カーネル自身が使うメモリを管理する。
 //

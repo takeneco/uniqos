@@ -17,7 +17,17 @@ namespace arch {
 
 cause::stype irq_control::init()
 {
-	return ioapic.init_detect();
+	cause::stype r = ioapic.init_detect();
+	if (r != cause::OK)
+		return r;
+
+	// TODO:シリアルコントローラを初期化する前に割り込みが入るため、
+	// EOI する必要がある。
+	// 初期化前の割り込みが無ければ、このコードは削除できる。
+	global_variable::gv.core->intr_ctrl.set_post_handler(0x5e, lapic_eoi);
+	global_variable::gv.core->intr_ctrl.set_post_handler(0x5f, lapic_eoi);
+
+	return r;
 }
 
 cause::stype irq_control::interrupt_map(u32 irq, u32* intr_vec)
@@ -41,11 +51,6 @@ cause::stype irq_control::interrupt_map(u32 irq, u32* intr_vec)
 	*intr_vec = vec;
 
 	return cause::OK;
-}
-
-cause::stype irq_init()
-{
-	return global_variable::gv.core->irq_ctrl.init();
 }
 
 cause::stype irq_interrupt_map(u32 irq, u32* intr_vec)

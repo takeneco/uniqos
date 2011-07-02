@@ -23,6 +23,10 @@ enum {
 	LOCAL_APIC_VERSION = 0x0030,
 	/// Task Priority Register
 	LOCAL_APIC_TPR = 0x0080,
+	/// ?
+	LOCAL_APIC_APR = 0x0090,
+	/// Processor Priority Register
+	LOCAL_APIC_PPR = 0x00a0,
 	/// End of Interrupt
 	LOCAL_APIC_EOI = 0x00b0,
 	/// Logical Destination Register
@@ -31,6 +35,18 @@ enum {
 	LOCAL_APIC_DFR = 0x00e0,
 	/// Spurious Interrupt Vector Register
 	LOCAL_APIC_SVR = 0x00f0,
+	/// In Service Register
+	LOCAL_APIC_ISR_BASE = 0x0100,
+	/// Trigger Mode Register
+	LOCAL_APIC_TMR_BASE = 0x0180,
+	/// Interrupt Request Register
+	LOCAL_APIC_IRR_BASE = 0x0200,
+	/// Error Status Register
+	LOCAL_APIC_ERROR    = 0x0280,
+	/// Interrupt Command Register (0-31)
+	LOCAL_APIC_ICR_LOW  = 0x0300,
+	/// Interrupt Command Register (32-63)
+	LOCAL_APIC_ICR_HIGH = 0x0310,
 	/// LVT Timer Register
 	LOCAL_APIC_LVT_TIMER = 0x0320,
 	/// Initial Count Register (timer)
@@ -114,6 +130,23 @@ void lapic_eoi()
 	*local_apic_reg(LOCAL_APIC_EOI) = 0;
 }
 
+}
+
+void lapic_dump()
+{
+	kern_output* kout = kern_get_out();
+	kout->put_str("isr:");
+
+	u32* reg = local_apic_reg(LOCAL_APIC_ISR_BASE);
+	reg += 4 * 8;
+	for (int i = 0; i < 8; ++i) {
+		reg -= 4;
+		u32 r = *reg;
+		kout->put_u32hex(r);
+		kout->put_c(' ');
+	}
+
+	kout->put_endl();
 }
 
 extern "C" void interrupt_timer()
