@@ -326,6 +326,7 @@ acpi_get_memmap:
 	pushl %edx
 	pushw %si
 
+	xorl  %ebx, %ebx
 	xorw  %si, %si
 1:
 	movl  $24, %ecx         // sizeof buffer

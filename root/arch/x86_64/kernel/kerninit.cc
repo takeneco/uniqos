@@ -21,6 +21,7 @@
 void test();
 void cpu_test();
 file_interface* create_serial();
+file_interface* attach_console(int w, int h, u64 vram_adr);
 void drive();
 void lapic_dump();
 void serial_dump(void*);
@@ -126,6 +127,10 @@ extern "C" int kern_init()
 
 	memory::init();
 
+//	file_interface* console = attach_console(width, height, 0xb8000);
+//	log_file console_log(console);
+//	log_init(&console_log);
+
 	global_variable::gv.core->irq_ctrl.init();
 	global_variable::gv.core->intr_ctrl.init();
 	global_variable::gv.events =
@@ -144,7 +149,7 @@ extern "C" int kern_init()
 	log().write(setup_log,
 	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
 	}
-
+/*
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
 	create_thread(&ts2, func);
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
@@ -154,9 +159,10 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 	log()("kerninit")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
+*/
 
-	cpu_test();
-	serial_dump(serial);
+//	cpu_test();
+//	serial_dump(serial);
 	drive();
 	test();
 

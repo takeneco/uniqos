@@ -173,6 +173,9 @@ void intr_init()
 	idt_vec[0x22].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
 	    8 * 1, 0, 0, arch::idte::INTR);
+	idt_vec[0x23].set(
+	    reinterpret_cast<u64>(interrupt_20_handler),
+	    8 * 1, 0, 0, arch::idte::INTR);
 	idt_vec[0x30].set(
 	    reinterpret_cast<u64>(interrupt_20_handler),
 	    8 * 1, 0, 0, arch::idte::INTR);
@@ -343,12 +346,12 @@ extern "C" void on_exception_intr_13()
 {
 	kern_output* kout = kern_get_out();
 	if (kout) {
-		kout->PutStr("exception 13");
+		kout->PutStr("exception 13")->put_endl();
 	}
-/*
-	log()("&kout=")(kout)();
+	//log()("&kout=")(kout)();
 	u64* stack=(u64*)0xffffffffffffc000;
 	stack--;
+/*
 	log()("ss =").u(*stack--, 16)();
 	log()("rsp=").u(*stack--, 16)();
 	log()("rf =").u(*stack--, 16)();
@@ -365,6 +368,23 @@ extern "C" void on_exception_intr_13()
 	log()("rcx=").u(*stack--, 16)();
 	log()("rax=").u(*stack--, 16)();
 */
+	kout->put_endl();
+	kout->put_str("ss = ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rsp= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rf = ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("cs = ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rip= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("err= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("r11= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("r10= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("r9 = ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("r8 = ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rdi= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rsi= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rdx= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rcx= ")->put_u64hex(*stack--)->put_endl();
+	kout->put_str("rax= ")->put_u64hex(*stack--)->put_endl();
+
 	for (;;)
 		native::hlt();
 }

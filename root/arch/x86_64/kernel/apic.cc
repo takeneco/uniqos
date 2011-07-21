@@ -67,7 +67,7 @@ cause::stype local_apic_init()
 
 	kern_get_out()->put_str("local apic version = ")->
 	    put_u64hex(*local_apic_reg(LOCAL_APIC_VERSION))->put_endl();
-/*
+
 	// Local APIC enable
 	reg = local_apic_reg(LOCAL_APIC_SVR);
 	// 32bit アクセスは必須。
@@ -75,7 +75,7 @@ cause::stype local_apic_init()
 	u32 tmp = *reg;
 	// *reg = tmp | 0x0100;
 	asm volatile ("movl %1, %0" : "=m" (*reg) : "r" (tmp | 0x100));
-*/
+
 	*local_apic_reg(LOCAL_APIC_ID) = 0;
 	*local_apic_reg(LOCAL_APIC_LDR) = 0x1000000;
 	*local_apic_reg(LOCAL_APIC_DFR) = 0xffffffff;
