@@ -11,9 +11,11 @@
 
 /**
  * onslab
- * スラブページの中にスラブオブジェクトを含む。
+ * スラブページの中にスラブオブジェクト(slabobj)を含む。
  * スラブ(class slab)の直後にスラブオブジェクトが続く。
- * 空きスラブオブジェクトは slab::slab_freeobj になっていて free_chain に
+ *
+ * slabobj の直後にスラブのメモリがある。
+ * 空き slabobj のメモリは slab::freeobj になっていて free_chain に
  * つながっている。
  */
 
@@ -21,18 +23,33 @@ namespace {
 
 class slab
 {
-	class slab_freeobj
+	class freeobj;
+
+	class slabobj
 	{
+		slab* parent_slab;
 	public:
-		chain_link<slab_freeobj> chain_link_;
-		chain_link<slab_freeobj>& chain_hook() { return chain_link_; }
+		slabobj(slab* parent) : parent_slab(parent) {}
+
+		slab* get_parent() {
+			return parent_slab;
+		}
+		freeobj* get_freeobj() {
+			return reinterpret_cast<freeobj*>(this + 1);
+		}
+	};
+	class freeobj
+	{
+		chain_link<freeobj> chain_link_;
+	public:
+		chain_link<freeobj>& chain_hook() { return chain_link_; }
 	};
 
 	u8* get_onslab_obj_head() {
 		return reinterpret_cast<u8*>(this + 1);
 	}
 
-	chain<slab_freeobj, &slab_freeobj::chain_hook> free_chain;
+	chain<freeobj, &freeobj::chain_hook> free_chain;
 
 	bichain_link<slab> chain_link_;
 	int alloc_count;
@@ -59,15 +76,15 @@ void slab::init_onslab(uptr obj_size, uptr slab_size)
 {
 	obj_size = up_align(obj_size, arch::BASIC_TYPE_ALIGN)
 
-	if (obj_size < sizeof (slab_freeobj))
-		obj_size = sizeof (slab_freeobj);
+	if (obj_size < sizeof (freeobj))
+		obj_size = sizeof (freeobj);
 
 	const int obj_count = (slab_size - sizeof *this) / obj_size;
 
 	u8* si = get_onslab_obj_head();
 	for (int i = 0; i < obj_count; ++i) {
-		slab_freeobj* freeobj = new (si) slab_freeobj;
-		free_chain.insert_head(freeobj);
+		freeobj* obj = new (si) freeobj;
+		free_chain.insert_head(obj);
 		si += obj_size;
 	}
 }
@@ -89,8 +106,7 @@ void* slab::alloc()
 /// obj must not be null.
 void slab::free(void* obj)
 {
-	slab_freeobj* freeobj =　new (obj) slab_freeobj;
-	free_chain.insert_head(freeobj);
+	free_chain.insert_head(new (obj) freeobj);
 
 	--alloc_count;
 }
@@ -162,7 +178,7 @@ cause::stype slab_init()
 
 	s->init_onslab(sizeof (slab_alloc), arch::PAGE_L1_SIZE);
 
-	slab_alloc* sc = new (s->reserve_obj())
+	slab_alloc* sc = new (s->alloc())
 	    slab_alloc(sizeof (slab_alloc), arch::PAGE_L1_SIZE);
 
 	return cause::OK;
