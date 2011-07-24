@@ -1,10 +1,10 @@
-/// @file  kernel_memory.cc
+/// @file  test.cc
 /// @brief Kernel internal virtual memory management.
 //
 // (C) 2010 KATO Takeshi
 //
 
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "chain.hh"
 #include "kerninit.hh"
 #include "memory_allocate.hh"

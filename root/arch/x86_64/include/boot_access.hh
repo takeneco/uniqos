@@ -96,7 +96,7 @@
 
 #ifndef ASM_SOUCE
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 // setup data access methods.
 
@@ -121,5 +121,5 @@ struct setup_memory_dumpdata
 #endif  // ASM_SOURCE
 
 
-#endif  // include guard.
+#endif  // include guard
 

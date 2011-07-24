@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 namespace native {
@@ -294,4 +294,4 @@ inline s32 bitscan_reverse(u32 data) { return native::bsrl_or0(data); }
 inline s64 bitscan_reverse(u64 data) { return native::bsrq_or0(data); }
 
 
-#endif  // Include guard
+#endif  // include guard

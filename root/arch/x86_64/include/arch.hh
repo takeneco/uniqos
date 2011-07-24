@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_ARCH_HH_
 #define ARCH_X86_64_INCLUDE_ARCH_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 namespace arch

@@ -6,7 +6,7 @@
 #ifndef ARCH_X86_64_KERNEL_KERNINIT_HH_
 #define ARCH_X86_64_KERNEL_KERNINIT_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 int cpu_init();

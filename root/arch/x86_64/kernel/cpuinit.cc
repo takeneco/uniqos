@@ -7,7 +7,7 @@
 #include "kerninit.hh"
 
 #include "arch.hh"
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "desctable.hh"
 #include "native_ops.hh"
 #include "setupdata.hh"

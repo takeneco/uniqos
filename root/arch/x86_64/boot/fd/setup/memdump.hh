@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_KERNEL_SETUP_MEMDUMP_HH_
 #define ARCH_X86_64_KERNEL_SETUP_MEMDUMP_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 struct setup_memory_dumpdata
@@ -17,4 +17,5 @@ struct setup_memory_dumpdata
 };
 
 
-#endif  // Include guard
+#endif  // include guard
+

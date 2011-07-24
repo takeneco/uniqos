@@ -5,10 +5,11 @@
  * (C) Kato Takeshi 2009
  */
 
-#ifndef _INCLUDE_FAT_HH_
-#define _INCLUDE_FAT_HH_
+#ifndef INCLUDE_FAT_HH_
+#define INCLUDE_FAT_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
+
 
 struct fat_header {
 	_u8  jmp_opcode[3];

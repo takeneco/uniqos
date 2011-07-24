@@ -6,7 +6,7 @@
 #ifndef ARCH_X86_64_KERNEL_TASK_HH_
 #define ARCH_X86_64_KERNEL_TASK_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 struct thread_state
@@ -20,5 +20,5 @@ struct thread_state
 };
 
 
-#endif  // Include guard.
+#endif  // include guard
 

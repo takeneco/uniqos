@@ -1,11 +1,12 @@
 /// @author  KATO Takeshi
 //
 // (C) 2010 KATO Takeshi
+//
 
 #ifndef ARCH_X86_64_KERNEL_SETUPDATA_HH_
 #define ARCH_X86_64_KERNEL_SETUPDATA_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 void setup_get_display_mode(u32* width, u32* height, u32* vram);
@@ -24,5 +25,5 @@ void get_log(char** buf, u32* cur, u32* size);
 } // namespace setup
 
 
-#endif  // Include guard.
+#endif  // include guard
 

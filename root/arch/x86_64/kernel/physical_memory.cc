@@ -5,7 +5,7 @@
 //
 
 #include "arch.hh"
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "bitmap.hh"
 #include "chain.hh"
 #include "global_variables.hh"

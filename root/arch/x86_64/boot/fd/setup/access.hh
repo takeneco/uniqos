@@ -1,13 +1,13 @@
 // @file    arch/x86_64/kernel/setup/access.hh
-// @author  Kato Takeshi
 // @brief   Setup data access methods.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010 Kato Takeshi
+//
 
-#ifndef _ARCH_X86_64_KERNEL_SETUP_ACCESS_HH_
-#define _ARCH_X86_64_KERNEL_SETUP_ACCESS_HH_
+#ifndef ARCH_X86_64_KERNEL_SETUP_ACCESS_HH_
+#define ARCH_X86_64_KERNEL_SETUP_ACCESS_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "setup.h"
 
 
@@ -22,5 +22,5 @@ template<class T> inline T* setup_get_ptr(u64 off) {
 }
 
 
-#endif  // Include guard.
+#endif  // include guard
 

@@ -1,12 +1,13 @@
-/// @author KATO Takeshi
+/// @file   pagetable.hh
 /// @brief  64bit paging table ops.
 //
 // (C) 2010 KATO Takeshi
+//
 
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 
 
 class page_table_ent
@@ -76,4 +77,5 @@ typedef page_table_ent pte;
 
 }  // End of namespace arch.
 
-#endif  // Include guard.
+
+#endif  // include guard

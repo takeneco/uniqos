@@ -1,12 +1,12 @@
 // @file   arch/x86_64/boot/bootldr/loadfat.hh
-// @author Kato Takeshi
 //
-// (C) Kato Takeshi 2010
+// (C) KATO Takeshi 2010
+//
 
-#ifndef _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
-#define _ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
+#ifndef ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
+#define ARCH_X86_BOOT_BOOTLDR_LOADFAT_HH_
 
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "fat.hh"
 
 
@@ -81,4 +81,6 @@ inline dir_entry* fat_info::rootents() {
 	return reinterpret_cast<dir_entry*>(head + rootents_offset);
 }
 
-#endif  // Include guard.
+
+#endif  // include guard
+

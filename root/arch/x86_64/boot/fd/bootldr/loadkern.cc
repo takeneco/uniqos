@@ -4,7 +4,7 @@
 // (C) 2010-2011 KATO Takeshi
 //
 
-#include "btypes.hh"
+#include "basic_types.hh"
 #include "loadfat.hh"
 
 #include "boot.h"
