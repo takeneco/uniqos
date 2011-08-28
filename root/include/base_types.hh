@@ -225,6 +225,12 @@ inline const t_& max(const t_& x, const t_& y) {
 	return x >= y ? x : y;
 }
 
+template <class _T> int int_size_bits();
+template <> inline int int_size_bits<u8>()  { return 3; }
+template <> inline int int_size_bits<u16>() { return 4; }
+template <> inline int int_size_bits<u32>() { return 5; }
+template <> inline int int_size_bits<u64>() { return 6; }
+
 
 // NULL
 const class {

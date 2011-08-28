@@ -1,7 +1,7 @@
 /// @file  physical_memory.cc
 /// @brief Physical memory management.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #include "arch.hh"
@@ -11,6 +11,7 @@
 #include "global_variables.hh"
 #include "native_ops.hh"
 #include "memory_allocate.hh"
+#include "memcell.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
 #include "boot_access.hh"
@@ -21,8 +22,6 @@
 namespace {
 
 using global_variable::gv;
-
-const uptr ADR_INVALID = U64CAST(0xffffffffffffffff);
 
 /// @brief 物理メモリの末端アドレスを返す。
 //
@@ -67,364 +66,34 @@ setup_memory_dumpdata* search_free_pmem(u32 size)
 	return 0;
 }
 
-
-/////////////////////////////////////////////////////////////////////
-/// @brief 物理メモリページの空き状態を管理する。
-class physical_page_table
+/// @brief セットアップ後の空きメモリ情報を直接操作し、メモリを割り当てる。
+void* mem_alloc(u32 size)
 {
-	/// bitmap の１ビットで１ページの空き状態を管理する。
-	struct table_cell
-	{
-		/// 空きページのビットは true
-		/// 予約ページのビットは false
-		bitmap<uptr> table;
-		chain_link<table_cell> chain_link_;
-
-		chain_link<table_cell>& chain_hook() {
-			return chain_link_;
-		}
-	};
-
-	typedef chain<table_cell, &table_cell::chain_hook> cell_chain;
-
-	// １ページ * BITMAP_BITS のサイズを 1cell と呼ぶことにする。
-
-	/// 空きメモリチェイン
-	cell_chain free_cell_chain;
-	table_cell* table_base;
-
-	const uptr page_size;
-	const uptr cell_size;
-	physical_page_table* const up_level;
-	physical_page_table* const down_level;
-
-private:
-	uptr get_page_address(const table_cell* cell, uptr offset) const;
-	unsigned int get_cell_index(uptr adr) const;
-	table_cell& get_cell(uptr adr);
-	bool import_uplevel_page();
-
-public:
-	enum {
-		BITMAP_BITS = bitmap<uptr>::BITS,
-	};
-
-	physical_page_table(
-	    u64 page_size_,
-	    physical_page_table* up_level_,
-	    physical_page_table* down_level_)
-	:	page_size(page_size_),
-		cell_size(page_size * BITMAP_BITS),
-		up_level(up_level_),
-		down_level(down_level_)
-	{}
-
-	static uptr calc_buf_size(uptr pmem_end, uptr page_size);
-
-	void init_reserve_all(void* buf, uptr buf_size);
-	void init_free_all(void* buf, uptr buf_size);
-
-	void reserve_range(uptr from, uptr to);
-	uptr free_range(uptr from, uptr to);
-
-	void build_free_chain(uptr pmem_end);
-
-	cause::stype reserve_1page(uptr* padr);
-	cause::stype free_1page(uptr padr);
-};
-
-inline
-uptr physical_page_table::get_page_address(
-    const physical_page_table::table_cell* cell,
-    uptr offset)
-const
-{
-	return ((cell - table_base) * BITMAP_BITS + offset) * page_size;
-}
-
-inline
-unsigned int physical_page_table::get_cell_index(uptr adr) const
-{
-	return adr / cell_size;
-}
-
-inline
-physical_page_table::table_cell& physical_page_table::get_cell(uptr adr)
-{
-	return table_base[get_cell_index(adr)];
-}
-
-/// 上のレベルから1ページだけ崩して取り込む。
-/// @retval true  Succeeds.
-/// @retval false No memory in uplevel.
-bool physical_page_table::import_uplevel_page()
-{
-	if (up_level == 0)
-		return false;
-
-	uptr up_padr;
-	const cause::stype r = up_level->reserve_1page(&up_padr);
-	if (r != cause::OK)
-		return false;
-
-	const uptr up_page_size = up_level->page_size;
-	for (uptr offset = 0; offset < up_page_size; offset += cell_size) {
-		table_cell& cell = get_cell(up_padr + offset);
-		cell.table.set_true_all();
-		free_cell_chain.insert_head(&cell);
-	}
-
-	return true;
-}
-
-uptr physical_page_table::calc_buf_size(uptr pmem_end, uptr page_size)
-{
-	// 物理メモリのページ数
-	const uptr pages = (pmem_end + (page_size - 1)) / page_size;
-
-	// すべてのページを管理するために必要な bitmap_list 数
-	const uptr bitmaps = (pages + (BITMAP_BITS - 1)) / BITMAP_BITS;
-
-	return sizeof (table_cell) * bitmaps;
-}
-
-/// @brief 物理メモリを予約済みとして初期化する。
-/// Without for top levels.
-void physical_page_table::init_reserve_all(void* buf, uptr buf_size)
-{
-	table_base = reinterpret_cast<table_cell*>(buf);
-
-	const uptr n = buf_size / sizeof (table_cell);
-
-	// up_level から渡されたページを free の状態にするため、
-	// true で初期化したい。
-
-	for (uptr i = 0; i < n; ++i)
-		table_base[i].table.set_false_all();
-}
-
-/// @brief 物理メモリ全体を空き状態として初期化する。
-//
-// *** UNUSED ***
-//
-void physical_page_table::init_free_all(void* buf, uptr buf_size)
-{
-	table_base = reinterpret_cast<table_cell*>(buf);
-
-	const uptr n = buf_size / sizeof (table_cell);
-
-	dechain<table_cell, &table_cell::chain_hook> dech;
-
-	for (uptr i = 0; i < n; ++i) {
-		table_base[i].table.set_true_all();
-		dech.insert_tail(&table_base[i]);
-	}
-
-	free_cell_chain.init_head(dech.get_head());
-}
-
-/// @brief from から to までを割当済みの状態にする。
-//
-/// 最上位のレベルでなければ使えない。
-/// 下のレベルのテーブルにも反映する。
-/// 空きメモリリストは更新しない。
-//
-// *** UNUSED ***
-//
-void physical_page_table::reserve_range(uptr from, uptr to)
-{
-	const uptr fr_page = from / page_size;
-	const uptr fr_table = fr_page / BITMAP_BITS;
-	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
-
-	const uptr to_page = to / page_size;
-	const uptr to_table = to_page / BITMAP_BITS;
-	const uptr to_page_in_table = to_page % BITMAP_BITS;
-
-	for (uptr table = fr_table; table <= to_table; ++table) {
-		const uptr page_min =
-		    table == fr_table ? fr_page_in_table : 0;
-		const uptr page_max =
-		    table == to_table ? to_page_in_table : BITMAP_BITS - 1;
-
-		for (uptr page = page_min; page <= page_max; ++page) {
-			table_base[table].table.set_false(page);
-		}
-	}
-
-	if (down_level != 0) {
-		if (from % page_size != 0) {
-			const uptr tmp = down_align(from, page_size);
-			down_level->free_range(tmp, from);
-		}
-		if (to % page_size != 0) {
-			const uptr tmp = up_align(to, page_size);
-			down_level->free_range(to, tmp);
-		}
-	}
-}
-
-/// @brief from から to-1 までを空き状態にする。
-/// @return 空き状態になったメモリのバイト数を返す。
-/// @return この関数を呼び出す前に空き領域になっていたメモリの分も含む。
-//
-/// page_size より小さな空きメモリは、下のレベルのテーブルに反映する。
-/// 空きメモリチェインは更新しない。
-uptr physical_page_table::free_range(uptr from, uptr to)
-{
-	const uptr fr_page = up_align(from, page_size) / page_size;
-	const uptr fr_table = fr_page / BITMAP_BITS;
-	const uptr fr_page_in_table = fr_page % BITMAP_BITS;
-
-	const uptr to_page = (down_align(to, page_size) - 1) / page_size;
-	const uptr to_table = to_page / BITMAP_BITS;
-	const uptr to_page_in_table = to_page % BITMAP_BITS;
-
-	uptr total = 0;
-	for (uptr table = fr_table; table <= to_table; ++table) {
-		if (table != fr_table && table != to_table) {
-			table_base[table].table.set_true_all();
-			total += cell_size;
-			continue;
-		}
-
-		const uptr page_min =
-		    table == fr_table ? fr_page_in_table : 0;
-		const uptr page_max =
-		    table == to_table ? to_page_in_table : BITMAP_BITS - 1;
-
-		for (uptr page = page_min; page <= page_max; ++page) {
-			table_base[table].table.set_true(page);
-			total += page_size;
-		}
-	}
-
-	if (down_level != 0) {
-		if (from % page_size != 0) {
-			const uptr tmp = up_align(from, page_size);
-			total += down_level->free_range(from, min(tmp, to));
-		}
-		if (fr_page <= to_page && to % page_size != 0) {
-			const uptr tmp = down_align(to, page_size);
-			total += down_level->free_range(tmp, to);
-		}
-	}
-
-	return total;
-}
-
-/// @brief 空きメモリチェインをつなぐ。
-void physical_page_table::build_free_chain(uptr pmem_end)
-{
-	dechain<table_cell, &table_cell::chain_hook> dech;
-
-	const uptr page_num = (pmem_end + (page_size - 1)) / page_size;
-	const uptr cell_num = (page_num + (BITMAP_BITS - 1)) / BITMAP_BITS;
-
-	for (uptr i = 0; i < cell_num; ++i) {
-		if (!table_base[i].table.is_false_all())
-			dech.insert_tail(&table_base[i]);
-	}
-
-	free_cell_chain.init_head(dech.get_head());
-}
-
-/// @brief １ページだけ予約する。
-/// @param[out] padr 予約した物理ページのアドレスを返す。
-/// @retval cause::OK 成功した。
-/// @retval cause::NO_MEMORY 空きメモリがない。
-cause::stype physical_page_table::reserve_1page(uptr* padr)
-{
-	table_cell* cell;
-
-	for (;;) {
-		cell = free_cell_chain.get_head();
-
-		if (cell == 0) {
-			if (import_uplevel_page())
-				continue;
-			else
-				return cause::NO_MEMORY;
-		}
-
-		if (!cell->table.is_false_all())
-			break;
-
-		// まとまった cell を上位レベルに返却するときに、
-		// 一緒に返却された cell は、空きページを含まないまま
-		// free_cell_chain に残ってしまう。
-		// その場合はここで cell を削除する。
-		free_cell_chain.remove_head();
-	}
-
-	const int offset = cell->table.search_true();
-
-	cell->table.set_false(offset);
-
-	if (cell->table.is_false_all())
-		free_cell_chain.remove_head();
-
-	*padr = get_page_address(cell, offset);
-	return cause::OK;
-}
-
-/// @brief １ページだけ解放する。
-/// @param[in] padr 解放する物理メモリのアドレス。
-///                 ページサイズより小さなビットは無視してしまう。
-cause::stype physical_page_table::free_1page(uptr padr)
-{
-	const unsigned int cell_index = get_cell_index(padr);
-	table_cell& cell = table_base[cell_index];
-	if (cell.table.is_false_all())
-		free_cell_chain.insert_head(&cell);
-
-	const int offset = padr / page_size % BITMAP_BITS;
-
-	if (!cell.table.is_true(offset))
-		return cause::NOT_ALLOCED;
-
-	cell.table.set_true(offset);
-
-	if (cell.table.is_true_all() && up_level) {
-		// padr を含む上位レベルのページがすべて空き状態となった
-		// 場合は、上位レベルへ返却する。
-
-		// 上位レベルの１ページは n セルに相当する。
-		const uptr n = up_level->page_size / this->cell_size;
-		const unsigned int up_cell_base = cell_index / n * n;
-
-		unsigned int i;
-		for (i = 0; i < n; ++i) {
-			if (!table_base[up_cell_base + i].table.is_true_all())
-				break;
-		}
-
-		if (i == n) {
-			for (i = 0; i < n; ++i) {
-				table_base[up_cell_base + i].
-				    table.set_false_all();
-			}
-
-			up_level->free_1page(padr);
-		}
-	}
-
-	return cause::OK;
+	setup_memory_dumpdata* pmem_data = search_free_pmem(size);
+	if (pmem_data == 0)
+		return 0;
+
+	const uptr base_padr =
+	    up_align<uptr>(pmem_data->head, arch::BASIC_TYPE_ALIGN);
+
+	// 空きメモリからメモリ管理用領域を外す。
+	const uptr align_diff = base_padr - pmem_data->head;
+	pmem_data->head += size + align_diff;
+	pmem_data->bytes -= size + align_diff;
+
+	return arch::pmem::direct_map(base_padr);
 }
 
 }  // namepsace
 
 /////////////////////////////////////////////////////////////////////
-/// @brief 物理メモリの空き状態を２段のページで管理する。
+/// @brief 物理メモリの空き状態を管理する。
 class physical_memory
 {
-	physical_page_table page_l1_table;
-	physical_page_table page_l2_table;
-	uptr pmem_end;
-	uptr free_bytes;
+	mem_cell_base<u64> page_base[5];
 
 public:
-	static uptr calc_workarea_size(uptr pmem_end_);
+	uptr calc_workarea_size(uptr pmem_end_);
 
 	physical_memory();
 
@@ -437,45 +106,35 @@ public:
 
 	cause::stype free_l1page(uptr padr);
 	cause::stype free_l2page(uptr padr);
+
+	cause::stype page_alloc(arch::PAGE_TYPE pt, uptr* padr);
+	cause::stype page_free(arch::PAGE_TYPE pt, uptr padr);
 };
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
 //
-/// @param[in] pmem_end_ 物理メモリの終端アドレス。
+/// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @return ワークエリアのサイズをバイト数で返す。
-uptr physical_memory::calc_workarea_size(uptr pmem_end_)
+uptr physical_memory::calc_workarea_size(uptr _pmem_end)
 {
-	const uptr l1buf = physical_page_table::calc_buf_size(
-	    pmem_end_, arch::PAGE_L1_SIZE);
-	const uptr l2buf = physical_page_table::calc_buf_size(
-	    pmem_end_, arch::PAGE_L2_SIZE);
-
-	return l1buf + l2buf;
+	return page_base[4].calc_buf_size(_pmem_end);
 }
 
 physical_memory::physical_memory()
-:	page_l1_table(arch::PAGE_L1_SIZE, &page_l2_table, 0),
-	page_l2_table(arch::PAGE_L2_SIZE, 0, &page_l1_table),
-	free_bytes(0)
 {
+	page_base[0].set_params(12, 0);
+	page_base[1].set_params(18, &page_base[0]);
+	page_base[2].set_params(21, &page_base[1]);
+	page_base[3].set_params(27, &page_base[2]);
+	page_base[4].set_params(30, &page_base[3]);
 }
 
-/// @param[in] pmem_end_ 物理メモリの終端アドレス。
+/// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
 /// @return true を返す。
-bool physical_memory::init(uptr pmem_end_, void* buf)
+bool physical_memory::init(uptr _pmem_end, void* buf)
 {
-	pmem_end = pmem_end_;
-
-	const uptr l2buf_size =
-	    physical_page_table::calc_buf_size(pmem_end_, arch::PAGE_L2_SIZE);
-	page_l2_table.init_reserve_all(buf, l2buf_size);
-
-	const uptr l1buf_size =
-	    physical_page_table::calc_buf_size(pmem_end_, arch::PAGE_L1_SIZE);
-	page_l1_table.init_reserve_all(
-	    reinterpret_cast<char*>(buf) + l2buf_size,
-	    l1buf_size);
+	page_base[4].set_buf(buf, _pmem_end);
 
 	return true;
 }
@@ -487,9 +146,9 @@ bool physical_memory::load_setupdump()
 	setup_get_free_memdump(&freemap, &freemap_num);
 
 	for (u32 i = 0; i < freemap_num; ++i) {
-		free_bytes += page_l2_table.free_range(
+		page_base[4].free_range(
 		    freemap[i].head,
-		    freemap[i].head + freemap[i].bytes);
+		    freemap[i].head + freemap[i].bytes - 1);
 	}
 
 	return true;
@@ -497,44 +156,37 @@ bool physical_memory::load_setupdump()
 
 void physical_memory::build()
 {
-	page_l1_table.build_free_chain(pmem_end);
-	page_l2_table.build_free_chain(pmem_end);
+	page_base[4].build_free_chain();
 }
 
 cause::stype physical_memory::reserve_l1page(uptr* padr)
 {
-	const cause::stype r = page_l1_table.reserve_1page(padr);
-	if (r == cause::OK)
-		free_bytes -= arch::PAGE_L1_SIZE;
-
-	return r;
+	return page_base[0].reserve_1page(padr);
 }
 
 cause::stype physical_memory::reserve_l2page(uptr* padr)
 {
-	const cause::stype r = page_l2_table.reserve_1page(padr);
-	if (r == cause::OK)
-		free_bytes -= arch::PAGE_L2_SIZE;
-
-	return r;
+	return page_base[2].reserve_1page(padr);
 }
 
 cause::stype physical_memory::free_l1page(uptr padr)
 {
-	const cause::stype r = page_l1_table.free_1page(padr);
-	if (r == cause::OK)
-		free_bytes += arch::PAGE_L1_SIZE;
-
-	return r;
+	return page_base[0].free_1page(padr);
 }
 
 cause::stype physical_memory::free_l2page(uptr padr)
 {
-	const cause::stype r = page_l2_table.free_1page(padr);
-	if (r == cause::OK)
-		free_bytes += arch::PAGE_L2_SIZE;
+	return page_base[2].free_1page(padr);
+}
 
-	return r;
+cause::stype physical_memory::page_alloc(arch::PAGE_TYPE pt, uptr* padr)
+{
+	return page_base[pt].reserve_1page(padr);
+}
+
+cause::stype physical_memory::page_free(arch::PAGE_TYPE pt, uptr padr)
+{
+	return page_base[pt].free_1page(padr);
 }
 
 namespace arch
@@ -550,29 +202,18 @@ cause::stype init()
 	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
 	const uptr pmem_end = get_pmem_end();
 
-	const uptr work_size =
-	    physical_memory::calc_workarea_size(pmem_end) +
-	    sizeof (physical_memory);
-
-	setup_memory_dumpdata* pmem_data = search_free_pmem(work_size);
-	if (pmem_data == 0)
+	void* buf = mem_alloc(sizeof (physical_memory));
+	physical_memory* pmem_ctrl =
+	    new (buf) physical_memory;
+	if (pmem_ctrl == 0)
 		return cause::NO_MEMORY;
 
-	const uptr base_padr = up_align<uptr>(pmem_data->head, 8);
-
-	// 空きメモリからメモリ管理用領域を外す。
-	const uptr align_diff = base_padr - pmem_data->head;
-	pmem_data->head += work_size + align_diff;
-	pmem_data->bytes -= work_size + align_diff;
-
-
-	// メモリ管理用領域の先頭を physical_memory に割り当てる。
-	physical_memory* pmem_ctrl =
-	    new (reinterpret_cast<u8*>(PHYSICAL_MEMMAP_BASEADR + base_padr))
-	    physical_memory;
+	buf = mem_alloc(pmem_ctrl->calc_workarea_size(pmem_end));
+	if (buf == 0)
+		return cause::NO_MEMORY;
 
 	// 続くメモリをバッファにする。
-	pmem_ctrl->init(pmem_end, pmem_ctrl + 1);
+	pmem_ctrl->init(pmem_end, buf);
 
 	pmem_ctrl->load_setupdump();
 

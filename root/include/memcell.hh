@@ -69,18 +69,18 @@ private:
 	typedef sptr cell_t;
 
 	/// 連続する page をまとめて cell と呼ぶ。
-	/// bitmap の１ビットで 1 page の空き状態を管理する。
+	/// int_bitset の１ビットで 1 page の空き状態を管理する。
 	struct cell
 	{
 		/// 空きページのビットは true
 		/// 予約ページのビットは false
-		bitmap<CELLTYPE> table;
+		int_bitset<CELLTYPE> table;
 
 		bichain_link<cell> _chain_link;
 		bichain_link<cell>& chain_hook() { return _chain_link; }
 	};
 	enum {
-		BITMAP_BITS = bitmap<CELLTYPE>::BITS,
+		BITMAP_BITS = int_bitset<CELLTYPE>::BITS,
 	};
 
 	/// すべて空き状態の cell.table のビットパターン
@@ -197,8 +197,9 @@ public:
 	}
 };
 
-/// 下のレベルから順に初期化しなければならない
-/// 上のレベルがいなければ cell_size_bits は BITMAP_BITS にする
+/// 下位レベルから順に呼び出さなければならない。
+/// 上位レベルがいなければ cell_size_bits は BITMAP_BITS を
+/// すべて活用する値にする。
 template<class CELLTYPE>
 void mem_cell_base<CELLTYPE>::set_params(
     uptr _page_size_bits,
@@ -682,7 +683,7 @@ cause::stype free_l2page(uptr adr)
 }  // namespace arch
 */
 
-void memcell_test()
+inline void memcell_test()
 {
 	log()("---- memcell test start")();
 

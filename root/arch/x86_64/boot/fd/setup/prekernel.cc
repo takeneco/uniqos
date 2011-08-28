@@ -61,12 +61,12 @@ uptr get_memory_end()
 void init_physical_memmap()
 {
 	const uptr end_padr = get_memory_end();
-	const uptr pde_count = up_div<uptr>(end_padr, arch::PAGE_L2_SIZE);
+	const uptr pde_count = up_div<uptr>(end_padr, arch::PHYS_PAGE_L2_SIZE);
 	const uptr pde_table_count = up_div<uptr>(pde_count, 512);
-	const uptr pde_table_size = pde_table_count * arch::PAGE_L1_SIZE;
+	const uptr pde_table_size = pde_table_count * arch::PHYS_PAGE_L1_SIZE;
 
 	page_table_ent* pde = reinterpret_cast<page_table_ent*>(
-	    memory_alloc(pde_table_size, arch::PAGE_L1_SIZE));
+	    memory_alloc(pde_table_size, arch::PHYS_PAGE_L1_SIZE));
 
 	// ここで失敗することはないはず
 	// if (!pde) native::hlt();
@@ -74,7 +74,7 @@ void init_physical_memmap()
 	// create PDE
 	uptr i;
 	for (i = 0; i < pde_count; ++i) {
-		pde[i].set(i * arch::PAGE_L2_SIZE,
+		pde[i].set(i * arch::PHYS_PAGE_L2_SIZE,
 		    page_table_ent::P |
 		    page_table_ent::RW |
 		    page_table_ent::PS |
@@ -141,7 +141,7 @@ void fixed_allocs()
 // Kernel text body address mapping start
 
 	page_table_ent* pde = reinterpret_cast<page_table_ent*>
-	    (memory_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
+	    (memory_alloc(arch::PHYS_PAGE_L1_SIZE, arch::PHYS_PAGE_L1_SIZE));
 
 	// pdpte_base[0x1fffc] -> 0x....ffff0.......
 	pdpte_base[0x1fffc].set(reinterpret_cast<u64>(pde) /*pde_adr*/,
@@ -161,7 +161,7 @@ void fixed_allocs()
 // Kernel text body address mapping end
 
 	pde = reinterpret_cast<page_table_ent*>
-	    (memory_alloc(arch::PAGE_L1_SIZE, arch::PAGE_L1_SIZE));
+	    (memory_alloc(arch::PHYS_PAGE_L1_SIZE, arch::PHYS_PAGE_L1_SIZE));
 
 	// pdpte_base[0x1ffff] -> 0x....ffffc.......
 	pdpte_base[0x1ffff].set(reinterpret_cast<u64>(pde) /*pde_adr*/,

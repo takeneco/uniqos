@@ -1,56 +1,58 @@
-/// @file  bitmap.hh
+/// @file  int_bitset.hh
 /// @brief Bitmap structure.
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010 KATO Takeshi
 //
 
-#ifndef BITMAP_HH_
-#define BITMAP_HH_
+#ifndef INT_BITSET_HH_
+#define INT_BITSET_HH_
 
 #include "arch.hh"
 #include "native_ops.hh"
 
 
-template<class bittype_>
-class bitmap
+template<class TYPE>
+class int_bitset
 {
-	bittype_ map;
+	TYPE field;
 
 public:
 	enum {
-		BITS = arch::BITS_PER_BYTE * sizeof (bittype_),
+		BITS = arch::BITS_PER_BYTE * sizeof (TYPE),
 	};
 
-	// Cast to bittype_
-	static bittype_ b(bittype_ x) { return x; }
+	// Cast to TYPE
+	static TYPE b(TYPE x) { return x; }
 
 public:
-	bitmap() {}
-	explicit bitmap(bittype_ x) : map(x) {}
+	int_bitset() {}
+	explicit int_bitset(TYPE x) : field(x) {}
 
-	bittype_ get_raw() const { return map; }
+	void set_raw(TYPE x) { field = x; }
+	TYPE get_raw() const { return field; }
 
-	void set_true(int i)  { map |= b(1) << i; }
-	void set_false(int i) { map &= ~(b(1) << i); }
-	void set_true_all()   { map = ~b(0); }
-	void set_false_all()  { map = b(0); }
+	void set_true(int i)  { field |= b(1) << i; }
+	void set_false(int i) { field &= ~(b(1) << i); }
+	void set_true_all()   { field = ~b(0); }
+	void set_false_all()  { field = b(0); }
 
-	bool is_true(int i) { return map == b(1) << i; }
-	bool is_false(int i) { return map != b(1) << i; }
-	bool is_true_all() { return map == ~b(0); }
-	bool is_false_all() { return map == b(0); }
+	bool is_true(int i) { return field & (b(1) << i); }
+	bool is_false(int i) { return !is_true(i); }
+	bool is_true_all() { return field == ~b(0); }
+	bool is_false_all() { return field == b(0); }
 
 	int search_true() const {
-		const int r = static_cast<int>(bitscan_forward(map));
+		const int r = static_cast<int>(bitscan_forward(field));
 		// assert(r >= 0)
 		return r;
 	}
 	int search_false() const {
-		const int r = static_cast<int>(bitscan_forward(~map));
+		const int r = static_cast<int>(bitscan_forward(~field));
 		// assert(r >= 0)
 		return r;
 	}
 };
 
 
-#endif  // Include guards.
+#endif  // include guard
+

@@ -253,11 +253,11 @@ hold_piece_header* kernel_memory::alloc_from_newpage(uptr size)
 	uptr page_adr;
 	u32 page_size;
 	cause::stype r;
-	if (size <= (arch::PAGE_L1_SIZE - header_size)) {
-		page_size = arch::PAGE_L1_SIZE;
+	if (size <= (arch::PHYS_PAGE_L1_SIZE - header_size)) {
+		page_size = arch::PHYS_PAGE_L1_SIZE;
 		r = arch::pmem::alloc_l1page(&page_adr);
-	} else if (size <= (arch::PAGE_L2_SIZE - header_size)) {
-		page_size = arch::PAGE_L2_SIZE;
+	} else if (size <= (arch::PHYS_PAGE_L2_SIZE - header_size)) {
+		page_size = arch::PHYS_PAGE_L2_SIZE;
 		r = arch::pmem::alloc_l2page(&page_adr);
 	} else {
 		r = cause::NO_IMPLEMENTS;
@@ -284,7 +284,7 @@ hold_piece_header* kernel_memory::alloc_from_newpage(uptr size)
 		uptr tmp;
 		r = arch::pmem::alloc_l1page(&tmp);
 		if (r != cause::OK) {
-			page_size == arch::PAGE_L1_SIZE ?
+			page_size == arch::PHYS_PAGE_L1_SIZE ?
 			    arch::pmem::free_l1page(page_adr) :
 			    arch::pmem::free_l2page(page_adr);
 			return 0;
