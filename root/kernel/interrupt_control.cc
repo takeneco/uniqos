@@ -6,7 +6,7 @@
 
 #include "arch_specs.hh"
 #include "core_class.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 #include "interrupt_control.hh"
 
 
@@ -14,7 +14,7 @@
 /// @param vec 割り込みベクタ。
 extern "C" void on_interrupt(arch::intr_vec index)
 {
-	global_variable::gv.core->intr_ctrl.call_interrupt(index);
+	global_vars::gv.core->intr_ctrl.call_interrupt(index);
 }
 
 
@@ -46,7 +46,6 @@ interrupt_control::set_post_handler(arch::intr_vec vec, post_intr_handler h)
 }
 
 #include "log.hh"
-kern_output* kern_get_out();
 
 
 void interrupt_control::call_interrupt(u32 vector)

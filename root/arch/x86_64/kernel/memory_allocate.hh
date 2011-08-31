@@ -11,15 +11,11 @@
 
 namespace arch {
 
-namespace pmem {
+namespace page {
 
 cause::stype init();
-cause::stype alloc_l1page(uptr* padr);
-cause::stype alloc_l2page(uptr* padr);
-cause::stype free_l1page(uptr padr);
-cause::stype free_l2page(uptr padr);
 
-}  // namespace pmem
+}  // namespace page
 
 }  // namespace arch
 

@@ -6,7 +6,7 @@
 
 #include "arch.hh"
 #include "core_class.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 #include "kerninit.hh"
 #include "output.hh"
 #include "memory_allocate.hh"
@@ -16,6 +16,8 @@
 #include "boot_access.hh"
 #include "event_queue.hh"
 #include "placement_new.hh"
+
+#include "memcell.hh"
 
 
 void test();
@@ -114,7 +116,7 @@ extern "C" int kern_init()
 		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
 	}
 
-	cause::stype r = arch::pmem::init();
+	cause::stype r = arch::page::init();
 
 	setup_get_free_memdump(&map, &map_num);
 	vo.put_str("free:\n");
@@ -131,9 +133,9 @@ extern "C" int kern_init()
 //	log_file console_log(console);
 //	log_init(&console_log);
 
-	global_variable::gv.core->irq_ctrl.init();
-	global_variable::gv.core->intr_ctrl.init();
-	global_variable::gv.events =
+	global_vars::gv.core->irq_ctrl.init();
+	global_vars::gv.core->intr_ctrl.init();
+	global_vars::gv.events =
 		new (memory::alloc(sizeof (event_queue))) event_queue;
 
 	arch::apic_init();
@@ -160,6 +162,8 @@ extern "C" int kern_init()
 	log()("kerninit")(3)();
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 */
+
+	memcell_test();
 
 //	cpu_test();
 //	serial_dump(serial);

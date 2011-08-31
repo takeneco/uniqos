@@ -1,15 +1,15 @@
-/// @file  global_variables.cc
+/// @file  global_vars.cc
 /// @brief Global variables definition.
 //
 // (C) 2010 KATO Takeshi
 //
 
-#include "global_variables.hh"
+#include "global_vars.hh"
 
 
-namespace global_variable {
+namespace global_vars {
 
-global_variable_ gv;
+_vars gv;
 
-}  // namespace global_variable
+}  // namespace global_vars
 

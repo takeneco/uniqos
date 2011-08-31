@@ -8,7 +8,7 @@
 #include "basic_types.hh"
 #include "bitmap.hh"
 #include "chain.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 #include "native_ops.hh"
 #include "memory_allocate.hh"
 #include "memcell.hh"
@@ -21,7 +21,7 @@
 
 namespace {
 
-using global_variable::gv;
+using global_vars::gv;
 
 /// @brief 物理メモリの末端アドレスを返す。
 //
@@ -86,41 +86,34 @@ void* mem_alloc(u32 size)
 
 }  // namepsace
 
-/////////////////////////////////////////////////////////////////////
-/// @brief 物理メモリの空き状態を管理する。
-class physical_memory
+
+class page_control
 {
 	mem_cell_base<u64> page_base[5];
 
 public:
 	uptr calc_workarea_size(uptr pmem_end_);
 
-	physical_memory();
+	page_control();
 
 	bool init(uptr pmem_end_, void* buf);
 	bool load_setupdump();
 	void build();
 
-	cause::stype reserve_l1page(uptr* padr);
-	cause::stype reserve_l2page(uptr* padr);
-
-	cause::stype free_l1page(uptr padr);
-	cause::stype free_l2page(uptr padr);
-
-	cause::stype page_alloc(arch::PAGE_TYPE pt, uptr* padr);
-	cause::stype page_free(arch::PAGE_TYPE pt, uptr padr);
+	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
+	cause::stype free(arch::page::TYPE pt, uptr padr);
 };
 
 /// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
 //
 /// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @return ワークエリアのサイズをバイト数で返す。
-uptr physical_memory::calc_workarea_size(uptr _pmem_end)
+uptr page_control::calc_workarea_size(uptr _pmem_end)
 {
 	return page_base[4].calc_buf_size(_pmem_end);
 }
 
-physical_memory::physical_memory()
+page_control::page_control()
 {
 	page_base[0].set_params(12, 0);
 	page_base[1].set_params(18, &page_base[0]);
@@ -132,14 +125,14 @@ physical_memory::physical_memory()
 /// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
 /// @return true を返す。
-bool physical_memory::init(uptr _pmem_end, void* buf)
+bool page_control::init(uptr _pmem_end, void* buf)
 {
 	page_base[4].set_buf(buf, _pmem_end);
 
 	return true;
 }
 
-bool physical_memory::load_setupdump()
+bool page_control::load_setupdump()
 {
 	setup_memory_dumpdata* freemap;
 	u32 freemap_num;
@@ -154,46 +147,24 @@ bool physical_memory::load_setupdump()
 	return true;
 }
 
-void physical_memory::build()
+void page_control::build()
 {
 	page_base[4].build_free_chain();
 }
 
-cause::stype physical_memory::reserve_l1page(uptr* padr)
+cause::stype page_control::alloc(arch::page::TYPE page_type, uptr* padr)
 {
-	return page_base[0].reserve_1page(padr);
+	return page_base[page_type].reserve_1page(padr);
 }
 
-cause::stype physical_memory::reserve_l2page(uptr* padr)
+cause::stype page_control::free(arch::page::TYPE page_type, uptr padr)
 {
-	return page_base[2].reserve_1page(padr);
+	return page_base[page_type].free_1page(padr);
 }
 
-cause::stype physical_memory::free_l1page(uptr padr)
-{
-	return page_base[0].free_1page(padr);
-}
+namespace arch {
 
-cause::stype physical_memory::free_l2page(uptr padr)
-{
-	return page_base[2].free_1page(padr);
-}
-
-cause::stype physical_memory::page_alloc(arch::PAGE_TYPE pt, uptr* padr)
-{
-	return page_base[pt].reserve_1page(padr);
-}
-
-cause::stype physical_memory::page_free(arch::PAGE_TYPE pt, uptr padr)
-{
-	return page_base[pt].free_1page(padr);
-}
-
-namespace arch
-{
-
-namespace pmem
-{
+namespace page {
 
 /// @retval cause::NO_MEMORY  No enough physical memory.
 /// @retval cause::OK  Succeeds.
@@ -202,63 +173,38 @@ cause::stype init()
 	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
 	const uptr pmem_end = get_pmem_end();
 
-	void* buf = mem_alloc(sizeof (physical_memory));
-	physical_memory* pmem_ctrl =
-	    new (buf) physical_memory;
-	if (pmem_ctrl == 0)
+	void* buf = mem_alloc(sizeof (page_control));
+	page_control* page_ctl =
+	    new (buf) page_control;
+	if (page_ctl == 0)
 		return cause::NO_MEMORY;
 
-	buf = mem_alloc(pmem_ctrl->calc_workarea_size(pmem_end));
+	buf = mem_alloc(page_ctl->calc_workarea_size(pmem_end));
 	if (buf == 0)
 		return cause::NO_MEMORY;
 
-	// 続くメモリをバッファにする。
-	pmem_ctrl->init(pmem_end, buf);
+	page_ctl->init(pmem_end, buf);
 
-	pmem_ctrl->load_setupdump();
+	page_ctl->load_setupdump();
 
-	pmem_ctrl->build();
+	page_ctl->build();
 
-	gv.pmem_ctrl = pmem_ctrl;
+	gv.page_ctl = page_ctl;
 
 	return cause::OK;
 }
 
-/// レベル１の物理メモリページを１ページ確保する。
-/// @param[out] padr  Ptr to physical page base address returned.
-/// @retval cause::FAIL  No free memory.
-/// @retval cause::OK  Succeeds. *padr is physical page base address.
-cause::stype alloc_l1page(uptr* adr)
+cause::stype alloc(TYPE page_type, uptr* padr)
 {
-	return gv.pmem_ctrl->reserve_l1page(adr);
+	return gv.page_ctl->alloc(page_type, padr);
 }
 
-/// レベル２の物理メモリページを１ページ確保する。
-/// @param[out] padr  Ptr to physical page base address returned.
-/// @retval cause::FAIL  No free memory.
-/// @retval cause::OK  Succeeds. *padr is physical page base address.
-cause::stype alloc_l2page(uptr* adr)
+cause::stype free(TYPE page_type, uptr padr)
 {
-	return gv.pmem_ctrl->reserve_l2page(adr);
+	return gv.page_ctl->free(page_type, padr);
 }
 
-/// レベル１の物理メモリページを１ページ解放する。
-/// @param[in] padr  Ptr to physical page base address.
-/// @retval cause::OK  Succeeds.
-cause::stype free_l1page(uptr adr)
-{
-	return gv.pmem_ctrl->free_l1page(adr);
-}
-
-/// レベル２の物理メモリページを１ページ解放する。
-/// @param[in] padr  Ptr to physical page base address.
-/// @retval cause::OK  Succeeds.
-cause::stype free_l2page(uptr adr)
-{
-	return gv.pmem_ctrl->free_l2page(adr);
-}
-
-}  // namespace pmem
+}  // namespace page
 
 }  // namespace arch
 

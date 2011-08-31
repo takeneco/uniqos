@@ -10,8 +10,7 @@
 #include "basic_types.hh"
 
 
-namespace arch
-{
+namespace arch {
 
 enum {
 	BITS_PER_BYTE = 8,
@@ -32,47 +31,54 @@ enum {
 // memory paging
 /////////////////////////////////////////////////////////////////////
 
-enum PAGE_TYPE {
-	// page type of page_alloc()
-	PAGE_L1 = 0,
-	PAGE_L2,
-	PAGE_L3,
-	PAGE_L4,
-	PAGE_L5,
+namespace page {
 
-	PAGE_HIGHEST = PAGE_L5,
-	PHYS_PAGE_L1 = PAGE_L1,
-	PHYS_PAGE_L2 = PAGE_L3,
-	PHYS_PAGE_L3 = PAGE_L5,
+enum TYPE {
+	// page type of arch::page::alloc()
+	L1 = 0,
+	L2,
+	L3,
+	L4,
+	L5,
+
+	HIGHEST = L5,
+	PHYS_L1 = L1,
+	PHYS_L2 = L3,
+	PHYS_L3 = L5,
 };
 /// page size params.
 enum {
-	PHYS_PAGE_L1_SIZE_BITS = 12,
-	PHYS_PAGE_L2_SIZE_BITS = 21,
-	PHYS_PAGE_L3_SIZE_BITS = 30,
+	PHYS_L1_SIZE_BITS = 12,
+	PHYS_L2_SIZE_BITS = 21,
+	PHYS_L3_SIZE_BITS = 30,
 
-	PHYS_PAGE_L1_SIZE      = 1 << PHYS_PAGE_L1_SIZE_BITS,
-	PHYS_PAGE_L2_SIZE      = 1 << PHYS_PAGE_L2_SIZE_BITS,
-	PHYS_PAGE_L3_SIZE      = 1 << PHYS_PAGE_L3_SIZE_BITS,
+	PHYS_L1_SIZE      = 1 << PHYS_L1_SIZE_BITS,
+	PHYS_L2_SIZE      = 1 << PHYS_L2_SIZE_BITS,
+	PHYS_L3_SIZE      = 1 << PHYS_L3_SIZE_BITS,
 
-	PAGE_L1_SIZE_BITS = PHYS_PAGE_L1_SIZE_BITS,     // 12
-	PAGE_L2_SIZE_BITS = PHYS_PAGE_L1_SIZE_BITS + 6, // 18
-	PAGE_L3_SIZE_BITS = PHYS_PAGE_L2_SIZE_BITS,     // 21
-	PAGE_L4_SIZE_BITS = PHYS_PAGE_L2_SIZE_BITS + 6, // 27
-	PAGE_L5_SIZE_BITS = PHYS_PAGE_L3_SIZE_BITS,     // 30
+	L1_SIZE_BITS = PHYS_L1_SIZE_BITS,     // 12
+	L2_SIZE_BITS = PHYS_L1_SIZE_BITS + 6, // 18
+	L3_SIZE_BITS = PHYS_L2_SIZE_BITS,     // 21
+	L4_SIZE_BITS = PHYS_L2_SIZE_BITS + 6, // 27
+	L5_SIZE_BITS = PHYS_L3_SIZE_BITS,     // 30
 
-	PAGE_L1_SIZE      = 1 << PAGE_L1_SIZE_BITS,     // 4KiB
-	PAGE_L2_SIZE      = 1 << PAGE_L2_SIZE_BITS,     // 256KiB
-	PAGE_L3_SIZE      = 1 << PAGE_L3_SIZE_BITS,     // 2MiB
-	PAGE_L4_SIZE      = 1 << PAGE_L4_SIZE_BITS,     // 128MiB
-	PAGE_L5_SIZE      = 1 << PAGE_L5_SIZE_BITS,     // 1GiB
+	L1_SIZE      = 1 << L1_SIZE_BITS,     // 4KiB
+	L2_SIZE      = 1 << L2_SIZE_BITS,     // 256KiB
+	L3_SIZE      = 1 << L3_SIZE_BITS,     // 2MiB
+	L4_SIZE      = 1 << L4_SIZE_BITS,     // 128MiB
+	L5_SIZE      = 1 << L5_SIZE_BITS,     // 1GiB
 };
 
-inline void* map_direct_mem(uptr padr_from, uptr padr_to) {
-	padr_to = padr_to;
+cause::stype alloc(TYPE page_type, uptr* padr);
+cause::stype free(TYPE page_type, uptr padr);
+
+}  // namespace page
+
+inline void* map_phys_mem(uptr padr_from, uptr size) {
+	size = size;
 	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR + padr_from);
 }
-inline void unmap_direct_mem(void* vadr) {
+inline void unmap_phys_mem(void* vadr) {
 	vadr = vadr;
 }
 

@@ -7,7 +7,7 @@
 #include "core_class.hh"
 #include "event.hh"
 #include "fileif.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "irq_control.hh"
 #include "memory_allocate.hh"
@@ -43,7 +43,7 @@ class serial_ctrl : public file_interface
 	const u16 base_port;
 	const u16 irq_num;
 
-	u8 output_buf[2048];
+	u8 output_buf[10000];
 	// 次に push するインデックス
 	u32 output_push_index;
 	// 最後に pop したインデックス
@@ -104,7 +104,7 @@ cause::stype serial_ctrl::configure()
 	static interrupt_handler ih;
 	ih.param = this;
 	ih.handler = intr_handler;
-	global_variable::gv.core->intr_ctrl.add_handler(vec, &ih);
+	global_vars::gv.core->intr_ctrl.add_handler(vec, &ih);
 
 	intr_event.handler = on_intr_event_;
 	intr_event.param = this;
@@ -112,9 +112,13 @@ cause::stype serial_ctrl::configure()
 
 	// 通信スピード設定開始
 	native::outb(0x80, base_port + LINE_CTRL);
-
+/*
 	// 通信スピードの指定 600[bps]
 	native::outb(0xc0, base_port + BAUDRATE_LSB);
+	native::outb(0x00, base_port + BAUDRATE_MSB);
+*/
+	// fastest
+	native::outb(0x01, base_port + BAUDRATE_LSB);
 	native::outb(0x00, base_port + BAUDRATE_MSB);
 
 	// 通信スピード設定終了(送受信開始)

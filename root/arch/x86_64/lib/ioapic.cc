@@ -16,8 +16,8 @@ mpspec::const_mpfps* search_mpfps()
 	mpspec::const_mpfps* mpfps;
 
 	const uptr ebda =
-	    *reinterpret_cast<u16*>(arch::pmem::direct_map(0x40e)) << 4;
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(ebda), 0x400);
+	    *reinterpret_cast<u16*>(arch::map_phys_mem(0x40e, 0x400)) << 4;
+	mpfps = mpspec::scan_mpfps(arch::map_phys_mem(ebda, 0x400), 0x400);
 	if (mpfps)
 		return mpfps;
 

@@ -1,4 +1,4 @@
-/// @file  global_variables.hh
+/// @file  global_vars.hh
 /// @brief Global variables declaration.
 //
 // (C) 2010 KATO Takeshi
@@ -8,24 +8,27 @@
 #define ARCH_X86_64_INCLUDE_GLOBAL_VARIABLES_HH_
 
 
-class physical_memory;
+class page_control;
 class core_class;
 class event_queue;
+class memcache_ctrl;
 
 
-namespace global_variable {
+namespace global_vars {
 
 
-struct global_variable_ {
-	physical_memory* pmem_ctrl;
+struct _vars
+{
+	page_control*    page_ctl;
 	core_class*      core;
 	event_queue*     events;
+	memcache_ctrl*   memcache_ctrl_;
 };
 
 
-extern global_variable_ gv;
+extern _vars gv;
 
-}  // namespace global_variable
+}  // namespace global_vars
 
 
-#endif  // Include guard
+#endif  // include guard

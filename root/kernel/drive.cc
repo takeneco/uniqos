@@ -6,18 +6,17 @@
 
 #include "arch.hh"
 #include "event_queue.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 
 
 ////
 #include "log.hh"
-kern_output* kern_get_out();
 void serial_dump(void*);
 ////
 
 void drive()
 {
-	event_queue* queue = global_variable::gv.events;
+	event_queue* queue = global_vars::gv.events;
 	for (;;) {
 		for (;;) {
 			event_item* event = queue->pop();
@@ -29,8 +28,6 @@ void drive()
 
 		arch::halt();
 
-		//kern_output* kout = kern_get_out();
-		//kout->put_c('.');
 		kernel_log& klog = log();
 		serial_dump(((log_file&)klog).get_file());
 	}
@@ -38,7 +35,7 @@ void drive()
 
 void post_event(event_item* event)
 {
-	event_queue* queue = global_variable::gv.events;
+	event_queue* queue = global_vars::gv.events;
 
 	queue->push(event);
 }

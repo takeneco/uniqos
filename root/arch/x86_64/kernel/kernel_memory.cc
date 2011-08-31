@@ -6,7 +6,7 @@
 
 #include "arch.hh"
 #include "core_class.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
 #include "memory_allocate.hh"
 #include "placement_new.hh"
 
@@ -253,12 +253,12 @@ hold_piece_header* kernel_memory::alloc_from_newpage(uptr size)
 	uptr page_adr;
 	u32 page_size;
 	cause::stype r;
-	if (size <= (arch::PHYS_PAGE_L1_SIZE - header_size)) {
-		page_size = arch::PHYS_PAGE_L1_SIZE;
-		r = arch::pmem::alloc_l1page(&page_adr);
-	} else if (size <= (arch::PHYS_PAGE_L2_SIZE - header_size)) {
-		page_size = arch::PHYS_PAGE_L2_SIZE;
-		r = arch::pmem::alloc_l2page(&page_adr);
+	if (size <= (arch::page::PHYS_L1_SIZE - header_size)) {
+		page_size = arch::page::PHYS_L1_SIZE;
+		r = arch::page::alloc(arch::page::L1, &page_adr);
+	} else if (size <= (arch::page::PHYS_L2_SIZE - header_size)) {
+		page_size = arch::page::PHYS_L2_SIZE;
+		r = arch::page::alloc(arch::page::L2, &page_adr);
 	} else {
 		r = cause::NO_IMPLEMENTS;
 	}
@@ -282,11 +282,11 @@ hold_piece_header* kernel_memory::alloc_from_newpage(uptr size)
 	if (page == 0) {
 		// allocatable_page_array を追加する。
 		uptr tmp;
-		r = arch::pmem::alloc_l1page(&tmp);
+		r = arch::page::alloc(arch::page::L1, &tmp);
 		if (r != cause::OK) {
-			page_size == arch::PHYS_PAGE_L1_SIZE ?
-			    arch::pmem::free_l1page(page_adr) :
-			    arch::pmem::free_l2page(page_adr);
+			page_size == arch::page::PHYS_L1_SIZE ?
+			    arch::page::free(arch::page::L1, page_adr) :
+			    arch::page::free(arch::page::L2, page_adr);
 			return 0;
 		}
 		allocatable_page_array* ary =
@@ -332,12 +332,12 @@ namespace memory
 cause::stype init()
 {
 	uptr p;
-	cause::stype r = arch::pmem::alloc_l1page(&p);
+	cause::stype r = arch::page::alloc(arch::page::L1, &p);
 	if (r != cause::OK)
 		return r;
 
-	global_variable::gv.core =
-	    new (reinterpret_cast<void*>(arch::PHYSICAL_MEMMAP_BASEADR + p))
+	global_vars::gv.core =
+	    new (arch::map_phys_mem(p, sizeof (core_class)))
 	    core_class;
 
 	return cause::OK;
@@ -345,12 +345,12 @@ cause::stype init()
 
 void* alloc(uptr bytes)
 {
-	return global_variable::gv.core->kmem_ctrl.alloc(bytes);
+	return global_vars::gv.core->kmem_ctrl.alloc(bytes);
 }
 
 cause::stype free(void* ptr)
 {
-	return global_variable::gv.core->kmem_ctrl.free(ptr);
+	return global_vars::gv.core->kmem_ctrl.free(ptr);
 }
 
 }
