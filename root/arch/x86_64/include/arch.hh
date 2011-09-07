@@ -34,6 +34,8 @@ enum {
 namespace page {
 
 enum TYPE {
+	INVALID = -1,
+
 	// page type of arch::page::alloc()
 	L1 = 0,
 	L2,
@@ -68,6 +70,29 @@ enum {
 	L4_SIZE      = 1 << L4_SIZE_BITS,     // 128MiB
 	L5_SIZE      = 1 << L5_SIZE_BITS,     // 1GiB
 };
+
+/// インライン展開される使い方を期待しているので、引数は定数で指定すること。
+inline uptr inline_page_size(TYPE pt)
+{
+	switch (pt) {
+	case L1: return L1_SIZE;
+	case L2: return L2_SIZE;
+	case L3: return L3_SIZE;
+	case L4: return L4_SIZE;
+	case L5: return L5_SIZE;
+	default: return 0;
+	}
+}
+
+inline TYPE type_of_size(uptr size)
+{
+	if (size <= L1_SIZE)      return L1;
+	else if (size <= L2_SIZE) return L2;
+	else if (size <= L3_SIZE) return L3;
+	else if (size <= L4_SIZE) return L4;
+	else if (size <= L5_SIZE) return L5;
+	else                      return INVALID;
+}
 
 cause::stype alloc(TYPE page_type, uptr* padr);
 cause::stype free(TYPE page_type, uptr padr);

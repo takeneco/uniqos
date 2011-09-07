@@ -27,6 +27,7 @@ file_interface* attach_console(int w, int h, u64 vram_adr);
 void drive();
 void lapic_dump();
 void serial_dump(void*);
+cause::stype slab_init();
 
 #include "task.hh"
 extern "C" void task_switch(thread_state*, thread_state*);
@@ -151,6 +152,8 @@ extern "C" int kern_init()
 	log().write(setup_log,
 	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
 	}
+
+	slab_init();
 /*
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
 	create_thread(&ts2, func);

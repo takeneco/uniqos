@@ -10,6 +10,7 @@ kern_sources = [
     'interrupt_control.cc',
     'log.cc',
     'log_access.cc',
+    'slab_allocate.cc',
     'string.cc',
 ]
 

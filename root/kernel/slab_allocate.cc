@@ -5,8 +5,11 @@
 //
 
 #include "arch.hh"
-#include "global_variables.hh"
+#include "global_vars.hh"
+#include "placement_new.hh"
 #include "slab.hh"
+
+#include "log.hh"
 
 
 /**
@@ -19,168 +22,163 @@
  * つながっている。
  */
 
-namespace {
 
-class slab
+u8* mem_cache::slab::onslab_get_obj_head(const mem_cache& parent)
 {
-	class freeobj;
+	const uptr endindex_adr =
+	    reinterpret_cast<uptr>(&ref_obj_desc(parent.get_slab_maxobjs()));
 
-	class slabobj
-	{
-		slab* parent_slab;
-	public:
-		slabobj(slab* parent) : parent_slab(parent) {}
+	const uptr r = up_align<uptr>(endindex_adr, arch::BASIC_TYPE_ALIGN);
 
-		slab* get_parent() {
-			return parent_slab;
-		}
-		freeobj* get_freeobj() {
-			return reinterpret_cast<freeobj*>(this + 1);
-		}
-	};
-	class freeobj
-	{
-		chain_link<freeobj> chain_link_;
-	public:
-		chain_link<freeobj>& chain_hook() { return chain_link_; }
-	};
+	return reinterpret_cast<u8*>(r);
+}
 
-	u8* get_onslab_obj_head() {
-		return reinterpret_cast<u8*>(this + 1);
-	}
-
-	chain<freeobj, &freeobj::chain_hook> free_chain;
-
-	bichain_link<slab> chain_link_;
-	int alloc_count;
-
-public:
-	bichain_link<slab>& chain_hook() { return chain_link_; }
-
-	slab() :
-		slab_index_chain(),
-		chain_link_(),
-		alloc_count(0),
-	{}
-
-	void init_onslab(int objs, uptr slab_size);
-	bool is_full() const { return slab_index_chain.get_head() != 0; }
-	void* alloc();
-	void free(void* obj);
-};
-
-/// ページ内にオブジェクトを含むスラブとして初期化する。
-/// @param[in] obj_size   オブジェクトのサイズ
-/// @param[in] slab_size  ページサイズ
-void slab::init_onslab(uptr obj_size, uptr slab_size)
+/// onslab として初期化する。
+void mem_cache::slab::init_onslab(mem_cache& parent)
 {
-	obj_size = up_align(obj_size, arch::BASIC_TYPE_ALIGN)
+	obj_head = onslab_get_obj_head(parent);
 
-	if (obj_size < sizeof (freeobj))
-		obj_size = sizeof (freeobj);
+	const objindex last_obj = parent.get_slab_maxobjs() - 1;
+	for (objindex i = 0; i < last_obj; ++i)
+		ref_obj_desc(i).next_free = i + 1;
 
-	const int obj_count = (slab_size - sizeof *this) / obj_size;
-
-	u8* si = get_onslab_obj_head();
-	for (int i = 0; i < obj_count; ++i) {
-		freeobj* obj = new (si) freeobj;
-		free_chain.insert_head(obj);
-		si += obj_size;
-	}
+	ref_obj_desc(last_obj).next_free = ENDOBJ;
 }
 
 /// @brief スラブオブジェクトを１つ確保する。
 /// @return 確保したオブジェクトを返す。
 /// @return 確保できなければ 0 を返す。
-void* slab::alloc()
+inline void* mem_cache::slab::alloc(mem_cache& parent)
 {
-	void* r = free_chain.remove_head();
-	if (r != 0)
-		++alloc_count;
+	//// checked by parent mem_cache
+	//if (first_free == ENDOBJ)
+	//	return 0;
 
-	return r;
+	objindex i = first_free;
+	first_free = ref_obj_desc(first_free).next_free;
+
+	++alloc_count;
+
+	return obj_head + parent.get_obj_size() * i;
 }
 
 /// @brief スラブオブジェクトを１つ開放する。
 //
 /// obj must not be null.
-void slab::free(void* obj)
+void mem_cache::slab::free(mem_cache& parent, void* obj)
 {
-	free_chain.insert_head(new (obj) freeobj);
-
 	--alloc_count;
 }
 
-/// TODO: 物理メモリを綺麗に確保できるようにしたい
-void* physical_alloc(u32 page_size)
+
+mem_cache::mem_cache(u32 _obj_size, arch::page::TYPE pt, bool force_offslab) :
+	obj_size(_obj_size)
 {
-	uptr padr;
+	slab_page_type =
+	    pt == arch::page::INVALID ? auto_page_type(pt) : pt;
 
-	if (page_size <= arch::PAGE_L1_SIZE) {
-		if (arch::pmem::alloc_l1page(&padr) != cause::OK)
-			return 0;
-	} else if (page_size <= arch::PAGE_L2_SIE) {
-		if (arch::pmem::alloc_l2page(&padr) != cause::OK)
-			return 0;
-	} else {
-		if (arch::pmem::alloc_l3page(&padr) != cause::OK)
-			return 0;
-	}
+	slab_page_size =
+	    arch::page::inline_page_size(slab_page_type);
 
-	return arch::pmem::direct_map(padr);
+	slab_maxobjs =
+	    (slab_page_size-sizeof(slab))/(obj_size + sizeof (slab::obj_desc));
 }
 
-}  // namespace
-
-
-slab_alloc::slab_alloc(u32 obj_size_, u32 slab_size_) :
-	pertial_chain(),
-	free_chain(),
-	full_chain(),
-	obj_size(obj_size_),
-	slab_size(slab_size_),
-	chain_link_()
-{
-}
-
-void* slab_alloc::alloc()
+void* mem_cache::alloc()
 {
 	slab* s = partial_chain.get_head();
 	if (s == 0) {
 		// free_chain から partial_chain へ移動
-		s = free_chain.get_head();
+		s = free_chain.remove_head();
 		if (s == 0) {
-			// TODO:new slab
-			return 0;
+			s = new_slab();
+			if (s == 0)
+				return 0;
 		}
 		partial_chain.insert_head(s);
 	}
 
-	void* r = s->alloc();
+	void* obj = s->alloc(*this);
 
 	if (s->is_full()) {
-		partial_chain.remove_head(); // == s
+		partial_chain.remove_head(); // remove s
 		full_chain.insert_head(s);
 	}
 
+	return obj;
+}
+
+void mem_cache::free(void* ptr)
+{
+/*
+	slabobj* obj = slabobj::from_mem(ptr);
+	slab* s = obj->get_parent();
+
+	const bool fulled = s->is_full();
+
+	s->free(obj);
+
+	if (fulled) {
+		full_chain.remove(s);
+		if (s->is_free()) {
+			free_chain.insert_head(s);
+		} else {
+			partial_chain.insert_head(s);
+		}
+	} else {
+		if (s->is_free()) {
+			partial_chain.remove(s);
+			free_chain.insert_head(s);
+		}
+	}
+*/
+}
+
+arch::page::TYPE mem_cache::auto_page_type(u32 objsize)
+{
+	arch::page::TYPE r = arch::page::type_of_size(objsize * 4);
+	if (r == arch::page::INVALID)
+		r = arch::page::type_of_size(objsize);
+
 	return r;
+}
+
+mem_cache::slab* mem_cache::new_slab()
+{
+	uptr padr;
+	if (arch::page::alloc(slab_page_type, &padr) != cause::OK)
+		return 0;
+
+	void* p = arch::map_phys_mem(padr, slab_page_size);
+
+	slab* s = new (p) slab;
+	s->init_onslab(*this);
+
+	return s;
 }
 
 
 cause::stype slab_init()
 {
-	uptr padr;
-	cause::stype r = arch::pmem::alloc_l1page(&padr);
-	if (r != cause::OK)
-		return r;
+log()("---- slab_init() start ----")();
 
-	slab* s = new (arch::pmem::direct_map(padr)) slab;
+log()("sizeof (mem_cache) = ").u(sizeof (mem_cache))();
+log()("sizeof (mem_cache::slab) = ").u(sizeof (mem_cache::slab))();
 
-	s->init_onslab(sizeof (slab_alloc), arch::PAGE_L1_SIZE);
+	mem_cache tmp_mc(sizeof (mem_cache), arch::page::L1);
+	mem_cache::slab* s = tmp_mc.new_slab();
 
-	slab_alloc* sc = new (s->alloc())
-	    slab_alloc(sizeof (slab_alloc), arch::PAGE_L1_SIZE);
+log()("s = ")(s)();
+log()("tmp_mc.get_slab_maxobjs() = ").u(tmp_mc.get_slab_maxobjs())();
 
+	mem_cache* sc = new (s->alloc(tmp_mc))
+	    mem_cache(sizeof (mem_cache), arch::page::L1);
+
+log()("sc = ")(sc)();
+
+log()("s->alloc(tmp_mc) = ")(s->alloc(tmp_mc))();
+
+log()("---- slab_init() end ----")();
 	return cause::OK;
 }
 
