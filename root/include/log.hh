@@ -99,7 +99,7 @@ void log_set(u8 i, bool mask);
 //
 class kern_output : public filenode_interface
 {
-	void putux(_umax n, int bits);
+	void putux(umax n, int bits);
 
 protected:
 	kern_output() {}

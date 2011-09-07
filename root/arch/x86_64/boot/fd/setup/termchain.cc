@@ -59,12 +59,12 @@ term_chain* term_chain::puts(const char* str)
 const char base_number[] = "0123456789abcdef";
 
 /**
- * @brief   Output _u64 value with decimal.
+ * @brief   Output u64 value with decimal.
  *
  * @param n  Value.
  * @return  Always return this ptr.
  */
-term_chain* term_chain::putu64(_u64 n)
+term_chain* term_chain::putu64(u64 n)
 {
 	if (n == 0) {
 		putc('0');
@@ -72,8 +72,8 @@ term_chain* term_chain::putu64(_u64 n)
 	}
 
 	bool notzero = false;
-	for (_u64 div = 10000000000000000000UL; div > 0; div /= 10) {
-		const _u64 x = n / div;
+	for (u64 div = U64(10000000000000000000); div > 0; div /= 10) {
+		const u64 x = n / div;
 		if (x != 0 || notzero) {
 			putc(base_number[x]);
 			n -= x * div;
@@ -85,12 +85,12 @@ term_chain* term_chain::putu64(_u64 n)
 }
 
 /**
- * @brief   Output _u8 value with hexadecimal.
+ * @brief   Output u8 value with hexadecimal.
  *
  * @param n  Value.
  * @return  Always return this ptr.
  */
-term_chain* term_chain::putu8x(_u8 n)
+term_chain* term_chain::putu8x(u8 n)
 {
 	for (int shift = 8 - 4; shift >= 0; shift -= 4) {
 		const int x = (n >> shift) & 0x0f;
@@ -101,12 +101,12 @@ term_chain* term_chain::putu8x(_u8 n)
 }
 
 /**
- * @brief   Output _u16 value with hexadecimal.
+ * @brief   Output u16 value with hexadecimal.
  *
  * @param n  Value.
  * @return  Always return this ptr.
  */
-term_chain* term_chain::putu16x(_u16 n)
+term_chain* term_chain::putu16x(u16 n)
 {
 	for (int shift = 16 - 4; shift >= 0; shift -= 4) {
 		const int x = (n >> shift) & 0x0f;
@@ -117,12 +117,12 @@ term_chain* term_chain::putu16x(_u16 n)
 }
 
 /**
- * @brief   Output _u32 value with hexadecimal.
+ * @brief   Output u32 value with hexadecimal.
  *
  * @param n  Value.
  * @return  Always return this ptr.
  */
-term_chain* term_chain::putu32x(_u32 n)
+term_chain* term_chain::putu32x(u32 n)
 {
 	for (int shift = 32 - 4; shift >= 0; shift -= 4) {
 		const int x = (n >> shift) & 0x0f;
@@ -133,12 +133,12 @@ term_chain* term_chain::putu32x(_u32 n)
 }
 
 /**
- * @brief   Output _u64 value with hexadecimal.
+ * @brief   Output u64 value with hexadecimal.
  *
  * @param n  Value.
  * @return  Always return this ptr.
  */
-term_chain* term_chain::putu64x(_u64 n)
+term_chain* term_chain::putu64x(u64 n)
 {
 	for (int shift = 64 - 4; shift >= 0; shift -= 4) {
 		const int x = static_cast<int>(n >> shift) & 0x0f;

@@ -28,9 +28,9 @@ namespace {
  * @param ch 表示する文字。
  * @param col 表示色。
  */
-inline void bios_putch(char ch, _u8 col=15)
+inline void bios_putch(char ch, u8 col=15)
 {
-	const _u16 b = col;
+	const u16 b = col;
 	asm volatile ("int $0x10" : : "a" (0x0e00 | ch), "b" (b));
 }
 
@@ -39,7 +39,7 @@ inline void bios_putch(char ch, _u8 col=15)
  * @param str 表示するヌル終端文字列。
  * @param col 表示色。
  */
-void bios_putstr(const char* str, _u8 col=15)
+void bios_putstr(const char* str, u8 col=15)
 {
 	while (*str) {
 		bios_putch(*str++, col);
@@ -53,7 +53,7 @@ const char chbase[] = "0123456789abcdef";
  * @param x 表示する整数。
  * @param col 表示色。
  */
-void bios_put8_b16(_u8 x, _u8 col=15)
+void bios_put8_b16(u8 x, u8 col=15)
 {
 	bios_putch(chbase[x >> 4], col);
 	bios_putch(chbase[x & 0xf], col);
@@ -64,7 +64,7 @@ void bios_put8_b16(_u8 x, _u8 col=15)
  * @param x 表示する整数。
  * @param col 表示色。
  */
-void bios_put16_b16(_u16 x, _u8 col=15)
+void bios_put16_b16(u16 x, u8 col=15)
 {
 	bios_putch(chbase[(x >>12) & 0xf], col);
 	bios_putch(chbase[(x >> 8) & 0xf], col);
@@ -105,7 +105,7 @@ unsigned long load_kernel()
 	unsigned long kern_size = 0;
 
 	// FAT12 ヘッダが BOOTSECT_ADR から始まる。
-	fat_info fatinfo(boot_drive, reinterpret_cast<_u8*>(BOOTSECT_ADR));
+	fat_info fatinfo(boot_drive, reinterpret_cast<u8*>(BOOTSECT_ADR));
 
 	/*
 	 * ブートセグメント～FAT領域～RDE領域を読み込む。

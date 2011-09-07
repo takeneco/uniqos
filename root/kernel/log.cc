@@ -61,7 +61,7 @@ void kernel_log::put_udec(u64 n)
 	char s[20];
 	u32 m = 0;
 	bool notzero = false;
-	for (u64 div = U64CAST(10000000000000000000); div > 0; div /= 10) {
+	for (u64 div = U64(10000000000000000000); div > 0; div /= 10) {
 		const u64 x = n / div;
 		if (x != 0 || notzero) {
 			s[m++] = base_number[x];
@@ -383,7 +383,7 @@ kern_output* kern_output::put_udec(u64 n)
 	}
 
 	bool notzero = false;
-	for (u64 div = _u64cast(10000000000000000000); div > 0; div /= 10) {
+	for (u64 div = U64(10000000000000000000); div > 0; div /= 10) {
 		const u64 x = n / div;
 		if (x != 0 || notzero) {
 			put_c(base_number[x]);

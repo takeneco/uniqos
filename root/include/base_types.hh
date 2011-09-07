@@ -1,7 +1,7 @@
 /// @file  btypes.hh
 /// @brief 共通で使う型・関数など。
 //
-// (C) 2008-2010 KATO Takeshi
+// (C) 2008-2011 KATO Takeshi
 //
 
 #ifndef BTYPES_HH_
@@ -10,158 +10,166 @@
 #include "baseint.hh"
 
 
-typedef _s8   s8;
-typedef _u8   u8;
-typedef _s16  s16;
-typedef _u16  u16;
-typedef _s32  s32;
-typedef _u32  u32;
-typedef _s64  s64;
-typedef _u64  u64;
-typedef _scpu scpu;
-typedef _ucpu ucpu;
-typedef _smax smax;
-typedef _umax umax;
-typedef _sptr sptr;
-typedef _uptr uptr;
-#define U64CAST(n) _u64cast(n)
+typedef s8_        s8;
+typedef u8_        u8;
+typedef s16_       s16;
+typedef u16_       u16;
+typedef s32_       s32;
+typedef u32_       u32;
+typedef s64_       s64;
+typedef u64_       u64;
+
+typedef scpu_      scpu;
+typedef ucpu_      ucpu;
+typedef smax_      smax;
+typedef umax_      umax;
+typedef sptr_      sptr;
+typedef uptr_      uptr;
+typedef harf_sptr_ harf_sptr;
+typedef harf_uptr_ harf_uptr;
+
+#define U32(n) u32cast_(n)
+#define U64CAST(n) u64cast_(n)
 #define U64(n) u64cast_(n)
 
-inline _u16 _swap16(_u16 x) {
+inline u16 swap16_(u16 x) {
 	return (x >> 8) | (x << 8);
 }
-inline void _split16(_u16 x, _u8* y1, _u8* y2) {
-	*y1 = static_cast<_u8>(x >> 8);
-	*y2 = static_cast<_u8>(x & 0xff);
+inline void split16_(u16 x, u8* y1, u8* y2) {
+	*y1 = static_cast<u8>(x >> 8);
+	*y2 = static_cast<u8>(x & 0xff);
 }
-inline _u16 _combine16(_u8 x1, _u8 x2) {
-	return static_cast<_u16>(x1) << 8 | static_cast<_u16>(x2);
+inline u16 combine16_(u8 x1, u8 x2) {
+	return static_cast<u16>(x1) << 8 | static_cast<u16>(x2);
 }
-inline _u32 _swap32(_u32 x) {
+inline u32 swap32_(u32 x) {
 	return x << 24 | x >> 24 |
-		(x & 0x0000FF00) << 8 |
-		(x & 0x00FF0000) >> 8;
+	    (x & U32(0x0000FF00)) << 8 |
+	    (x & U32(0x00FF0000)) >> 8;
 }
-inline void _split32(_u32 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4) {
-	*y1 = static_cast<_u8>(x >> 24);
-	*y2 = static_cast<_u8>(x >> 16);
-	*y3 = static_cast<_u8>(x >> 8);
-	*y4 = static_cast<_u8>(x);
+inline void split32_(u32 x, u8* y1, u8* y2, u8* y3, u8* y4) {
+	*y1 = static_cast<u8>(x >> 24);
+	*y2 = static_cast<u8>(x >> 16);
+	*y3 = static_cast<u8>(x >> 8);
+	*y4 = static_cast<u8>(x);
 }
-inline _u32 _combine32(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
-	return static_cast<_u32>(x1) << 24 | static_cast<_u32>(x2) << 16 |
-		static_cast<_u32>(x3) << 8 | static_cast<_u32>(x4);
-}
-inline _u64 _swap64(_u64 x) {
-	return x << 56 | x >> 56 |
-	    (x & _u64cast(0x000000000000ff00)) << 40 |
-	    (x & _u64cast(0x00ff000000000000)) >> 40 |
-	    (x & _u64cast(0x0000000000ff0000)) << 24 |
-	    (x & _u64cast(0x0000ff0000000000)) >> 24 |
-	    (x & _u64cast(0x00000000ff000000)) <<  8 |
-	    (x & _u64cast(0x000000ff00000000)) >>  8;
-}
-inline void _split64(_u64 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4,
-	_u8* y5, _u8* y6, _u8* y7, _u8* y8) {
-	*y1 = static_cast<_u8>(x >> 56);
-	*y2 = static_cast<_u8>(x >> 48);
-	*y3 = static_cast<_u8>(x >> 40);
-	*y4 = static_cast<_u8>(x >> 32);
-	*y5 = static_cast<_u8>(x >> 24);
-	*y6 = static_cast<_u8>(x >> 16);
-	*y7 = static_cast<_u8>(x >> 8);
-	*y8 = static_cast<_u8>(x);
-}
-inline _u64 _combine64(_u8 x1, _u8 x2, _u8 x3, _u8 x4,
-	_u8 x5, _u8 x6, _u8 x7, _u8 x8) {
+inline u32 combine32_(u8 x1, u8 x2, u8 x3, u8 x4) {
 	return
-	    static_cast<_u64>(x1) << 56 |
-	    static_cast<_u64>(x2) << 48 |
-	    static_cast<_u64>(x3) << 40 |
-	    static_cast<_u64>(x4) << 32 |
-	    static_cast<_u64>(x5) << 24 |
-	    static_cast<_u64>(x6) << 16 |
-	    static_cast<_u64>(x7) <<  8 |
-	    static_cast<_u64>(x8);
+	    static_cast<u32>(x1) << 24 |
+	    static_cast<u32>(x2) << 16 |
+	    static_cast<u32>(x3) << 8 |
+	    static_cast<u32>(x4);
+}
+inline u64 swap64_(u64 x) {
+	return x << 56 | x >> 56 |
+	    (x & U64(0x000000000000ff00)) << 40 |
+	    (x & U64(0x00ff000000000000)) >> 40 |
+	    (x & U64(0x0000000000ff0000)) << 24 |
+	    (x & U64(0x0000ff0000000000)) >> 24 |
+	    (x & U64(0x00000000ff000000)) <<  8 |
+	    (x & U64(0x000000ff00000000)) >>  8;
+}
+inline void split64_(u64 x, u8* y1, u8* y2, u8* y3, u8* y4,
+	u8* y5, u8* y6, u8* y7, u8* y8) {
+	*y1 = static_cast<u8>(x >> 56);
+	*y2 = static_cast<u8>(x >> 48);
+	*y3 = static_cast<u8>(x >> 40);
+	*y4 = static_cast<u8>(x >> 32);
+	*y5 = static_cast<u8>(x >> 24);
+	*y6 = static_cast<u8>(x >> 16);
+	*y7 = static_cast<u8>(x >> 8);
+	*y8 = static_cast<u8>(x);
+}
+inline u64 combine64_(u8 x1, u8 x2, u8 x3, u8 x4,
+	u8 x5, u8 x6, u8 x7, u8 x8) {
+	return
+	    static_cast<u64>(x1) << 56 |
+	    static_cast<u64>(x2) << 48 |
+	    static_cast<u64>(x3) << 40 |
+	    static_cast<u64>(x4) << 32 |
+	    static_cast<u64>(x5) << 24 |
+	    static_cast<u64>(x6) << 16 |
+	    static_cast<u64>(x7) <<  8 |
+	    static_cast<u64>(x8);
 }
 
 #if defined ARCH_LE
 
-inline _u16 cpu_to_be16(_u16 x) {
-	return _swap16(x);
+inline u16 cpu_to_be16(u16 x) {
+	return swap16_(x);
 }
-inline _u16 be16_to_cpu(_u16 x) {
-	return _swap16(x);
+inline u16 be16_to_cpu(u16 x) {
+	return swap16_(x);
 }
-inline _u16 cpu_to_le16(_u16 x) {
+inline u16 cpu_to_le16(u16 x) {
 	return x;
 }
-inline _u16 le16_to_cpu(_u16 x) {
+inline u16 le16_to_cpu(u16 x) {
 	return x;
 }
-inline void cpu_to_be16(_u16 x, _u8* y1, _u8* y2) {
-	_split16(x, y1, y2);
+inline void cpu_to_be16(u16 x, u8* y1, u8* y2) {
+	split16_(x, y1, y2);
 }
-inline _u16 be16_to_cpu(_u8 x1, _u8 x2) {
-	return _combine16(x1, x2);
+inline u16 be16_to_cpu(u8 x1, u8 x2) {
+	return combine16_(x1, x2);
 }
-inline void cpu_to_le16(_u16 x, _u8* y1, _u8* y2) {
-	_split16(x, y2, y1);
+inline void cpu_to_le16(u16 x, u8* y1, u8* y2) {
+	split16_(x, y2, y1);
 }
-inline _u16 le16_to_cpu(_u8 x1, _u8 x2) {
-	return _combine16(x2, x1);
+inline u16 le16_to_cpu(u8 x1, u8 x2) {
+	return combine16_(x2, x1);
 }
-inline _u32 cpu_to_be32(_u32 x) {
-	return _swap32(x);
+inline u32 cpu_to_be32(u32 x) {
+	return swap32_(x);
 }
-inline _u32 be32_to_cpu(_u32 x) {
-	return _swap32(x);
+inline u32 be32_to_cpu(u32 x) {
+	return swap32_(x);
 }
-inline _u32 cpu_to_le32(_u32 x) {
+inline u32 cpu_to_le32(u32 x) {
 	return x;
 }
-inline _u32 le32_to_cpu(_u32 x) {
+inline u32 le32_to_cpu(u32 x) {
 	return x;
 }
-inline void cpu_to_be32(_u32 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4) {
-	_split32(x, y1, y2, y3, y4);
+inline void cpu_to_be32(u32 x, u8* y1, u8* y2, u8* y3, u8* y4) {
+	split32_(x, y1, y2, y3, y4);
 }
-inline _u32 be32_to_cpu(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
-	return _combine32(x1, x2, x3, x4);
+inline u32 be32_to_cpu(u8 x1, u8 x2, u8 x3, u8 x4) {
+	return combine32_(x1, x2, x3, x4);
 }
-inline void cpu_to_le32(_u32 x, _u8* y1, _u8* y2, _u8* y3, _u8* y4) {
-	_split32(x, y4, y3, y2, y1);
+inline void cpu_to_le32(u32 x, u8* y1, u8* y2, u8* y3, u8* y4) {
+	split32_(x, y4, y3, y2, y1);
 }
-inline _u32 le32_to_cpu(_u8 x1, _u8 x2, _u8 x3, _u8 x4) {
-	return _combine32(x4, x3, x2, x1);
+inline u32 le32_to_cpu(u8 x1, u8 x2, u8 x3, u8 x4) {
+	return combine32_(x4, x3, x2, x1);
 }
-inline _u64 cpu_to_be64(_u64 x) {
-	return _swap64(x);
+inline u64 cpu_to_be64(u64 x) {
+	return swap64_(x);
 }
-inline _u64 be64_to_cpu(_u64 x) {
-	return _swap64(x);
+inline u64 be64_to_cpu(u64 x) {
+	return swap64_(x);
 }
-inline _u64 cpu_to_le64(_u64 x) {
+inline u64 cpu_to_le64(u64 x) {
 	return x;
 }
-inline _u64 le64_to_cpu(_u64 x) {
+inline u64 le64_to_cpu(u64 x) {
 	return x;
 }
-inline void cpu_to_be64(_u64 x, _u8* y0, _u8* y1, _u8* y2, _u8* y3,
-	_u8* y4, _u8* y5, _u8* y6, _u8* y7) {
-	_split64(x, y0, y1, y2, y3, y4, y5, y6, y7);
+inline void cpu_to_be64(u64 x, u8* y0, u8* y1, u8* y2, u8* y3,
+	u8* y4, u8* y5, u8* y6, u8* y7) {
+	split64_(x, y0, y1, y2, y3, y4, y5, y6, y7);
 }
-inline _u64 be64_to_cpu(_u8 x0, _u8 x1, _u8 x2, _u8 x3,
-	_u8 x4, _u8 x5, _u8 x6, _u8 x7) {
-	return _combine64(x0, x1, x2, x3, x4, x5, x6, x7);
+inline u64 be64_to_cpu(u8 x0, u8 x1, u8 x2, u8 x3,
+	u8 x4, u8 x5, u8 x6, u8 x7) {
+	return combine64_(x0, x1, x2, x3, x4, x5, x6, x7);
 }
-inline void cpu_to_le64(_u64 x, _u8* y0, _u8* y1, _u8* y2, _u8* y3,
-	_u8* y4, _u8* y5, _u8* y6, _u8* y7) {
-	_split64(x, y7, y6, y5, y4, y3, y2, y1, y0);
+inline void cpu_to_le64(u64 x, u8* y0, u8* y1, u8* y2, u8* y3,
+	u8* y4, u8* y5, u8* y6, u8* y7) {
+	split64_(x, y7, y6, y5, y4, y3, y2, y1, y0);
 }
-inline _u64 le64_to_cpu(_u8 x0, _u8 x1, _u8 x2, _u8 x3,
-	_u8 x4, _u8 x5, _u8 x6, _u8 x7) {
-	return _combine64(x7, x6, x5, x4, x3, x2, x1, x0);
+inline u64 le64_to_cpu(u8 x0, u8 x1, u8 x2, u8 x3,
+	u8 x4, u8 x5, u8 x6, u8 x7) {
+	return combine64_(x7, x6, x5, x4, x3, x2, x1, x0);
 }
 
 #elif defined ARCH_BE
@@ -173,22 +181,22 @@ inline u16 be16_to_cpu(u16 x) {
 	return x;
 }
 inline u16 cpu_to_le16(u16 x) {
-	return _swap16(x);
+	return swap16_(x);
 }
 inline u16 le16_to_cpu(u16 x) {
-	return _swap16(x);
+	return swap16_(x);
 }
 inline void cpu_to_be16(u16 x, u8* y1, u8* y2) {
-	_split16(x, y2, y1);
+	split16_(x, y2, y1);
 }
-inline u16 be16_to_cpu(_u8 x1, _u8 x2) {
-	return _combine16(x2, x1);
+inline u16 be16_to_cpu(u8 x1, u8 x2) {
+	return combine16_(x2, x1);
 }
 inline void cpu_to_le16(u16 x, u8* y1, u8* y2) {
-	_split16(x, y1, y2);
+	split16_(x, y1, y2);
 }
 inline u16 le16_to_cpu(u8 x1, u8 x2) {
-	return _combine16(x1, x2);
+	return combine16_(x1, x2);
 }
 
 #endif  // ARCH_LE or ARCH_BE
@@ -312,8 +320,8 @@ namespace log
 */
 
 
-#define __TOSTR(x) #x
-#define TOSTR(x) __TOSTR(x)
+#define TOSTR_(x) #x
+#define TOSTR(x) TOSTR_(x)
 
 #ifdef __GNUC__
 # define LIKELY(x)   __builtin_expect(!!(x), 1)
@@ -324,4 +332,4 @@ namespace log
 #endif  // __GNUC__
 
 
-#endif  // Include guards.
+#endif  // include guards

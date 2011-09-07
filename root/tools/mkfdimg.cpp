@@ -114,7 +114,7 @@ result::stype write_header(int imgfd, const struct fat_params* params)
  */
 result::stype write_sig(int imgfd)
 {
-	_u8 sig[2] = { 0x55, 0xaa };
+	u8 sig[2] = { 0x55, 0xaa };
 
 	lseek(imgfd, 510, SEEK_SET);
 
@@ -133,7 +133,7 @@ result::stype write_sig(int imgfd)
  */
 result::stype write_fats(int imgfd, fat_params* params)
 {
-	_u8 fat[512 * 9] = { 0xf0, 0xff, 0xff, 0 };
+	u8 fat[512 * 9] = { 0xf0, 0xff, 0xff, 0 };
 	off_t ptr;
 
 	ptr = params->reserved * 512;

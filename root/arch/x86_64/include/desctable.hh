@@ -70,11 +70,11 @@ protected:
 
 public:
 	enum {
-		LDT = U64CAST(0x2) << 40,
-		TSS = U64CAST(0x9) << 40,
+		LDT = u64(0x2) << 40,
+		TSS = u64(0x9) << 40,
 
-		P   = U64CAST(1) << 47,  ///< Descriptor exist if set.
-		G   = U64CAST(1) << 55,  ///< Limit scale 4096 times if set.
+		P   = u64(1) << 47,  ///< Descriptor exist if set.
+		G   = u64(1) << 55,  ///< Limit scale 4096 times if set.
 	};
 
 	void set_null() {

@@ -26,18 +26,18 @@ protected:
 
 public:
 	enum {
-		XR  = U64CAST(0xa) << 40, ///< Exec and Read.
-		RW  = U64CAST(0x2) << 40, ///< Read and Write
+		XR  = u64(0xa) << 40, ///< Exec and Read.
+		RW  = u64(0x2) << 40, ///< Read and Write
 
 		/// System segment if clear,
 		/// Data or Code segment if set.
-		S   = U64CAST(1) << 44,
+		S   = u64(1) << 44,
 
-		P   = U64CAST(1) << 47,  ///< Descriptor exist if set.
-		AVL = U64CAST(1) << 52,  ///< Software useable.
-		L   = U64CAST(1) << 53,  ///< Long mode if set.
-		D   = U64CAST(1) << 54,  ///< If long mode, must be clear.
-		G   = U64CAST(1) << 55,  ///< Limit scale 4096 times if set.
+		P   = u64(1) << 47,  ///< Descriptor exist if set.
+		AVL = u64(1) << 52,  ///< Software useable.
+		L   = u64(1) << 53,  ///< Long mode if set.
+		D   = u64(1) << 54,  ///< If long mode, must be clear.
+		G   = u64(1) << 55,  ///< Limit scale 4096 times if set.
 	};
 
 	gdte() {}

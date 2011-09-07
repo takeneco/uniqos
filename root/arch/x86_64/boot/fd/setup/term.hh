@@ -36,11 +36,11 @@ public:
 	void add_term(outterm* term);
 	term_chain* putc(char c);
 	term_chain* puts(const char* str);
-	term_chain* putu64(_u64 n);
-	term_chain* putu8x(_u8 n);
-	term_chain* putu16x(_u16 n);
-	term_chain* putu32x(_u32 n);
-	term_chain* putu64x(_u64 n);
+	term_chain* putu64(u64 n);
+	term_chain* putu8x(u8 n);
+	term_chain* putu16x(u16 n);
+	term_chain* putu32x(u32 n);
+	term_chain* putu64x(u64 n);
 };
 
 
@@ -48,15 +48,15 @@ public:
 
 class com_term : public outterm
 {
-	_u16 base_port;
-	_u16 irq;
+	u16 base_port;
+	u16 irq;
 	int out_buf_size;
 	int out_buf_left;
 
 	/* static */ int next_data(int ptr);
 	void tx_buf();
 public:
-	void init(_u16 dev_port, _u16 pic_irq);
+	void init(u16 dev_port, u16 pic_irq);
 	virtual void putc(char c);
 	void on_interrupt();
 
@@ -83,7 +83,7 @@ class video_term : public outterm
 
 	void roll(int n);
 public:
-	void init(int w, int h, _u64 vram_addr);
+	void init(int w, int h, u64 vram_addr);
 	void set_cur(int row, int col) { cur_row = row; cur_col = col; }
 	void get_cur(int* row, int* col) { *row = cur_row; *col = cur_col; }
 	virtual void putc(char c);

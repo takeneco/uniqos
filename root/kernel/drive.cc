@@ -16,6 +16,8 @@ void serial_dump(void*);
 
 void drive()
 {
+	log()("(C) KATO Takeshi")();
+
 	event_queue* queue = global_vars::gv.events;
 	for (;;) {
 		for (;;) {

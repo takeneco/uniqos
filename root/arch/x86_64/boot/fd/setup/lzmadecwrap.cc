@@ -29,7 +29,7 @@ void lzma_free(void*, void* addr)
 }  // namespace
 
 
-u64 lzma_decode_size(const _u8* src)
+u64 lzma_decode_size(const u8* src)
 {
 	const u8* p = src + LZMA_PROPS_SIZE;
 

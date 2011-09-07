@@ -27,7 +27,7 @@ protected:
 public:
 	void set_params(int d, int bps, int sph, int hpc);
 	int read_secs(unsigned short start, unsigned short count,
-		_u16 dsegm, _u16 daddr) const;
+		u16 dsegm, u16 daddr) const;
 };
 
 inline void disk_info::set_params(int d, int bps, int sph, int hpc) {
