@@ -10,6 +10,8 @@
 #include "arch.hh"
 #include "chain.hh"
 
+#include "log.hh"
+
 
 /// slab interface of allocate and free.
 class mem_cache
@@ -57,7 +59,9 @@ class mem_cache
 
 		void init_onslab(mem_cache& parent);
 		void* alloc(mem_cache& parent);
-		void free(mem_cache& parent, void* obj);
+		bool back(mem_cache& parent, void* obj);
+
+		void dump(kernel_log& log);
 	};
 
 	typedef   chain<slab, &slab::  chain_hook> slab_chain;
@@ -72,6 +76,12 @@ class mem_cache
 	uptr             slab_page_size;
 
 	bichain_link<mem_cache> chain_link_;
+
+	//enum { FREE_OBJS_LEN = 64 };
+	enum { FREE_OBJS_LEN = 4 };
+	u16 free_objs_avail;
+	void* free_objs[FREE_OBJS_LEN];
+	u64 tmp[60];
 
 public:
 	bichain_link<mem_cache>& chain_hook() { return chain_link_; }
@@ -89,6 +99,7 @@ public:
 		partial_chain.insert_head(s);
 	}
 
+	void attach(slab* s);
 	void* alloc();
 	void free(void* ptr);
 
@@ -96,6 +107,9 @@ private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 
 	slab* new_slab();
+	void back_slab();
+
+	void dump(kernel_log& log);
 };
 
 
