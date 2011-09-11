@@ -31,9 +31,9 @@ page_header::page_header(u32 page_size_, allocatable_page* status_)
 /// ここで最適なサイズの空きメモリを探すくらいのことはしたい。
 free_piece_header* page_header::search_free_piece(uptr bytes)
 {
-	for (free_piece_header* p = free_chain.get_head();
+	for (free_piece_header* p = free_chain.head();
 	     p != 0;
-	     p = free_chain.get_next(p))
+	     p = free_chain.next(p))
 	{
 		if (p->piece_bytes >= bytes)
 			return p;
@@ -46,9 +46,9 @@ free_piece_header* page_header::search_free_piece(uptr bytes)
 u32 page_header::search_max_free_bytes() const
 {
 	u32 max_bytes = 0;
-	for (const free_piece_header* p = free_chain.get_head();
+	for (const free_piece_header* p = free_chain.head();
 	     p != 0;
-	     p = free_chain.get_next(p))
+	     p = free_chain.next(p))
 	{
 		if (p->piece_bytes > max_bytes)
 			max_bytes = p->piece_bytes;
@@ -64,10 +64,10 @@ cause::stype page_header::set_free(hold_piece_header* piece)
 
 	// 直前の piece が free_piece なら結合する。
 	free_piece_header* free_piece;
-	for (free_piece = free_chain.get_head();
+	for (free_piece = free_chain.head();
 	         reinterpret_cast<uptr>(free_piece) < piece_adr &&
 		 free_piece != 0;
-	     free_piece = free_chain.get_next(free_piece))
+	     free_piece = free_chain.next(free_piece))
 	{
 		if (free_piece->get_after_piece_adr() == piece_adr) {
 			free_piece->combine(piece);
@@ -90,7 +90,7 @@ cause::stype page_header::set_free(hold_piece_header* piece)
 
 	// 直後の piece が free_piece なら結合する。
 	// ここで remove from list
-	free_piece_header* free_after = free_chain.get_next(free_piece);
+	free_piece_header* free_after = free_chain.next(free_piece);
 	if (reinterpret_cast<uptr>(free_after) ==
 	        free_piece->get_after_piece_adr())
 	{
@@ -229,9 +229,9 @@ hold_piece_header* allocatable_page_array::alloc(uptr bytes)
 /// @return 割り当てられない場合は 0 を返す。
 hold_piece_header* kernel_memory::alloc_from_existpage(uptr size)
 {
-	for (allocatable_page_array* ary = allocatable_chain.get_head();
+	for (allocatable_page_array* ary = allocatable_chain.head();
 	    ary != 0;
-	    ary = allocatable_chain.get_next(ary))
+	    ary = allocatable_chain.next(ary))
 	{
 		hold_piece_header* p = ary->alloc(size);
 		if (p != 0)
@@ -270,9 +270,9 @@ hold_piece_header* kernel_memory::alloc_from_newpage(uptr size)
 	page_adr += arch::PHYSICAL_MEMMAP_BASEADR;
 
 	allocatable_page* page = 0;
-	for (allocatable_page_array* ary = allocatable_chain.get_head();
+	for (allocatable_page_array* ary = allocatable_chain.head();
 	     ary != 0;
-	     ary = allocatable_chain.get_next(ary))
+	     ary = allocatable_chain.next(ary))
 	{
 		page = ary->add_page(page_adr, page_size);
 		if (page)

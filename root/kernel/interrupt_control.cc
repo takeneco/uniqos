@@ -52,9 +52,9 @@ void interrupt_control::call_interrupt(u32 vector)
 {
 	intr_task& it = handler_table[vector];
 	intr_handler_chain& ihc = it.handler_chain;
-	for (interrupt_handler* ih = ihc.get_head();
+	for (interrupt_handler* ih = ihc.head();
 	     ih;
-	     ih = ihc.get_next(ih))
+	     ih = ihc.next(ih))
 	{
 		ih->handler(ih->param);
 	}

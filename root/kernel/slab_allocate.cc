@@ -111,7 +111,7 @@ void* mem_cache::alloc()
 	if (free_objs_avail != 0)
 		return free_objs[--free_objs_avail];
 
-	slab* s = partial_chain.get_head();
+	slab* s = partial_chain.head();
 	if (s == 0) {
 		// free_chain から partial_chain へ移動
 		s = free_chain.remove_head();
@@ -172,10 +172,7 @@ void mem_cache::back_slab()
 		void* p = free_objs[i];
 
 		slab* s;
-		for (s = partial_chain.get_head();
-		     s;
-		     s = partial_chain.get_next(s))
-		{
+		for (s = partial_chain.head(); s; s = partial_chain.next(s)) {
 			if (s->back(*this, p)) {
 				if (s->is_free()) {
 					partial_chain.remove(s);
@@ -186,10 +183,7 @@ void mem_cache::back_slab()
 		}
 		if (s != 0)
 			continue;
-		for (s = full_chain.get_head();
-		     s;
-		     s = full_chain.get_next(s))
-		{
+		for (s = full_chain.head(); s; s = full_chain.next(s)) {
 			if (s->back(*this, p)) {
 				full_chain.remove(s);
 				partial_chain.insert_head(s);
@@ -236,20 +230,17 @@ void mem_cache::dump(kernel_log& log)
 	log("free_objs = ")(free_objs[0])(", ")(free_objs[1])(", ")
 	(free_objs[2])(", ")(free_objs[3])();
 	log("------free_chain:")();
-	for (slab* s = free_chain.get_head(); s;
-	    s = free_chain.get_next(s)) {
+	for (slab* s = free_chain.head(); s; s = free_chain.next(s)) {
 		s->dump(log);
 		log("------")();
 	}
 	log("------partial_chain:")();
-	for (slab* s = partial_chain.get_head(); s;
-	    s = partial_chain.get_next(s)) {
+	for (slab* s = partial_chain.head(); s; s = partial_chain.next(s)) {
 		s->dump(log);
 		log("------")();
 	}
 	log("------full_chain:")();
-	for (slab* s = full_chain.get_head(); s;
-	    s = full_chain.get_next(s)) {
+	for (slab* s = full_chain.head(); s; s = full_chain.next(s)) {
 		s->dump(log);
 		log("------")();
 	}

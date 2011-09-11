@@ -118,7 +118,7 @@ public:
 
 	/// ページ内に hold_piece があれば true を返す。
 	bool is_holded() const {
-		const free_piece_header* p = free_chain.get_head();
+		const free_piece_header* p = free_chain.head();
 		return p->get_bytes() != page_size - sizeof *this;
 	}
 

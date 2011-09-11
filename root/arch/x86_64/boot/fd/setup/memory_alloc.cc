@@ -127,9 +127,9 @@ void alloc::reserve_range(u64 r_head, u64 r_tail)
 {
 	r_tail += 1;
 
-	for (entry* ent = free_chain.get_head();
+	for (entry* ent = free_chain.head();
 	     ent;
-	     ent = free_chain.get_next(ent))
+	     ent = free_chain.next(ent))
 	{
 		uptr e_head = ent->head;
 		uptr e_tail = e_head + ent->bytes;
@@ -163,13 +163,13 @@ void alloc::reserve_range(u64 r_head, u64 r_tail)
 /// @return  Dumped count.
 int alloc::freemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
-	const entry* ent = free_chain.get_head();
+	const entry* ent = free_chain.head();
 
 	int i;
 	for (i = 0; ent && i < n; i++) {
 		dumpto[i].head = ent->head;
 		dumpto[i].bytes = ent->bytes;
-		ent = free_chain.get_next(ent);
+		ent = free_chain.next(ent);
 	}
 
 	return i;
@@ -181,13 +181,13 @@ int alloc::freemem_dump(setup_memory_dumpdata* dumpto, int n)
 /// @return  Dumped count.
 int alloc::nofreemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
-	const entry* ent = nofree_chain.get_head();
+	const entry* ent = nofree_chain.head();
 
 	int i;
 	for (i = 0; ent && i < n; i++) {
 		dumpto[i].head = ent->head;
 		dumpto[i].bytes = ent->bytes;
-		ent = nofree_chain.get_next(ent);
+		ent = nofree_chain.next(ent);
 	}
 
 	return i;
@@ -195,9 +195,9 @@ int alloc::nofreemem_dump(setup_memory_dumpdata* dumpto, int n)
 
 void* alloc::memory_alloc(uptr size, uptr align)
 {
-	for (entry* ent = free_chain.get_head();
+	for (entry* ent = free_chain.head();
 	     ent;
-	     ent = free_chain.get_next(ent))
+	     ent = free_chain.next(ent))
 	{
 		const u64 align_gap = up_align(ent->head, align) - ent->head;
 		if ((ent->bytes - align_gap) < size)
@@ -246,10 +246,7 @@ void alloc::memory_free(void* p)
 
 	u64 head = reinterpret_cast<u64>(p);
 	entry* ent;
-	for (ent = nofree_chain.get_head();
-	     ent;
-	     ent = nofree_chain.get_next(ent))
-	{
+	for (ent = nofree_chain.head(); ent; ent = nofree_chain.next(ent)) {
 		if (ent->head == head) {
 			nofree_chain.remove(ent);
 			break;
@@ -263,9 +260,9 @@ void alloc::memory_free(void* p)
 	// p と p の直後のアドレスを結合して ent とする。
 
 	u64 tail = head + ent->bytes;
-	for (entry* ent2 = free_chain.get_head();
+	for (entry* ent2 = free_chain.head();
 	     ent2;
-	     ent2 = free_chain.get_next(ent2))
+	     ent2 = free_chain.next(ent2))
 	{
 		if (ent2->head == tail) {
 			ent->bytes += ent2->bytes;
@@ -279,9 +276,9 @@ void alloc::memory_free(void* p)
 	// p と p の前のアドレスを結合する。
 
 	head = ent->head;
-	for (entry* ent2 = free_chain.get_head();
+	for (entry* ent2 = free_chain.head();
 	     ent2;
-	     ent2 = free_chain.get_next(ent2))
+	     ent2 = free_chain.next(ent2))
 	{
 		if ((ent2->head + ent2->bytes) == head) {
 			ent2->bytes += ent->bytes;

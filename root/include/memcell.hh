@@ -339,7 +339,7 @@ cause::stype mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
 	cell* c;
 
 	for (;;) {
-		c = free_chain.get_head();
+		c = free_chain.head();
 		if (c)
 			break;
 
