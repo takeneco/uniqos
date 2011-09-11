@@ -92,7 +92,8 @@ mem_cache::mem_cache(u32 _obj_size, arch::page::TYPE pt, bool force_offslab) :
 	    arch::page::inline_page_size(slab_page_type);
 
 	slab_maxobjs =
-	    (slab_page_size-sizeof(slab))/(obj_size + sizeof (slab::obj_desc));
+	    (slab_page_size - sizeof(slab)) /
+	    (obj_size + sizeof (slab::obj_desc));
 }
 
 void mem_cache::attach(slab* s)
@@ -107,6 +108,9 @@ void mem_cache::attach(slab* s)
 
 void* mem_cache::alloc()
 {
+	if (free_objs_avail != 0)
+		return free_objs[--free_objs_avail];
+
 	slab* s = partial_chain.get_head();
 	if (s == 0) {
 		// free_chain から partial_chain へ移動
@@ -136,28 +140,6 @@ void mem_cache::free(void* ptr)
 	}
 
 	free_objs[free_objs_avail++] = ptr;
-/*
-	slabobj* obj = slabobj::from_mem(ptr);
-	slab* s = obj->get_parent();
-
-	const bool fulled = s->is_full();
-
-	s->free(obj);
-
-	if (fulled) {
-		full_chain.remove(s);
-		if (s->is_free()) {
-			free_chain.insert_head(s);
-		} else {
-			partial_chain.insert_head(s);
-		}
-	} else {
-		if (s->is_free()) {
-			partial_chain.remove(s);
-			free_chain.insert_head(s);
-		}
-	}
-*/
 }
 
 arch::page::TYPE mem_cache::auto_page_type(u32 objsize)
@@ -216,7 +198,7 @@ void mem_cache::back_slab()
 		}
 		if (s == 0) {
 			// ここに到達したら異常
-log()("abnormal.")();
+log()("abnormaly.")();
 		}
 	}
 
@@ -230,8 +212,6 @@ log()("abnormal.")();
 
 cause::stype slab_init()
 {
-log()("---- slab_init() start ----")();
-
 	mem_cache tmp_mc(sizeof (mem_cache), arch::page::L1);
 	mem_cache::slab* s = tmp_mc.new_slab();
 
@@ -240,28 +220,6 @@ log()("---- slab_init() start ----")();
 
 	sc->attach(s);
 
-	void* buf[100];
-	for (u32 i = 0; i < 11; ++i) {
-		buf[i] = sc->alloc();
-		log()("buf[").u(i)("] = ")(buf[i])();
-	}
-
-sc->dump(log());
-
-	for (u32 i = 0; i < 11; ++i) {
-		sc->free(buf[i]);
-	}
-
-sc->dump(log());
-
-	for (u32 i = 0; i < 11; ++i) {
-		buf[i] = sc->alloc();
-		log()("buf[").u(i)("] = ")(buf[i])();
-	}
-
-sc->dump(log());
-
-log()("---- slab_init() end ----")();
 	return cause::OK;
 }
 

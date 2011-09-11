@@ -77,8 +77,7 @@ class mem_cache
 
 	bichain_link<mem_cache> chain_link_;
 
-	//enum { FREE_OBJS_LEN = 64 };
-	enum { FREE_OBJS_LEN = 4 };
+	enum { FREE_OBJS_LEN = 64 };
 	u16 free_objs_avail;
 	void* free_objs[FREE_OBJS_LEN];
 	u64 tmp[60];
