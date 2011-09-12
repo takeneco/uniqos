@@ -11,6 +11,11 @@
 #include "string.hh"
 
 
+// TODO: this will obsolate
+namespace memory {
+	void* alloc(uptr);
+}
+
 /**
  * onslab
  * スラブページの中にスラブオブジェクト(slabobj)を含む。
@@ -204,18 +209,97 @@ log()("abnormaly.")();
 }
 
 
-cause::stype slab_init()
+class memcache_control
+{
+	typedef bichain<mem_cache, &mem_cache::chain_hook> memcache_chain;
+
+	mem_cache* own_memcache;
+	memcache_chain shared_chain;
+
+public:
+	memcache_control() {}
+	cause::stype init();
+
+	mem_cache* shared_mem_cache(u32 obj_size);
+
+private:
+	mem_cache* shared_find(u32 obj_size);
+	mem_cache* shared_new(u32 obj_size);
+};
+
+
+cause::stype memcache_control::init()
 {
 	mem_cache tmp_mc(sizeof (mem_cache), arch::page::L1);
 	mem_cache::slab* s = tmp_mc.new_slab();
 
-	mem_cache* sc = new (s->alloc(tmp_mc))
+	own_memcache = new (s->alloc(tmp_mc))
 	    mem_cache(sizeof (mem_cache), arch::page::L1);
 
-	sc->attach(s);
+	own_memcache->attach(s);
 
 	return cause::OK;
 }
+
+mem_cache* memcache_control::shared_mem_cache(u32 obj_size)
+{
+	obj_size = up_align<u32>(obj_size, arch::BASIC_TYPE_ALIGN);
+
+	mem_cache* r = shared_find(obj_size);
+	if (r == 0)
+		r = new (own_memcache->alloc()) mem_cache(obj_size);
+
+	return r;
+}
+
+/// @brief  find existing shared mem_cache.
+mem_cache* memcache_control::shared_find(u32 obj_size)
+{
+	for (mem_cache* mc = shared_chain.head();
+	     mc;
+	     mc = shared_chain.next(mc))
+	{
+		if (mc->get_obj_size() == obj_size)
+			return mc;
+	}
+
+	return 0;
+}
+
+/// @brief  create new shared mem_cache.
+mem_cache* memcache_control::shared_new(u32 obj_size)
+{
+	mem_cache* newmc = new (own_memcache->alloc()) mem_cache(obj_size);
+	if (newmc == 0)
+		return 0;
+
+	for (mem_cache* mc = shared_chain.head();
+	     mc;
+	     mc = shared_chain.next(mc))
+	{
+		if (obj_size < mc->get_obj_size())
+			shared_chain.insert_prev(mc, newmc);
+	}
+
+	return newmc;
+}
+
+
+cause::stype slab_init()
+{
+	global_vars::gv.memcache_ctl =
+	    new (memory::alloc(sizeof (memcache_control))) memcache_control;
+
+	global_vars::gv.memcache_ctl->init();
+
+	return cause::OK;
+}
+
+mem_cache* shared_mem_cache(u32 obj_size)
+{
+	return global_vars::gv.memcache_ctl->shared_mem_cache(obj_size);
+}
+
 
 void mem_cache::slab::dump(kernel_log& log)
 {

@@ -9,9 +9,9 @@
 
 
 class page_control;
+class memcache_control;
 class core_class;
 class event_queue;
-class memcache_ctrl;
 
 
 namespace global_vars {
@@ -20,9 +20,9 @@ namespace global_vars {
 struct _vars
 {
 	page_control*    page_ctl;
+	memcache_control*  memcache_ctl;
 	core_class*      core;
 	event_queue*     events;
-	memcache_ctrl*   memcache_ctrl_;
 };
 
 

@@ -16,7 +16,7 @@
 /// slab interface of allocate and free.
 class mem_cache
 {
-	friend cause::stype slab_init();
+	friend class memcache_control;
 
 	class slab
 	{
@@ -111,12 +111,7 @@ private:
 	void dump(kernel_log& log);
 };
 
-
-class memcache_ctrl
-{
-	mem_cache* own_memcache;
-public:
-};
+mem_cache* shared_mem_cache(u32 obj_size);
 
 
 #endif  // include guard
