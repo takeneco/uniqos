@@ -6,8 +6,8 @@
 
 #include "arch.hh"
 #include "global_vars.hh"
+#include "memcache.hh"
 #include "placement_new.hh"
-#include "slab.hh"
 #include "string.hh"
 
 
@@ -91,7 +91,7 @@ mem_cache::mem_cache(u32 _obj_size, arch::page::TYPE pt, bool force_offslab) :
 	free_objs_avail(0)
 {
 	slab_page_type =
-	    pt == arch::page::INVALID ? auto_page_type(pt) : pt;
+	    pt == arch::page::INVALID ? auto_page_type(_obj_size) : pt;
 
 	slab_page_size =
 	    arch::page::inline_page_size(slab_page_type);

@@ -5,11 +5,13 @@
 //
 
 #include "core_class.hh"
+#include "chain.hh"
 #include "event.hh"
 #include "fileif.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "irq_control.hh"
+#include "memcache.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
 #include "placement_new.hh"
@@ -38,16 +40,44 @@ enum {
 	DEVICE_TXBUF_SIZE = 16,
 };
 
+
+class buf_entry
+{
+	struct {
+		bichain_link<buf_entry> chain_link;
+	} f;
+
+	u8* buf() { return reinterpret_cast<u8*>(this + 1); }
+
+public:
+	enum {
+		SIZE = arch::page::L1_SIZE,
+		BUF_SIZE = SIZE - sizeof f,
+	};
+
+public:
+	bichain_link<buf_entry>& chain_hook() { return f.chain_link; }
+
+	void write(u32 i, u8 c) { buf()[i] = c; }
+	u8 read(u32 i) { return buf()[i]; }
+};
+
+
 class serial_ctrl : public file_interface
 {
 	const u16 base_port;
 	const u16 irq_num;
 
-	u8 output_buf[10000];
-	// 次に push するインデックス
-	u32 output_push_index;
-	// 最後に pop したインデックス
-	u32 output_pop_index;
+	bidechain<buf_entry, &buf_entry::chain_hook> buf_queue;
+
+	/// バッファに書くときは buf_queue->head() の next_write に書く。
+	u32 next_write;
+
+	/// バッファを読むときは buf_queue->tail() の next_read から読む。
+	u32 next_read;
+
+	mem_cache* buf_mc;
+
 	bool output_fifo_empty;
 
 	event_item intr_event;
@@ -62,14 +92,21 @@ public:
 	cause::stype configure();
 
 private:
-	bool is_output_buf_empty() const {
-		if (output_push_index == 0)
-			return output_pop_index == (sizeof output_buf - 1);
-		else
-			return output_push_index == (output_pop_index + 1);
+	bool buf_is_empty() const {
+		const buf_entry* h = buf_queue.head();
+		return (h == 0) ||
+		       (next_write == next_read && buf_queue.next(h) == 0);
+	}
+	buf_entry* buf_append() {
+		buf_entry* buf = new (buf_mc->alloc()) buf_entry;
+		if (buf == 0)
+			return 0;
+		buf_queue.insert_head(buf);
+		next_write = 0;
+		return buf;
 	}
 	bool is_txfifo_empty() const;
-	cause::stype write_(const void* data, uptr size, uptr offset);
+	cause::stype write_(const void* data, uptr size);
 
 	void on_intr_event();
 	static void on_intr_event_(void* param);
@@ -89,8 +126,7 @@ file_ops serial_ctrl::serial_ops;
 serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	base_port(base_port_),
 	irq_num(irq_num_),
-	output_push_index(1),
-	output_pop_index(0),
+	next_read(0),
 	output_fifo_empty(true)
 {
 	ops = &serial_ops;
@@ -137,6 +173,8 @@ cause::stype serial_ctrl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
+	buf_mc = shared_mem_cache(buf_entry::SIZE);
+
 	return cause::OK;
 }
 
@@ -148,27 +186,25 @@ bool serial_ctrl::is_txfifo_empty() const
 }
 
 // TODO: exclusive
-cause::stype serial_ctrl::write_(
-    const void* data, uptr size, uptr offset)
+cause::stype serial_ctrl::write_(const void* data, uptr size)
 {
-	offset = offset;
-
 	const char* src = reinterpret_cast<const char*>(data);
 
-	u32 push = output_push_index;
-
-	for (u32 i = 0; i < size; ++i) {
-		if (push == output_pop_index)
-			break;
-
-		output_buf[push] = src[i];
-
-		++push;
-		if (push >= sizeof output_buf)
-			push = 0;
+	buf_entry* buf = buf_queue.head();
+	if (buf == 0) {
+		buf = buf_append();
+		if (buf == 0)
+			return cause::NO_MEMORY;
 	}
 
-	output_push_index = push;
+	for (uptr i = 0; i < size; ++i) {
+		if (next_write >= buf_entry::BUF_SIZE) {
+			buf = buf_append();
+			if (buf == 0)
+				return cause::NO_MEMORY;
+		}
+		buf->write(next_write++, src[i]);
+	}
 
 	if (output_fifo_empty) {
 		output_fifo_empty = false;
@@ -181,9 +217,11 @@ cause::stype serial_ctrl::write_(
 cause::stype serial_ctrl::write(
     file_interface* self, const void* data, uptr size, uptr offset)
 {
+	offset=offset;
+
 	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(self);
 
-	return serial->write_(data, size, offset);
+	return serial->write_(data, size);
 };
 
 void serial_ctrl::on_intr_event()
@@ -244,41 +282,35 @@ void serial_ctrl::intr_handler(void* param)
 /// TODO: exclusive
 void serial_ctrl::transmit()
 {
-	u32 pop = output_pop_index;
-
-	if (is_output_buf_empty()) {
+	if (buf_is_empty()) {
 		output_fifo_empty = true;
 		return;
 	}
 
+	buf_entry* buf = buf_queue.tail();
+	bool buf_is_last = buf == buf_queue.head();
+
 	for (u32 i = 0; i < DEVICE_TXBUF_SIZE; ++i) {
-		++pop;
-		if (pop >= sizeof output_buf)
-			pop = 0;
-
-		if (pop == output_push_index) {
-			--pop;
+		if (buf == 0)
 			break;
+		if (next_read == buf_entry::BUF_SIZE) {
+			buf_mc->free(buf_queue.remove_tail());
+			buf = buf_queue.tail();
+			buf_is_last = buf == buf_queue.head();
+			next_read = 0;
+			if (buf == 0)
+				break;
 		}
-
-		native::outb(output_buf[pop], base_port + TRANSMIT_DATA);
-
+		if (buf_is_last && next_write == next_read)
+			break;
+		native::outb(buf->read(next_read++), base_port + TRANSMIT_DATA);
 	}
-
-	output_pop_index = pop;
 }
 
 void serial_ctrl::dump()
 {
 	kern_output* kout = kern_get_out();
-	kout->put_str("serial_dump:");
-	kout->put_str("output_push_index:")
-		->put_udec(output_push_index)
-		->put_str(", output_pop_index:")
-		->put_udec(output_pop_index)
-		->put_str(", output_fifo_empty:")
-		->put_udec(output_fifo_empty)
-		->put_endl();
+	kout->put_str("serial::dump()")->put_endl();
 }
 
 }

@@ -62,7 +62,7 @@ public:
 	kernel_log& u16hex(u16 n);
 	kernel_log& u32hex(u32 n);
 	kernel_log& u64hex(u64 n);
-	kernel_log& endl() { return c('\n'); }
+	kernel_log& endl() { return str("\r\n"); }
 	kernel_log& write(const void* data, u32 bytes) {
 		call_write(data, bytes);
 		return *this;

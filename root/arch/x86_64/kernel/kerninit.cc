@@ -1,7 +1,7 @@
 /// @file  kerninit.cc
 /// @brief Call kernel initialize funcs.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #include "arch.hh"
@@ -9,6 +9,7 @@
 #include "global_vars.hh"
 #include "kerninit.hh"
 #include "output.hh"
+#include "memcache.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
 
@@ -141,6 +142,8 @@ extern "C" int kern_init()
 
 	arch::apic_init();
 
+	slab_init();
+
 	file_interface* serial = create_serial();
 	log_file lf(serial);
 	log_init(&lf);
@@ -153,7 +156,10 @@ extern "C" int kern_init()
 	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
 	}
 
-	slab_init();
+for (int i = 0; i < 4096; ++i) {
+	log()("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")();
+}
+
 /*
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
 	create_thread(&ts2, func);
@@ -166,7 +172,7 @@ extern "C" int kern_init()
 	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
 */
 
-	memcell_test();
+//	memcell_test();
 
 //	cpu_test();
 //	serial_dump(serial);
