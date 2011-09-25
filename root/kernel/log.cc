@@ -50,26 +50,18 @@ void kernel_log::put_ubin(umax n, int bits)
 	call_write(s, m);
 }
 
-void kernel_log::put_udec(u64 n)
+void kernel_log::put_udec(uptr n)
 {
-	if (n == 0) {
-		char zero = '0';
-		call_write(&zero, 1);
-		return;
+	enum { maxdigs = 20 };
+	char s[maxdigs];
+	int i;
+	for (i = 1; i <= maxdigs; ++i) {
+		s[maxdigs - i] = base_number[n % 10];
+		n = n / 10;
+		if (n == 0)
+			break;
 	}
-
-	char s[20];
-	u32 m = 0;
-	bool notzero = false;
-	for (u64 div = U64(10000000000000000000); div > 0; div /= 10) {
-		const u64 x = n / div;
-		if (x != 0 || notzero) {
-			s[m++] = base_number[x];
-			n -= x * div;
-			notzero = true;
-		}
-	}
-	call_write(s, m);
+	call_write(&s[maxdigs - i], i);
 }
 
 kernel_log& kernel_log::c(char ch)
@@ -381,7 +373,7 @@ kern_output* kern_output::put_udec(u64 n)
 		put_c('0');
 		return this;
 	}
-
+/*
 	bool notzero = false;
 	for (u64 div = U64(10000000000000000000); div > 0; div /= 10) {
 		const u64 x = n / div;
@@ -391,7 +383,7 @@ kern_output* kern_output::put_udec(u64 n)
 			notzero = true;
 		}
 	}
-
+*/
 	return this;
 }
 

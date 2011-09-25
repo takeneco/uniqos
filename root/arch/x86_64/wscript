@@ -22,6 +22,7 @@ def configure(x):
 	if x.env.boot_fd:
 		x.find_program('mcopy', var='MCOPY')
 
+	x.recurse('boot')
 	x.recurse('kernel')
 
 def build(x):

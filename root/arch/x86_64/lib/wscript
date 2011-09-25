@@ -24,6 +24,13 @@ def build(x):
 	    use = 'KERNEL',
 	)
 
+	if x.env.boot_multiboot:
+		x.objects(
+		    target = 'mb_archlibs',
+		    source = ['text_vga.cc'],
+		    use = 'MB',
+		)
+
 	x.objects(
 	    target = 'setup_libs',
 	    source = setup_sources,

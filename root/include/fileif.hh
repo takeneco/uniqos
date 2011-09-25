@@ -68,7 +68,7 @@ private:
 public:
 	file_ops* ops;
 
-	virtual int write(
+	/*virtual*/ int write(
 	    const io_vector* vectors,
 	    int              vector_count,
 	    ucpu             offset);

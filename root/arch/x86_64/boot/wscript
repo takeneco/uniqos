@@ -1,5 +1,10 @@
+#
 # (C) 2011 KATO Takeshi
+#
 
+def configure(x):
+	if x.env.boot_multiboot:
+		x.recurse('multiboot')
 
 def build(x):
 	if x.env.boot_fd:

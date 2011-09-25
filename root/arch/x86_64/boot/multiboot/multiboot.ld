@@ -2,14 +2,16 @@
  * (C) 2011 KATO Takeshi
  */
 
-OUTPUT_FORMAT(elf64-x86-64)
-OUTPUT_ARCH(i386:x86-64)
-ENTRY(_start)
+OUTPUT_FORMAT(elf32-i386)
+OUTPUT_ARCH(i386)
+ENTRY(entry_)
 
 SECTIONS {
+	PROVIDE(__gxx_personality_v0 = .);
+
 	/* page size + elf header size */
 	. = 0x200000 + SIZEOF_HEADERS;
-	.text : { *(.entry) *(.text) }
+	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 	.bss : { *(.bss) }

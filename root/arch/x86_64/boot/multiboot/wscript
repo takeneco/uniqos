@@ -1,7 +1,29 @@
-# @brief  build boot phase for multiboot
-
+# build multiboot image
+#
 # (C) 2011 KATO Takeshi
+#
 
+def configure(x):
+	x.env.append_value('CXXFLAGS_MB', '-m32')
+	x.env.append_value('DEFINES_MB', 'ARCH_IA32')
+	pass
 
 def build(x):
-	pass
+	target = x.path.find_or_declare('us')
+
+	linker_script = x.path.find_node('seed.ld')
+
+	ls_opt = '-T' + linker_script.abspath()
+
+	x.add_manual_dependency(target, linker_script)
+
+	env = x.env.derive()
+	env.append_value('ASFLAGS', '-m32')
+
+	x.program(
+	    target = target,
+	    source = 'entry.S log_access.cc load.cc videoterm.cc memops.cc',
+	    linkflags = ['-nostdlib', '-static', ls_opt],
+	    env = env,
+	    use = ['MB', 'mb_archlibs', 'mb_libs'],
+	)

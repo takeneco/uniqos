@@ -36,6 +36,13 @@ def build(x):
 	    use      = 'KERNEL'
 	)
 
+	if x.env.boot_multiboot:
+		x.objects(
+		    target   = 'mb_libs',
+		    source   = ['fileif.cc', 'log.cc', 'string.cc'],
+		    use      = 'MB',
+		)
+
 	x.objects(
 	    target   = 'setup_objs',
 	    source   = setup_sources,

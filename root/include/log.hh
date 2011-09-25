@@ -15,7 +15,7 @@ class kernel_log
 	void put_uhex(umax n, int bits);
 	void put_uoct(umax n, int bits);
 	void put_ubin(umax n, int bits);
-	void put_udec(umax n);
+	void put_udec(uptr n);
 
 protected:
 	typedef cause::stype (*write_function)
