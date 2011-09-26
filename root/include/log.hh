@@ -94,6 +94,7 @@ typedef kernel_log kout;
 
 void log_init(kernel_log* target);
 kernel_log& log(u8 i=0);
+void log_set(u8 i, kernel_log* target);
 void log_set(u8 i, bool mask);
 
 //

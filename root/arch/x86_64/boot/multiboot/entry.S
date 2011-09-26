@@ -1,25 +1,53 @@
+/// @brief multiboot entry point
+//
+// (C) 2011 KATO Takeshi
+//
 
 #define ASM_FILE
 #include "multiboot2.h"
 
-.section .text
+//
+// multiboot header
+//
+
+.section .mbh
+
+	.align MULTIBOOT_HEADER_ALIGN
+
+	// magic field
+mbh:
+	.long MULTIBOOT2_HEADER_MAGIC
+	.long MULTIBOOT_ARCHITECTURE_I386
+	.long mbh_end - mbh
+	.long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (mbh_end - mbh))
+/*
+	// infomation request
+inforeq:
+	.word 1, 0
+	.long inforeq_end - inforeq
+	.long 8
+inforeq_end:
+*/
+	// end of tags
+	.word 0, 0
+	.long 8
+mbh_end:
+
+
+//
+// entry point
+//
+
+.section .entry
 
 .code32
 
-.globl _start
-_start:
-	jmp entry
-	.align 8
+.globl entry_
+entry_:
+	pushl %ebx
+	call pre
 
-multiboot_header:
-	.long MULTIBOOT2_HEADER_MAGIC
-	.long MULTIBOOT_ARCHITECTURE_I386
-	.long multiboot_header_end - multiboot_header
-	.long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (multiboot_header_end - multiboot_header))
-multiboot_header_end:
-
-entry:
 	hlt
-	jmp entry
+	jmp entry_
 
-.size _start, .-_start
+.size entry_, .-entry_

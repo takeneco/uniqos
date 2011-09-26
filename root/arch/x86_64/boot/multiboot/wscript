@@ -11,7 +11,7 @@ def configure(x):
 def build(x):
 	target = x.path.find_or_declare('us')
 
-	linker_script = x.path.find_node('seed.ld')
+	linker_script = x.path.find_node('multiboot.ld')
 
 	ls_opt = '-T' + linker_script.abspath()
 
@@ -22,7 +22,7 @@ def build(x):
 
 	x.program(
 	    target = target,
-	    source = 'entry.S log_access.cc load.cc videoterm.cc memops.cc',
+	    source = 'entry.S log_access.cc load.cc',
 	    linkflags = ['-nostdlib', '-static', ls_opt],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
