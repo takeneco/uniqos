@@ -4,6 +4,7 @@
 #
 
 def configure(x):
+	x.find_program('objcopy', var='OBJCOPY')
 	x.env.append_value('CXXFLAGS_MB', '-m32')
 	x.env.append_value('DEFINES_MB', 'ARCH_IA32')
 	pass
@@ -20,10 +21,19 @@ def build(x):
 	env = x.env.derive()
 	env.append_value('ASFLAGS', '-m32')
 
+	core = x.path.find_or_declare('core.o')
+	x(
+	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
+	           '${SRC} ${TGT}',
+	    target = core,
+	    source = '../../kernel/kernel.bin',
+	)
+	x.add_manual_dependency(target, core)
+
 	x.program(
 	    target = target,
 	    source = 'entry.S log_access.cc load.cc',
-	    linkflags = ['-nostdlib', '-static', ls_opt],
+	    linkflags = ['-nostdlib', '-static', ls_opt, core.abspath()],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)

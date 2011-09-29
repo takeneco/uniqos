@@ -20,14 +20,15 @@ mbh:
 	.long MULTIBOOT_ARCHITECTURE_I386
 	.long mbh_end - mbh
 	.long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (mbh_end - mbh))
-/*
+
 	// infomation request
 inforeq:
 	.word 1, 0
 	.long inforeq_end - inforeq
 	.long 8
+	.long 6
 inforeq_end:
-*/
+
 	// end of tags
 	.word 0, 0
 	.long 8

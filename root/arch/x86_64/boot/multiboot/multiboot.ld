@@ -13,11 +13,15 @@ SECTIONS {
 	. = 0x200000 + SIZEOF_HEADERS;
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
-	.data : { *(.data) }
+	.data : { *(EXCLUDE_FILE(*/core.o) .data) }
 	.bss : { *(.bss) }
 
 	/* C++の例外フレームらしい。
 	 * clangでは例外を無効化できないため必要。
 	 */
 	.eh_frame : { *(.eh_frame) }
+
+	core = .;
+	.core : { */core.o(.data) }
+	core_size = . - core;
 }
