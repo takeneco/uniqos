@@ -82,6 +82,7 @@ def configure_x86_64(conf):
 	elif conf.options.compiler == 'gnu':
 		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
 		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
+		conf.env.append_value('LINKFLAGS_MB', '-lgcc')
 		conf.find_program('gcc', var='CC')
 		conf.find_program('g++', var='CXX')
 		conf.find_program('gcc', var='AS')

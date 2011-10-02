@@ -1,18 +1,20 @@
-/// @author KATO Takeshi
-/// @brief  Placement new operator.
-/// 明示的にコンストラクタ／デストラクタを呼び出すために使う。
+/// @file   placement_new.hh
 //
 // (C) 2010 KATO Takeshi
+//
 
-#ifndef INCLUDE_PNEW_HH_
-#define INCLUDE_PNEW_HH_
+#ifndef INCLUDE_PLACEMENT_NEW_HH_
+#define INCLUDE_PLACEMENT_NEW_HH_
+
+#include "basic_types.hh"
 
 
-inline void* operator new  (unsigned long, void* ptr) { return ptr; }
-inline void* operator new[](unsigned long, void* ptr) { return ptr; }
+inline void* operator new  (uptr, void* ptr) { return ptr; }
+inline void* operator new[](uptr, void* ptr) { return ptr; }
 
 inline void operator delete  (void*, void*) {}
 inline void operator delete[](void*, void*) {}
 
 
-#endif  // Include guard.
+#endif  // include guard
+

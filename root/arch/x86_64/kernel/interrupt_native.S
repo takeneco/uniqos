@@ -186,9 +186,9 @@ load_register:
 
 ENTRY_START(interrupt_0x5e_handler)
 	interrupt_method 0x5e
-ENTRY_END(interrupt_5e_handler)
+ENTRY_END(interrupt_0x5e_handler)
 
 ENTRY_START(interrupt_0x5f_handler)
 	interrupt_method 0x5f
-ENTRY_END(interrupt_5f_handler)
+ENTRY_END(interrupt_0x5f_handler)
 

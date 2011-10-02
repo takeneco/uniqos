@@ -14,8 +14,8 @@ typedef   signed char      s8_;
 typedef unsigned char      u8_;
 typedef   signed short     s16_;
 typedef unsigned short     u16_;
-typedef   signed long      s32_;
-typedef unsigned long      u32_;
+typedef   signed int       s32_;
+typedef unsigned int       u32_;
 typedef   signed long long s64_;
 typedef unsigned long long u64_;
 

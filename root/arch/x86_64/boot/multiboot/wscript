@@ -3,6 +3,13 @@
 # (C) 2011 KATO Takeshi
 #
 
+source = [
+	'entry.S',
+	'log_access.cc',
+	'load.cc',
+	'memory_alloc.cc',
+]
+
 def configure(x):
 	x.find_program('objcopy', var='OBJCOPY')
 	x.env.append_value('CXXFLAGS_MB', '-m32')
@@ -32,8 +39,14 @@ def build(x):
 
 	x.program(
 	    target = target,
-	    source = 'entry.S log_access.cc load.cc',
-	    linkflags = ['-nostdlib', '-static', ls_opt, core.abspath()],
+	    source = source,
+	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
+	    linkflags = [
+		    core.abspath(),
+		    '-m32',
+		    '-nostdlib',
+		    '-static', ls_opt],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)
+
