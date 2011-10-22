@@ -8,6 +8,7 @@
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
 #include "basic_types.hh"
+#include "arch.hh"
 
 
 class page_table_ent
@@ -51,12 +52,14 @@ public:
 	type test_flags(type f) const {
 		return e & f;
 	}
-	void set_addr(type a) {
+	void set_adr(type a) {
 		e = (e & 0xffffff0000000fff) | a;
 	}
-	type get_addr() const {
+	void set_addr(type a) { set_adr(a); }
+	type get_adr() const {
 		return e & 0x000000fffffff000;
 	}
+	type get_addr() const { return get_adr(); }
 	void set_avail1(u32 a) {
 		e = (e & 0xfffffffffff1ffff) | (a << 9);
 	}
@@ -71,9 +74,26 @@ public:
 	}
 };
 
+
 namespace arch {
 
 typedef page_table_ent pte;
+
+class page_table
+{
+public:
+	page_table() : top(0) {}
+
+	cause::stype set(uptr adr, page::TYPE pt, uptr flags);
+
+public:
+	enum PAGE_FLAGS {
+		WRITE = pte::RW,
+	};
+
+private:
+	pte* top;
+};
 
 }  // End of namespace arch.
 

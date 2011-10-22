@@ -42,21 +42,27 @@ enum TYPE {
 	L3,
 	L4,
 	L5,
+	L6,
+	L7,
+	HIGHEST = L5, // L6, L7 is not using in the page management.
 
-	HIGHEST = L5,
 	PHYS_L1 = L1,
 	PHYS_L2 = L3,
 	PHYS_L3 = L5,
+	PHYS_L4 = L7,
+	PHYS_HIGHEST = PHYS_L4,
 };
 /// page size params.
 enum {
 	PHYS_L1_SIZE_BITS = 12,
 	PHYS_L2_SIZE_BITS = 21,
 	PHYS_L3_SIZE_BITS = 30,
+	PHYS_L4_SIZE_BITS = 39,
 
-	PHYS_L1_SIZE      = 1 << PHYS_L1_SIZE_BITS,
-	PHYS_L2_SIZE      = 1 << PHYS_L2_SIZE_BITS,
-	PHYS_L3_SIZE      = 1 << PHYS_L3_SIZE_BITS,
+	PHYS_L1_SIZE      = U64(1) << PHYS_L1_SIZE_BITS,
+	PHYS_L2_SIZE      = U64(1) << PHYS_L2_SIZE_BITS,
+	PHYS_L3_SIZE      = U64(1) << PHYS_L3_SIZE_BITS,
+	PHYS_L4_SIZE      = U64(1) << PHYS_L4_SIZE_BITS,
 
 	L1_SIZE_BITS = PHYS_L1_SIZE_BITS,     // 12
 	L2_SIZE_BITS = PHYS_L1_SIZE_BITS + 6, // 18
@@ -64,11 +70,11 @@ enum {
 	L4_SIZE_BITS = PHYS_L2_SIZE_BITS + 6, // 27
 	L5_SIZE_BITS = PHYS_L3_SIZE_BITS,     // 30
 
-	L1_SIZE      = 1 << L1_SIZE_BITS,     // 4KiB
-	L2_SIZE      = 1 << L2_SIZE_BITS,     // 256KiB
-	L3_SIZE      = 1 << L3_SIZE_BITS,     // 2MiB
-	L4_SIZE      = 1 << L4_SIZE_BITS,     // 128MiB
-	L5_SIZE      = 1 << L5_SIZE_BITS,     // 1GiB
+	L1_SIZE      = U64(1) << L1_SIZE_BITS, // 4KiB
+	L2_SIZE      = U64(1) << L2_SIZE_BITS, // 256KiB
+	L3_SIZE      = U64(1) << L3_SIZE_BITS, // 2MiB
+	L4_SIZE      = U64(1) << L4_SIZE_BITS, // 128MiB
+	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
 
 /// インライン展開される使い方を期待しているので、引数は定数で指定すること。
