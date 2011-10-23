@@ -11,6 +11,8 @@
 #include "arch.hh"
 
 
+class kernel_log;
+
 class page_table_ent
 {
 	/// Page table entry type (PML4, PDPTE, PDE, PTE)
@@ -19,21 +21,42 @@ class page_table_ent
 
 public:
 	enum flags {
-		P    = 1L << 0,  ///< Page exist if set.
-		RW   = 1L << 1,  ///< Writable if set.
-		US   = 1L << 2,  ///< User table if set.
-		PWT  = 1L << 3,  ///< Write through if set.
-		PCD  = 1L << 4,  ///< Cash Disable if set.
-		A    = 1L << 5,  ///< Accessed. Set by CPU.
-		D    = 1L << 6,  ///< Dirtied. Set by CPU.
-		PS   = 1L << 7,  ///< Page size 1GiB or 2MiB if set, else 4KiB.
-		//PAT  = 1L << 7,  ///< Page attribute table enable if set (PTE).
-		G    = 1L << 8,  ///< Global page if set.
-		//PAT  = 1L << 12, ///< Page attribute table enable if set (PDPTE,PDE).
+		/// Page exist if set.
+		P    = U64(1) << 0,
+
+		/// Writable if set.
+		RW   = U64(1) << 1,
+
+		/// User table if set.
+		US   = U64(1) << 2,
+
+		/// Write through if set.
+		PWT  = U64(1) << 3,
+
+		/// Cash Disable if set.
+		PCD  = U64(1) << 4,
+
+		/// Accessed. Set by CPU.
+		A    = U64(1) << 5,
+
+		/// Dirtied. Set by CPU.
+		D    = U64(1) << 6,
+
+		/// Page size 1GiB or 2MiB if set, else 4KiB.
+		PS   = U64(1) << 7,  
+
+		///< Page attribute table enable if set (PTE).
+		//PAT  = U64(1) << 7,
+
+		///< Global page if set.
+		G    = U64(1) << 8,
+
+		/// Page attribute table enable if set (PDPTE,PDE).
+		//PAT  = 1L << 12,
 
 		/// Execute disable if set.
 		/// このフラグが使えるのは IA32_EFER.NXE = 1 のときだけ。
-		XD   = 1L << 63,
+		XD   = U64(1) << 63,
 	};
 
 	void set(type a, type f) {
@@ -53,24 +76,24 @@ public:
 		return e & f;
 	}
 	void set_adr(type a) {
-		e = (e & 0xffffff0000000fff) | a;
+		e = (e & U64(0xffffff0000000fff)) | a;
 	}
 	void set_addr(type a) { set_adr(a); }
 	type get_adr() const {
-		return e & 0x000000fffffff000;
+		return e & U64(0x000000fffffff000);
 	}
 	type get_addr() const { return get_adr(); }
 	void set_avail1(u32 a) {
-		e = (e & 0xfffffffffff1ffff) | (a << 9);
+		e = (e & U64(0xfffffffffff1ffff)) | (a << 9);
 	}
 	u32 get_avail1() const {
-		return static_cast<u32>((e & 0x00000000000e0000) >> 9);
+		return static_cast<u32>((e & U64(0x00000000000e0000)) >> 9);
 	}
 	void set_avail2(u32 a) {
-		e = (e & 0x800fffffffffffff) | (static_cast<u64>(a) << 52);
+		e = (e & U64(0x800fffffffffffff)) | (static_cast<u64>(a) << 52);
 	}
 	u32 get_avail2() const {
-		return static_cast<u32>((e & 0x7ff0000000000000) >> 52);
+		return static_cast<u32>((e & U64(0x7ff0000000000000)) >> 52);
 	}
 };
 
@@ -84,10 +107,14 @@ class page_table
 public:
 	page_table() : top(0) {}
 
-	cause::stype set(uptr adr, page::TYPE pt, uptr flags);
+	cause::stype set(u64 adr, page::TYPE pt, uptr flags);
+	cause::stype set_page(u64 vadr, u64 padr, page::TYPE pt, uptr flags);
+
+	void dump(kernel_log& x);
 
 public:
 	enum PAGE_FLAGS {
+		EXIST = pte::P,
 		WRITE = pte::RW,
 	};
 

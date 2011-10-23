@@ -22,7 +22,7 @@ enum {
 	IRQ_PIC_OFFSET = 0x20,
 
 	// this is not hw param.
-	PHYSICAL_MEMMAP_BASEADR = 0xffff800000000000,
+	PHYSICAL_MEMMAP_BASEADR = U64(0xffff800000000000),
 	// Interrupt vector
 	INTR_APIC_TIMER = 0x30,
 };
