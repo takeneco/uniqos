@@ -6,6 +6,8 @@
 #define ASM_FILE
 #include "multiboot2.h"
 
+STACK_SIZE = 0x1000
+
 //
 // multiboot header
 //
@@ -45,10 +47,30 @@ mbh_end:
 
 .globl entry_
 entry_:
-	pushl %ebx
-	call pre
+	movl %eax, %edx
+
+	movl $(stack_start + STACK_SIZE), %esp
+
+	// clear stack zero.
+	xorl %eax, %eax
+	movl $stack_start, %edi
+	movl $STACK_SIZE / 4, %ecx
+	rep stosl
+
+	pushl %ebx  // multiboot infomation
+	pushl %edx  // multiboot magic
+	call pre_load
+
+	call load
+
+	call post_load
 
 	hlt
 	jmp entry_
 
 .size entry_, .-entry_
+
+.globl stack_start
+	.align 4
+	.comm stack_start, STACK_SIZE
+
