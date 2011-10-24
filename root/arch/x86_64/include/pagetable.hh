@@ -107,8 +107,8 @@ class page_table
 public:
 	page_table() : top(0) {}
 
-	cause::stype set(u64 adr, page::TYPE pt, uptr flags);
-	cause::stype set_page(u64 vadr, u64 padr, page::TYPE pt, uptr flags);
+	cause::stype set(u64 adr, page::TYPE pt, u64 flags);
+	cause::stype set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
 
 	void dump(kernel_log& x);
 

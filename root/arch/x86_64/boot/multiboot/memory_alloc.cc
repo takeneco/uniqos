@@ -9,8 +9,7 @@
 #include "misc.hh"
 #include "access.hh"
 #include "placement_new.hh"
-
-#include "native_ops.hh"
+#include "pagetable.hh"
 
 
 namespace {
@@ -367,3 +366,28 @@ int nofreemem_dump(setup_memory_dumpdata* dumpto, int n)
 {
 	return get_alloc()->nofreemem_dump(dumpto, n);
 }
+
+
+namespace arch {
+namespace page {
+
+cause::stype alloc(TYPE page_type, uptr* padr)
+{
+	const u32 size = inline_page_size(page_type);
+	void* p = mem_alloc(size, size);
+	if (!p)
+		return cause::NO_MEMORY;
+
+	*padr = reinterpret_cast<uptr>(p);
+	return cause::OK;
+}
+
+cause::stype free(TYPE, uptr padr)
+{
+	mem_free(reinterpret_cast<void*>(padr));
+	return cause::OK;
+}
+
+}  // namespace page
+}  // namespace arch
+

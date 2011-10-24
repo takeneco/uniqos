@@ -8,6 +8,7 @@ source = [
 	'log_access.cc',
 	'load.cc',
 	'memory_alloc.cc',
+	'preload.cc',
 ]
 
 def configure(x):

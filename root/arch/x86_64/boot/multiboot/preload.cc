@@ -1,4 +1,5 @@
 /// @file   preload.cc
+/// @todo  自分自身を mem_alloc から除外していない。
 //
 // (C) 2011 KATO Takeshi
 //

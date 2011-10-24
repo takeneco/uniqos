@@ -27,3 +27,9 @@ void mem_free(void* p);
 int freemem_dump(setup_memory_dumpdata* dumpto, int n);
 int nofreemem_dump(setup_memory_dumpdata* dumpto, int n);
 
+class text_vga;
+extern text_vga vga_dev;
+
+class log_file;
+extern log_file vga_log;
+

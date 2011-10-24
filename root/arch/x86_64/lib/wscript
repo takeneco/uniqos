@@ -12,6 +12,11 @@ kern_sources = [
     'ioapic.cc',
 ]
 
+mb_sources = [
+    'pagetable.cc',
+    'text_vga.cc',
+]
+
 setup_sources = [
     'mpspec.cc',
     'ioapic.cc',
@@ -27,7 +32,7 @@ def build(x):
 	if x.env.boot_multiboot:
 		x.objects(
 		    target = 'mb_archlibs',
-		    source = ['text_vga.cc'],
+		    source = mb_sources,
 		    use = 'MB',
 		)
 
