@@ -22,6 +22,15 @@ void memory_move(const void* src, void* dest, ucpu bytes)
 	}
 }
 
+void mem_copy(void* dest, const void* src, uptr bytes)
+{
+	const char* s = reinterpret_cast<const char*>(src);
+	char* d = reinterpret_cast<char*>(dest);
+
+	for (uptr i = 0; i < bytes; ++i)
+		d[i] = s[i];
+}
+
 void memory_fill(u8 c, void* dest, ucpu bytes)
 {
 	u8* d = reinterpret_cast<u8*>(dest);

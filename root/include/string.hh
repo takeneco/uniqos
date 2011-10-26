@@ -1,7 +1,7 @@
 // @file   include/string.hh
 // @brief  Memory ops.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #ifndef INCLUDE_STRING_HH_
@@ -11,8 +11,9 @@
 
 
 void memory_move(const void* src, void* dest, ucpu bytes);
+void mem_copy(void* dest, const void* src, uptr bytes);
 void memory_fill(u8 c, void* dest, ucpu bytes);
 int string_get_length(const char* str);
 
 
-#endif  // Include guard
+#endif  // include guard
