@@ -82,7 +82,13 @@ class log_file : public kernel_log
 	    kernel_log* self, const void* data, u32 bytes);
 
 public:
+	log_file() {}
 	log_file(file_interface* file_) : file(file_) {
+		write_func = write;
+	}
+
+	void attach(file_interface* _file) {
+		file = _file;
 		write_func = write;
 	}
 
