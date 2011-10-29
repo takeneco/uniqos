@@ -65,12 +65,49 @@ entry_:
 
 	call post_load
 
-	hlt
-	jmp entry_
+	lgdtl gdtr
+
+	// Enable PAE
+	movl  $0x00000020, %eax
+	movl  %eax, %cr4
+
+	movl  $load_info, %ebx
+	movl  0x8(%ebx), %eax
+	movl  %eax, %cr3
+
+	// IA32_EFER.LME = 1
+	movl  $0xc0000080, %ecx
+	rdmsr
+	orw   $0x0100, %ax
+	wrmsr
+
+	movl  $0x80000001, %eax
+	movl  %eax, %cr0
+
+	pushl $8
+	pushl $start64
+	lret
+start64:
+.code64
+	movq  0x0(%ebx), %rax
+	jmp   *%rax
 
 .size entry_, .-entry_
 
-.globl stack_start
+	.align 16
+gdt:
+	// [0x00] null segment
+	.word  0, 0, 0, 0
+
+	// [0x08] 64bit code segment
+	// base  0x00000000
+	// limit 0xffffff
+	.word  0xffff, 0x0000, 0x9a00, 0x00af
+end_gdt:
+gdtr:
+	.short end_gdt - gdt - 1
+	.long  gdt
+
 	.align 4
 	.comm stack_start, STACK_SIZE
 

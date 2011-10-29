@@ -40,7 +40,7 @@ cause::stype load_segm_page(
 	// そのギャップを 0xAA で埋める。
 	if (map_vadr < phe->p_vaddr) {
 		const uptr gap_size = phe->p_vaddr - map_vadr;
-		memory_fill(0xAA, dest, gap_size);
+		mem_fill(gap_size, 0xAA, dest);
 log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
 
 		map_vadr += gap_size;
@@ -53,7 +53,7 @@ log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
 	const sptr copy_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_filesz, dest_size);
 log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
-	mem_copy(dest, core + file_offset, copy_size);
+	mem_copy(copy_size, core + file_offset, dest);
 
 	map_vadr += copy_size;
 	dest += copy_size;
@@ -63,14 +63,14 @@ log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
 	const sptr fill_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_memsz, dest_size);
 log()("fill(")(dest)(", ").s(fill_size, 16)(")")();
-	memory_fill(0x00, dest, fill_size);
+	mem_fill(fill_size, 0x00, dest);
 
 	dest += fill_size;
 	dest_size -= fill_size;
 
 	// ページの残りを 0xAA で埋める。
 log()("aa(")(dest)(", ").u(dest_size, 16)(")")();
-	memory_fill(0xAA, dest, dest_size);
+	mem_fill(dest_size, 0xAA, dest);
 
 	return cause::OK;
 }
@@ -117,14 +117,15 @@ cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
 
 }
 
+struct load_info_
+{
+	u64 entry_adr;
+	u64 page_table_adr;
+} load_info;
+
 extern "C" void load()
 {
 	log()("core : ")(core)(", core_size : ")(core_size)();
-
-	mem_alloc(0x1000, 0x1000);
-	mem_alloc(0x1000, 0x1000);
-	void* p = mem_alloc(0x200000, 0x200000);
-	log()("p1 = ")(p)();
 
 	Elf64_Ehdr* elf = (Elf64_Ehdr*)core;
 /*
@@ -161,16 +162,23 @@ extern "C" void load()
 		}
 //		log()("p_type : ").u((u32)phe->p_type, 16)
 //			(", p_flags : ").u((u32)phe->p_flags, 16)();
-		log()("p_offset : ").u((u64)phe->p_offset, 16)
-			(", p_align : ").u((u64)phe->p_align)();
-		log()("p_vaddr : ").u((u64)phe->p_vaddr, 16)
-			(", p_paddr : ").u((u64)phe->p_paddr, 16)();
-		log()("p_filesz : ").u((u64)phe->p_filesz, 16)
-			(", p_memsz : ").u((u64)phe->p_memsz, 16)();
+//		log()("p_offset : ").u((u64)phe->p_offset, 16)
+//			(", p_align : ").u((u64)phe->p_align)();
+//		log()("p_vaddr : ").u((u64)phe->p_vaddr, 16)
+//			(", p_paddr : ").u((u64)phe->p_paddr, 16)();
+//		log()("p_filesz : ").u((u64)phe->p_filesz, 16)
+//			(", p_memsz : ").u((u64)phe->p_memsz, 16)();
 		ph += elf->e_phentsize;
 	}
 
+	for (int adr = 0; adr < 0x8000000; adr += arch::page::PHYS_L2_SIZE)
+		pg_tbl.set_page(adr, adr,
+		    arch::page::PHYS_L2, arch::page_table::EXIST);
+
 	pg_tbl.dump(log());
+
+	load_info.entry_adr = elf->e_entry;
+	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());
 }
 
 extern "C" void post_load()

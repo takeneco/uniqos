@@ -10,9 +10,9 @@
 #include "basic_types.hh"
 
 
-void memory_move(const void* src, void* dest, ucpu bytes);
-void mem_copy(void* dest, const void* src, uptr bytes);
-void memory_fill(u8 c, void* dest, ucpu bytes);
+void mem_move(uptr bytes, const void* src, void* dest);
+void mem_copy(uptr bytes, const void* src, void* dest);
+void mem_fill(uptr bytes, u8 c, void* dest);
 int string_get_length(const char* str);
 
 

@@ -340,7 +340,7 @@ kern_output* kern_output::put_str(const char* s)
 	int left = string_get_length(s);
 	while (left > 0) {
 		iov.bytes = min(left, buf_size);
-		memory_move(s, iov.address, iov.bytes);
+		mem_move(iov.bytes, s, iov.address);
 		write(&iov,
 		    1,   // iov count
 		    0);  // offset

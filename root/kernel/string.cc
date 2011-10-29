@@ -1,13 +1,13 @@
-// @file   kernel/string.cc
-// @author Kato Takeshi
-// @brief  Memory ops.
+/// @file   kernel/string.cc
+/// @brief  Memory ops.
 //
-// (C) 2010 Kato Takeshi.
+// (C) 2010-2011 KATO Takeshi
+//
 
 #include "string.hh"
 
 
-void memory_move(const void* src, void* dest, ucpu bytes)
+void mem_move(uptr bytes, const void* src, void* dest)
 {
 	const char* s = reinterpret_cast<const char*>(src);
 	char* d = reinterpret_cast<char*>(dest);
@@ -22,7 +22,7 @@ void memory_move(const void* src, void* dest, ucpu bytes)
 	}
 }
 
-void mem_copy(void* dest, const void* src, uptr bytes)
+void mem_copy(uptr bytes, const void* src, void* dest)
 {
 	const char* s = reinterpret_cast<const char*>(src);
 	char* d = reinterpret_cast<char*>(dest);
@@ -31,7 +31,7 @@ void mem_copy(void* dest, const void* src, uptr bytes)
 		d[i] = s[i];
 }
 
-void memory_fill(u8 c, void* dest, ucpu bytes)
+void mem_fill(uptr bytes, u8 c, void* dest)
 {
 	u8* d = reinterpret_cast<u8*>(dest);
 

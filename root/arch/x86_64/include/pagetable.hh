@@ -105,10 +105,12 @@ typedef page_table_ent pte;
 class page_table
 {
 public:
-	page_table() : top(0) {}
+	page_table(pte* _top=0) : top(_top) {}
 
 	cause::stype set(u64 adr, page::TYPE pt, u64 flags);
 	cause::stype set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
+
+	pte* get_table() { return top; }
 
 	void dump(kernel_log& x);
 
