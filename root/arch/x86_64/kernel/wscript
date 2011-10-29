@@ -42,7 +42,7 @@ def configure(x):
 def build(x):
 	kern_target = x.path.find_or_declare('kernel.bin')
 
-	linker_script = x.path.find_node('kernel.ld')
+	linker_script = x.path.find_node('kernel.lds')
 	kern_linkflags.append('-T' + linker_script.abspath())
 	x.add_manual_dependency(kern_target, linker_script)
 

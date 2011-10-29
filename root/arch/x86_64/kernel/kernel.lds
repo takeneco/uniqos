@@ -15,7 +15,9 @@ SECTIONS {
 	.text : { *(.text.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
+
 	. = 0xffffffffffff8000;
+	STACK_END = .;
 	.bss : { *(.bss) }
 	kern_tail_addr = .;
 }

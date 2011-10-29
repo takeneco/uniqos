@@ -1,4 +1,5 @@
 /// @file   load.cc
+/// @brief  ELF kernel loader.
 //
 // (C) 2011 KATO Takeshi
 //
@@ -41,7 +42,7 @@ cause::stype load_segm_page(
 	if (map_vadr < phe->p_vaddr) {
 		const uptr gap_size = phe->p_vaddr - map_vadr;
 		mem_fill(gap_size, 0xAA, dest);
-log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
+//log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
 
 		map_vadr += gap_size;
 		dest += gap_size;
@@ -52,7 +53,7 @@ log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
 	const u64 file_offset = phe->p_offset + (map_vadr - phe->p_vaddr);
 	const sptr copy_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_filesz, dest_size);
-log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
+//log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
 	mem_copy(copy_size, core + file_offset, dest);
 
 	map_vadr += copy_size;
@@ -62,14 +63,14 @@ log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
 	// BSS 領域を 0x00 で埋める。
 	const sptr fill_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_memsz, dest_size);
-log()("fill(")(dest)(", ").s(fill_size, 16)(")")();
+//log()("fill(")(dest)(", ").s(fill_size, 16)(")")();
 	mem_fill(fill_size, 0x00, dest);
 
 	dest += fill_size;
 	dest_size -= fill_size;
 
 	// ページの残りを 0xAA で埋める。
-log()("aa(")(dest)(", ").u(dest_size, 16)(")")();
+//log()("aa(")(dest)(", ").u(dest_size, 16)(")")();
 	mem_fill(dest_size, 0xAA, dest);
 
 	return cause::OK;
@@ -77,10 +78,6 @@ log()("aa(")(dest)(", ").u(dest_size, 16)(")")();
 
 cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
 {
-	log()("(load)");
-
-	cause::stype r;
-
 	u64 page_flags = arch::page_table::EXIST;
 	if (phe->p_flags & PF_W)
 		page_flags |= arch::page_table::WRITE;
@@ -92,6 +89,8 @@ cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
 
 	for (u64 page_adr = start_page; ; page_adr += arch::page::PHYS_L2_SIZE)
 	{
+		cause::stype r;
+
 		uptr phys_adr;
 		r = arch::page::alloc(arch::page::PHYS_L2, &phys_adr);
 		if (r != cause::OK)
@@ -102,9 +101,10 @@ cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
 		if (r != cause::OK)
 			return r;
 
-		pg_tbl->set_page(
-		    page_adr, static_cast<u64>(phys_adr),
+		r = pg_tbl->set_page(page_adr, static_cast<u64>(phys_adr),
 		    arch::page::PHYS_L2, page_flags);
+		if (r != cause::OK)
+			return r;
 
 		// end_page がメモリ空間の最後のページを指している場合は、
 		// page_adr をインクリメントするとオーバーフローしてしまう。
@@ -115,7 +115,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
 	return cause::OK;
 }
 
-}
+}  // namespace
 
 struct load_info_
 {
@@ -123,7 +123,7 @@ struct load_info_
 	u64 page_table_adr;
 } load_info;
 
-extern "C" void load()
+extern "C" u32 load()
 {
 	log()("core : ")(core)(", core_size : ")(core_size)();
 
@@ -158,7 +158,9 @@ extern "C" void load()
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		Elf64_Phdr* phe = (Elf64_Phdr*)ph;
 		if (phe->p_type == PT_LOAD) {
-			load_segm(phe, &pg_tbl);
+			cause::stype r = load_segm(phe, &pg_tbl);
+			if (r != cause::OK)
+				return r;
 		}
 //		log()("p_type : ").u((u32)phe->p_type, 16)
 //			(", p_flags : ").u((u32)phe->p_flags, 16)();
@@ -171,14 +173,31 @@ extern "C" void load()
 		ph += elf->e_phentsize;
 	}
 
-	for (int adr = 0; adr < 0x8000000; adr += arch::page::PHYS_L2_SIZE)
-		pg_tbl.set_page(adr, adr,
+	// カーネルに jmp する前に long モードになるときに使う。
+	for (int adr = 0; adr < 0x8000000; adr += arch::page::PHYS_L2_SIZE) {
+		cause::stype r = pg_tbl.set_page(adr, adr,
 		    arch::page::PHYS_L2, arch::page_table::EXIST);
+		if (r != cause::OK)
+			return r;
+	}
 
-	pg_tbl.dump(log());
+/*	// sharing stack with .bss section
+	// stack
+	uptr stack_padr;
+	cause::stype r = arch::page::alloc(arch::page::PHYS_L2, &stack_padr);
+	if (r != cause::OK)
+		return r;
+	pg_tbl.set_page(0 - arch::page::PHYS_L2_SIZE, stack_padr,
+	    arch::page::PHYS_L2,
+	    arch::page_table::EXIST | arch::page_table::WRITE);
+*/
+
+	//pg_tbl.dump(log());
 
 	load_info.entry_adr = elf->e_entry;
 	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());
+
+	return cause::OK;
 }
 
 extern "C" void post_load()
