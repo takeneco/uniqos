@@ -7,7 +7,7 @@ source = [
 	'entry.S',
 	'log_access.cc',
 	'load.cc',
-	'memory_alloc.cc',
+	'mem_alloc.cc',
 	'preload.cc',
 ]
 

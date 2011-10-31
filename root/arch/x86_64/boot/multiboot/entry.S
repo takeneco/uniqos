@@ -47,6 +47,8 @@ mbh_end:
 
 .globl entry_
 entry_:
+	cli
+
 	movl %eax, %edx
 
 	movl $(stack_start + STACK_SIZE), %esp
@@ -60,15 +62,20 @@ entry_:
 	pushl %ebx  // multiboot infomation
 	pushl %edx  // multiboot magic
 	call pre_load
+	testl %eax, %eax
+	jnz   stop
 
-	call load
+	call  load
+	testl %eax, %eax
+	jnz   stop
 
 	call post_load
 
 	lgdtl gdtr
 
-	// Enable PAE
-	movl  $0x00000020, %eax
+	// Enable PAE (long mode required)
+	// Enable PGE
+	movl  $0x000000a0, %eax
 	movl  %eax, %cr4
 
 	movl  $load_info, %ebx
@@ -87,6 +94,11 @@ entry_:
 	pushl $8
 	pushl $start64
 	lret
+
+stop:
+	hlt
+	jmp stop
+
 start64:
 .code64
 	movq  0x0(%ebx), %rax

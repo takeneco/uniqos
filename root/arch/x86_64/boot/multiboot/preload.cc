@@ -15,6 +15,25 @@ log_file vga_log;
 
 namespace {
 
+void mem_setup_entry(u64 addr, u64 len)
+{
+	// 4GiB の先は無視する。
+	const u64 PTR_END = U64(0x100000000);
+	if (addr >= PTR_END)
+		return;
+	if (addr + len > PTR_END)
+		len = PTR_END - addr;
+
+	// 先頭 16MiB はなるべくカーネルに使わせない。
+	const u64 AVOID_TH = 0x1000000;
+
+	if (addr < AVOID_TH && addr + len >= AVOID_TH) {
+		mem_add(AVOID_TH, addr + len - AVOID_TH, false);
+		len = AVOID_TH - addr;
+	}
+	mem_add(addr, len, addr < AVOID_TH);
+}
+
 void mem_setup(const multiboot_tag_mmap* mbt_mmap)
 {
 //	log()("memmap : esize=").u(u32(mbt_mmap->entry_size))
@@ -29,16 +48,9 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap)
 		    (" type=").u(u32(mmap->type))();
 		*/
 
-		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
-			const u64 TH = 0x1000000;
-			u64 len = mmap->len;
-			if (mmap->addr < TH && mmap->addr + mmap->len >= TH) {
-				mem_add(
-				    TH, mmap->addr + mmap->len - TH, false);
-				len = TH - mmap->addr;
-			}
-			mem_add(mmap->addr, len, mmap->addr < 0x1000000);
-		}
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
+			mem_setup_entry(mmap->addr, mmap->len);
+
 		mmap = (const multiboot_memory_map_t*)
 		    ((const u8*)mmap + mbt_mmap->entry_size);
 	}
