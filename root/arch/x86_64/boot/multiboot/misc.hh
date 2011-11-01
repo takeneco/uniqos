@@ -22,7 +22,7 @@ struct acpi_memmap {
 
 void mem_init();
 void mem_add(u64 head, u64 bytes, bool avoid);
-void* mem_alloc(uptr size, uptr align);
+void* mem_alloc(uptr size, uptr align, bool kern_forget);
 void mem_free(void* p);
 int freemem_dump(setup_memory_dumpdata* dumpto, int n);
 int nofreemem_dump(setup_memory_dumpdata* dumpto, int n);

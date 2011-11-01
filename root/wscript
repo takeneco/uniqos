@@ -15,9 +15,6 @@ def configure_x86_64(conf):
 
 	conf.recurse('arch')
 
-	conf.env.ASFLAGS = [
-	    '-DASM_SOURCE_',
-	]
 	conf.env.CFLAGS = [
 	    '-pipe', '-Wall', '-Wextra',
 	]
@@ -58,13 +55,13 @@ def configure_x86_64(conf):
 	]
 
 	if conf.options.compiler == 'clang':
-		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
-		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
-		conf.env.LINKFLAGS_KERNEL.append('-native')
+		conf.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		conf.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
+		conf.env.append_value('LINKFLAGS_KERNEL', '-native')
 		conf.find_program('clang', var='CC')
 		conf.find_program('clang++', var='CXX')
 		conf.find_program('clang', var='AS')
-		conf.env.ASFLAGS.append('-c')
+		conf.env.append_value('ASFLAGS', '-c')
 		conf.env.LINK_PASS = ''
 
 	elif conf.options.compiler == 'llvm':
@@ -80,38 +77,47 @@ def configure_x86_64(conf):
 		conf.env.LINK_PASS = '-Xlinker='
 
 	elif conf.options.compiler == 'gnu':
-		conf.env.CFLAGS_KERNEL.append('-mcmodel=large')
-		conf.env.CXXFLAGS_KERNEL.append('-mcmodel=large')
+		conf.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		conf.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
 		conf.env.append_value('LINKFLAGS_MB', '-lgcc')
 		conf.find_program('gcc', var='CC')
 		conf.find_program('g++', var='CXX')
 		conf.find_program('gcc', var='AS')
-		conf.env.ASFLAGS.append('-c')
+		conf.env.append_value('ASFLAGS','-c')
 		conf.env.LINK_PASS = ''
 
 	else:
 		conf.fatal('unknown compiler : ' + conf.options.compiler)
 
-def options(opt):
-	opt.load('compiler_c')
-	opt.load('compiler_cxx')
-	opt.load('gcc gas')
-	opt.add_option(
-	    '--compiler',
+def options(x):
+	x.load('compiler_c')
+	x.load('compiler_cxx')
+	x.load('gcc gas')
+
+	conf_opt = x.get_option_group('configure options')
+	conf_opt.add_option('--compiler',
 	    default = 'clang',
 	    action  = 'store',
-	    help    = 'compiler family (llvm,gnu)')
-	opt.recurse('arch')
+	    help    = 'compiler family (clang, llvm, gnu)')
 
-def configure(conf):
-	configure_x86_64(conf)
-	conf.load('compiler_c')
-	conf.load('compiler_cxx')
-	conf.load('gcc gas')
-	conf.recurse('tools')
+	debug_opt = x.add_option_group('debug options')
+	debug_opt.add_option('--debug',
+	    dest    = 'debug_all',
+	    default = False,
+	    action  = 'store_true',
+	    help    = 'enable all debug options')
 
-	conf.env.STLIB_MARKER = []
-	conf.env.SHLIB_MARKER = []
+	x.recurse('arch')
+
+def configure(x):
+	x.env.debug_all = x.options.debug_all
+
+	configure_x86_64(x)
+
+	x.load('compiler_c')
+	x.load('compiler_cxx')
+	x.load('gcc gas')
+	x.recurse('tools')
 
 def build(bld):
 	bld.recurse('tools')

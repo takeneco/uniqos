@@ -6,14 +6,17 @@
 
 
 def options(x):
-	x.add_option('--boot-fd',
+	conf_opt = x.get_option_group('configure options')
+	conf_opt.add_option('--boot-fd',
 	    action  = 'store_true',
 	    default = False,
 	    help    = 'create boot floppy image.')
-	x.add_option('--boot-multiboot',
+	conf_opt.add_option('--boot-multiboot',
 	    action  = 'store_true',
 	    default = True,
 	    help    = 'create multiboot kernel (default enable)')
+
+	x.recurse('boot')
 
 def configure(x):
 	x.env.boot_fd = x.options.boot_fd

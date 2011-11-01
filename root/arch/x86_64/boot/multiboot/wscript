@@ -38,9 +38,13 @@ def build(x):
 	)
 	x.add_manual_dependency(target, core)
 
+	defines = []
+	if x.env.debug_boot: defines.append('DEBUG_BOOT')
+
 	x.program(
 	    target = target,
 	    source = source,
+	    defines = defines,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
 	    linkflags = [
 		    core.abspath(),

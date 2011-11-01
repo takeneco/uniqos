@@ -2,7 +2,18 @@
 # (C) 2011 KATO Takeshi
 #
 
+
+def options(x):
+	debug_opt = x.get_option_group('debug options')
+	debug_opt.add_option('--debug-boot',
+	    dest    = 'debug_boot',
+	    action  = 'store_true',
+	    default = False,
+	    help    = 'enable boot phase debugging')
+
 def configure(x):
+	x.env.debug_boot = x.options.debug_boot or x.options.debug_all
+
 	if x.env.boot_multiboot:
 		x.recurse('multiboot')
 
