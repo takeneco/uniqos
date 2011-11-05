@@ -8,7 +8,6 @@
 #include "misc.hh"
 #include "pagetable.hh"
 #include "string.hh"
-#include "vga.hh"
 
 #include "elf.hh"
 
@@ -123,8 +122,12 @@ struct load_info_
 	u64 page_table_adr;
 } load_info;
 
-extern "C" u32 load()
+extern "C" u32 load(u32 magic, u32* tag)
 {
+	cause::stype r = pre_load(magic, tag);
+	if (r != cause::OK)
+		return r;
+
 	log()("core : ")(core)(", core_size : ")(core_size)();
 
 	Elf64_Ehdr* elf = (Elf64_Ehdr*)core;
@@ -175,7 +178,7 @@ extern "C" u32 load()
 
 	// カーネルに jmp する前に long モードになるときに使う。
 	for (int adr = 0; adr < 0x8000000; adr += arch::page::PHYS_L2_SIZE) {
-		cause::stype r = pg_tbl.set_page(adr, adr,
+		r = pg_tbl.set_page(adr, adr,
 		    arch::page::PHYS_L2, arch::page_table::EXIST);
 		if (r != cause::OK)
 			return r;
@@ -197,15 +200,6 @@ extern "C" u32 load()
 	load_info.entry_adr = elf->e_entry;
 	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());
 
-	return cause::OK;
-}
-
-extern "C" void post_load()
-{
-	extern u32 stack_start[];
-	u32 i;
-	for (i = 0; stack_start[i] == 0 && i < 0xffff; ++i);
-
-	log()("left stack : ").u((i - 1) * 4);
+	return post_load(tag);
 }
 

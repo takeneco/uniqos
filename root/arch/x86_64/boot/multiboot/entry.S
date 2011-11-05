@@ -61,15 +61,9 @@ entry_:
 
 	pushl %ebx  // multiboot infomation
 	pushl %edx  // multiboot magic
-	call pre_load
-	testl %eax, %eax
-	jnz   stop
-
 	call  load
 	testl %eax, %eax
 	jnz   stop
-
-	call post_load
 
 	lgdtl gdtr
 

@@ -4,6 +4,7 @@
 // (C) 2011 KATO Takeshi
 //
 
+#include "bootinfo.hh"
 #include "log.hh"
 #include "misc.hh"
 #include "multiboot2.h"
@@ -58,7 +59,7 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap)
 
 }  // namespace
 
-extern "C" cause::type pre_load(u32 magic, u32* tag)
+cause::stype pre_load(u32 magic, u32* tag)
 {
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
 		return cause::INVALID_PARAMS;
@@ -149,13 +150,14 @@ extern "C" cause::type pre_load(u32 magic, u32* tag)
 			break;
 		}
 
-		const u32 dec = (mbt->size + 7) & ~7;
+		const u32 dec = up_align<u32>(mbt->size, MULTIBOOT_TAG_ALIGN);
 		tag += dec / sizeof *tag;
 		read += dec;
 	}
 
+	// bootinfo
+	mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES);
+
 	return cause::OK;
 }
-
-
 

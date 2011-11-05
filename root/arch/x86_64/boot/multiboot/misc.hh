@@ -20,12 +20,23 @@ struct acpi_memmap {
 	u32 attr;
 };
 
-void mem_init();
-void mem_add(u64 head, u64 bytes, bool avoid);
+struct mem_enum {
+	bool avoid;
+	const void* entry;
+};
+void  mem_init();
+void  mem_add(uptr adr, uptr bytes, bool avoid);
 void* mem_alloc(uptr size, uptr align, bool kern_forget);
-void mem_free(void* p);
+void  mem_free(void* p);
+bool  mem_reserve(uptr adr, uptr bytes);
+void  mem_alloc_info(mem_enum* me);
+bool  mem_alloc_info_next(mem_enum* me, uptr* adr, uptr* bytes);
+
 int freemem_dump(setup_memory_dumpdata* dumpto, int n);
 int nofreemem_dump(setup_memory_dumpdata* dumpto, int n);
+
+cause::stype pre_load(u32 magic, u32* tag);
+cause::stype post_load(u32* tag);
 
 class text_vga;
 extern text_vga vga_dev;
