@@ -1,5 +1,4 @@
 /// @file   preload.cc
-/// @todo  自分自身を mem_alloc から除外していない。
 //
 // (C) 2011 KATO Takeshi
 //
@@ -10,6 +9,9 @@
 #include "multiboot2.h"
 #include "vga.hh"
 
+
+extern "C" u8 self_baseadr[];
+extern "C" u8 self_size[];
 
 text_vga vga_dev;
 log_file vga_log;
@@ -156,7 +158,12 @@ cause::stype pre_load(u32 magic, u32* tag)
 	}
 
 	// bootinfo
-	mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES);
+	mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
+	// self memory
+	mem_reserve(
+	    reinterpret_cast<uptr>(self_baseadr),
+	    reinterpret_cast<uptr>(self_size),
+	    true);
 
 	return cause::OK;
 }

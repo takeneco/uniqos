@@ -12,8 +12,8 @@
 #include "elf.hh"
 
 
-extern u8 core[];
-extern u8 core_size[];
+extern u8 kernel[];
+extern u8 kernel_size[];
 
 namespace {
 
@@ -52,8 +52,8 @@ cause::stype load_segm_page(
 	const u64 file_offset = phe->p_offset + (map_vadr - phe->p_vaddr);
 	const sptr copy_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_filesz, dest_size);
-//log()("copy(")(dest)(", ")(core + file_offset)(", ").s(copy_size, 16)(")")();
-	mem_copy(copy_size, core + file_offset, dest);
+//log()("copy(")(dest)(", ")(kernel+file_offset)(", ").s(copy_size, 16)(")")();
+	mem_copy(copy_size, kernel + file_offset, dest);
 
 	map_vadr += copy_size;
 	dest += copy_size;
@@ -128,9 +128,9 @@ extern "C" u32 load(u32 magic, u32* tag)
 	if (r != cause::OK)
 		return r;
 
-	log()("core : ")(core)(", core_size : ")(core_size)();
+	log()("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
 
-	Elf64_Ehdr* elf = (Elf64_Ehdr*)core;
+	Elf64_Ehdr* elf = (Elf64_Ehdr*)kernel;
 /*
 	log()("e_ident : ").
 		u((u8)elf->e_ident[0], 16)(" ").
@@ -157,7 +157,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 */
 
 	arch::page_table pg_tbl;
-	u8* ph = core + elf->e_phoff;
+	u8* ph = kernel + elf->e_phoff;
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		Elf64_Phdr* phe = (Elf64_Phdr*)ph;
 		if (phe->p_type == PT_LOAD) {

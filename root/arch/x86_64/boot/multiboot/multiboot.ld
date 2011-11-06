@@ -9,11 +9,12 @@ ENTRY(entry_)
 SECTIONS {
 	PROVIDE(__gxx_personality_v0 = .);
 
+	self_baseadr = 0x200000;
 	/* page size + elf header size */
-	. = 0x200000 + SIZEOF_HEADERS;
+	. = self_baseadr + SIZEOF_HEADERS;
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
-	.data : { *(EXCLUDE_FILE(*/core.o) .data) }
+	.data : { *(EXCLUDE_FILE(*/kernel.o) .data) }
 	.bss : { *(.bss) }
 
 	/* C++の例外フレームらしい。
@@ -21,7 +22,8 @@ SECTIONS {
 	 */
 	.eh_frame : { *(.eh_frame) }
 
-	core = .;
-	.core : { */core.o(.data) }
-	core_size = . - core;
+	kernel = .;
+	.kernel : { */kernel.o(.data) }
+	kernel_size = . - kernel;
+	self_size = . - self_baseadr;
 }

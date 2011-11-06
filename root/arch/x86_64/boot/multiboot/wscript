@@ -7,7 +7,7 @@ source = [
 	'entry.S',
 	'log_access.cc',
 	'load.cc',
-	'mem_alloc.cc',
+	'easy_alloc_wrap.cc',
 	'postload.cc',
 	'preload.cc',
 ]
@@ -30,14 +30,14 @@ def build(x):
 	env = x.env.derive()
 	env.append_value('ASFLAGS', '-m32')
 
-	core = x.path.find_or_declare('core.o')
+	kobj = x.path.find_or_declare('kernel.o')
 	x(
 	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
 	           '${SRC} ${TGT}',
-	    target = core,
+	    target = kobj,
 	    source = '../../kernel/kernel.bin',
 	)
-	x.add_manual_dependency(target, core)
+	source.append(kobj)
 
 	defines = []
 	if x.env.debug_boot: defines.append('DEBUG_BOOT')
@@ -47,11 +47,7 @@ def build(x):
 	    source = source,
 	    defines = defines,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
-	    linkflags = [
-		    core.abspath(),
-		    '-m32',
-		    '-nostdlib',
-		    '-static', ls_opt],
+	    linkflags = ['-m32', '-nostdlib', '-static', ls_opt],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)
