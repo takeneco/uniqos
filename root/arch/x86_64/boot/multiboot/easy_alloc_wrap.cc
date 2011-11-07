@@ -5,7 +5,6 @@
 //
 
 #include "log.hh"
-#include "easy_alloc.hh"
 #include "misc.hh"
 #include "placement_new.hh"
 
@@ -67,31 +66,14 @@ bool mem_reserve(uptr adr, uptr bytes, bool forget)
 	return get_alloc()->reserve(adr, bytes, forget);
 }
 
-void mem_alloc_info(mem_enum* me)
+void mem_alloc_info(easy_alloc_enum* x) 
 {
-	me->avoid = false;
-	me->entry = get_alloc()->alloc_info();
+	get_alloc()->all_alloc_info(x);
 }
 
-bool mem_alloc_info_next(mem_enum* me, uptr* adr, uptr* bytes)
+bool mem_alloc_info_next(easy_alloc_enum* x, uptr* adr, uptr* bytes)
 {
-	const void* next;
-
-	if (me->avoid == false) {
-		next = get_alloc()->alloc_info_next(me->entry, adr, bytes);
-		if (next == 0) {
-			next = get_alloc()->avoid_alloc_info();
-			me->avoid = true;
-		}
-	}
-	else {
-		next =
-		    get_alloc()->avoid_alloc_info_next(me->entry, adr, bytes);
-	}
-
-	me->entry = next;
-
-	return next != 0;
+	return get_alloc()->all_alloc_info_next(x, adr, bytes);
 }
 /*
 void mem_dump()

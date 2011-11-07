@@ -30,7 +30,7 @@ void mem_setup_entry(u64 addr, u64 len)
 	// 先頭 16MiB はなるべくカーネルに使わせない。
 	const u64 AVOID_TH = 0x1000000;
 
-	if (addr < AVOID_TH && addr + len >= AVOID_TH) {
+	if (addr < AVOID_TH && addr + len > AVOID_TH) {
 		mem_add(AVOID_TH, addr + len - AVOID_TH, false);
 		len = AVOID_TH - addr;
 	}

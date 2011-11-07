@@ -4,9 +4,20 @@
 // (C) 2010-2011 KATO Takeshi
 //
 
+#ifndef INCLUDE_EASY_ALLOC_HH_
+#define INCLUDE_EASY_ALLOC_HH_
+
 #include "arch.hh"
 #include "chain.hh"
+#include "log.hh"
 
+
+/// @brief easy_alloc を使用後にメモリの状態を列挙するときの列挙子。
+struct easy_alloc_enum
+{
+	bool avoid;
+	const void* entry;
+};
 
 /// @brief  簡単なメモリ管理の実装
 //
@@ -105,6 +116,41 @@ public:
 		*bytes = _e->bytes;
 		return av_alloc_chain.next(_e);
 	}
+
+	/// @fn const void* free_info() const
+	/// @fn const void* free_info_next(const void* e, uptr* adr, uptr* bytes) const
+	/// @fn const void* avoid_free_info() const
+	/// @fn const void* avoid_free_info_next(const void* e, uptr* adr, uptr* bytes) const
+	/// @brief 空き状態のメモリを列挙する。
+	//
+	/// free_info() で先頭ポインタを取って、free_info_next() で列挙する。
+	const void* free_info() const {
+		return free_chain.head();
+	}
+	const void* free_info_next(
+	    const void* e, uptr* adr, uptr* bytes) const {
+		const entry* _e = reinterpret_cast<const entry*>(e);
+		*adr = _e->adr;
+		*bytes = _e->bytes;
+		return free_chain.next(_e);
+	}
+	const void* avoid_free_info() const {
+		return av_free_chain.head();
+	}
+	const void* avoid_free_info_next(
+	    const void* e, uptr* adr, uptr* bytes) const {
+		const entry* _e = reinterpret_cast<const entry*>(e);
+		*adr = _e->adr;
+		*bytes = _e->bytes;
+		return av_free_chain.next(_e);
+	}
+
+	void all_alloc_info(easy_alloc_enum* x) const;
+	bool all_alloc_info_next(
+	    easy_alloc_enum* x, uptr* adr, uptr* bytes) const;
+	void all_free_info(easy_alloc_enum* x) const;
+	bool all_free_info_next(
+	    easy_alloc_enum* x, uptr* adr, uptr* bytes) const;
 
 	void debug_dump(kernel_log& log) {
 		for (entry* e=free_chain.head();e;e=free_chain.next(e))
@@ -217,6 +263,64 @@ void easy_alloc<BUF_COUNT>::free(void* p)
 
 	if (!r)
 		log()("mem_free(): unknown address passed. (")(p)(")")();
+}
+
+template<int BUF_COUNT>
+void easy_alloc<BUF_COUNT>::all_alloc_info(easy_alloc_enum* x) const
+{
+	x->avoid = false;
+	x->entry = alloc_info();
+}
+
+template<int BUF_COUNT>
+bool easy_alloc<BUF_COUNT>::all_alloc_info_next(
+    easy_alloc_enum* x, uptr* adr, uptr* bytes) const
+{
+	const void* next;
+
+	if (x->avoid == false) {
+		next = alloc_info_next(x->entry, adr, bytes);
+		if (next == 0) {
+			next = avoid_alloc_info();
+			x->avoid = true;
+		}
+	}
+	else {
+		next = avoid_alloc_info_next(x->entry, adr, bytes);
+	}
+
+	x->entry = next;
+
+	return next != 0;
+}
+
+template<int BUF_COUNT>
+void easy_alloc<BUF_COUNT>::all_free_info(easy_alloc_enum* x) const
+{
+	x->avoid = false;
+	x->entry = free_info();
+}
+
+template<int BUF_COUNT>
+bool easy_alloc<BUF_COUNT>::all_free_info_next(
+    easy_alloc_enum* x, uptr* adr, uptr* bytes) const
+{
+	const void* next;
+
+	if (x->avoid == false) {
+		next = free_info_next(x->entry, adr, bytes);
+		if (next == 0) {
+			next = avoid_free_info();
+			x->avoid = true;
+		}
+	}
+	else {
+		next = avoid_free_info_next(x->entry, adr, bytes);
+	}
+
+	x->entry = next;
+
+	return next != 0;
 }
 
 /// @brief  Search unused entry from entry_buf[].
@@ -441,3 +545,6 @@ bool easy_alloc<BUF_COUNT>::_free(
 
 	return true;
 }
+
+
+#endif  // include guard

@@ -39,24 +39,25 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 {
 	bootinfo::mem_alloc* tag_ma =
 	    reinterpret_cast<bootinfo::mem_alloc*>(bootinfo);
-	bootinfo::mem_alloc_entry* mae = tag_ma->entries;
 
-	mem_enum me;
-	mem_alloc_info(&me);
-	uptr size = sizeof me;
+	uptr size = sizeof *tag_ma;
 	if (bootinfo_left < size)
 		return size;
 
+	easy_alloc_enum ea_enum;
+	mem_alloc_info(&ea_enum);
+
+	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {
-		size += sizeof *mae;
+		size += sizeof *ma_ent;
 		if(bootinfo_left < size)
 			return size;
 
 		u32 adr, bytes;
-		const bool more = mem_alloc_info_next(&me, &adr, &bytes);
-		mae->adr = adr;
-		mae->bytes = bytes;
-		++mae;
+		const bool more = mem_alloc_info_next(&ea_enum, &adr, &bytes);
+		ma_ent->adr = adr;
+		ma_ent->bytes = bytes;
+		++ma_ent;
 		if (more == false)
 			break;
 	}
