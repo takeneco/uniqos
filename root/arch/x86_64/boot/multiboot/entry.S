@@ -72,6 +72,7 @@ entry_:
 	movl  $0x000000a0, %eax
 	movl  %eax, %cr4
 
+	// Set page table
 	movl  $load_info, %ebx
 	movl  0x8(%ebx), %eax
 	movl  %eax, %cr3

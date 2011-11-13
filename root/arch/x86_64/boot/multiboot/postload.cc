@@ -49,17 +49,18 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 
 	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {
+		u32 adr, bytes;
+		const bool r = mem_alloc_info_next(&ea_enum, &adr, &bytes);
+		if (!r)
+			break;
+
 		size += sizeof *ma_ent;
 		if(bootinfo_left < size)
 			return size;
 
-		u32 adr, bytes;
-		const bool more = mem_alloc_info_next(&ea_enum, &adr, &bytes);
 		ma_ent->adr = adr;
 		ma_ent->bytes = bytes;
 		++ma_ent;
-		if (more == false)
-			break;
 	}
 
 	tag_ma->type = bootinfo::TYPE_MEMALLOC;
@@ -107,8 +108,10 @@ bool stack_test()
 
 cause::stype post_load(u32* mb_info)
 {
-	if (!store_bootinfo(mb_info))
+	if (!store_bootinfo(mb_info)) {
+		log()("Could not pass bootinfo to kernel.")();
 		return cause::FAIL;
+	}
 
 	if (!stack_test())
 		return cause::FAIL;

@@ -31,7 +31,7 @@ bool  mem_reserve(uptr adr, uptr bytes, bool forget);
 void  mem_alloc_info(easy_alloc_enum* x);
 bool  mem_alloc_info_next(easy_alloc_enum* x, uptr* adr, uptr* bytes);
 
-cause::stype pre_load(u32 magic, u32* tag);
+cause::stype pre_load(u32 magic, const u32* tag);
 cause::stype post_load(u32* tag);
 
 class text_vga;

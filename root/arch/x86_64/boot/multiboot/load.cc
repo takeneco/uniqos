@@ -12,8 +12,8 @@
 #include "elf.hh"
 
 
-extern u8 kernel[];
-extern u8 kernel_size[];
+extern const u8 kernel[];
+extern const u8 kernel_size[];
 
 namespace {
 
@@ -130,7 +130,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 
 	log()("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
 
-	Elf64_Ehdr* elf = (Elf64_Ehdr*)kernel;
+	const Elf64_Ehdr* elf = reinterpret_cast<const Elf64_Ehdr*>(kernel);
 /*
 	log()("e_ident : ").
 		u((u8)elf->e_ident[0], 16)(" ").
@@ -155,14 +155,13 @@ extern "C" u32 load(u32 magic, u32* tag)
 		(", e_shnum : ").u((u16)elf->e_shnum)();
 	log()("e_shstrndx : ").u((u16)elf->e_shstrndx)();
 */
-
 	arch::page_table pg_tbl;
-	u8* ph = kernel + elf->e_phoff;
+	const u8* ph = kernel + elf->e_phoff;
 	for (int i = 0; i < elf->e_phnum; ++i) {
-		Elf64_Phdr* phe = (Elf64_Phdr*)ph;
+		const Elf64_Phdr* phe = reinterpret_cast<const Elf64_Phdr*>(ph);
 		if (phe->p_type == PT_LOAD) {
 			cause::stype r = load_segm(phe, &pg_tbl);
-			if (r != cause::OK)
+			if (is_fail(r))
 				return r;
 		}
 //		log()("p_type : ").u((u32)phe->p_type, 16)

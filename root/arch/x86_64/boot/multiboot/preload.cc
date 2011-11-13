@@ -61,31 +61,31 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap)
 
 }  // namespace
 
-cause::stype pre_load(u32 magic, u32* tag)
+cause::stype pre_load(u32 magic, const u32* tag)
 {
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
 		return cause::INVALID_PARAMS;
 
+	// temporary
 	vga_dev.init(80, 25, (void*)0xb8000);
 
 	vga_log.attach(&vga_dev);
 	log_set(0, &vga_log);
-	log_set(1, &vga_log);
 
 	mem_init();
 
-	log()("&tag : ")(&tag);
-	log()(", tag : ")(tag);
+	log()("&tag : ")(&tag)(", tag : ")(tag);
 
-	u32 size = *tag;
-	tag += 2;
+	const u32* p = tag;
+	const u32 tag_size = *p;
+	p += 2;
 
-	log()(", size : ").u(size)();
+	log()(", size : ").u(tag_size)();
 
 	u32 read = 8;
-	while (read < size) {
+	while (read < tag_size) {
 		const multiboot_tag* mbt =
-		    reinterpret_cast<const multiboot_tag*>(tag);
+		    reinterpret_cast<const multiboot_tag*>(p);
 		switch (mbt->type) {
 		case MULTIBOOT_TAG_TYPE_CMDLINE: {
 			/*
@@ -144,7 +144,7 @@ cause::stype pre_load(u32 magic, u32* tag)
 			*/
 		}
 		case MULTIBOOT_TAG_TYPE_END:
-			read = size; // force loop break
+			read = tag_size; // force loop break
 			break;
 
 		default:
@@ -153,17 +153,25 @@ cause::stype pre_load(u32 magic, u32* tag)
 		}
 
 		const u32 dec = up_align<u32>(mbt->size, MULTIBOOT_TAG_ALIGN);
-		tag += dec / sizeof *tag;
+		p += dec / sizeof *p;
 		read += dec;
 	}
 
-	// bootinfo
-	mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
 	// self memory
 	mem_reserve(
 	    reinterpret_cast<uptr>(self_baseadr),
 	    reinterpret_cast<uptr>(self_size),
 	    true);
+
+	// tag
+	mem_reserve(reinterpret_cast<uptr>(tag), tag_size, true);
+
+	// EBDA から bootinfo の領域をまとめて予約する。
+	// EBDA:
+	// mem_reserve(0, 0x4ff, false);
+	// bootinfo:
+	// mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
+	mem_reserve(0, bootinfo::ADR + bootinfo::MAX_BYTES, false);
 
 	return cause::OK;
 }
