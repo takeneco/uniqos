@@ -10,6 +10,7 @@
 kern_sources = [
     'mpspec.cc',
     'ioapic.cc',
+    'text_vga.cc',
 ]
 
 mb_sources = [

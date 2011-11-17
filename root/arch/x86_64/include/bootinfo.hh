@@ -18,8 +18,8 @@ struct mem_alloc_entry {
 	u64 bytes;
 };
 struct mem_alloc {
-	u32 size;
 	u32 type;
+	u32 size;
 	mem_alloc_entry entries[0];
 };
 
