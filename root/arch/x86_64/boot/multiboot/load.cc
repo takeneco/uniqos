@@ -4,6 +4,7 @@
 // (C) 2011 KATO Takeshi
 //
 
+#include "bootinfo.hh"
 #include "log.hh"
 #include "misc.hh"
 #include "pagetable.hh"
@@ -16,6 +17,26 @@ extern const u8 kernel[];
 extern const u8 kernel_size[];
 
 namespace {
+
+class page_table_alloc
+{
+public:
+	static cause::stype alloc(u64* padr);
+	static cause::stype free(u64 padr);
+};
+inline cause::stype page_table_alloc::alloc(u64* padr)
+{
+	uptr _padr;
+	const cause::stype r = arch::page::alloc(arch::page::PHYS_L1, &_padr);
+	*padr = _padr;
+	return r;
+}
+inline cause::stype page_table_alloc::free(u64 padr)
+{
+	return arch::page::free(arch::page::PHYS_L1, padr);
+}
+typedef arch::page_table<page_table_alloc> boot_page_table;
+
 
 /// @brief  オブジェクトをページへコピーする。
 /// @param[in] phe  ELF program header.
@@ -75,11 +96,11 @@ cause::stype load_segm_page(
 	return cause::OK;
 }
 
-cause::stype load_segm(const Elf64_Phdr* phe, arch::page_table* pg_tbl)
+cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 {
-	u64 page_flags = arch::page_table::EXIST;
+	u64 page_flags = boot_page_table::EXIST;
 	if (phe->p_flags & PF_W)
-		page_flags |= arch::page_table::WRITE;
+		page_flags |= boot_page_table::WRITE;
 
 	const u64 start_page = down_align<u64>(
 	    phe->p_vaddr, arch::page::PHYS_L2_SIZE);
@@ -155,7 +176,8 @@ extern "C" u32 load(u32 magic, u32* tag)
 		(", e_shnum : ").u((u16)elf->e_shnum)();
 	log()("e_shstrndx : ").u((u16)elf->e_shstrndx)();
 */
-	arch::page_table pg_tbl;
+	boot_page_table pg_tbl(0, 0);
+
 	const u8* ph = kernel + elf->e_phoff;
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		const Elf64_Phdr* phe = reinterpret_cast<const Elf64_Phdr*>(ph);
@@ -175,10 +197,14 @@ extern "C" u32 load(u32 magic, u32* tag)
 		ph += elf->e_phentsize;
 	}
 
-	// カーネルに jmp する前に long モードになるときに使う。
-	for (int adr = 0; adr < 0x8000000; adr += arch::page::PHYS_L2_SIZE) {
+	// カーネルが自分でメモリ管理できるようになるまでの
+	// 一時的なヒープとして使う。
+	for (int adr = 0;
+	     adr < bootinfo::BOOTHEAP_END;
+	     adr += arch::page::PHYS_L2_SIZE)
+	{
 		r = pg_tbl.set_page(adr, adr,
-		    arch::page::PHYS_L2, arch::page_table::EXIST);
+		    arch::page::PHYS_L2, boot_page_table::EXIST);
 		if (r != cause::OK)
 			return r;
 	}

@@ -10,6 +10,7 @@
 kern_sources = [
     'mpspec.cc',
     'ioapic.cc',
+    'pagetable.cc',
     'text_vga.cc',
 ]
 

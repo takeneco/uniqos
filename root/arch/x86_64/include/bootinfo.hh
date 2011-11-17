@@ -27,6 +27,9 @@ enum {
 	// 物理メモリのこのアドレスに bootinfo が格納される。
 	ADR = 0x500,
 	MAX_BYTES = 0x80000 - ADR,
+
+	// Available memory end during kernel boot.
+	BOOTHEAP_END   = 0x1ffffff,
 };
 
 }  // namespace bootinfo

@@ -21,14 +21,14 @@ namespace {
 void mem_setup_entry(u64 addr, u64 len)
 {
 	// 4GiB の先は無視する。
-	const u64 PTR_END = U64(0x100000000);
-	if (addr >= PTR_END)
+	const u64 ADR_END = U64(0x100000000);
+	if (addr >= ADR_END)
 		return;
-	if (addr + len > PTR_END)
-		len = PTR_END - addr;
+	if (addr + len > ADR_END)
+		len = ADR_END - addr;
 
-	// 先頭 16MiB はなるべくカーネルに使わせない。
-	const u64 AVOID_TH = 0x1000000;
+	// 先頭から bootinfo::BOOTHEAP_END までをなるべく空けておく。
+	const u64 AVOID_TH = bootinfo::BOOTHEAP_END;
 
 	if (addr < AVOID_TH && addr + len > AVOID_TH) {
 		mem_add(AVOID_TH, addr + len - AVOID_TH, false);

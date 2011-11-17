@@ -26,6 +26,9 @@ enum {
 	// Interrupt vector
 	INTR_APIC_TIMER = 0x30,
 };
+enum {
+	PHYSICAL_ADRMAP = U64(0xffff800000000000),
+};
 
 /////////////////////////////////////////////////////////////////////
 // memory paging
@@ -105,9 +108,14 @@ cause::stype free(TYPE page_type, uptr padr);
 
 }  // namespace page
 
+inline void* map_phys_adr(uptr padr, uptr /* size */) {
+	return reinterpret_cast<void*>(PHYSICAL_ADRMAP + padr);
+}
+inline void unmap_phys_adr(void* /* vadr */) {
+}
 inline void* map_phys_mem(uptr padr_from, uptr size) {
 	size = size;
-	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR + padr_from);
+	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR+ padr_from);
 }
 inline void unmap_phys_mem(void* vadr) {
 	vadr = vadr;
