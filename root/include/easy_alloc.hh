@@ -1,8 +1,21 @@
 /// @file   easy_alloc.hh
 /// @brief  Easy memory allocation implement.
+
+//  uniqos  --  Unique Operating System
+//  (C) 2011 KATO Takeshi
 //
-// (C) 2010-2011 KATO Takeshi
+//  uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef INCLUDE_EASY_ALLOC_HH_
 #define INCLUDE_EASY_ALLOC_HH_
@@ -29,6 +42,10 @@ struct easy_alloc_enum
 ///    mem_free() で開放できる。
 /// -# 最後に alloc_info() / avoid_alloc_info() で確保状態のメモリを列挙し、
 ///    次のフェーズへ引き継ぐ。
+//
+/// - このクラスは作業メモリが不足してエラーを返すことがある。
+///   その場合はクラスのオブジェクトを破壊した可能性があり使い続けられない。
+/// - 作業メモリ不足になる場合は BUF_COUNT を増やすしかない。
 template<int BUF_COUNT>
 class easy_alloc
 {
@@ -37,10 +54,10 @@ public:
 
 	void init();
 
-	void add_free(uptr adr, uptr bytes, bool avoid);
+	bool add_free(uptr adr, uptr bytes, bool avoid);
 	bool reserve(uptr adr, uptr bytes, bool forget);
 	void* alloc(uptr size, uptr align, bool forget);
-	void free(void* p);
+	bool free(void* p);
 
 private:
 	struct entry
@@ -174,17 +191,21 @@ void easy_alloc<BUF_COUNT>::init()
 
 /// @brief  Add memory to free_chain.
 /// @param[in] avoid  なるべく空けておきたいメモリなら true。
+/// @retval true  Succeeds.
+/// @retval false No enough working memory.
 template<int BUF_COUNT>
-void easy_alloc<BUF_COUNT>::add_free(uptr adr, uptr bytes, bool avoid)
+bool easy_alloc<BUF_COUNT>::add_free(uptr adr, uptr bytes, bool avoid)
 {
 	if (bytes == 0)
-		return;
+		return true;
 
 	entry* ent = new_entry(adr, bytes);
 	if (ent == 0)
-		return;
+		return false;
 
 	(avoid ? av_free_chain : free_chain).insert_head(ent);
+
+	return true;
 }
 
 /// @brief 指定したメモリ範囲をメモリ確保の対象外にする。
@@ -192,7 +213,7 @@ void easy_alloc<BUF_COUNT>::add_free(uptr adr, uptr bytes, bool avoid)
 /// @param[in] bytes  取り除くメモリのバイト数。
 /// @param[in] forget true ならばメモリ確保の対象外にしたことを忘れる。
 /// @retval true  Succeeds.
-/// @retval false No enough working memory.
+/// @retval false No enough working memory. The easy_alloc object is broken.
 //
 /// - メモリ確保の対象外にしたい領域がある場合は、メモリを確保する前に
 ///   この関数で設定しなければならない。
@@ -254,15 +275,19 @@ void* easy_alloc<BUF_COUNT>::alloc(uptr bytes, uptr align, bool forget)
 /// @brief  Free memory.
 /// @param[in] p  Ptr to memory free.
 template<int BUF_COUNT>
-void easy_alloc<BUF_COUNT>::free(void* p)
+bool easy_alloc<BUF_COUNT>::free(void* p)
 {
 	bool r = _free(free_chain, alloc_chain, p);
 
 	if (!r)
 		r = _free(av_free_chain, av_alloc_chain, p);
 
-	if (!r)
+	if (UNLIKELY(!r)) {
 		log()("mem_free(): unknown address passed. (")(p)(")")();
+		return false;
+	}
+
+	return true;
 }
 
 template<int BUF_COUNT>
@@ -279,19 +304,22 @@ bool easy_alloc<BUF_COUNT>::all_alloc_info_next(
 	const void* next;
 
 	if (x->avoid == false) {
-		next = alloc_info_next(x->entry, adr, bytes);
-		if (next == 0) {
-			next = avoid_alloc_info();
+		if (x->entry == 0) {
 			x->avoid = true;
+			x->entry = avoid_alloc_info();
+			return all_alloc_info_next(x, adr, bytes);
 		}
+		next = alloc_info_next(x->entry, adr, bytes);
 	}
 	else {
+		if (x->entry == 0)
+			return false;
 		next = avoid_alloc_info_next(x->entry, adr, bytes);
 	}
 
 	x->entry = next;
 
-	return next != 0;
+	return true;
 }
 
 template<int BUF_COUNT>
@@ -308,19 +336,22 @@ bool easy_alloc<BUF_COUNT>::all_free_info_next(
 	const void* next;
 
 	if (x->avoid == false) {
-		next = free_info_next(x->entry, adr, bytes);
-		if (next == 0) {
-			next = avoid_free_info();
+		if (x->entry == 0) {
 			x->avoid = true;
+			x->entry = avoid_free_info();
+			return all_free_info_next(x, adr, bytes);
 		}
+		next = free_info_next(x->entry, adr, bytes);
 	}
 	else {
+		if (x->entry == 0)
+			return false;
 		next = avoid_free_info_next(x->entry, adr, bytes);
 	}
 
 	x->entry = next;
 
-	return next != 0;
+	return true;
 }
 
 /// @brief  Search unused entry from entry_buf[].
@@ -354,8 +385,11 @@ void easy_alloc<BUF_COUNT>::free_entry(entry* e)
 /// @brief メモリ範囲を空きメモリチェイン(free_chain)から取り除く。
 /// @param[in] _free_chain   空きメモリチェイン。
 /// @param[in] _alloc_chain  使用メモリチェイン。
-/// @param[in] r_head  取り除くメモリの先頭アドレス。
-/// @param[in] r_tail  取り除くメモリの終端アドレス。
+/// @param[in] adr    取り除くメモリの先頭アドレス。
+/// @param[in] bytes  取り除くメモリの長さ。
+/// @retval true  Succeeds.
+/// @retval false No enough working memory.
+///               The easy_alloc object might be broken.
 //
 /// - forget = false ならば _free_chain から取り除いたメモリは
 ///   _alloc_chain に格納する。
@@ -365,64 +399,67 @@ template<int BUF_COUNT>
 bool easy_alloc<BUF_COUNT>::_reserve_range(
     entry_chain& _free_chain,
     entry_chain& _alloc_chain,
-    uptr adr, uptr bytes, bool forget)
+    uptr adr,
+    uptr bytes,
+    bool forget)
 {
 	uptr r_head = adr;
-	uptr r_tail = adr + bytes;
+	uptr r_tail = adr + bytes - 1;
 
-	for (entry* ent = _free_chain.head();
-	     ent;
-	     ent = _free_chain.next(ent))
+	for (entry* ent = _free_chain.head(); ent; )
 	{
 		uptr e_head = ent->adr;
-		uptr e_tail = e_head + ent->bytes;
+		uptr e_tail = e_head + ent->bytes - 1;
 
 		if (e_head < r_head && r_tail < e_tail) {
-			entry* alloc = new_entry(adr, bytes);
-			entry* free2 = new_entry(r_tail, e_tail - r_tail);
-			if (!alloc || !free2) {
-				free_entry(alloc);
-				free_entry(free2);
-				return false;
+			if (forget == false) {
+				entry* alloc = new_entry(adr, bytes);
+				if (!alloc)
+					return false;
+				_alloc_chain.insert_head(alloc);
 			}
 
-			if (forget == false)
-				_alloc_chain.insert_head(alloc);
-
+			entry* free2 = new_entry(r_tail + 1, e_tail - r_tail);
+			if (!free2)
+				return false;
 			_free_chain.insert_head(free2);
+
 			ent->bytes = r_head - e_head;
 			break;
 		}
 
-		if (r_head <= e_head && e_head < r_tail) {
-			entry* alloc = new_entry(
-			    e_head, min(r_tail, e_tail) - e_head);
-			if (!alloc)
-				return false;
-			if (forget == false)
+		if (r_head <= e_head && e_head <= r_tail) {
+			if (forget == false) {
+				entry* alloc = new_entry(
+				    e_head, min(r_tail, e_tail) - e_head + 1);
+				if (!alloc)
+					return false;
 				_alloc_chain.insert_head(alloc);
+			}
 
-			e_head = r_tail;
+			e_head = r_tail + 1;
 		}
 
-		if (r_head <= e_tail && e_tail < r_tail) {
-			const uptr h = max(r_head, e_head);
-			entry* alloc = new_entry(h, e_tail - h);
-			if (!alloc)
-				return false;
-			if (forget == false)
+		if (r_head <= e_tail && e_tail <= r_tail) {
+			if (forget == false) {
+				const uptr h = max(r_head, e_head);
+				entry* alloc = new_entry(h, e_tail - h + 1);
+				if (!alloc)
+					return false;
 				_alloc_chain.insert_head(alloc);
+			}
 
-			e_tail = r_head;
+			e_tail = r_head - 1;
 		}
 
-		if (e_head >= e_tail) {
+		if (e_head > e_tail) {
 			entry* next_ent = _free_chain.next(ent);
 			_free_chain.remove(ent);
 			free_entry(ent);
 			ent = next_ent;
 		} else {
-			ent->set(e_head, e_tail - e_head);
+			ent->set(e_head, e_tail - e_head + 1);
+			ent = _free_chain.next(ent);
 		}
 	}
 
