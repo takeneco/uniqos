@@ -135,7 +135,8 @@ void pte_init(pte* table);
 ///                    following public function.
 ///  - cause::stype page_alloc::alloc(u64* padr)
 ///  - cause::stype page_alloc::free(u64 padr)
-template <class page_alloc>
+/// @tparam p2v        physical to virtual convert function.
+template <class page_alloc, u64 (*p2v)(u64 padr)>
 class page_table : public page_table_base
 {
 	page_alloc* alloc;
@@ -146,8 +147,8 @@ public:
 };
 
 /// @param[in] top  exist page table. null available.
-template <class page_alloc>
-page_table<page_alloc>::page_table(pte* top, page_alloc* _alloc)
+template <class page_alloc, u64 (*p2v)(u64 padr)>
+page_table<page_alloc, p2v>::page_table(pte* top, page_alloc* _alloc)
     : page_table_base(top), alloc(_alloc)
 {
 }
@@ -157,19 +158,19 @@ page_table<page_alloc>::page_table(pte* top, page_alloc* _alloc)
 /// @param[in] padr  physical page address.
 /// @param[in] pt    page type. one of PHYS_L*.
 /// @param[in] flags page flags.
-template <class page_alloc>
-cause::stype page_table<page_alloc>::set_page(
+template <class page_alloc, u64 (*p2v)(u64 padr)>
+cause::stype page_table<page_alloc, p2v>::set_page(
     u64 vadr, u64 padr, page::TYPE pt, u64 flags)
 {
 	const int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	if (UNLIKELY(!top)) {
 		uptr page_adr;
-		const cause::stype r = page::alloc(page::PHYS_L1, &page_adr);
+		const cause::stype r = alloc->alloc(&page_adr);
 		if (r != cause::OK)
 			return r;
 
-		top = reinterpret_cast<pte*>(page_adr);
+		top = reinterpret_cast<pte*>(p2v(page_adr));
 		pte_init(top);
 	}
 
@@ -181,15 +182,15 @@ cause::stype page_table<page_alloc>::set_page(
 
 		if (table[index].test_flags(pte::P) == 0) {
 			uptr p;
-			const cause::stype r = page::alloc(page::PHYS_L1, &p);
+			const cause::stype r = alloc->alloc(&p);
 			if (r != cause::OK)
 				return r;
 
-			pte_init(reinterpret_cast<pte*>(p));
+			pte_init(reinterpret_cast<pte*>(p2v(p)));
 			table[index].set(p, pte::P | pte::RW);
 		}
 
-		table = reinterpret_cast<pte*>(table[index].get_adr());
+		table = reinterpret_cast<pte*>(p2v(table[index].get_adr()));
 	}
 
 	if (pt != page::PHYS_L1)

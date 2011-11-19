@@ -21,21 +21,24 @@ namespace {
 class page_table_alloc
 {
 public:
-	static cause::stype alloc(u64* padr);
-	static cause::stype free(u64 padr);
+	static cause::stype alloc(uptr* padr);
+	static cause::stype free(uptr padr);
 };
-inline cause::stype page_table_alloc::alloc(u64* padr)
+inline cause::stype page_table_alloc::alloc(uptr* padr)
 {
 	uptr _padr;
 	const cause::stype r = arch::page::alloc(arch::page::PHYS_L1, &_padr);
 	*padr = _padr;
 	return r;
 }
-inline cause::stype page_table_alloc::free(u64 padr)
+inline cause::stype page_table_alloc::free(uptr padr)
 {
 	return arch::page::free(arch::page::PHYS_L1, padr);
 }
-typedef arch::page_table<page_table_alloc> boot_page_table;
+
+inline u64 phys_to_virt(u64 padr) { return padr; }
+
+typedef arch::page_table<page_table_alloc, phys_to_virt> boot_page_table;
 
 
 /// @brief  オブジェクトをページへコピーする。
@@ -208,6 +211,13 @@ extern "C" u32 load(u32 magic, u32* tag)
 		if (r != cause::OK)
 			return r;
 	}
+
+	// ページテーブル自身をページテーブルにマップする。
+	u64 pg_tbl_top = reinterpret_cast<u64>(pg_tbl.get_table());
+	pg_tbl.set_page(pg_tbl_top, pg_tbl_top,
+	    arch::page::PHYS_L1, boot_page_table::EXIST);
+	if (r != cause::OK)
+		return r;
 
 /*	// sharing stack with .bss section
 	// stack

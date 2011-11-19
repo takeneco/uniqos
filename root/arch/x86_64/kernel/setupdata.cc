@@ -52,3 +52,31 @@ void get_log(char** buf, u32* cur, u32* size)
 
 } // namespace setup
 
+
+#include "bootinfo.hh"
+#include "multiboot2.h"
+
+
+const void* get_bootinfo(u32 tag_type)
+{
+	const u8* bootinfo = reinterpret_cast<const u8*>(bootinfo::ADR);
+	const u32 total_size = *reinterpret_cast<const u32*>(bootinfo);
+	u32 read = sizeof (u32) * 2;
+u64* p = (u64*)0x4000;
+	for (;;) {
+		const multiboot_tag* tag =
+		    reinterpret_cast<const multiboot_tag*>(&bootinfo[read]);
+*p++=(u64)tag->type;
+*p++=(u64)tag;
+		if (tag->type == tag_type)
+			return tag;
+
+		read += up_align<u32>(tag->size, MULTIBOOT_TAG_ALIGN);
+		if (read >= total_size)
+			break;
+	}
+*p++=total_size;
+*p++=0x2222222222222222l;
+	return 0;
+}
+

@@ -6,111 +6,92 @@
 
 #include "arch.hh"
 #include "basic_types.hh"
-#include "bitmap.hh"
-#include "chain.hh"
+#include "bootinfo.hh"
+#include "easy_alloc.hh"
 #include "global_vars.hh"
-#include "native_ops.hh"
-#include "memory_allocate.hh"
 #include "memcell.hh"
+#include "pagetable.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
 #include "boot_access.hh"
-
-#include "output.hh"
-
-
-namespace {
-
-using global_vars::gv;
-
-/// @brief 物理メモリの末端アドレスを返す。
-//
-/// セットアップ後の空きメモリのうち、
-/// 最大のアドレスを物理メモリの末端アドレスとして計算する。
-u64 get_pmem_end()
-{
-	setup_memory_dumpdata* freemap;
-	u32 freemap_num;
-	setup_get_free_memdump(&freemap, &freemap_num);
-
-	u64 total_end = 0L;
-	for (u32 i = 0; i < freemap_num; i++) {
-		const u64 end = freemap[i].head + freemap[i].bytes;
-		if (end > total_end)
-			total_end = end;
-	}
-
-	return total_end;
-}
-
-/// @brief セットアップ後の空きメモリ情報から、
-///        連続した物理メモリの空き領域を探す。
-//
-/// @param[in] size 必要な最小のメモリサイズ。
-/// @return 適当に見つけた setup_memory_dumpdata のポインタを返す。
-/// @return 無い場合は nullptr を返す。
-setup_memory_dumpdata* search_free_pmem(u32 size)
-{
-	setup_memory_dumpdata* freemap;
-	u32 freemap_num;
-	setup_get_free_memdump(&freemap, &freemap_num);
-
-	for (u32 i = 0; i < freemap_num; i++) {
-		const uptr d =
-		    up_align<u8>(freemap[i].head, 8) - freemap[i].head;
-
-		if ((freemap[i].bytes - d) >= size)
-			return &freemap[i];
-	}
-
-	return 0;
-}
-
-/// @brief セットアップ後の空きメモリ情報を直接操作し、メモリを割り当てる。
-void* mem_alloc(u32 size)
-{
-	setup_memory_dumpdata* pmem_data = search_free_pmem(size);
-	if (pmem_data == 0)
-		return 0;
-
-	const uptr base_padr =
-	    up_align<uptr>(pmem_data->head, arch::BASIC_TYPE_ALIGN);
-
-	// 空きメモリからメモリ管理用領域を外す。
-	const uptr align_diff = base_padr - pmem_data->head;
-	pmem_data->head += size + align_diff;
-	pmem_data->bytes -= size + align_diff;
-
-	return arch::pmem::direct_map(base_padr);
-}
-
-}  // namepsace
 
 
 class page_control
 {
 	mem_cell_base<u64> page_base[5];
 
-public:
-	uptr calc_workarea_size(uptr pmem_end_);
+	bool pse;     ///< page-size extensions for 32bit paging.
+	bool pae;     ///< physical-address extension.
+	bool pge;     ///< global-page support.
+	bool pat;     ///< page-attribute table.
+	bool pse36;   ///< 36bit page size extension.
+	bool pcid;    ///< process-context identifiers.
+	bool nx;      ///< execute disable.
+	bool page1gb; ///< 1GByte pages.
+	bool lm;      ///< IA-32e mode support.
 
+	int padr_width;
+	int vadr_width;
+
+	void detect_paging_features();
+
+public:
 	page_control();
+
+	uptr calc_workarea_size(uptr pmem_end_);
 
 	bool init(uptr pmem_end_, void* buf);
 	bool load_setupdump();
+	bool load_free_range(u64 adr, u64 bytes);
 	void build();
 
 	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
 	cause::stype free(arch::page::TYPE pt, uptr padr);
 };
 
-/// @brief 物理メモリの管理に必要なワークエリアのサイズを返す。
-//
-/// @param[in] _pmem_end 物理メモリの終端アドレス。
-/// @return ワークエリアのサイズをバイト数で返す。
-uptr page_control::calc_workarea_size(uptr _pmem_end)
+void page_control::detect_paging_features()
 {
-	return page_base[4].calc_buf_size(_pmem_end);
+	struct regs {
+		u32 eax, ebx, ecx, edx;
+	} r[3];
+
+	asm volatile ("cpuid" :
+	    "=a"(r[0].eax), "=b"(r[0].ebx), "=c"(r[0].ecx), "=d"(r[0].edx) :
+	    "a"(0x01));
+	asm volatile ("cpuid" :
+	    "=a"(r[1].eax), "=b"(r[1].ebx), "=c"(r[1].ecx), "=d"(r[1].edx) :
+	    "a"(0x80000001));
+	asm volatile ("cpuid" :
+	    "=a"(r[2].eax), "=b"(r[2].ebx), "=c"(r[2].ecx), "=d"(r[2].edx) :
+	    "a"(0x80000008));
+
+	pse     = !!(r[0].edx & 0x00000008);
+	pae     = !!(r[0].edx & 0x00000040);
+	pge     = !!(r[0].edx & 0x00002000);
+	pat     = !!(r[0].edx & 0x00010000);
+	pse36   = !!(r[0].edx & 0x00020000);
+	pcid    = !!(r[0].ecx & 0x00020000);
+
+	nx      = !!(r[1].edx & 0x00100000);
+	page1gb = !!(r[1].edx & 0x02000000);
+	lm      = !!(r[1].edx & 0x20000000);
+
+	padr_width = r[2].eax & 0x000000ff;
+	vadr_width = (r[2].eax & 0x0000ff00) >> 8;
+/*
+	log()
+	("pse=").u(u8(pse))
+	(";pae=").u(u8(pae))
+	(";pge=").u(u8(pge))
+	(";pat=").u(u8(pat))
+	(";pse36=").u(u8(pse36))
+	(";pcid=").u(u8(pcid))
+	(";nx=").u(u8(nx))
+	(";page1gb=").u(u8(page1gb))
+	(";lm=").u(u8(lm))
+	(";padr_width=").u(u8(padr_width))
+	(";vadr_width=").u(u8(vadr_width))();
+*/
 }
 
 page_control::page_control()
@@ -122,12 +103,23 @@ page_control::page_control()
 	page_base[4].set_params(30, &page_base[3]);
 }
 
+/// @brief 物理メモリの管理に必要なデータエリアのサイズを返す。
+//
+/// @param[in] _pmem_end 物理アドレスの終端アドレス。
+/// @return ワークエリアのサイズをバイト数で返す。
+uptr page_control::calc_workarea_size(uptr _pmem_end)
+{
+	return page_base[4].calc_buf_size(_pmem_end);
+}
+
 /// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
 /// @return true を返す。
 bool page_control::init(uptr _pmem_end, void* buf)
 {
 	page_base[4].set_buf(buf, _pmem_end);
+
+	detect_paging_features();
 
 	return true;
 }
@@ -147,6 +139,13 @@ bool page_control::load_setupdump()
 	return true;
 }
 
+bool page_control::load_free_range(u64 adr, u64 bytes)
+{
+	page_base[4].free_range(adr, adr + bytes - 1);
+
+	return true;
+}
+
 void page_control::build()
 {
 	page_base[4].build_free_chain();
@@ -162,49 +161,298 @@ cause::stype page_control::free(arch::page::TYPE page_type, uptr padr)
 	return page_base[page_type].free_1page(padr);
 }
 
-namespace arch {
+namespace {
 
+/// @brief 物理アドレス空間の末端アドレスを返す。
+//
+/// AVAILABLE でないアドレスも計算に含める。
+u64 search_padr_end()
+{
+	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	if (src == 0)
+		return 0;
+
+	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+
+	const void* mmap_end = (const u8*)mmap + mmap->size;
+	const multiboot_mmap_entry* entry = mmap->entries;
+
+	u64 adr_end = 0;
+	while (entry < mmap_end) {
+		adr_end = max<u64>(adr_end, entry->addr + entry->len - 1);
+
+		entry = (const multiboot_mmap_entry*)
+		    ((const u8*)entry + mmap->entry_size);
+	}
+
+	return adr_end;
+}
+
+/// @brief 物理メモリの末端アドレスを返す。
+u64 search_pmem_end()
+{
+	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	if (src == 0)
+		return 0;
+
+	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+
+	const void* mmap_end = (const u8*)mmap + mmap->size;
+	const multiboot_mmap_entry* entry = mmap->entries;
+
+	u64 pmem_end = 0;
+	while (entry < mmap_end) {
+		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
+			pmem_end = max<u64>(
+			    pmem_end,
+			    entry->addr + entry->len - 1);
+
+		entry = (const multiboot_mmap_entry*)
+		    ((const u8*)entry + mmap->entry_size);
+	}
+
+	return pmem_end;
+}
+
+
+typedef easy_alloc<32> tmp_alloc;
+
+bool load_mem_avail_classify(
+    u64 adr, u64 len,
+    tmp_alloc* bootheap,
+    tmp_alloc* largeheap)
+{
+	// 先頭16MiBはなるべく空けておく。
+	const u64 AVOID_END = 0xffffff;
+
+	const u64 BOOTHEAP_END = bootinfo::BOOTHEAP_END;
+
+	if (adr > BOOTHEAP_END) {
+		largeheap->add_free(adr, len, false);
+		return true;
+	}
+	else if (BOOTHEAP_END < adr + len) {
+		largeheap->add_free(
+		    BOOTHEAP_END + 1,
+		    adr + len - BOOTHEAP_END + 1,
+		    false);
+		len = BOOTHEAP_END + 1 - adr;
+	}
+
+	if (adr > AVOID_END) {
+		bootheap->add_free(adr, len, false);
+		return true;
+	}
+	else if (AVOID_END < adr + len) {
+		bootheap->add_free(
+		    AVOID_END + 1,
+		    adr + len - AVOID_END + 1,
+		    false);
+		len = AVOID_END + 1 - adr;
+	}
+
+	bootheap->add_free(adr, len, true);
+
+	return true;
+}
+
+bool load_mem_avail(tmp_alloc* bootheap, tmp_alloc* largeheap)
+{
+	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	if (src == 0)
+		return false;
+
+	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+
+	const void* mmap_end = (const u8*)mmap + mmap->size;
+	const multiboot_mmap_entry* entry = mmap->entries;
+
+	while (entry < mmap_end) {
+		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
+			load_mem_avail_classify(
+			    entry->addr, entry->len, bootheap, largeheap);
+		}
+
+		entry = (const multiboot_mmap_entry*)
+		    ((const u8*)entry + mmap->entry_size);
+	}
+
+	return true;
+}
+
+bool load_mem_state(tmp_alloc* bootheap, tmp_alloc* largeheap)
+{
+	const void* src = get_bootinfo(bootinfo::TYPE_MEMALLOC);
+	if (src == 0)
+		return false;
+
+	const bootinfo::mem_alloc* ma = (const bootinfo::mem_alloc*)src;
+	const void* end = (const u8*)ma + ma->size;
+	const bootinfo::mem_alloc_entry* entry = ma->entries;
+	while (entry < end) {
+		bootheap->reserve(entry->adr, entry->bytes, true);
+		largeheap->reserve(entry->adr, entry->bytes, true);
+		++entry;
+	}
+
+	return true;
+}
+
+class page_table_tmpalloc
+{
+	tmp_alloc* tmpalloc1;
+	tmp_alloc* tmpalloc2;
+
+public:
+	page_table_tmpalloc(tmp_alloc* _alloc1, tmp_alloc* _alloc2=0)
+	    : tmpalloc1(_alloc1), tmpalloc2(_alloc2)
+	{}
+	cause::stype alloc(u64* padr);
+	cause::stype free(u64 padr);
+};
+
+cause::stype page_table_tmpalloc::alloc(u64* padr)
+{
+	void* p = tmpalloc1->alloc(
+	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE,
+	    false);
+
+	if (!p && tmpalloc2) {
+		p = tmpalloc2->alloc(
+		    arch::page::PHYS_L1_SIZE,
+		    arch::page::PHYS_L1_SIZE,
+		    false);
+	}
+
+	*padr = reinterpret_cast<u64>(p);
+
+	return p != 0 ? cause::OK : cause::NO_MEMORY;
+}
+
+cause::stype page_table_tmpalloc::free(u64 padr)
+{
+	void* p = reinterpret_cast<void*>(padr);
+
+	bool r = tmpalloc1->free(p);
+
+	if (!r)
+		r = tmpalloc2->free(p);
+
+	return r ? cause::OK : cause::FAIL;
+}
+
+inline u64 phys_to_virt_1(u64 padr) { return padr; }
+inline u64 phys_to_virt_2(u64 padr) { return padr + arch::PHYSICAL_ADRMAP; }
+
+typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1> page_table_1;
+
+enum { SETUP_PAM1_MAPEND = U64(0x17fffffff) /* 6GiB */ };
+
+/// @brief  Setup Physical Address Mapping 1st phase.
+/// @param[in] padr_end  Maximum address.
+/// @param[in] bootheap  Memory allocator.
+/// @retval true  Succeeds.
+/// @retval false Failed.
+//
+/// padr_end が 6GiB 以上の場合でも、最大 6GiB まで作成する。
+cause::stype setup_pam1(u64 padr_end, tmp_alloc* bootheap)
+{
+	page_table_tmpalloc tmpalloc(bootheap);
+
+	arch::pte* cr3 = reinterpret_cast<arch::pte*>(native::get_cr3());
+
+	page_table_1 pg_tbl(cr3, &tmpalloc);
+
+	padr_end = min<u64>(padr_end, SETUP_PAM1_MAPEND);
+
+	for (uptr padr = 0; padr < padr_end; padr += arch::page::PHYS_L2_SIZE)
+	{
+		cause::stype r = pg_tbl.set_page(
+		    arch::PHYSICAL_ADRMAP + padr,
+		    padr,
+		    arch::page::PHYS_L2,
+		    page_table_1::EXIST | page_table_1::WRITE);
+
+		if (r != cause::OK)
+			return r;
+	}
+
+arch::dump_pte(log(), cr3, 1);
+	return cause::OK;
+}
+
+cause::stype load_page(const tmp_alloc& alloc, page_control* ctl)
+{
+	easy_alloc_enum ea_enum;
+	alloc.all_free_info(&ea_enum);
+
+	for (;;) {
+		uptr adr, bytes;
+		const bool r = alloc.all_free_info_next(&ea_enum, &adr, &bytes);
+		if (!r)
+			break;
+		ctl->load_free_range(adr, bytes);
+	}
+
+	return cause::OK;
+}
+
+}  // namespace
+
+namespace arch {
 namespace page {
 
 /// @retval cause::NO_MEMORY  No enough physical memory.
 /// @retval cause::OK  Succeeds.
 cause::stype init()
 {
-	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
-	const uptr pmem_end = get_pmem_end();
+	tmp_alloc bootheap, largeheap;
+	bootheap.init();
+	largeheap.init();
 
-	void* buf = mem_alloc(sizeof (page_control));
-	page_control* page_ctl =
-	    new (buf) page_control;
+	load_mem_avail(&bootheap, &largeheap);
+	load_mem_state(&bootheap, &largeheap);
+
+	const u64 padr_end = search_padr_end();
+
+	setup_pam1(padr_end, &bootheap);
+
+	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
+	const uptr pmem_end = search_pmem_end();
+	void* buf = bootheap.alloc(sizeof (page_control), PHYS_L1_SIZE, false);
+	page_control* page_ctl = new (buf) page_control;
 	if (page_ctl == 0)
 		return cause::NO_MEMORY;
 
-	buf = mem_alloc(page_ctl->calc_workarea_size(pmem_end));
+	buf = bootheap.alloc(
+	    page_ctl->calc_workarea_size(pmem_end), PHYS_L1_SIZE, false);
 	if (buf == 0)
 		return cause::NO_MEMORY;
 
 	page_ctl->init(pmem_end, buf);
 
-	page_ctl->load_setupdump();
+	cause::stype r = load_page(bootheap, page_ctl);
+	if (r != cause::OK)
+		return r;
 
 	page_ctl->build();
 
-	gv.page_ctl = page_ctl;
+	global_vars::gv.page_ctl = page_ctl;
 
 	return cause::OK;
 }
 
 cause::stype alloc(TYPE page_type, uptr* padr)
 {
-	return gv.page_ctl->alloc(page_type, padr);
+	return global_vars::gv.page_ctl->alloc(page_type, padr);
 }
 
 cause::stype free(TYPE page_type, uptr padr)
 {
-	return gv.page_ctl->free(page_type, padr);
+	return global_vars::gv.page_ctl->free(page_type, padr);
 }
 
 }  // namespace page
-
 }  // namespace arch
 
