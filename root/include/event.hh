@@ -12,9 +12,9 @@
 
 class event_item
 {
-	chain_link<event_item> chain_link_;
+	chain_node<event_item> chain_node_;
 public:
-	chain_link<event_item>& chain_hook() { return chain_link_; }
+	chain_node<event_item>& chain_hook() { return chain_node_; }
 
 	typedef void (*event_handler)(void* param);
 	event_handler handler;

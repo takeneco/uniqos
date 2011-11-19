@@ -39,10 +39,10 @@ public:
 };
 
 struct data {
-	chain_link<data> link;
+	chain_node<data> link;
 	uptr size;
 
-	chain_link<data>& chain_hook() { return link; }
+	chain_node<data>& chain_hook() { return link; }
 };
 
 void memory_test()

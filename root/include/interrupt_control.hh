@@ -15,10 +15,10 @@
 /// このクラスのインスタンスは割り込みベクタ毎に生成する必要がある。
 class interrupt_handler
 {
-	chain_link<interrupt_handler> chain_link_;
+	chain_node<interrupt_handler> chain_link_;
 
 public:
-	chain_link<interrupt_handler>& chain_hook() { return chain_link_; }
+	chain_node<interrupt_handler>& chain_hook() { return chain_link_; }
 
 	void* param;
 	void (*handler)(void* param);

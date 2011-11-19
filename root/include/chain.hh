@@ -8,95 +8,136 @@
 #define CHAIN_HH_
 
 
-/// @brief  Directional chain.
+/// @brief  Directional chain node.
 template<class DATA>
-class chain_link
+class chain_node
 {
 	template<class A, class B, class C, B& (A::* D)()>
 	friend class chain_impl_;
 
 	DATA* next;
 
-	void set_prev_(DATA*) { /* nothing */ }
-	void set_next_(DATA* p) { next = p; }
+	void _set_prev(DATA*) { /* nothing */ }
+	void _set_next(DATA* p) { next = p; }
 
 public:
 	const DATA* get_next() const { return next; }
 	      DATA* get_next()       { return next; }
 };
 
-/// @brief  Bidirectional chain.
+/// @brief  Bidirectional chain node.
 template<class DATA>
-class bichain_link : public chain_link<DATA>
+class bichain_node : public chain_node<DATA>
 {
 	template<class A, class B, class C, B& (A::* D)()>
 	friend class chain_impl_;
 
 	DATA* prev;
 
-	void set_prev_(DATA* p) { prev = p; }
+	void _set_prev(DATA* p) { prev = p; }
 
 public:
 	const DATA* get_prev() const { return prev; }
 	      DATA* get_prev()       { return prev; }
 };
 
-/// @brief  Single ended chain.
+/// @brief  Single side chain.
 template<class DATA>
-class chain_end_
+class chain_side_
 {
-	DATA* head;
+	DATA* front;
 
 public:
-	chain_end_() : head(0) {}
+	chain_side_() : front(0) {}
 
-	void set_head(DATA* p) { head = p; }
-	void set_tail(DATA*) { /* nothing */ }
-	const DATA* get_head() const { return head; }
-	      DATA* get_head()       { return head; }
+	void set_front(DATA* p) { front = p; }
+	void set_back(DATA*) { /* nothing */ }
+	const DATA* get_front() const { return front; }
+	      DATA* get_front()       { return front; }
 	static DATA* null() { return 0; }
 };
 
-/// @brief  Double ended chain.
+/// @brief  Double side chain.
 template<class DATA>
-class dechain_end_ : public chain_end_<DATA>
+class dechain_side_ : public chain_side_<DATA>
 {
-	DATA* tail;
+	DATA* back;
 
 public:
-	dechain_end_() : chain_end_<DATA>(), tail(0) {}
+	dechain_side_() : chain_side_<DATA>(), back(0) {}
 
-	void set_tail(DATA* p) { tail = p; }
-	const DATA* get_tail() const { return tail; }
-	      DATA* get_tail()       { return tail; }
+	void set_back(DATA* p) { back = p; }
+	const DATA* get_back() const { return back; }
+	      DATA* get_back()       { return back; }
 };
 
 /// @brief  Chain implemnts.
 template<
     class DATA,
     class LINK_TYPE,
-    class END,
+    class SIDE,
     LINK_TYPE& (DATA::* LINK)()>
 class chain_impl_
 {
 	static void set_prev(DATA* p, DATA* prev) {
-		(p->*LINK)().set_prev_(prev); }
+		(p->*LINK)()._set_prev(prev); }
 	static void set_next(DATA* p, DATA* next) {
-		(p->*LINK)().set_next_(next); }
+		(p->*LINK)()._set_next(next); }
 
 protected:
-	END end;
+	SIDE side;
 
 public:
-	chain_impl_() : end() {}
+	class iterator
+	{
+		DATA* data;
+	public:
+		iterator(DATA* _data) : data(_data) {}
+		iterator(iterator& it) : data(it.data) {}
+		~iterator() {}
+
+		iterator& operator = (iterator& it) {
+			data = it.data;
+		}
+		iterator& operator ++ () {
+			data = data->get_next();
+			return *this;
+		}
+		iterator operator ++ (int) {
+			iterator tmp(data);
+			data = data->get_next();
+			return tmp;
+		}
+		iterator& operator -- () {
+			data = data->get_prev();
+			return *this;
+		}
+		iterator operator -- (int) {
+			iterator tmp(data);
+			data = data->get_prev();
+			return tmp;
+		}
+	};
+
+	chain_impl_() : side() {}
 
 	// 1end 2end & dir, bidir
-	const DATA* head() const { return end.get_head(); }
-	      DATA* head()       { return end.get_head(); }
+	const DATA* head() const { return side.get_front(); }
+	      DATA* head()       { return side.get_front(); }
+
+	const DATA* front() const { return side.get_front(); }
+	      DATA* front()       { return side.get_front(); }
+
+	iterator begin() { return iterator(side.get_front()); }
 
 	// 2end & dir, bidir
-	const DATA* tail() const { return end.get_tail(); }
-	      DATA* tail()       { return end.get_tail(); }
+	const DATA* tail() const { return side.get_back(); }
+	      DATA* tail()       { return side.get_back(); }
+
+	const DATA* back() const { return side.get_back(); }
+	      DATA* back()       { return side.get_back(); }
+
+	iterator end() { return iterator(0); }
 
 	// 1end, 2end & bidir
 	static const DATA* prev(const DATA* p) {
@@ -114,21 +155,21 @@ public:
 	void insert_head(DATA* p) {
 		set_prev(p, 0);
 		set_next(p, head());
-		if (head() != end.null())
+		if (head() != side.null())
 			set_prev(head(), p);
 		else
-			end.set_tail(p);
-		end.set_head(p);
+			side.set_back(p);
+		side.set_front(p);
 	}
 	// 2end & dir, bidir
 	void insert_tail(DATA* p) {
 		set_prev(p, tail());
 		set_next(p, 0);
-		if (head() != end.null())
+		if (head() != side.null())
 			set_next(tail(), p);
 		else
-			end.set_head(p);
-		end.set_tail(p);
+			side.set_front(p);
+		side.set_back(p);
 	}
 	// 1end, 2end & bidir
 	void insert_prev(DATA* base, DATA* p) {
@@ -137,7 +178,7 @@ public:
 		if (prev(base))
 			set_next(prev(base), p);
 		else
-			end.set_head(p);
+			side.set_front(p);
 		set_prev(base, p);
 	}
 	// 1end, 2end & dir, bidir
@@ -147,7 +188,7 @@ public:
 		if (next(base))
 			set_prev(next(base), p);
 		else
-			end.set_tail(p);
+			side.set_back(p);
 		set_next(base, p);
 	}
 	// 1end, 2end & dir, bidir
@@ -155,11 +196,11 @@ public:
 		DATA* h = head();
 		if (h) {
 			DATA* h2 = next(h);
-			end.set_head(h2);
-			if (h2 != end.null())
+			side.set_front(h2);
+			if (h2 != side.null())
 				set_prev(h2, 0);
 			else
-				end.set_tail(0);
+				side.set_back(0);
 		}
 		return h;
 	}
@@ -168,11 +209,11 @@ public:
 		DATA* t = tail();
 		if (t) {
 			DATA* t2 = prev(t);
-			end.set_tail(t2);
-			if (t2 != end.null())
+			side.set_back(t2);
+			if (t2 != side.null())
 				set_next(t2, 0);
 			else
-				end.set_head(0);
+				side.set_front(0);
 		}
 		return t;
 	}
@@ -181,11 +222,11 @@ public:
 		if (prev(p))
 			set_next(prev(p), next(p));
 		else
-			end.set_head(next(p));
+			side.set_front(next(p));
 		if (next(p))
 			set_prev(next(p), prev(p));
 		else
-			end.set_tail(prev(p));
+			side.set_back(prev(p));
 	}
 	// 1end, 2end & dir, bidir
 	void remove_next(DATA* p) {
@@ -196,36 +237,36 @@ public:
 			if (nnext)
 				set_prev(nnext, p);
 			else
-				end.set_tail(p);
+				side.set_back(p);
 		//}
 	}
 };
 
-/// Directional single ended chain
-template<class DATA, chain_link<DATA>& (DATA::* LINK)()>
+/// Directional one side chain
+template<class DATA, chain_node<DATA>& (DATA::* LINK)()>
 class chain : public chain_impl_
-    <DATA, chain_link<DATA>, chain_end_<DATA>, LINK>
+    <DATA, chain_node<DATA>, chain_side_<DATA>, LINK>
 {
 };
 
-/// Bidirectional and single ended chain
-template<class DATA, bichain_link<DATA>& (DATA::* LINK)()>
+/// Bidirectional one side chain
+template<class DATA, bichain_node<DATA>& (DATA::* LINK)()>
 class bichain : public chain_impl_
-    <DATA, bichain_link<DATA>, chain_end_<DATA>, LINK>
+    <DATA, bichain_node<DATA>, chain_side_<DATA>, LINK>
 {
 };
 
-/// Directional and double ended chain
-template<class DATA, chain_link<DATA>& (DATA::* LINK)()>
-class dechain : public chain_impl_
-    <DATA, chain_link<DATA>, dechain_end_<DATA>, LINK>
+/// Directional both side chain
+template<class DATA, chain_node<DATA>& (DATA::* LINK)()>
+class bochain : public chain_impl_
+    <DATA, chain_node<DATA>, dechain_side_<DATA>, LINK>
 {
 };
 
-/// Bidirectional and double ended chain
-template<class DATA, bichain_link<DATA>& (DATA::* LINK)()>
-class bidechain : public chain_impl_
-    <DATA, bichain_link<DATA>, dechain_end_<DATA>, LINK>
+/// Bidirectional both side chain
+template<class DATA, bichain_node<DATA>& (DATA::* LINK)()>
+class bibochain : public chain_impl_
+    <DATA, bichain_node<DATA>, dechain_side_<DATA>, LINK>
 {
 };
 

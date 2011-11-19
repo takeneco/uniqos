@@ -201,10 +201,10 @@ log()("abnormaly.")();
 		}
 	}
 
-	memory_move(
+	mem_move(
+	    FREE_OBJS_LEN / 2 * sizeof free_objs[0],
 	    &free_objs[FREE_OBJS_LEN / 2],
-	    &free_objs[0],
-	    FREE_OBJS_LEN / 2 * sizeof free_objs[0]);
+	    &free_objs[0]);
 	free_objs_avail = FREE_OBJS_LEN / 2;
 }
 

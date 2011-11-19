@@ -68,13 +68,13 @@ public:
 	u32  piece_bytes;
 	int  reserved; // for lock
 
-	bichain_link<free_piece_header> chain_link_;
+	bichain_node<free_piece_header> chain_node_;
 
 public:
 	free_piece_header(u32 bytes) : piece_bytes(bytes) {}
 
-	bichain_link<free_piece_header>& chain_hook() {
-		return chain_link_;
+	bichain_node<free_piece_header>& chain_hook() {
+		return chain_node_;
 	}
 
 	u32 get_bytes() const {
@@ -108,7 +108,7 @@ class page_header
 {
 	u32  page_size;
 	int  reserved;
-	bidechain<free_piece_header, &free_piece_header::chain_hook>
+	bibochain<free_piece_header, &free_piece_header::chain_hook>
 	    free_chain;
 	allocatable_page* status;
 
@@ -186,7 +186,7 @@ class allocatable_page_array
 	// sizeof info と書けるようにまとめた。
 	struct array_info
 	{
-		bichain_link<allocatable_page_array> chain_link_;
+		bichain_node<allocatable_page_array> chain_node_;
 		// page_array に含まれる割当可能ページの数
 		int page_num;
 		// 配列の先頭に最も近い空きエントリのインデックス
@@ -211,8 +211,8 @@ private:
 public:
 	allocatable_page_array();
 
-	bichain_link<allocatable_page_array>& chain_hook() {
-		return info.chain_link_;
+	bichain_node<allocatable_page_array>& chain_hook() {
+		return info.chain_node_;
 	}
 
 	allocatable_page* add_page(uptr page_adr, u32 page_size);
@@ -232,7 +232,7 @@ inline allocatable_page_array::allocatable_page_array()
 /// (初期化処理で物理ページを割り当てているだけなので)
 class kernel_memory
 {
-	typedef bidechain
+	typedef bibochain
 	<allocatable_page_array, &allocatable_page_array::chain_hook>
 	    allocatable_chain_type;
 
@@ -255,7 +255,7 @@ public:
 class core_class
 {
 public:
-	arch::kmem::kernel_memory kmem_ctrl;
+	//arch::kmem::kernel_memory kmem_ctrl;
 
 	arch::irq_control irq_ctrl;
 

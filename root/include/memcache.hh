@@ -33,7 +33,7 @@ class mem_cache
 		objindex alloc_count;
 		u8* obj_head;
 
-		bichain_link<slab> chain_link_;
+		bichain_node<slab> _chain_node;
 
 		obj_desc& ref_obj_desc(objindex i) {
 			return (reinterpret_cast<obj_desc*>(this + 1))[i];
@@ -41,13 +41,13 @@ class mem_cache
 		u8* onslab_get_obj_head(const mem_cache& parent);
 
 	public:
-		  chain_link<slab>&   chain_hook() { return chain_link_; }
-		bichain_link<slab>& bichain_hook() { return chain_link_; }
+		  chain_node<slab>&   chain_hook() { return _chain_node; }
+		bichain_node<slab>& bichain_hook() { return _chain_node; }
 
 		slab() :
 			first_free(0),
 			alloc_count(0),
-			chain_link_()
+			_chain_node()
 		{}
 
 		bool is_full() const {
@@ -75,7 +75,7 @@ class mem_cache
 	arch::page::TYPE slab_page_type;
 	uptr             slab_page_size;
 
-	bichain_link<mem_cache> chain_link_;
+	bichain_node<mem_cache> _chain_node;
 
 	enum { FREE_OBJS_LEN = 64 };
 	u16 free_objs_avail;
@@ -83,7 +83,7 @@ class mem_cache
 	u64 tmp[60];
 
 public:
-	bichain_link<mem_cache>& chain_hook() { return chain_link_; }
+	bichain_node<mem_cache>& chain_hook() { return _chain_node; }
 
 	mem_cache(
 	    u32 _obj_size,

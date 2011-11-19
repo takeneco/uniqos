@@ -65,8 +65,8 @@ private:
 		uptr adr;
 		uptr bytes;  ///< unused if bytes == 0.
 
-		bichain_link<entry> chain_link_;
-		bichain_link<entry>& chain_hook() { return chain_link_; }
+		bichain_node<entry> chain_node_;
+		bichain_node<entry>& chain_hook() { return chain_node_; }
 
 		void set(uptr _adr, uptr _bytes) {
 			adr = _adr;
@@ -281,11 +281,6 @@ bool easy_alloc<BUF_COUNT>::free(void* p)
 
 	if (!r)
 		r = _free(av_free_chain, av_alloc_chain, p);
-
-	if (UNLIKELY(!r)) {
-		log()("mem_free(): unknown address passed. (")(p)(")")();
-		return false;
-	}
 
 	return true;
 }

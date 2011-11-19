@@ -73,8 +73,8 @@ private:
 		/// 予約ページのビットは false
 		int_bitset<CELLTYPE> table;
 
-		bichain_link<cell> _chain_link;
-		bichain_link<cell>& chain_hook() { return _chain_link; }
+		bichain_node<cell> _chain_node;
+		bichain_node<cell>& chain_hook() { return _chain_node; }
 	};
 	enum {
 		BITMAP_BITS = int_bitset<CELLTYPE>::BITS,

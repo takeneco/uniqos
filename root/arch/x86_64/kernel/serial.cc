@@ -44,7 +44,7 @@ enum {
 class buf_entry
 {
 	struct {
-		bichain_link<buf_entry> chain_link;
+		bichain_node<buf_entry> chain_node;
 	} f;
 
 	u8* buf() { return reinterpret_cast<u8*>(this + 1); }
@@ -56,7 +56,7 @@ public:
 	};
 
 public:
-	bichain_link<buf_entry>& chain_hook() { return f.chain_link; }
+	bichain_node<buf_entry>& chain_hook() { return f.chain_node; }
 
 	void write(u32 i, u8 c) { buf()[i] = c; }
 	u8 read(u32 i) { return buf()[i]; }
@@ -68,7 +68,7 @@ class serial_ctrl : public file_interface
 	const u16 base_port;
 	const u16 irq_num;
 
-	bidechain<buf_entry, &buf_entry::chain_hook> buf_queue;
+	bibochain<buf_entry, &buf_entry::chain_hook> buf_queue;
 
 	/// バッファに書くときは buf_queue->head() の next_write に書く。
 	u32 next_write;
