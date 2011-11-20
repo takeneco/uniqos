@@ -345,12 +345,14 @@ cause::stype init()
 
 void* alloc(uptr bytes)
 {
-	return global_vars::gv.core->kmem_ctrl.alloc(bytes);
+	//return global_vars::gv.core->kmem_ctrl.alloc(bytes);
+	return 0;
 }
 
 cause::stype free(void* ptr)
 {
-	return global_vars::gv.core->kmem_ctrl.free(ptr);
+	//return global_vars::gv.core->kmem_ctrl.free(ptr);
+	return cause::NO_IMPLEMENTS;
 }
 
 }

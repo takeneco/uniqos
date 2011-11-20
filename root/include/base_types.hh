@@ -295,6 +295,8 @@ namespace cause
 	typedef u32 type;
 	inline bool IsOk(type x) { return x == OK; }
 	inline bool IsFail(type x) { return x != OK; }
+	inline bool is_ok(stype x) { return x == OK; }
+	inline bool is_fail(stype x) { return x != OK; }
 }
 
 /**

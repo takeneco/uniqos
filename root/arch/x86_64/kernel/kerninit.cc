@@ -17,6 +17,7 @@
 #include "boot_access.hh"
 #include "event_queue.hh"
 #include "placement_new.hh"
+#include "vga.hh"
 
 #include "memcell.hh"
 
@@ -69,74 +70,29 @@ void func()
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
 }
 
+text_vga vga_dev;
 extern "C" int kern_init()
 {
-	kout_ = 0;
-	native::sti();
+	vga_dev.init(80, 25, (void*)0xb8000);
+	log_file vgalog(&vga_dev);
+	log_init(&vgalog);
+
+	cause::stype r = arch::page::init();
+	if (r != cause::OK)
+		return r;
 
 	cpu_init();
 
-	VideoOutput vo;
-	kout_ = &vo;
+log()("bbb")();
+	native::sti();
 
-	u32 width, height, vram, row, col;
-	setup_get_display_mode(&width, &height, &vram);
-	setup_get_display_cursor(&row, &col);
-	vo.Init(width, height,
-	    arch::PHYSICAL_MEMMAP_BASEADR + 0xb8000);
-	vo.SetCur(row, col);
-
-	vo.PutStr("width=")->PutUDec(width)->
-	   PutStr(":height=")->PutUDec(height)->
-	   PutStr(":vram=")->PutU32Hex(vram)->
-	   put_c('\n');
-/*
-	serial_kout_init();
-	log_init(&serial_get_kout());
-
-	{
-	char* setup_log;
-	u32 setup_log_cur, setup_log_size;
-	setup::get_log(&setup_log, &setup_log_cur, &setup_log_size);
-	log().write(setup_log,
-	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
-	}
-*/
-	setup_memory_dumpdata* map;
-	u32 map_num;
-	setup_get_used_memdump(&map, &map_num);
-	vo.put_str("used:\n");
-	for (u32 i = 0; i < map_num; ++i) {
-		vo.put_u64hex(map[i].head)->put_c(':')->
-		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
-	}
-
-	setup_get_free_memdump(&map, &map_num);
-	vo.put_str("free:\n");
-	for (u32 i = 0; i < map_num; ++i) {
-		vo.put_u64hex(map[i].head)->put_c(':')->
-		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
-	}
-
-	cause::stype r = arch::page::init();
-
-	setup_get_free_memdump(&map, &map_num);
-	vo.put_str("free:\n");
-	for (u32 i = 0; i < map_num; ++i) {
-		vo.put_u64hex(map[i].head)->put_c(':')->
-		   put_u64hex(map[i].head + map[i].bytes)->put_c('\n');
-	}
-
-	vo.put_str("pmem::init() = ")->put_udec(r)->put_endl();
-
-	memory::init();
-
-//	file_interface* console = attach_console(width, height, 0xb8000);
-//	log_file console_log(console);
-//	log_init(&console_log);
-
+for(;;)native::hlt();
 	global_vars::gv.core->irq_ctrl.init();
+log()("ddd")();
+
 	global_vars::gv.core->intr_ctrl.init();
+log()("eee")();
+
 	global_vars::gv.events =
 		new (memory::alloc(sizeof (event_queue))) event_queue;
 
@@ -176,8 +132,13 @@ for (int i = 0; i < 4096; ++i) {
 
 //	cpu_test();
 //	serial_dump(serial);
-	drive();
-	test();
+	//test();
 
 	return 0;
 }
+
+extern "C" void kern_service()
+{
+	drive();
+}
+

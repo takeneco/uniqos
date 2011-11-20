@@ -41,6 +41,8 @@ inline void indents(kernel_log& x, int n)
 
 void dump_pte(kernel_log& x, pte* table, int depth)
 {
+	table = (pte*)arch::map_phys_adr((uptr)table, arch::page::PHYS_L1_SIZE);
+
 	--depth;
 
 	for (int i = 0; i < 512; ++i) {

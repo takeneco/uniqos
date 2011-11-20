@@ -320,17 +320,6 @@ mp_floating_pointer_structure* search_mpfps()
 mp_floating_pointer_structure* g_mpfps;
 int cpu_init()
 {
-	/*
-	// setup.S で設定される
-
-	u64 reg;
-	reg = get_cr4_64();
-	// clear VME flag
-	// 仮想8086モード割り込みを無効化する
-	reg &= ~0x0000000000000001;
-	set_cr4_64(reg);
-	*/
-
 	cpu0_gdt.null_entry.set_null();
 	cpu0_gdt.kern_code.set(0);
 	cpu0_gdt.kern_data.set(0);
