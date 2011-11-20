@@ -14,17 +14,17 @@
 /// @param vec 割り込みベクタ。
 extern "C" void on_interrupt(arch::intr_vec index)
 {
-	global_vars::gv.core->intr_ctrl.call_interrupt(index);
+	global_vars::gv.intr_ctl_obj->call_interrupt(index);
 }
 
 
-cause::stype interrupt_control::init()
+cause::stype intr_ctl::init()
 {
 	return cause::OK;
 }
 
 cause::stype
-interrupt_control::add_handler(arch::intr_vec vec, interrupt_handler* h)
+intr_ctl::add_handler(arch::intr_vec vec, interrupt_handler* h)
 {
 	if (vec > arch::INTR_UPPER)
 		return cause::INVALID_PARAMS;
@@ -38,7 +38,7 @@ interrupt_control::add_handler(arch::intr_vec vec, interrupt_handler* h)
 }
 
 cause::stype
-interrupt_control::set_post_handler(arch::intr_vec vec, post_intr_handler h)
+intr_ctl::set_post_handler(arch::intr_vec vec, post_intr_handler h)
 {
 	handler_table[vec].post_handler = h;
 
@@ -48,7 +48,7 @@ interrupt_control::set_post_handler(arch::intr_vec vec, post_intr_handler h)
 #include "log.hh"
 
 
-void interrupt_control::call_interrupt(u32 vector)
+void intr_ctl::call_interrupt(u32 vector)
 {
 	intr_task& it = handler_table[vector];
 	intr_handler_chain& ihc = it.handler_chain;

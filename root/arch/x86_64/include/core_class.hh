@@ -20,6 +20,8 @@ class core_page
 {
 	page_ctl          page_ctl_obj;
 	arch::irq_ctl     irq_ctl_obj;
+	intr_ctl          intr_ctl_obj;
+
 public:
 	core_page() {}
 	bool init();
@@ -36,6 +38,7 @@ inline bool core_page::init()
 	gv.core_page_obj   = this;
 	gv.page_ctl_obj    = &page_ctl_obj;
 	gv.irq_ctl_obj     = &irq_ctl_obj;
+	gv.intr_ctl_obj    = &intr_ctl_obj;
 
 	return true;
 }
@@ -286,7 +289,6 @@ public:
 	//arch::kmem::kernel_memory kmem_ctrl;
 
 
-	interrupt_control intr_ctrl;
 };
 
 

@@ -140,7 +140,7 @@ cause::stype serial_ctrl::configure()
 	static interrupt_handler ih;
 	ih.param = this;
 	ih.handler = intr_handler;
-	global_vars::gv.core->intr_ctrl.add_handler(vec, &ih);
+	global_vars::gv.intr_ctl_obj->add_handler(vec, &ih);
 
 	intr_event.handler = on_intr_event_;
 	intr_event.param = this;

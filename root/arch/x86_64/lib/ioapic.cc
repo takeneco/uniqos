@@ -28,7 +28,7 @@ mpspec::const_mpfps* search_mpfps()
 	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0x9fc00), 0x400);
 	if (mpfps)
 		return mpfps;
-
+log()("ebda=").u((u64)ebda,16)();
 	return 0;
 }
 

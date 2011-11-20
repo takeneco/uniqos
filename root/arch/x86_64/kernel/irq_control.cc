@@ -24,8 +24,8 @@ cause::stype irq_ctl::init()
 	// TODO:シリアルコントローラを初期化する前に割り込みが入るため、
 	// EOI する必要がある。
 	// 初期化前の割り込みが無ければ、このコードは削除できる。
-	global_vars::gv.core->intr_ctrl.set_post_handler(0x5e, lapic_eoi);
-	global_vars::gv.core->intr_ctrl.set_post_handler(0x5f, lapic_eoi);
+	global_vars::gv.intr_ctl_obj->set_post_handler(0x5e, lapic_eoi);
+	global_vars::gv.intr_ctl_obj->set_post_handler(0x5f, lapic_eoi);
 
 	return r;
 }
@@ -46,7 +46,7 @@ cause::stype irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 	}
 
 	ioapic.unmask(irq, 0, vec);
-	global_vars::gv.core->intr_ctrl.set_post_handler(vec, lapic_eoi);
+	global_vars::gv.intr_ctl_obj->set_post_handler(vec, lapic_eoi);
 
 	*intr_vec = vec;
 

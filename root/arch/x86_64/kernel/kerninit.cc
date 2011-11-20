@@ -86,11 +86,12 @@ extern "C" int kern_init()
 	native::sti();
 
 	global_vars::gv.irq_ctl_obj->init();
+
 log()("ddd")();
 for(;;)native::hlt();
-
-	global_vars::gv.core->intr_ctrl.init();
+	global_vars::gv.intr_ctl_obj->init();
 log()("eee")();
+for(;;)native::hlt();
 
 	global_vars::gv.events =
 		new (memory::alloc(sizeof (event_queue))) event_queue;

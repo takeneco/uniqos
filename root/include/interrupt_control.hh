@@ -25,7 +25,7 @@ public:
 };
 
 /// @note  must init by constructor.
-class interrupt_control
+class intr_ctl
 {
 	typedef
 	    chain<interrupt_handler, &interrupt_handler::chain_hook>
@@ -44,7 +44,7 @@ class interrupt_control
 
 public:
 	/// @internal  initialize handler_table[]
-	interrupt_control() {}
+	intr_ctl() {}
 
 	cause::stype init();
 	cause::stype add_handler(arch::intr_vec vec, interrupt_handler* h);
