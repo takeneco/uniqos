@@ -4,6 +4,9 @@
 // (C) 2011 KATO Takeshi
 //
 
+#ifndef INCLUDE_MEMCELL_HH_
+#define INCLUDE_MEMCELL_HH_
+
 #include "arch.hh"
 #include "bitmap.hh"
 #include "chain.hh"
@@ -455,3 +458,7 @@ inline void memcell_test()
 
 	log()("---- memcell test end")();
 }
+
+
+#endif  // include guard
+

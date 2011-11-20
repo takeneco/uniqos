@@ -7,49 +7,17 @@
 #include "arch.hh"
 #include "basic_types.hh"
 #include "bootinfo.hh"
+#include "core_class.hh"
 #include "easy_alloc.hh"
 #include "global_vars.hh"
-#include "memcell.hh"
+#include "page_ctl.hh"
 #include "pagetable.hh"
 #include "placement_new.hh"
 #include "setupdata.hh"
 #include "boot_access.hh"
 
 
-class page_control
-{
-	mem_cell_base<u64> page_base[5];
-
-	bool pse;     ///< page-size extensions for 32bit paging.
-	bool pae;     ///< physical-address extension.
-	bool pge;     ///< global-page support.
-	bool pat;     ///< page-attribute table.
-	bool pse36;   ///< 36bit page size extension.
-	bool pcid;    ///< process-context identifiers.
-	bool nx;      ///< execute disable.
-	bool page1gb; ///< 1GByte pages.
-	bool lm;      ///< IA-32e mode support.
-
-	int padr_width;
-	int vadr_width;
-
-	void detect_paging_features();
-
-public:
-	page_control();
-
-	uptr calc_workarea_size(uptr pmem_end_);
-
-	bool init(uptr pmem_end_, void* buf);
-	bool load_setupdump();
-	bool load_free_range(u64 adr, u64 bytes);
-	void build();
-
-	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
-	cause::stype free(arch::page::TYPE pt, uptr padr);
-};
-
-void page_control::detect_paging_features()
+void page_ctl::detect_paging_features()
 {
 	struct regs {
 		u32 eax, ebx, ecx, edx;
@@ -94,7 +62,7 @@ void page_control::detect_paging_features()
 */
 }
 
-page_control::page_control()
+page_ctl::page_ctl()
 {
 	page_base[0].set_params(12, 0);
 	page_base[1].set_params(18, &page_base[0]);
@@ -107,7 +75,7 @@ page_control::page_control()
 //
 /// @param[in] _pmem_end 物理アドレスの終端アドレス。
 /// @return ワークエリアのサイズをバイト数で返す。
-uptr page_control::calc_workarea_size(uptr _pmem_end)
+uptr page_ctl::calc_workarea_size(uptr _pmem_end)
 {
 	return page_base[4].calc_buf_size(_pmem_end);
 }
@@ -115,7 +83,7 @@ uptr page_control::calc_workarea_size(uptr _pmem_end)
 /// @param[in] _pmem_end 物理メモリの終端アドレス。
 /// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
 /// @return true を返す。
-bool page_control::init(uptr _pmem_end, void* buf)
+bool page_ctl::init(uptr _pmem_end, void* buf)
 {
 	page_base[4].set_buf(buf, _pmem_end);
 
@@ -124,7 +92,7 @@ bool page_control::init(uptr _pmem_end, void* buf)
 	return true;
 }
 
-bool page_control::load_setupdump()
+bool page_ctl::load_setupdump()
 {
 	setup_memory_dumpdata* freemap;
 	u32 freemap_num;
@@ -139,29 +107,33 @@ bool page_control::load_setupdump()
 	return true;
 }
 
-bool page_control::load_free_range(u64 adr, u64 bytes)
+bool page_ctl::load_free_range(u64 adr, u64 bytes)
 {
 	page_base[4].free_range(adr, adr + bytes - 1);
 
 	return true;
 }
 
-void page_control::build()
+void page_ctl::build()
 {
 	page_base[4].build_free_chain();
 }
 
-cause::stype page_control::alloc(arch::page::TYPE page_type, uptr* padr)
+cause::stype page_ctl::alloc(arch::page::TYPE page_type, uptr* padr)
 {
 	return page_base[page_type].reserve_1page(padr);
 }
 
-cause::stype page_control::free(arch::page::TYPE page_type, uptr padr)
+cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
 {
 	return page_base[page_type].free_1page(padr);
 }
 
 namespace {
+
+inline page_ctl* get_page_ctl() {
+	return global_vars::gv.page_ctl_obj;
+}
 
 /// @brief 物理アドレス空間の末端アドレスを返す。
 //
@@ -382,7 +354,7 @@ arch::dump_pte(log(), cr3, 1);
 	return cause::OK;
 }
 
-cause::stype load_page(const tmp_alloc& alloc, page_control* ctl)
+cause::stype load_page(const tmp_alloc& alloc, page_ctl* ctl)
 {
 	easy_alloc_enum ea_enum;
 	alloc.all_free_info(&ea_enum);
@@ -396,6 +368,13 @@ cause::stype load_page(const tmp_alloc& alloc, page_control* ctl)
 	}
 
 	return cause::OK;
+}
+
+bool setup_core_page(void* page)
+{
+	core_page* core_page_obj = new (page) core_page;
+
+	return core_page_obj->init();
 }
 
 }  // namespace
@@ -418,39 +397,40 @@ cause::stype init()
 
 	setup_pam1(padr_end, &bootheap);
 
+	void* buf = bootheap.alloc(PHYS_L1_SIZE, PHYS_L1_SIZE, false);
+	buf = arch::map_phys_adr(buf, PHYS_L1_SIZE);
+	if (setup_core_page(buf) == false)
+		return cause::UNKNOWN;
+
+	page_ctl* pgctl = get_page_ctl();
+
 	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
 	const uptr pmem_end = search_pmem_end();
-	void* buf = bootheap.alloc(sizeof (page_control), PHYS_L1_SIZE, false);
-	page_control* page_ctl = new (buf) page_control;
-	if (page_ctl == 0)
-		return cause::NO_MEMORY;
 
 	buf = bootheap.alloc(
-	    page_ctl->calc_workarea_size(pmem_end), PHYS_L1_SIZE, false);
+	    pgctl->calc_workarea_size(pmem_end), PHYS_L1_SIZE, false);
 	if (buf == 0)
 		return cause::NO_MEMORY;
 
-	page_ctl->init(pmem_end, buf);
+	pgctl->init(pmem_end, buf);
 
-	cause::stype r = load_page(bootheap, page_ctl);
+	cause::stype r = load_page(bootheap, pgctl);
 	if (r != cause::OK)
 		return r;
 
-	page_ctl->build();
-
-	global_vars::gv.page_ctl = page_ctl;
+	pgctl->build();
 
 	return cause::OK;
 }
 
 cause::stype alloc(TYPE page_type, uptr* padr)
 {
-	return global_vars::gv.page_ctl->alloc(page_type, padr);
+	return global_vars::gv.page_ctl_obj->alloc(page_type, padr);
 }
 
 cause::stype free(TYPE page_type, uptr padr)
 {
-	return global_vars::gv.page_ctl->free(page_type, padr);
+	return global_vars::gv.page_ctl_obj->free(page_type, padr);
 }
 
 }  // namespace page

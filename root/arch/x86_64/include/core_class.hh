@@ -12,6 +12,32 @@
 #include "interrupt_control.hh"
 #include "irq_control.hh"
 
+#include "global_vars.hh"
+#include "page_ctl.hh"
+
+
+class core_page
+{
+	page_ctl page_ctl_obj;
+public:
+	core_page() {}
+	bool init();
+};
+
+inline bool core_page::init()
+{
+	if (sizeof *this > arch::page::PHYS_L1_SIZE) {
+		return false;
+	}
+
+	using namespace global_vars;
+
+	gv.core_page_obj   = this;
+	gv.page_ctl_obj    = &page_ctl_obj;
+
+	return true;
+}
+
 
 namespace arch {
 

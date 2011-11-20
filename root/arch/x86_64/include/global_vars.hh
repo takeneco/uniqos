@@ -8,7 +8,8 @@
 #define ARCH_X86_64_INCLUDE_GLOBAL_VARIABLES_HH_
 
 
-class page_control;
+class core_page;
+class page_ctl;
 class memcache_control;
 class core_class;
 class event_queue;
@@ -19,7 +20,8 @@ namespace global_vars {
 
 struct _vars
 {
-	page_control*    page_ctl;
+	core_page*       core_page_obj;
+	page_ctl*        page_ctl_obj;
 	memcache_control*  memcache_ctl;
 	core_class*      core;
 	event_queue*     events;

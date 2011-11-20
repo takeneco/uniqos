@@ -111,6 +111,9 @@ cause::stype free(TYPE page_type, uptr padr);
 inline void* map_phys_adr(uptr padr, uptr /* size */) {
 	return reinterpret_cast<void*>(PHYSICAL_ADRMAP + padr);
 }
+inline void* map_phys_adr(void* padr, uptr size) {
+	return map_phys_adr(reinterpret_cast<uptr>(padr), size);
+}
 inline void unmap_phys_adr(void* /* vadr */) {
 }
 inline void* map_phys_mem(uptr padr_from, uptr size) {
