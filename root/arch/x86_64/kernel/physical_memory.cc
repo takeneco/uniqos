@@ -374,6 +374,8 @@ bool setup_core_page(void* page)
 {
 	core_page* core_page_obj = new (page) core_page;
 
+	log()("core_page size: ").u(sizeof *core_page_obj)();
+
 	return core_page_obj->init();
 }
 

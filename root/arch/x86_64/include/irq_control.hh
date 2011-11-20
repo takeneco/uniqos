@@ -12,7 +12,7 @@
 
 namespace arch {
 
-class irq_control
+class irq_ctl
 {
 	ioapic_control ioapic;
 

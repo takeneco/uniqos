@@ -15,7 +15,7 @@
 
 namespace arch {
 
-cause::stype irq_control::init()
+cause::stype irq_ctl::init()
 {
 	cause::stype r = ioapic.init_detect();
 	if (r != cause::OK)
@@ -30,7 +30,7 @@ cause::stype irq_control::init()
 	return r;
 }
 
-cause::stype irq_control::interrupt_map(u32 irq, u32* intr_vec)
+cause::stype irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 {
 	u32 vec;
 
@@ -55,7 +55,7 @@ cause::stype irq_control::interrupt_map(u32 irq, u32* intr_vec)
 
 cause::stype irq_interrupt_map(u32 irq, u32* intr_vec)
 {
-	return global_vars::gv.core->irq_ctrl.interrupt_map(irq, intr_vec);
+	return global_vars::gv.irq_ctl_obj->interrupt_map(irq, intr_vec);
 }
 
 }  // namespace arch

@@ -10,15 +10,16 @@
 #include "base_types.hh"
 #include "chain.hh"
 #include "interrupt_control.hh"
-#include "irq_control.hh"
 
 #include "global_vars.hh"
 #include "page_ctl.hh"
+#include "irq_control.hh"
 
 
 class core_page
 {
-	page_ctl page_ctl_obj;
+	page_ctl          page_ctl_obj;
+	arch::irq_ctl     irq_ctl_obj;
 public:
 	core_page() {}
 	bool init();
@@ -34,6 +35,7 @@ inline bool core_page::init()
 
 	gv.core_page_obj   = this;
 	gv.page_ctl_obj    = &page_ctl_obj;
+	gv.irq_ctl_obj     = &irq_ctl_obj;
 
 	return true;
 }
@@ -283,7 +285,6 @@ class core_class
 public:
 	//arch::kmem::kernel_memory kmem_ctrl;
 
-	arch::irq_control irq_ctrl;
 
 	interrupt_control intr_ctrl;
 };

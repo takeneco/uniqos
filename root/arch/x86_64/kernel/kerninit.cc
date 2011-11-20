@@ -83,12 +83,11 @@ extern "C" int kern_init()
 
 	cpu_init();
 
-log()("bbb")();
 	native::sti();
 
-for(;;)native::hlt();
-	global_vars::gv.core->irq_ctrl.init();
+	global_vars::gv.irq_ctl_obj->init();
 log()("ddd")();
+for(;;)native::hlt();
 
 	global_vars::gv.core->intr_ctrl.init();
 log()("eee")();
