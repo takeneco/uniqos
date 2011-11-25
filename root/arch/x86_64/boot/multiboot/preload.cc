@@ -18,29 +18,30 @@ log_file vga_log;
 
 namespace {
 
-void mem_setup_entry(u64 addr, u64 len)
+void init_sep(separator* sep)
 {
-	// 4GiB の先は無視する。
-	const u64 ADR_END = U64(0x100000000);
-	if (addr >= ADR_END)
-		return;
-	if (addr + len > ADR_END)
-		len = ADR_END - addr;
-
 	// 先頭から bootinfo::BOOTHEAP_END までをなるべく空けておく。
-	const u64 AVOID_TH = bootinfo::BOOTHEAP_END;
+	sep->set_slot_range(
+	    MEM_BOOTHEAP,
+	    0,
+	    bootinfo::BOOTHEAP_END);
 
-	if (addr < AVOID_TH && addr + len > AVOID_TH) {
-		mem_add(AVOID_TH, addr + len - AVOID_TH, false);
-		len = AVOID_TH - addr;
-	}
-	mem_add(addr, len, addr < AVOID_TH);
+	sep->set_slot_range(
+	    MEM_NORMAL,
+	    bootinfo::BOOTHEAP_END + 1,
+	    0xffffffff);
 }
 
-void mem_setup(const multiboot_tag_mmap* mbt_mmap)
+void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 {
 //	log()("memmap : esize=").u(u32(mbt_mmap->entry_size))
 //	    (", eversion=").u(u32(mbt_mmap->entry_version))();
+
+	init_alloc();
+
+	allocator* alloc = get_alloc();
+	separator sep(alloc);
+	init_sep(&sep);
 
 	const void* end = (const u8*)mbt_mmap + mbt_mmap->size;
 	const multiboot_memory_map_t* mmap = mbt_mmap->entries;
@@ -52,11 +53,37 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap)
 		*/
 
 		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-			mem_setup_entry(mmap->addr, mmap->len);
+			sep.add_free(mmap->addr, mmap->len);
 
 		mmap = (const multiboot_memory_map_t*)
 		    ((const u8*)mmap + mbt_mmap->entry_size);
 	}
+
+	// self memory
+	alloc->reserve(
+	    MEM_NORMAL | MEM_BOOTHEAP,
+	    reinterpret_cast<uptr>(self_baseadr),
+	    reinterpret_cast<uptr>(self_size),
+	    true);
+
+	// tag
+	const u32 tag_size = *tag;
+	alloc->reserve(
+	    MEM_NORMAL | MEM_BOOTHEAP,
+	    reinterpret_cast<uptr>(tag),
+	    tag_size,
+	    true);
+
+	// EBDA から bootinfo の領域をまとめて予約する。
+	// EBDA:
+	// mem_reserve(0, 0x4ff, false);
+	// bootinfo:
+	// mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
+	alloc->reserve(
+	    MEM_BOOTHEAP,
+	    0,
+	    bootinfo::ADR + bootinfo::MAX_BYTES,
+	    false);
 }
 
 }  // namespace
@@ -71,8 +98,6 @@ cause::stype pre_load(u32 magic, const u32* tag)
 
 	vga_log.attach(&vga_dev);
 	log_set(0, &vga_log);
-
-	mem_init();
 
 	log()("&tag : ")(&tag)(", tag : ")(tag);
 
@@ -131,7 +156,7 @@ cause::stype pre_load(u32 magic, const u32* tag)
 		case MULTIBOOT_TAG_TYPE_MMAP: {
 			const multiboot_tag_mmap* mbt_mmap =
 			    reinterpret_cast<const multiboot_tag_mmap*>(mbt);
-			mem_setup(mbt_mmap);
+			mem_setup(mbt_mmap, tag);
 			break;
 		}
 		case MULTIBOOT_TAG_TYPE_ELF_SECTIONS: {
@@ -156,22 +181,6 @@ cause::stype pre_load(u32 magic, const u32* tag)
 		p += dec / sizeof *p;
 		read += dec;
 	}
-
-	// self memory
-	mem_reserve(
-	    reinterpret_cast<uptr>(self_baseadr),
-	    reinterpret_cast<uptr>(self_size),
-	    true);
-
-	// tag
-	mem_reserve(reinterpret_cast<uptr>(tag), tag_size, true);
-
-	// EBDA から bootinfo の領域をまとめて予約する。
-	// EBDA:
-	// mem_reserve(0, 0x4ff, false);
-	// bootinfo:
-	// mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
-	mem_reserve(0, bootinfo::ADR + bootinfo::MAX_BYTES, false);
 
 	return cause::OK;
 }

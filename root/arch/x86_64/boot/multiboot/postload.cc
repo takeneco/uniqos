@@ -44,13 +44,15 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	if (bootinfo_left < size)
 		return size;
 
-	easy_alloc_enum ea_enum;
-	mem_alloc_info(&ea_enum);
+	const allocator* alloc = get_alloc();
+
+	allocator::enum_desc ea_enum;
+	alloc->enum_alloc(MEM_NORMAL | MEM_BOOTHEAP, &ea_enum);
 
 	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {
 		u32 adr, bytes;
-		const bool r = mem_alloc_info_next(&ea_enum, &adr, &bytes);
+		const bool r = alloc->enum_alloc_next(&ea_enum, &adr, &bytes);
 		if (!r)
 			break;
 

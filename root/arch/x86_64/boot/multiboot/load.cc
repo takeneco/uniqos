@@ -5,12 +5,11 @@
 //
 
 #include "bootinfo.hh"
+#include "elf.hh"
 #include "log.hh"
 #include "misc.hh"
 #include "pagetable.hh"
 #include "string.hh"
-
-#include "elf.hh"
 
 
 extern const u8 kernel[];
@@ -24,16 +23,25 @@ public:
 	static cause::stype alloc(uptr* padr);
 	static cause::stype free(uptr padr);
 };
+
 inline cause::stype page_table_alloc::alloc(uptr* padr)
 {
-	uptr _padr;
-	const cause::stype r = arch::page::alloc(arch::page::PHYS_L1, &_padr);
-	*padr = _padr;
-	return r;
+	void* p = get_alloc()->alloc(
+	    MEM_BOOTHEAP,
+	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE,
+	    false);
+
+	*padr = reinterpret_cast<uptr>(p);
+
+	return p ? cause::OK : cause::NO_MEMORY;
 }
+
 inline cause::stype page_table_alloc::free(uptr padr)
 {
-	return arch::page::free(arch::page::PHYS_L1, padr);
+	bool b = get_alloc()->free(MEM_BOOTHEAP, reinterpret_cast<void*>(padr));
+
+	return b ? cause::OK : cause::FAIL;
 }
 
 inline u64 phys_to_virt(u64 padr) { return padr; }
@@ -115,7 +123,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 		cause::stype r;
 
 		uptr phys_adr;
-		r = arch::page::alloc(arch::page::PHYS_L2, &phys_adr);
+		r = page_table_alloc::alloc(&phys_adr);
 		if (r != cause::OK)
 			return r;
 
