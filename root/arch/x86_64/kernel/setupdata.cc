@@ -5,6 +5,7 @@
 //
 /// @todo 物理メモリマップを使うようにする。
 
+#include "global_vars.hh"
 #include "setupdata.hh"
 
 #include "boot_access.hh"
@@ -59,15 +60,17 @@ void get_log(char** buf, u32* cur, u32* size)
 
 const void* get_bootinfo(u32 tag_type)
 {
-	const u8* bootinfo = reinterpret_cast<const u8*>(bootinfo::ADR);
+	const u8* bootinfo =
+	    reinterpret_cast<const u8*>(global_vars::gv.bootinfo);
+
 	const u32 total_size = *reinterpret_cast<const u32*>(bootinfo);
+
 	u32 read = sizeof (u32) * 2;
-u64* p = (u64*)0x4000;
+
 	for (;;) {
 		const multiboot_tag* tag =
 		    reinterpret_cast<const multiboot_tag*>(&bootinfo[read]);
-*p++=(u64)tag->type;
-*p++=(u64)tag;
+
 		if (tag->type == tag_type)
 			return tag;
 
@@ -75,8 +78,7 @@ u64* p = (u64*)0x4000;
 		if (read >= total_size)
 			break;
 	}
-*p++=total_size;
-*p++=0x2222222222222222l;
+
 	return 0;
 }
 

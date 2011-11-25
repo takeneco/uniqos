@@ -71,9 +71,31 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	return size;
 }
 
+u8* bootinfo_alloc()
+{
+	void* p = get_alloc()->alloc(
+	    MEM_CONVENTIONAL,
+	    bootinfo::MAX_BYTES,
+	    MULTIBOOT_TAG_ALIGN,
+	    false);
+
+	if (!p) {
+		p = get_alloc()->alloc(
+		    MEM_BOOTHEAP,
+		    bootinfo::MAX_BYTES,
+		    MULTIBOOT_TAG_ALIGN,
+		    false);
+	}
+
+	return reinterpret_cast<u8*>(p);
+}
+
 bool store_bootinfo(const u32* mb_info)
 {
-	u8* const bootinfo = reinterpret_cast<u8*>(bootinfo::ADR);
+	u8* const bootinfo = bootinfo_alloc();
+	if (bootinfo == 0)
+		return false;
+
 	uptr bootinfo_left = bootinfo::MAX_BYTES;
 	uptr wrote = 0;
 
@@ -91,6 +113,8 @@ bool store_bootinfo(const u32* mb_info)
 
 	// total size
 	*reinterpret_cast<u32*>(bootinfo) = wrote;
+
+	load_info.bootinfo_adr = reinterpret_cast<u64>(bootinfo);
 
 	return true;
 }

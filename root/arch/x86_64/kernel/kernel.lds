@@ -16,7 +16,7 @@ SECTIONS {
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
 
-	. = 0xffffffffffff8000;
+	. = 0xffffffffffffe000;
 	STACK_END = .;
 	.bss : { *(.bss) }
 	kern_tail_addr = .;

@@ -109,6 +109,8 @@ cause::stype load_segm_page(
 
 cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 {
+	allocator* alloc = get_alloc();
+
 	u64 page_flags = boot_page_table::EXIST;
 	if (phe->p_flags & PF_W)
 		page_flags |= boot_page_table::WRITE;
@@ -123,10 +125,15 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 		cause::stype r;
 
 		uptr phys_adr;
-		r = page_table_alloc::alloc(&phys_adr);
-		if (r != cause::OK)
-			return r;
+		void* p = alloc->alloc(
+		    MEM_NORMAL | MEM_BOOTHEAP,
+		    arch::page::PHYS_L2_SIZE,
+		    arch::page::PHYS_L2_SIZE,
+		    false);
+		if (!p)
+			return cause::NO_MEMORY;
 
+		phys_adr = reinterpret_cast<uptr>(p);
 		r = load_segm_page(
 		    phe, page_adr, arch::page::PHYS_L2_SIZE, phys_adr);
 		if (r != cause::OK)
@@ -147,12 +154,6 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 }
 
 }  // namespace
-
-struct load_info_
-{
-	u64 entry_adr;
-	u64 page_table_adr;
-} load_info;
 
 extern "C" u32 load(u32 magic, u32* tag)
 {

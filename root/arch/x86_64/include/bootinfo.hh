@@ -24,12 +24,10 @@ struct mem_alloc {
 };
 
 enum {
-	// 物理メモリのこのアドレスに bootinfo が格納される。
-	ADR = 0x500,
-	MAX_BYTES = 0x80000 - ADR,
+	MAX_BYTES = 0x80000,
 
 	// Available memory end during kernel boot.
-	BOOTHEAP_END   = 0x1ffffff,
+	BOOTHEAP_END   = 0x01ffffff,
 };
 
 }  // namespace bootinfo

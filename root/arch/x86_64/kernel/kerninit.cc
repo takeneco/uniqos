@@ -5,6 +5,7 @@
 //
 
 #include "arch.hh"
+#include "bootinfo.hh"
 #include "core_class.hh"
 #include "global_vars.hh"
 #include "kerninit.hh"
@@ -71,8 +72,10 @@ void func()
 }
 
 text_vga vga_dev;
-extern "C" int kern_init()
+extern "C" int kern_init(u64 bootinfo_adr)
 {
+	global_vars::gv.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
+
 	vga_dev.init(80, 25, (void*)0xb8000);
 	log_file vgalog(&vga_dev);
 	log_init(&vgalog);
@@ -80,6 +83,9 @@ extern "C" int kern_init()
 	cause::stype r = arch::page::init();
 	if (r != cause::OK)
 		return r;
+
+	global_vars::gv.bootinfo =
+	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
 	cpu_init();
 

@@ -32,6 +32,8 @@ struct _vars
 	memcache_control*  memcache_ctl;
 	core_class*      core;
 	event_queue*     events;
+
+	void* bootinfo;
 };
 
 

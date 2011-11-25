@@ -31,18 +31,27 @@ log_file vga_log;
 
 namespace {
 
+const uptr BOOTHEAP_END = bootinfo::BOOTHEAP_END;
+
+const struct {
+	allocator::slot_index slot;
+	uptr slot_head;
+	uptr slot_tail;
+} memory_slots[] = {
+	{ MEM_CONVENTIONAL, 0x00000000,       0x000fffff   },
+	{ MEM_BOOTHEAP,     0x00100000,       BOOTHEAP_END },
+	{ MEM_NORMAL,       BOOTHEAP_END + 1, 0xffffffff   },
+};
+
 void init_sep(separator* sep)
 {
-	// 先頭から bootinfo::BOOTHEAP_END までをなるべく空けておく。
-	sep->set_slot_range(
-	    MEM_BOOTHEAP,
-	    0,
-	    bootinfo::BOOTHEAP_END);
-
-	sep->set_slot_range(
-	    MEM_NORMAL,
-	    bootinfo::BOOTHEAP_END + 1,
-	    0xffffffff);
+	for (u32 i = 0; i < sizeof memory_slots / sizeof memory_slots[0]; ++i)
+	{
+		sep->set_slot_range(
+		    memory_slots[i].slot,
+		    memory_slots[i].slot_head,
+		    memory_slots[i].slot_tail);
+	}
 }
 
 void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
@@ -82,21 +91,13 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 	// tag
 	const u32 tag_size = *tag;
 	alloc->reserve(
-	    MEM_NORMAL | MEM_BOOTHEAP,
+	    MEM_NORMAL | MEM_BOOTHEAP | MEM_CONVENTIONAL,
 	    reinterpret_cast<uptr>(tag),
 	    tag_size,
 	    true);
 
-	// EBDA から bootinfo の領域をまとめて予約する。
-	// EBDA:
-	// mem_reserve(0, 0x4ff, false);
-	// bootinfo:
-	// mem_reserve(bootinfo::ADR, bootinfo::MAX_BYTES, false);
-	alloc->reserve(
-	    MEM_BOOTHEAP,
-	    0,
-	    bootinfo::ADR + bootinfo::MAX_BYTES,
-	    false);
+	// BDA : BIOS Data Area
+	alloc->reserve(MEM_CONVENTIONAL, 0, 0x4ff, false);
 }
 
 }  // namespace
