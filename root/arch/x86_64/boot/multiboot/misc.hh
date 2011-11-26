@@ -6,11 +6,11 @@
 #ifndef ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
-#include "easy_alloc2.hh"
+#include "cheap_alloc.hh"
 
 
-typedef easy_alloc<256> allocator;
-typedef easy_separator<allocator> separator;
+typedef cheap_alloc<256> allocator;
+typedef cheap_alloc_separator<allocator> separator;
 
 enum MEM_SLOT {
 	SLOT_INDEX_NORMAL = 0,

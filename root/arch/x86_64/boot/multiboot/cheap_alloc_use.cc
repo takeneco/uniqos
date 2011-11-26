@@ -1,5 +1,4 @@
-/// @file   easy_alloc_wrap.cc
-/// @brief  memory allocation implement wrapper.
+/// @file   cheap_alloc_use.cc
 //
 // (C) 2010-2011 KATO Takeshi
 //

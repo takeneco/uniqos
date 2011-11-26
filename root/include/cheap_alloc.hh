@@ -1,5 +1,5 @@
-/// @file   easy_alloc.hh
-/// @brief  Easy address allocation implement.
+/// @file   cheap_alloc.hh
+/// @brief  cheap address allocation implement.
 
 //  uniqos  --  Unique Operating System
 //  (C) 2011 KATO Takeshi
@@ -17,8 +17,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef INCLUDE_EASY_ALLOC_HH_
-#define INCLUDE_EASY_ALLOC_HH_
+#ifndef INCLUDE_CHEAP_ALLOC_HH_
+#define INCLUDE_CHEAP_ALLOC_HH_
 
 #include "arch.hh"
 #include "chain.hh"
@@ -39,16 +39,16 @@
 ///
 /// slot について
 /// - SLOT_COUNT(=8)個のスロットがあり、それぞれを別のメモリ領域として扱う。
-/// - add_free() / reserve() は、どのスロットに対する操作かを 0 から始まる
+/// - add_free() は、どのスロットに対する操作かを 0 から始まる
 ///   インデックスで指定する。
-/// - alloc() / free() / enum_xxx() は対象スロットをビットマスク (1 << index)
-///   で指定する。
+/// - reserve() / alloc() / free() / enum_xxx() は対象スロットを
+///   ビットマスク (1 << index) で指定する。
 ///
 /// - このクラスは作業メモリが不足してエラー(false)を返すことがある。
 ///   その場合はクラスのオブジェクトを破壊した可能性があり使い続けられない。
-/// - 作業メモリ不足になる場合は BUF_COUNT を増やすしかない。
+/// - 作業メモリ不足にならないように、大きめの BUF_COUNT を指定するしかない。
 template<int BUF_COUNT>
-class easy_alloc
+class cheap_alloc
 {
 	struct range;
 
@@ -59,14 +59,14 @@ public:
 	enum { SLOT_COUNT = 8 };
 
 	/// Must be call for initialize.
-	easy_alloc() {}
+	cheap_alloc() {}
 
 	bool add_free(slot_index slot, uptr adr, uptr bytes);
 	bool reserve(slot_mask slotm, uptr adr, uptr bytes, bool forget);
 	void* alloc(slot_mask slotm, uptr bytes, uptr align, bool forget);
 	bool free(slot_mask slotm, void* p);
 
-	/// @brief easy_alloc を使用後にメモリの状態を列挙するときの列挙子。
+	/// @brief cheap_alloc を使用後にメモリの状態を列挙するときの列挙子。
 	struct enum_desc
 	{
 		slot_mask slotm;
@@ -139,7 +139,7 @@ public:
 /// @retval true  Succeeds.
 /// @retval false No enough working memory.
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
+bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 {
 	if (bytes == 0)
 		return true;
@@ -159,16 +159,17 @@ bool easy_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 /// @param[in] bytes  取り除くメモリのバイト数。
 /// @param[in] forget true ならばメモリ確保の対象外にしたことを忘れる。
 /// @retval true  Succeeds.
-/// @retval false No enough working memory. The easy_alloc object is broken.
+/// @retval false No enough working memory.
+///               The cheap_alloc object might be broken.
 //
 /// - メモリ確保の対象外にしたい領域がある場合は、メモリを確保する前に
 ///   この関数で設定しなければならない。
-/// - forget の扱いは mem_alloc() の forget と同じで、割り当て可能なメモリが
+/// - forget の扱いは alloc() の forget と同じで、割り当て可能なメモリが
 ///   あったこと自体を忘れてしまう。
-/// - forget = false ならば、対象外にしたメモリ範囲を
-///   alloc_info() / avoid_alloc_info() で拾うことができる。
+/// - forget = false ならば、対象外にしたメモリ範囲を enum_xxx() で
+///   拾うことができる。
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::reserve(
+bool cheap_alloc<BUF_COUNT>::reserve(
     slot_mask slotm,
     uptr adr, uptr bytes,
     bool forget)
@@ -194,15 +195,15 @@ bool easy_alloc<BUF_COUNT>::reserve(
 /// @return If fails, this func returns 0.
 //
 /// - forget = true とすると、このメモリを割り当てたこと自体を忘れてしまう。
-/// - mem_free() で開放するときは forget = false としなければならない。
-/// - mem_free() で開放しない場合でも、割り当てたことを覚えておいて、
-///   後で alloc_info() で知りたいときは forget = false としなければならない。
+/// - free() で開放するときは forget = false としなければならない。
+/// - free() で開放しない場合でも、割り当てたことを覚えておいて、
+///   後で enum_alloc() で知りたいときは forget = false としなければならない。
 /// - forget = true とすると、add_free() で avoid = true を指定したメモリを
 ///   優先的に割り当てる。
 ///   forget = true ならばメモリ管理の終了とともにメモリが開放されるという
 ///   考え方なので、avoid のメモリを避ける必要はないということ。
 template<int BUF_COUNT>
-void* easy_alloc<BUF_COUNT>::alloc(
+void* cheap_alloc<BUF_COUNT>::alloc(
     slot_mask slotm,
     uptr bytes, uptr align,
     bool forget)
@@ -223,7 +224,7 @@ void* easy_alloc<BUF_COUNT>::alloc(
 /// @brief  Free memory.
 /// @param[in] p  Ptr to memory to free.
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::free(slot_mask slotm, void* p)
+bool cheap_alloc<BUF_COUNT>::free(slot_mask slotm, void* p)
 {
 	bool r;
 	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
@@ -239,7 +240,7 @@ bool easy_alloc<BUF_COUNT>::free(slot_mask slotm, void* p)
 }
 
 template<int BUF_COUNT>
-void easy_alloc<BUF_COUNT>::enum_free(slot_mask slotm, enum_desc* x) const
+void cheap_alloc<BUF_COUNT>::enum_free(slot_mask slotm, enum_desc* x) const
 {
 	x->slotm = slotm;
 	x->index = 0;
@@ -247,7 +248,7 @@ void easy_alloc<BUF_COUNT>::enum_free(slot_mask slotm, enum_desc* x) const
 }
 
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::enum_free_next(
+bool cheap_alloc<BUF_COUNT>::enum_free_next(
     enum_desc* x, uptr* adr, uptr* bytes) const
 {
 	for (slot_index i = x->index; i < SLOT_COUNT; ++i) {
@@ -276,7 +277,7 @@ bool easy_alloc<BUF_COUNT>::enum_free_next(
 }
 
 template<int BUF_COUNT>
-void easy_alloc<BUF_COUNT>::enum_alloc(slot_mask slotm, enum_desc* x) const
+void cheap_alloc<BUF_COUNT>::enum_alloc(slot_mask slotm, enum_desc* x) const
 {
 	x->slotm = slotm;
 	x->index = 0;
@@ -284,7 +285,7 @@ void easy_alloc<BUF_COUNT>::enum_alloc(slot_mask slotm, enum_desc* x) const
 }
 
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::enum_alloc_next(
+bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
     enum_desc* x, uptr* adr, uptr* bytes) const
 {
 	for (slot_index i = x->index; i < SLOT_COUNT; ++i) {
@@ -316,8 +317,8 @@ bool easy_alloc<BUF_COUNT>::enum_alloc_next(
 /// @return  If unused entry found, this func returns ptr to unused entry.
 /// @return  If unused entry not found, this func returns 0.
 template<int BUF_COUNT>
-typename easy_alloc<BUF_COUNT>::range*
-easy_alloc<BUF_COUNT>::new_range(uptr adr, uptr bytes)
+typename cheap_alloc<BUF_COUNT>::range*
+cheap_alloc<BUF_COUNT>::new_range(uptr adr, uptr bytes)
 {
 	range* const buf = range_buf;
 
@@ -333,7 +334,7 @@ easy_alloc<BUF_COUNT>::new_range(uptr adr, uptr bytes)
 }
 
 template<int BUF_COUNT>
-void easy_alloc<BUF_COUNT>::free_range(range* e)
+void cheap_alloc<BUF_COUNT>::free_range(range* e)
 {
 	if (e)
 		//e->bytes = 0;  // means free.
@@ -347,14 +348,14 @@ void easy_alloc<BUF_COUNT>::free_range(range* e)
 /// @param[in,out] slot  Address slot. Must not be null.
 /// @retval true  Succeeds.
 /// @retval false No enough working memory.
-///               The easy_alloc object might be broken.
+///               The cheap_alloc object might be broken.
 //
 /// - forget = false ならば slot->free_ranges から取り除いたメモリは
 ///   slot->alloc_ranges に格納する。
 /// - forget = true ならば slot->free_ranges からメモリを取り除くだけ。
 ///   slot->alloc_ranges は操作しない。
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::_reserve(
+bool cheap_alloc<BUF_COUNT>::_reserve(
     uptr adr, uptr bytes,
     bool forget,
     adr_slot* slot)
@@ -423,7 +424,7 @@ bool easy_alloc<BUF_COUNT>::_reserve(
 }
 
 /// @brief  空きメモリを割り当てる。
-/// @param[in] size      メモリサイズ。
+/// @param[in] bytes     メモリサイズ。
 /// @param[in] align     アライメント。
 /// @param[in] forget    Forget this address range.
 /// @param[in,out] slot  Address slot. Must not be null.
@@ -433,9 +434,9 @@ bool easy_alloc<BUF_COUNT>::_reserve(
 /// - forget = true ならば slot->free_ranges からメモリを割り当てるだけ。
 ///   slot->alloc_ranges は無視する。
 template<int BUF_COUNT>
-typename easy_alloc<BUF_COUNT>::range*
-easy_alloc<BUF_COUNT>::_alloc(
-    uptr size, uptr align,
+typename cheap_alloc<BUF_COUNT>::range*
+cheap_alloc<BUF_COUNT>::_alloc(
+    uptr bytes, uptr align,
     bool forget,
     adr_slot* slot)
 {
@@ -446,14 +447,14 @@ easy_alloc<BUF_COUNT>::_alloc(
 	     ent = slot->free_ranges.next(ent))
 	{
 		align_gap = up_align(ent->adr, align) - ent->adr;
-		if ((ent->bytes - align_gap) >= size)
+		if ((ent->bytes - align_gap) >= bytes)
 			break;
 	}
 	if (!ent)
 		return 0;
 
 	range* r;
-	if (ent->bytes == size) {
+	if (ent->bytes == bytes) {
 		r = ent;
 		slot->free_ranges.remove(ent);
 		if (forget == false)
@@ -469,22 +470,22 @@ easy_alloc<BUF_COUNT>::_alloc(
 			ent->adr += align_gap;
 			ent->bytes -= align_gap;
 		}
-		r = new_range(ent->adr, size);
+		r = new_range(ent->adr, bytes);
 		if (!r)
 			return 0;
 
 		if (forget == false)
 			slot->alloc_ranges.insert_head(r);
 
-		ent->adr += size;
-		ent->bytes -= size;
+		ent->adr += bytes;
+		ent->bytes -= bytes;
 	}
 
 	return r;
 }
 
 template<int BUF_COUNT>
-bool easy_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
+bool cheap_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 {
 	// 割り当て済みリストから p を探す。
 
@@ -542,14 +543,14 @@ bool easy_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 }
 
 
-/// @brief easy_alloc で add_free() を使うときに、アドレス範囲とスロットを
+/// @brief cheap_alloc で add_free() を使うときに、アドレス範囲とスロットを
 ///        関連付ける。
-/// @tparam EASY_ALLOC easy_alloc<>の型をそのまま指定する。
+/// @tparam CHEAP_ALLOC cheap_alloc<>の型をそのまま指定する。
 //
 /// 使い方
 /// @code
-/// typedef easy_alloc<64> allocator;
-/// typedef easy_separator<allocator> separator;
+/// typedef cheap_alloc<64> allocator;
+/// typedef cheap_alloc_separator<allocator> separator;
 /// allocator a;
 /// separator s(&a);
 /// s.set_slot_range(0,    0,  999);
@@ -561,15 +562,15 @@ bool easy_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 /// - a.SLOT[0] -> 500-999
 /// - a.SLOT[1] -> 1000-1999
 /// - a.SLOT[2] -> 2000-2499
-template <class EASY_ALLOC>
-class easy_separator
+template <class CHEAP_ALLOC>
+class cheap_alloc_separator
 {
 public:
-	typedef typename EASY_ALLOC::slot_index slot_index;
+	typedef typename CHEAP_ALLOC::slot_index slot_index;
 
-	enum { SLOT_COUNT = EASY_ALLOC::SLOT_COUNT };
+	enum { SLOT_COUNT = CHEAP_ALLOC::SLOT_COUNT };
 
-	explicit easy_separator(EASY_ALLOC* ea) : easy_alloc(ea) {}
+	explicit cheap_alloc_separator(CHEAP_ALLOC* ea) : cheap_alloc(ea) {}
 
 	void set_slot_range(slot_index i, uptr head, uptr tail);
 
@@ -580,7 +581,7 @@ public:
 	}
 
 private:
-	EASY_ALLOC* easy_alloc;
+	CHEAP_ALLOC* cheap_alloc;
 
 	struct slot_range {
 		bool enable;
@@ -597,8 +598,8 @@ private:
 /// アドレス範囲が adr/bytes 形式のときは、
 /// set_slot_range(x, adr, adr + bytes - 1)
 /// のように指定する。
-template<class EASY_ALLOC>
-void easy_separator<EASY_ALLOC>::set_slot_range(
+template<class CHEAP_ALLOC>
+void cheap_alloc_separator<CHEAP_ALLOC>::set_slot_range(
     slot_index i,
     uptr head,
     uptr tail)
@@ -608,11 +609,11 @@ void easy_separator<EASY_ALLOC>::set_slot_range(
 	slots[i].tail = tail;
 }
 
-/// @brief  easy_alloc::add_free() を呼び出す。
+/// @brief  cheap_alloc::add_free() を呼び出す。
 //
 /// set_slot_range() で指定したアドレス範囲に振り分ける。
-template<class EASY_ALLOC>
-bool easy_separator<EASY_ALLOC>::add_free_range(uptr head, uptr tail)
+template<class CHEAP_ALLOC>
+bool cheap_alloc_separator<CHEAP_ALLOC>::add_free_range(uptr head, uptr tail)
 {
 	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
 		if (slots[i].enable) {
@@ -624,8 +625,8 @@ bool easy_separator<EASY_ALLOC>::add_free_range(uptr head, uptr tail)
 	return true;
 }
 
-template<class EASY_ALLOC>
-bool easy_separator<EASY_ALLOC>::_add_free_range(
+template<class CHEAP_ALLOC>
+bool cheap_alloc_separator<CHEAP_ALLOC>::_add_free_range(
     slot_index i, uptr free_head, uptr free_tail)
 {
 	const slot_range& slot = slots[i];
@@ -639,7 +640,7 @@ bool easy_separator<EASY_ALLOC>::_add_free_range(
 	if (add_head > add_tail)
 		return true;
 
-	return easy_alloc->add_free(i, add_head, add_tail - add_head + 1);
+	return cheap_alloc->add_free(i, add_head, add_tail - add_head + 1);
 }
 
 

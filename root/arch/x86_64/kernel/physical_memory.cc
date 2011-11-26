@@ -8,7 +8,7 @@
 #include "basic_types.hh"
 #include "bootinfo.hh"
 #include "core_class.hh"
-#include "easy_alloc2.hh"
+#include "cheap_alloc.hh"
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
@@ -116,8 +116,8 @@ cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
 
 namespace {
 
-typedef easy_alloc<64>            tmp_alloc;
-typedef easy_separator<tmp_alloc> tmp_separator;
+typedef cheap_alloc<64>                  tmp_alloc;
+typedef cheap_alloc_separator<tmp_alloc> tmp_separator;
 
 enum MEM_SLOT {
 	SLOT_INDEX_HIGH     = 0,

@@ -8,7 +8,7 @@ source = [
 	'log_access.cc',
 	'load.cc',
 	'loadinfo.cc',
-	'easy_alloc_wrap.cc',
+	'cheap_alloc_use.cc',
 	'postload.cc',
 	'preload.cc',
 ]
