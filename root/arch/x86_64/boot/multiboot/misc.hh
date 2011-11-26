@@ -13,14 +13,19 @@ typedef easy_alloc<256> allocator;
 typedef easy_separator<allocator> separator;
 
 enum MEM_SLOT {
-	MEM_NORMAL = 0,
+	SLOT_INDEX_NORMAL = 0,
 
 	// カーネルへ jmp した直後にカーネルが RAM として使用可能なヒープを
 	// BOOTHEAP と呼ぶことにする。
 	// メモリ管理上は BOOTHEAP を区別し、可能な限り空いたままにしておく。
-	MEM_BOOTHEAP = 1,
+	SLOT_INDEX_BOOTHEAP = 1,
 
-	MEM_CONVENTIONAL = 2,
+	SLOT_INDEX_CONVENTIONAL = 2,
+};
+enum MEM_SLOT_MASK {
+	SLOTM_NORMAL       = 1 << SLOT_INDEX_NORMAL,
+	SLOTM_BOOTHEAP     = 1 << SLOT_INDEX_BOOTHEAP,
+	SLOTM_CONVENTIONAL = 1 << SLOT_INDEX_CONVENTIONAL,
 };
 
 void  init_alloc();

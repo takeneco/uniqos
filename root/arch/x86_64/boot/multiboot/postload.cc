@@ -47,7 +47,7 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	const allocator* alloc = get_alloc();
 
 	allocator::enum_desc ea_enum;
-	alloc->enum_alloc(MEM_NORMAL | MEM_BOOTHEAP, &ea_enum);
+	alloc->enum_alloc(SLOTM_NORMAL | SLOTM_BOOTHEAP, &ea_enum);
 
 	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {
@@ -74,14 +74,14 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 u8* bootinfo_alloc()
 {
 	void* p = get_alloc()->alloc(
-	    MEM_CONVENTIONAL,
+	    SLOTM_CONVENTIONAL,
 	    bootinfo::MAX_BYTES,
 	    MULTIBOOT_TAG_ALIGN,
 	    false);
 
 	if (!p) {
 		p = get_alloc()->alloc(
-		    MEM_BOOTHEAP,
+		    SLOTM_BOOTHEAP,
 		    bootinfo::MAX_BYTES,
 		    MULTIBOOT_TAG_ALIGN,
 		    false);

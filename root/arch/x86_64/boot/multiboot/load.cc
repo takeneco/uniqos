@@ -27,7 +27,7 @@ public:
 inline cause::stype page_table_alloc::alloc(uptr* padr)
 {
 	void* p = get_alloc()->alloc(
-	    MEM_BOOTHEAP,
+	    SLOTM_BOOTHEAP,
 	    arch::page::PHYS_L1_SIZE,
 	    arch::page::PHYS_L1_SIZE,
 	    false);
@@ -39,7 +39,8 @@ inline cause::stype page_table_alloc::alloc(uptr* padr)
 
 inline cause::stype page_table_alloc::free(uptr padr)
 {
-	bool b = get_alloc()->free(MEM_BOOTHEAP, reinterpret_cast<void*>(padr));
+	bool b = get_alloc()->free(
+	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
 
 	return b ? cause::OK : cause::FAIL;
 }
@@ -126,7 +127,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 		uptr phys_adr;
 		void* p = alloc->alloc(
-		    MEM_NORMAL | MEM_BOOTHEAP,
+		    SLOTM_NORMAL | SLOTM_BOOTHEAP,
 		    arch::page::PHYS_L2_SIZE,
 		    arch::page::PHYS_L2_SIZE,
 		    false);

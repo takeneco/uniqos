@@ -38,9 +38,9 @@ const struct {
 	uptr slot_head;
 	uptr slot_tail;
 } memory_slots[] = {
-	{ MEM_CONVENTIONAL, 0x00000000,       0x000fffff   },
-	{ MEM_BOOTHEAP,     0x00100000,       BOOTHEAP_END },
-	{ MEM_NORMAL,       BOOTHEAP_END + 1, 0xffffffff   },
+	{ SLOT_INDEX_CONVENTIONAL, 0x00000000,       0x000fffff   },
+	{ SLOT_INDEX_BOOTHEAP,     0x00100000,       BOOTHEAP_END },
+	{ SLOT_INDEX_NORMAL,       BOOTHEAP_END + 1, 0xffffffff   },
 };
 
 void init_sep(separator* sep)
@@ -83,7 +83,7 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 
 	// self memory
 	alloc->reserve(
-	    MEM_NORMAL | MEM_BOOTHEAP,
+	    SLOTM_NORMAL | SLOTM_BOOTHEAP,
 	    reinterpret_cast<uptr>(self_baseadr),
 	    reinterpret_cast<uptr>(self_size),
 	    true);
@@ -91,13 +91,13 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 	// tag
 	const u32 tag_size = *tag;
 	alloc->reserve(
-	    MEM_NORMAL | MEM_BOOTHEAP | MEM_CONVENTIONAL,
+	    SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
 	    reinterpret_cast<uptr>(tag),
 	    tag_size,
 	    true);
 
 	// BDA : BIOS Data Area
-	alloc->reserve(MEM_CONVENTIONAL, 0, 0x4ff, false);
+	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0x4ff, false);
 }
 
 }  // namespace
