@@ -129,7 +129,7 @@ public:
 	void debug_dump() {
 		for (unsigned i = 0; i < SLOT_COUNT; ++i) {
 			log()("slot[").u(i)("]:")();
-			debug_dump2(slots[i]);
+			_debug_dump(slots[i]);
 		}
 	}
 };

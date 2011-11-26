@@ -8,7 +8,7 @@
 #include "basic_types.hh"
 #include "bootinfo.hh"
 #include "core_class.hh"
-#include "easy_alloc.hh"
+#include "easy_alloc2.hh"
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
@@ -92,21 +92,6 @@ bool page_ctl::init(uptr _pmem_end, void* buf)
 	return true;
 }
 
-bool page_ctl::load_setupdump()
-{
-	setup_memory_dumpdata* freemap;
-	u32 freemap_num;
-	setup_get_free_memdump(&freemap, &freemap_num);
-
-	for (u32 i = 0; i < freemap_num; ++i) {
-		page_base[4].free_range(
-		    freemap[i].head,
-		    freemap[i].head + freemap[i].bytes - 1);
-	}
-
-	return true;
-}
-
 bool page_ctl::load_free_range(u64 adr, u64 bytes)
 {
 	page_base[4].free_range(adr, adr + bytes - 1);
@@ -130,6 +115,47 @@ cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
 }
 
 namespace {
+
+typedef easy_alloc<64>            tmp_alloc;
+typedef easy_separator<tmp_alloc> tmp_separator;
+
+enum MEM_SLOT {
+	SLOT_INDEX_HIGH     = 0,
+	SLOT_INDEX_PAM1     = 1,
+	SLOT_INDEX_BOOTHEAP = 2,
+};
+enum MEM_SLOT_MASK {
+	SLOTM_HIGH     = 1 << SLOT_INDEX_HIGH,
+	SLOTM_PAM1     = 1 << SLOT_INDEX_PAM1,
+	SLOTM_BOOTHEAP = 1 << SLOT_INDEX_BOOTHEAP,
+
+	SLOTM_ANY = SLOTM_HIGH | SLOTM_PAM1 | SLOTM_BOOTHEAP,
+};
+enum {
+	BOOTHEAP_END = bootinfo::BOOTHEAP_END,
+	SETUP_PAM1_MAPEND = U64(0x17fffffff), /* 6GiB */
+};
+
+const struct {
+	tmp_alloc::slot_index slot;
+	uptr slot_head;
+	uptr slot_tail;
+} memory_slots[] = {
+	{ SLOT_INDEX_BOOTHEAP, 0,                     BOOTHEAP_END            },
+	{ SLOT_INDEX_PAM1,     BOOTHEAP_END + 1,      SETUP_PAM1_MAPEND       },
+	{ SLOT_INDEX_HIGH,     SETUP_PAM1_MAPEND + 1, U64(0xffffffffffffffff) },
+};
+
+void init_sep(tmp_separator* sep)
+{
+	for (u32 i = 0; i < sizeof memory_slots / sizeof memory_slots[0]; ++i)
+	{
+		sep->set_slot_range(
+		    memory_slots[i].slot,
+		    memory_slots[i].slot_head,
+		    memory_slots[i].slot_tail);
+	}
+}
 
 inline page_ctl* get_page_ctl() {
 	return global_vars::gv.page_ctl_obj;
@@ -186,49 +212,7 @@ u64 search_pmem_end()
 	return pmem_end;
 }
 
-
-typedef easy_alloc<32> tmp_alloc;
-
-bool load_mem_avail_classify(
-    u64 adr, u64 len,
-    tmp_alloc* bootheap,
-    tmp_alloc* largeheap)
-{
-	// 先頭16MiBはなるべく空けておく。
-	const u64 AVOID_END = 0xffffff;
-
-	const u64 BOOTHEAP_END = bootinfo::BOOTHEAP_END;
-
-	if (adr > BOOTHEAP_END) {
-		largeheap->add_free(adr, len, false);
-		return true;
-	}
-	else if (BOOTHEAP_END < adr + len) {
-		largeheap->add_free(
-		    BOOTHEAP_END + 1,
-		    adr + len - BOOTHEAP_END + 1,
-		    false);
-		len = BOOTHEAP_END + 1 - adr;
-	}
-
-	if (adr > AVOID_END) {
-		bootheap->add_free(adr, len, false);
-		return true;
-	}
-	else if (AVOID_END < adr + len) {
-		bootheap->add_free(
-		    AVOID_END + 1,
-		    adr + len - AVOID_END + 1,
-		    false);
-		len = AVOID_END + 1 - adr;
-	}
-
-	bootheap->add_free(adr, len, true);
-
-	return true;
-}
-
-bool load_mem_avail(tmp_alloc* bootheap, tmp_alloc* largeheap)
+bool load_mem_avail(tmp_separator* heap)
 {
 	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
 	if (src == 0)
@@ -241,8 +225,7 @@ bool load_mem_avail(tmp_alloc* bootheap, tmp_alloc* largeheap)
 
 	while (entry < mmap_end) {
 		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
-			load_mem_avail_classify(
-			    entry->addr, entry->len, bootheap, largeheap);
+			heap->add_free(entry->addr, entry->len);
 		}
 
 		entry = (const multiboot_mmap_entry*)
@@ -252,7 +235,7 @@ bool load_mem_avail(tmp_alloc* bootheap, tmp_alloc* largeheap)
 	return true;
 }
 
-bool load_mem_state(tmp_alloc* bootheap, tmp_alloc* largeheap)
+bool load_mem_state(tmp_alloc* heap)
 {
 	const void* src = get_bootinfo(bootinfo::TYPE_MEMALLOC);
 	if (src == 0)
@@ -262,8 +245,7 @@ bool load_mem_state(tmp_alloc* bootheap, tmp_alloc* largeheap)
 	const void* end = (const u8*)ma + ma->size;
 	const bootinfo::mem_alloc_entry* entry = ma->entries;
 	while (entry < end) {
-		bootheap->reserve(entry->adr, entry->bytes, true);
-		largeheap->reserve(entry->adr, entry->bytes, true);
+		heap->reserve(SLOTM_ANY, entry->adr, entry->bytes, true);
 		++entry;
 	}
 
@@ -272,12 +254,11 @@ bool load_mem_state(tmp_alloc* bootheap, tmp_alloc* largeheap)
 
 class page_table_tmpalloc
 {
-	tmp_alloc* tmpalloc1;
-	tmp_alloc* tmpalloc2;
+	tmp_alloc* tmpalloc;
 
 public:
-	page_table_tmpalloc(tmp_alloc* _alloc1, tmp_alloc* _alloc2=0)
-	    : tmpalloc1(_alloc1), tmpalloc2(_alloc2)
+	page_table_tmpalloc(tmp_alloc* _alloc)
+	    : tmpalloc(_alloc)
 	{}
 	cause::stype alloc(u64* padr);
 	cause::stype free(u64 padr);
@@ -285,17 +266,11 @@ public:
 
 cause::stype page_table_tmpalloc::alloc(u64* padr)
 {
-	void* p = tmpalloc1->alloc(
+	void* p = tmpalloc->alloc(
+	    SLOTM_BOOTHEAP,
 	    arch::page::PHYS_L1_SIZE,
 	    arch::page::PHYS_L1_SIZE,
 	    false);
-
-	if (!p && tmpalloc2) {
-		p = tmpalloc2->alloc(
-		    arch::page::PHYS_L1_SIZE,
-		    arch::page::PHYS_L1_SIZE,
-		    false);
-	}
 
 	*padr = reinterpret_cast<u64>(p);
 
@@ -306,12 +281,7 @@ cause::stype page_table_tmpalloc::free(u64 padr)
 {
 	void* p = reinterpret_cast<void*>(padr);
 
-	bool r = tmpalloc1->free(p);
-
-	if (!r)
-		r = tmpalloc2->free(p);
-
-	return r ? cause::OK : cause::FAIL;
+	return tmpalloc->free(SLOTM_ANY, p) ? cause::OK : cause::FAIL;
 }
 
 inline u64 phys_to_virt_1(u64 padr) { return padr; }
@@ -319,18 +289,16 @@ inline u64 phys_to_virt_2(u64 padr) { return padr + arch::PHYSICAL_ADRMAP; }
 
 typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1> page_table_1;
 
-enum { SETUP_PAM1_MAPEND = U64(0x17fffffff) /* 6GiB */ };
-
 /// @brief  Setup Physical Address Mapping 1st phase.
 /// @param[in] padr_end  Maximum address.
-/// @param[in] bootheap  Memory allocator.
+/// @param[in] heap      Memory allocator.
 /// @retval true  Succeeds.
 /// @retval false Failed.
 //
 /// padr_end が 6GiB 以上の場合でも、最大 6GiB まで作成する。
-cause::stype setup_pam1(u64 padr_end, tmp_alloc* bootheap)
+cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
 {
-	page_table_tmpalloc tmpalloc(bootheap);
+	page_table_tmpalloc tmpalloc(heap);
 
 	arch::pte* cr3 = reinterpret_cast<arch::pte*>(native::get_cr3());
 
@@ -350,18 +318,17 @@ cause::stype setup_pam1(u64 padr_end, tmp_alloc* bootheap)
 			return r;
 	}
 
-arch::dump_pte(log(), cr3, 1);
 	return cause::OK;
 }
 
 cause::stype load_page(const tmp_alloc& alloc, page_ctl* ctl)
 {
-	easy_alloc_enum ea_enum;
-	alloc.all_free_info(&ea_enum);
+	tmp_alloc::enum_desc ea_enum;
+	alloc.enum_free(SLOTM_ANY, &ea_enum);
 
 	for (;;) {
 		uptr adr, bytes;
-		const bool r = alloc.all_free_info_next(&ea_enum, &adr, &bytes);
+		const bool r = alloc.enum_free_next(&ea_enum, &adr, &bytes);
 		if (!r)
 			break;
 		ctl->load_free_range(adr, bytes);
@@ -388,18 +355,19 @@ namespace page {
 /// @retval cause::OK  Succeeds.
 cause::stype init()
 {
-	tmp_alloc bootheap, largeheap;
-	bootheap.init();
-	largeheap.init();
+	tmp_alloc heap;
+	tmp_separator sep(&heap);
 
-	load_mem_avail(&bootheap, &largeheap);
-	load_mem_state(&bootheap, &largeheap);
+	init_sep(&sep);
+
+	load_mem_avail(&sep);
+	load_mem_state(&heap);
 
 	const u64 padr_end = search_padr_end();
 
-	setup_pam1(padr_end, &bootheap);
+	setup_pam1(padr_end, &heap);
 
-	void* buf = bootheap.alloc(PHYS_L1_SIZE, PHYS_L1_SIZE, false);
+	void* buf = heap.alloc(SLOTM_BOOTHEAP, PHYS_L1_SIZE, PHYS_L1_SIZE, false);
 	buf = arch::map_phys_adr(buf, PHYS_L1_SIZE);
 	if (setup_core_page(buf) == false)
 		return cause::UNKNOWN;
@@ -409,14 +377,14 @@ cause::stype init()
 	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
 	const uptr pmem_end = search_pmem_end();
 
-	buf = bootheap.alloc(
+	buf = heap.alloc(SLOTM_BOOTHEAP,
 	    pgctl->calc_workarea_size(pmem_end), PHYS_L1_SIZE, false);
 	if (buf == 0)
 		return cause::NO_MEMORY;
 
 	pgctl->init(pmem_end, buf);
 
-	cause::stype r = load_page(bootheap, pgctl);
+	cause::stype r = load_page(heap, pgctl);
 	if (r != cause::OK)
 		return r;
 
