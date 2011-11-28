@@ -80,7 +80,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	log_file vgalog(&vga_dev);
 	log_init(&vgalog);
 
-	cause::stype r = arch::page::init();
+	cause::stype r = page_ctl_init();
 	if (r != cause::OK)
 		return r;
 

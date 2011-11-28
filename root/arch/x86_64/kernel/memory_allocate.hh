@@ -9,15 +9,7 @@
 #include "basic_types.hh"
 
 
-namespace arch {
-
-namespace page {
-
-cause::stype init();
-
-}  // namespace page
-
-}  // namespace arch
+cause::stype page_ctl_init();
 
 namespace memory {
 
