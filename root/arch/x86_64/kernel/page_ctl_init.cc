@@ -28,9 +28,7 @@
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
-#include "placement_new.hh"
 #include "setupdata.hh"
-#include "boot_access.hh"
 
 
 namespace {

@@ -4,17 +4,9 @@
 // (C) 2010-2011 KATO Takeshi
 //
 
-#include "arch.hh"
-#include "basic_types.hh"
-#include "bootinfo.hh"
-#include "core_class.hh"
-#include "cheap_alloc.hh"
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
-#include "placement_new.hh"
-#include "setupdata.hh"
-#include "boot_access.hh"
 
 
 void page_ctl::detect_paging_features()
