@@ -1,10 +1,10 @@
-// @file   arch/x86_64/kernel/fileif.cpp
+// @file   arch/x86_64/kernel/file.cpp
 // @author Kato Takeshi
 // @brief  DeviceInterface class implements.
 //
 // (C) 2010 Kato Takeshi
 
-#include "fileif.hh"
+#include "file.hh"
 
 
 inline void io_vector_iterator::normalize()
@@ -38,14 +38,7 @@ u8* io_vector_iterator::next_u8()
 	return r;
 }
 
-int filenode_interface::write(
-    const io_vector* vectors, 
-    int              vector_count,
-    ucpu             offset)
+int file::write(const io_vector*, int, ucpu)
 {
-	vectors = vectors;
-	vector_count = vector_count;
-	offset = offset;
-
 	return cause::INVALID_OPERATION;
 }

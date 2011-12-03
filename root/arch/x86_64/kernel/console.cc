@@ -4,7 +4,7 @@
 //
 
 #include "arch.hh"
-#include "fileif.hh"
+#include "file.hh"
 #include "memory_allocate.hh"
 #include "placement_new.hh"
 
@@ -13,7 +13,7 @@
 
 namespace {
 
-class console_ctrl : public file_interface
+class console_ctrl : public file
 {
 	int width;
 	int height;
@@ -40,7 +40,7 @@ private:
 
 public:
 	static cause::stype write(
-	    file_interface* self, const void* data, uptr size, uptr offset);
+	    file* self, const void* data, uptr size, uptr offset);
 	void dump();
 };
 
@@ -141,7 +141,7 @@ cause::stype console_ctrl::write_(const char* data, uptr size)
 }
 
 cause::stype console_ctrl::write(
-    file_interface* self, const void* data, uptr size, uptr offset)
+    file* self, const void* data, uptr size, uptr offset)
 {
 	offset = offset;
 
@@ -152,7 +152,7 @@ cause::stype console_ctrl::write(
 
 }
 
-file_interface* attach_console(int w, int h, u64 vram_adr)
+file* attach_console(int w, int h, u64 vram_adr)
 {
 	///////
 	console_ctrl::console_ops.write = console_ctrl::write;

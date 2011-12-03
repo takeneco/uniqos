@@ -1,14 +1,13 @@
-// @file   include/fileif.hh
-// @author Kato Takeshi
-// @brief  Device interface class definition.
+/// @file   include/file.hh
+/// @brief  Device interface class definition.
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
-#ifndef _INCLUDE_FILEIF_HH_
-#define _INCLUDE_FILEIF_HH_
+#ifndef INCLUDE_FILE_HH_
+#define INCLUDE_FILE_HH_
 
-#include "base_types.hh"
+#include "basic_types.hh"
 
 
 struct io_vector
@@ -46,36 +45,32 @@ public:
 };
 
 
-class file_interface;
+class file;
 
 struct file_ops
 {
 	cause::stype (*write)(
-	    file_interface* self, const void* data, uptr size, uptr offset);
+	    file* self, const void* data, uptr size, uptr offset);
 };
 
 // @brief  file like interface base class.
 
-class file_interface
+class file
 {
 protected:
-	file_interface() {}
+	file() {}
 
 private:
-	file_interface(const file_interface&);
-	void operator = (const file_interface&);
+	file(const file&);
+	void operator = (const file&);
 
 public:
 	file_ops* ops;
 
-	/*virtual*/ int write(
+	int write(
 	    const io_vector* vectors,
 	    int              vector_count,
 	    ucpu             offset);
 };
-
-typedef file_interface filenode_interface;
-typedef file_ops filenode_ops;
-
 
 #endif  // Include guard.

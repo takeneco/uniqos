@@ -291,7 +291,7 @@ cause::stype log_file::write(log_target* self, const void* data, u32 bytes)
 {
 	log_file* this_ = reinterpret_cast<log_file*>(self);
 
-	return this_->file->ops->write(this_->file, data, bytes, 0);
+	return this_->target->ops->write(this_->target, data, bytes, 0);
 }
 
 

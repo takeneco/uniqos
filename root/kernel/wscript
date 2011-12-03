@@ -6,7 +6,7 @@
 
 kern_sources = [
     'drive.cc',
-    'fileif.cc',
+    'file.cc',
     'interrupt_control.cc',
     'log.cc',
     'log_access.cc',
@@ -39,7 +39,7 @@ def build(x):
 	if x.env.boot_multiboot:
 		x.objects(
 		    target   = 'mb_libs',
-		    source   = ['fileif.cc', 'log.cc', 'string.cc'],
+		    source   = ['file.cc', 'log.cc', 'string.cc'],
 		    use      = 'MB',
 		)
 

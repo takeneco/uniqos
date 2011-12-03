@@ -6,7 +6,7 @@
 #ifndef INCLUDE_LOG_HH_
 #define INCLUDE_LOG_HH_
 
-#include "fileif.hh"
+#include "file.hh"
 
 
 // @brief  Kernel log output destination.
@@ -76,23 +76,23 @@ public:
 // @brief  log to file_interface
 class log_file : public log_target
 {
-	file_interface* file;
+	file* target;
 
 	static cause::stype write(
 	    log_target* self, const void* data, u32 bytes);
 
 public:
 	log_file() {}
-	log_file(file_interface* file_) : file(file_) {
+	log_file(file* _file) : target(_file) {
 		write_func = write;
 	}
 
-	void attach(file_interface* _file) {
-		file = _file;
+	void attach(file* _file) {
+		target = _file;
 		write_func = write;
 	}
 
-	file_interface* get_file() { return file; }
+	file* get_file() { return target; }
 };
 
 
@@ -102,7 +102,7 @@ void log_set(u8 i, log_target* target);
 void log_set(u8 i, bool mask);
 
 //
-class kern_output : public filenode_interface
+class kern_output : public file
 {
 	void putux(umax n, int bits);
 

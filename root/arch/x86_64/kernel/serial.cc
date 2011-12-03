@@ -7,7 +7,7 @@
 #include "core_class.hh"
 #include "chain.hh"
 #include "event.hh"
-#include "fileif.hh"
+#include "file.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "irq_control.hh"
@@ -63,7 +63,7 @@ public:
 };
 
 
-class serial_ctrl : public file_interface
+class serial_ctrl : public file
 {
 	const u16 base_port;
 	const u16 irq_num;
@@ -117,7 +117,7 @@ private:
 
 public:
 	static cause::stype write(
-	    file_interface* self, const void* data, uptr size, uptr offset);
+	    file* self, const void* data, uptr size, uptr offset);
 	void dump();
 };
 
@@ -215,7 +215,7 @@ cause::stype serial_ctrl::write_(const void* data, uptr size)
 }
 
 cause::stype serial_ctrl::write(
-    file_interface* self, const void* data, uptr size, uptr offset)
+    file* self, const void* data, uptr size, uptr offset)
 {
 	offset=offset;
 
@@ -315,7 +315,7 @@ void serial_ctrl::dump()
 
 }
 
-file_interface* create_serial()
+file* create_serial()
 {
 	///////
 	serial_ctrl::serial_ops.write = serial_ctrl::write;

@@ -25,8 +25,8 @@
 
 void test();
 void cpu_test();
-file_interface* create_serial();
-file_interface* attach_console(int w, int h, u64 vram_adr);
+file* create_serial();
+file* attach_console(int w, int h, u64 vram_adr);
 void drive();
 void lapic_dump();
 void serial_dump(void*);
@@ -106,7 +106,7 @@ for(;;)native::hlt();
 
 	slab_init();
 
-	file_interface* serial = create_serial();
+	file* serial = create_serial();
 	log_file lf(serial);
 	log_init(&lf);
 
