@@ -23,7 +23,6 @@ kern_source = [
     'page_ctl_init.cc',
     'serial.cc',
     'serialh.S',
-    'serialout.cc',
     'setupdata.cc',
     'task_switch.S',
     'videoout.cc',

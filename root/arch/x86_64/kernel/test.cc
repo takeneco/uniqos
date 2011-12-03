@@ -31,10 +31,10 @@ public:
 	u32 operator () () { return get(); }
 	u32 operator () (u32 top) { return get() % top; }
 
-	void dump(kout& dump) {
-		dump.c('[').u32hex(seed1)
-		    .c(',').u32hex(seed2)
-		    .c(',').u32hex(seed3).c(']');
+	void dump(log_target& dump) {
+		dump.c('[').u(seed1, 16)
+		    .c(',').u(seed2, 16)
+		    .c(',').u(seed3, 16).c(']');
 	}
 };
 

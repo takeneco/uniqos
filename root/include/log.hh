@@ -96,8 +96,6 @@ public:
 };
 
 
-typedef log_target kout;
-
 void log_init(log_target* target);
 log_target& log(u8 i=0);
 void log_set(u8 i, log_target* target);
