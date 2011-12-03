@@ -28,6 +28,8 @@ typedef uptr_      uptr;
 typedef harf_sptr_ harf_sptr;
 typedef harf_uptr_ harf_uptr;
 
+typedef unsigned int uint;
+
 #define U32(n) u32cast_(n)
 #define U64CAST(n) u64cast_(n)
 #define U64(n) u64cast_(n)
