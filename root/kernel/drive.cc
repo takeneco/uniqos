@@ -30,7 +30,7 @@ void drive()
 
 		arch::halt();
 
-		kernel_log& klog = log();
+		log_target& klog = log();
 		serial_dump(((log_file&)klog).get_file());
 	}
 }

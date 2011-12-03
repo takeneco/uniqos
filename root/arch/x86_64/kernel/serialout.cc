@@ -85,7 +85,7 @@ void serial_kout::init(u16 com_base_port)
 	native::sti();
 }
 
-void serial_kout::writec(kernel_log* self, u8 c)
+void serial_kout::writec(log_target* self, u8 c)
 {
 	serial_kout* x = (serial_kout*)self;
 	for (;;) {

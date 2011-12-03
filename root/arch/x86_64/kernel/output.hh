@@ -56,7 +56,7 @@ public:
 
 	void init(u16 com_base_port);
 
-	static void writec(kernel_log* self, u8 c);
+	static void writec(log_target* self, u8 c);
 };
 
 serial_kout& serial_get_kout();

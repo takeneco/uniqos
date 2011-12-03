@@ -9,7 +9,7 @@
 #include "string.hh"
 
 
-// kernel_log
+// log_target
 
 namespace {
 
@@ -17,7 +17,7 @@ static const char base_number[] = "0123456789abcdef";
 
 }
 
-void kernel_log::put_uhex(umax n, int bits)
+void log_target::put_uhex(umax n, int bits)
 {
 	char s[sizeof n * 2];
 	u32 m = 0;
@@ -28,7 +28,7 @@ void kernel_log::put_uhex(umax n, int bits)
 	call_write(s, m);
 }
 
-void kernel_log::put_uoct(umax n, int bits)
+void log_target::put_uoct(umax n, int bits)
 {
 	char s[(sizeof n * 8 + 2) / 3];
 	u32 m = 0;
@@ -39,7 +39,7 @@ void kernel_log::put_uoct(umax n, int bits)
 	call_write(s, m);
 }
 
-void kernel_log::put_ubin(umax n, int bits)
+void log_target::put_ubin(umax n, int bits)
 {
 	char s[sizeof n * 8]; // BITS_PER_BYTE
 	u32 m = 0;
@@ -50,7 +50,7 @@ void kernel_log::put_ubin(umax n, int bits)
 	call_write(s, m);
 }
 
-void kernel_log::put_udec(uptr n)
+void log_target::put_udec(uptr n)
 {
 	enum { maxdigs = 20 };
 	char s[maxdigs];
@@ -64,7 +64,7 @@ void kernel_log::put_udec(uptr n)
 	call_write(&s[maxdigs - i], i);
 }
 
-kernel_log& kernel_log::c(char ch)
+log_target& log_target::c(char ch)
 {
 	if (this)
 		call_write(&ch, 1);
@@ -72,7 +72,7 @@ kernel_log& kernel_log::c(char ch)
 	return *this;
 }
 
-kernel_log& kernel_log::str(const char* s)
+log_target& log_target::str(const char* s)
 {
 	if (this) {
 		if (!s) {
@@ -88,19 +88,19 @@ kernel_log& kernel_log::str(const char* s)
 
 namespace {
 
-inline void write_minus(kernel_log* self)
+inline void write_minus(log_target* self)
 {
 	const char minus = '-';
 	self->call_write(&minus, 1);
 }
 
-inline void write_plus(kernel_log* self)
+inline void write_plus(log_target* self)
 {
 	const char plus = '+';
 	self->call_write(&plus, 1);
 }
 
-inline void write_unknown(kernel_log* self)
+inline void write_unknown(log_target* self)
 {
 	const char unknown = '?';
 	self->call_write(&unknown, 1);
@@ -108,7 +108,7 @@ inline void write_unknown(kernel_log* self)
 
 } // namespace
 
-kernel_log& kernel_log::s(s8 n, int base)
+log_target& log_target::s(s8 n, int base)
 {
 	if (this) {
 		if (n < 0) {
@@ -123,7 +123,7 @@ kernel_log& kernel_log::s(s8 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::s(s16 n, int base)
+log_target& log_target::s(s16 n, int base)
 {
 	if (this) {
 		if (n < 0) {
@@ -138,7 +138,7 @@ kernel_log& kernel_log::s(s16 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::s(s32 n, int base)
+log_target& log_target::s(s32 n, int base)
 {
 	if (this) {
 		if (n < 0) {
@@ -153,7 +153,7 @@ kernel_log& kernel_log::s(s32 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::s(s64 n, int base)
+log_target& log_target::s(s64 n, int base)
 {
 	if (this) {
 		if (n < 0) {
@@ -168,7 +168,7 @@ kernel_log& kernel_log::s(s64 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::u(u8 n, int base)
+log_target& log_target::u(u8 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -182,7 +182,7 @@ kernel_log& kernel_log::u(u8 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::u(u16 n, int base)
+log_target& log_target::u(u16 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -196,7 +196,7 @@ kernel_log& kernel_log::u(u16 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::u(u32 n, int base)
+log_target& log_target::u(u32 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -210,7 +210,7 @@ kernel_log& kernel_log::u(u32 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::u(u64 n, int base)
+log_target& log_target::u(u64 n, int base)
 {
 	if (this)
 		switch (base) {
@@ -224,7 +224,7 @@ kernel_log& kernel_log::u(u64 n, int base)
 	return *this;
 }
 
-kernel_log& kernel_log::sdec(s64 n)
+log_target& log_target::sdec(s64 n)
 {
 	if (!this)
 		return *this;
@@ -237,7 +237,7 @@ kernel_log& kernel_log::sdec(s64 n)
 	return udec(static_cast<u64>(n));
 }
 
-kernel_log& kernel_log::udec(u64 n)
+log_target& log_target::udec(u64 n)
 {
 	if (this)
 		put_udec(n);
@@ -245,7 +245,7 @@ kernel_log& kernel_log::udec(u64 n)
 	return *this;
 }
 
-kernel_log& kernel_log::u8hex(u8 n)
+log_target& log_target::u8hex(u8 n)
 {
 	if (this)
 		put_uhex(n, 8);
@@ -253,7 +253,7 @@ kernel_log& kernel_log::u8hex(u8 n)
 	return *this;
 }
 
-kernel_log& kernel_log::u16hex(u16 n)
+log_target& log_target::u16hex(u16 n)
 {
 	if (this)
 		put_uhex(n, 16);
@@ -261,7 +261,7 @@ kernel_log& kernel_log::u16hex(u16 n)
 	return *this;
 }
 
-kernel_log& kernel_log::u32hex(u32 n)
+log_target& log_target::u32hex(u32 n)
 {
 	if (this)
 		put_uhex(n, 32);
@@ -269,7 +269,7 @@ kernel_log& kernel_log::u32hex(u32 n)
 	return *this;
 }
 
-kernel_log& kernel_log::u64hex(u64 n)
+log_target& log_target::u64hex(u64 n)
 {
 	if (this)
 		put_uhex(n, 64);
@@ -277,8 +277,8 @@ kernel_log& kernel_log::u64hex(u64 n)
 	return *this;
 }
 
-cause::stype kernel_log::default_write_func(
-    kernel_log* self, const void* data, u32 bytes)
+cause::stype log_target::default_write_func(
+    log_target* self, const void* data, u32 bytes)
 {
 	for (u32 i = 0; i < bytes; ++i)
 		self->writec_func(self, reinterpret_cast<const u8*>(data)[i]);
@@ -287,7 +287,7 @@ cause::stype kernel_log::default_write_func(
 
 // log_io
 
-cause::stype log_file::write(kernel_log* self, const void* data, u32 bytes)
+cause::stype log_file::write(log_target* self, const void* data, u32 bytes)
 {
 	log_file* this_ = reinterpret_cast<log_file*>(self);
 

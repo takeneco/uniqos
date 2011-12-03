@@ -33,13 +33,13 @@ void pte_init(pte* table)
 }
 
 
-inline void indents(kernel_log& x, int n)
+inline void indents(log_target& x, int n)
 {
 	for (int i = 0; i < n; ++i)
 		x("  ");
 }
 
-void dump_pte(kernel_log& x, pte* table, int depth)
+void dump_pte(log_target& x, pte* table, int depth)
 {
 	table = (pte*)arch::map_phys_adr((uptr)table, arch::page::PHYS_L1_SIZE);
 

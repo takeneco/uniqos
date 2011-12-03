@@ -61,7 +61,7 @@ class mem_cache
 		void* alloc(mem_cache& parent);
 		bool back(mem_cache& parent, void* obj);
 
-		void dump(kernel_log& log);
+		void dump(log_target& log);
 	};
 
 	typedef   chain<slab, &slab::  chain_hook> slab_chain;
@@ -108,7 +108,7 @@ private:
 	slab* new_slab();
 	void back_slab();
 
-	void dump(kernel_log& log);
+	void dump(log_target& log);
 };
 
 mem_cache* shared_mem_cache(u32 obj_size);

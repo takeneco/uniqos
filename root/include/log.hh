@@ -10,7 +10,7 @@
 
 
 // @brief  Kernel log output destination.
-class kernel_log
+class log_target
 {
 	void put_uhex(umax n, int bits);
 	void put_uoct(umax n, int bits);
@@ -19,51 +19,51 @@ class kernel_log
 
 protected:
 	typedef cause::stype (*write_function)
-	    (kernel_log* self, const void* data, u32 bytes);
+	    (log_target* self, const void* data, u32 bytes);
 	write_function write_func;
 	static cause::stype default_write_func(
-	    kernel_log* self, const void* data, u32 bytes);
+	    log_target* self, const void* data, u32 bytes);
 
-	void (*writec_func)(kernel_log* self, u8 c);
+	void (*writec_func)(log_target* self, u8 c);
 	static void default_writec_func(
-	    kernel_log* self, u8 c);
+	    log_target* self, u8 c);
 
 protected:
-	kernel_log() {}
-	kernel_log(write_function wf) : write_func(wf) {}
+	log_target() {}
+	log_target(write_function wf) : write_func(wf) {}
 
 public:
-	kernel_log& operator () (char ch) { return c(ch); }
-	kernel_log& operator () (const char* s) { return str(s); }
-	kernel_log& operator () (const void* p) {
+	log_target& operator () (char ch) { return c(ch); }
+	log_target& operator () (const char* s) { return str(s); }
+	log_target& operator () (const void* p) {
 		return c('*').u(reinterpret_cast<u64>(p), 16);
 	}
-	kernel_log& operator () (const char* path, int line) {
+	log_target& operator () (const char* path, int line) {
 		return str(path).c('(').udec(line).c(')');
 	}
-	kernel_log& operator () (const char* path, int line, const char* func) {
+	log_target& operator () (const char* path, int line, const char* func) {
 		return str(path).c('(').udec(line).str("):").str(func);
 	}
-	kernel_log& operator () () { return endl(); }
+	log_target& operator () () { return endl(); }
 
-	kernel_log& c(char ch);
-	kernel_log& str(const char* s);
-	kernel_log& s(s8 n, int base=10);
-	kernel_log& s(s16 n, int base=10);
-	kernel_log& s(s32 n, int base=10);
-	kernel_log& s(s64 n, int base=10);
-	kernel_log& u(u8 n, int base=10);
-	kernel_log& u(u16 n, int base=10);
-	kernel_log& u(u32 n, int base=10);
-	kernel_log& u(u64 n, int base=10);
-	kernel_log& sdec(s64 n);
-	kernel_log& udec(u64 n);
-	kernel_log& u8hex(u8 n);
-	kernel_log& u16hex(u16 n);
-	kernel_log& u32hex(u32 n);
-	kernel_log& u64hex(u64 n);
-	kernel_log& endl() { return str("\r\n"); }
-	kernel_log& write(const void* data, u32 bytes) {
+	log_target& c(char ch);
+	log_target& str(const char* s);
+	log_target& s(s8 n, int base=10);
+	log_target& s(s16 n, int base=10);
+	log_target& s(s32 n, int base=10);
+	log_target& s(s64 n, int base=10);
+	log_target& u(u8 n, int base=10);
+	log_target& u(u16 n, int base=10);
+	log_target& u(u32 n, int base=10);
+	log_target& u(u64 n, int base=10);
+	log_target& sdec(s64 n);
+	log_target& udec(u64 n);
+	log_target& u8hex(u8 n);
+	log_target& u16hex(u16 n);
+	log_target& u32hex(u32 n);
+	log_target& u64hex(u64 n);
+	log_target& endl() { return str("\r\n"); }
+	log_target& write(const void* data, u32 bytes) {
 		call_write(data, bytes);
 		return *this;
 	}
@@ -74,12 +74,12 @@ public:
 };
 
 // @brief  log to file_interface
-class log_file : public kernel_log
+class log_file : public log_target
 {
 	file_interface* file;
 
 	static cause::stype write(
-	    kernel_log* self, const void* data, u32 bytes);
+	    log_target* self, const void* data, u32 bytes);
 
 public:
 	log_file() {}
@@ -96,11 +96,11 @@ public:
 };
 
 
-typedef kernel_log kout;
+typedef log_target kout;
 
-void log_init(kernel_log* target);
-kernel_log& log(u8 i=0);
-void log_set(u8 i, kernel_log* target);
+void log_init(log_target* target);
+log_target& log(u8 i=0);
+void log_set(u8 i, log_target* target);
 void log_set(u8 i, bool mask);
 
 //

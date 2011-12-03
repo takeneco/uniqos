@@ -9,21 +9,21 @@
 
 namespace {
 
-kernel_log* log_target;
+log_target* log_tgt;
 unsigned int log_mask;
 
 } // namespace
 
-void log_init(kernel_log* target)
+void log_init(log_target* target)
 {
-	log_target = target;
+	log_tgt = target;
 	log_mask = 0x00000001;
 }
 
-kernel_log& log(u8 i)
+log_target& log(u8 i)
 {
 	return log_mask & (1 << i) ?
-	    *log_target : *static_cast<kernel_log*>(0);
+	    *log_tgt : *static_cast<log_target*>(0);
 }
 
 void log_set(u8 i, bool mask)

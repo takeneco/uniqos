@@ -301,14 +301,14 @@ mem_cache* shared_mem_cache(u32 obj_size)
 }
 
 
-void mem_cache::slab::dump(kernel_log& log)
+void mem_cache::slab::dump(log_target& log)
 {
 	log("first_free = ").u(first_free)();
 	log("alloc_count = ").u(alloc_count)();
 	log("obj_head = ")(obj_head)();
 }
 
-void mem_cache::dump(kernel_log& log)
+void mem_cache::dump(log_target& log)
 {
 	log("free_objs_avail = ").u(free_objs_avail)();
 	log("free_objs = ")(free_objs[0])(", ")(free_objs[1])(", ")
