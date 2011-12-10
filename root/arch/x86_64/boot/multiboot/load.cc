@@ -6,7 +6,6 @@
 
 #include "bootinfo.hh"
 #include "elf.hh"
-#include "log.hh"
 #include "misc.hh"
 #include "pagetable.hh"
 #include "string.hh"

@@ -8,8 +8,8 @@ kern_sources = [
     'drive.cc',
     'file.cc',
     'interrupt_control.cc',
-    'log.cc',
-    'log_access.cc',
+    'kern_log.cc',
+    'log_target.cc',
     'slab_allocate.cc',
     'string.cc',
 ]
@@ -39,7 +39,7 @@ def build(x):
 	if x.env.boot_multiboot:
 		x.objects(
 		    target   = 'mb_libs',
-		    source   = ['file.cc', 'log.cc', 'string.cc'],
+		    source   = ['file.cc', 'log_target.cc', 'string.cc'],
 		    use      = 'MB',
 		)
 

@@ -75,8 +75,9 @@ void memory_test()
 //dump()('.');
 			}
 		}
-rnd.dump(log());
-log().u64hex(total_max).endl();
+log lg;
+rnd.dump(lg);
+log().u(total_max, 16).endl();
 
 		for (;;) {
 			data* p = ch.remove_head();

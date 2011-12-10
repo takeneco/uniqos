@@ -114,23 +114,3 @@ void VideoOutput::Init(int w, int h, u64 vram_addr)
 */
 }
 
-
-int VideoOutput::write(
-    const io_vector* vectors,
-    int              vector_count,
-    ucpu             offset)
-{
-	offset = offset;
-
-	for (int i1 = 0; i1 < vector_count; i1++) {
-		const ucpu n = vectors[i1].bytes;
-		const char* addr =
-		    reinterpret_cast<const char*>(vectors[i1].address);
-		for (ucpu i2 = 0; i2 < n; i2++) {
-			put(addr[i2]);
-		}
-	}
-
-	return cause::OK;
-}
-

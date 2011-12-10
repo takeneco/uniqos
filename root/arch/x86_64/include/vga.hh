@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_VGA_HH_
 #define ARCH_X86_64_INCLUDE_VGA_HH_
 
-#include "base_types.hh"
+#include "basic_types.hh"
 #include "file.hh"
 
 
@@ -27,9 +27,8 @@ public:
 	void init(u32 _width, u32 _height, void* _vram);
 
 private:
-	static cause::stype write(
-	    file* self, const void* data, uptr size, uptr offset);
-	cause::stype _write(const u8* data, uptr size);
+	static cause::stype write(file* x, const iovec* iov, int iov_cnt);
+	cause::stype _write(const iovec* iov, int iov_cnt);
 
 	void putc(u8 c);
 };

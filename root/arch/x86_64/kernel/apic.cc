@@ -1,14 +1,13 @@
 /// @file  apic.cc
 /// @brief Control APIC.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
 #include "arch.hh"
 #include "kerninit.hh"
+#include "log.hh"
 #include "native_ops.hh"
-
-#include "output.hh"
 
 
 namespace {
@@ -65,8 +64,7 @@ cause::stype local_apic_init()
 {
 	volatile u32* reg;
 
-	kern_get_out()->put_str("local apic version = ")->
-	    put_u64hex(*local_apic_reg(LOCAL_APIC_VERSION))->put_endl();
+	log()("LAPIC version:").u(*local_apic_reg(LOCAL_APIC_VERSION), 16)();
 
 	// Local APIC enable
 	reg = local_apic_reg(LOCAL_APIC_SVR);
@@ -134,19 +132,18 @@ void lapic_eoi()
 
 void lapic_dump()
 {
-	kern_output* kout = kern_get_out();
-	kout->put_str("isr:");
+	log lg;
+	lg("ISR:");
 
 	u32* reg = local_apic_reg(LOCAL_APIC_ISR_BASE);
 	reg += 4 * 8;
 	for (int i = 0; i < 8; ++i) {
 		reg -= 4;
 		u32 r = *reg;
-		kout->put_u32hex(r);
-		kout->put_c(' ');
+		lg.u(r, 16).c(' ');
 	}
 
-	kout->put_endl();
+	lg()();
 }
 
 extern "C" void interrupt_timer()

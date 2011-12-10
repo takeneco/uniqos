@@ -199,156 +199,85 @@ void intr_set_handler(int intr, intr_handler handler)
 
 extern "C" void on_exception_intr_0()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 0");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_1()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 1");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_2()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 2");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_3()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 3");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_4()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 4");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_5()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 5");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_6()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 6");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_7()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 7");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_8()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 8");
-	}
-
-	kout->PutU64Hex((u64)(&kout));
-
 //	for (;;)
 //		native::hlt();
+	log()(__FILE__, __LINE__, __func__)();
 }
 
 extern "C" void on_exception_intr_9()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 9");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_10()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 10");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_11()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 11");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_12()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 12");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_13()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 13")->put_endl();
-	}
-	//log()("&kout=")(kout)();
 	u64* stack=(u64*)0xffffffffffffc000;
 	stack--;
 /*
@@ -368,22 +297,6 @@ extern "C" void on_exception_intr_13()
 	log()("rcx=").u(*stack--, 16)();
 	log()("rax=").u(*stack--, 16)();
 */
-	kout->put_endl();
-	kout->put_str("ss = ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rsp= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rf = ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("cs = ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rip= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("err= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("r11= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("r10= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("r9 = ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("r8 = ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rdi= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rsi= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rdx= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rcx= ")->put_u64hex(*stack--)->put_endl();
-	kout->put_str("rax= ")->put_u64hex(*stack--)->put_endl();
 
 	for (;;)
 		native::hlt();
@@ -391,66 +304,36 @@ extern "C" void on_exception_intr_13()
 
 extern "C" void on_exception_intr_14()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 14");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_15()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 15");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_16()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 16");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_17()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 17");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_18()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 18");
-	}
-
 	for (;;)
 		native::hlt();
 }
 
 extern "C" void on_exception_intr_19()
 {
-	kern_output* kout = kern_get_out();
-	if (kout) {
-		kout->PutStr("exception 19");
-	}
-
 	for (;;)
 		native::hlt();
 }

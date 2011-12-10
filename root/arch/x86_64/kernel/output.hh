@@ -29,15 +29,10 @@ public:
 	void Init(int w, int h, u64 vram_addr);
 	void SetCur(int row, int col) { cur_row = row; cur_col = col; }
 	void GetCur(int* row, int* col) { *row = cur_row; *col = cur_col; }
-
-	virtual int write(
-	    const io_vector* vectors,
-	    int              vector_count,
-	    ucpu             offset);
 };
 
 kern_output* kern_get_out();
 
 
-#endif  // Include guard.
+#endif  // include guard
 

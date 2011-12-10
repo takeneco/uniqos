@@ -30,8 +30,8 @@ void drive()
 
 		arch::halt();
 
-		log_target& klog = log();
-		serial_dump(((log_file&)klog).get_file());
+		//log_target& klog = log();
+		//serial_dump(((log_file&)klog).get_file());
 	}
 }
 

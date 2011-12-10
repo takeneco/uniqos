@@ -1,5 +1,5 @@
 /// @file   include/file.hh
-/// @brief  Device interface class definition.
+/// @brief  file class declaration.
 //
 // (C) 2010-2011 KATO Takeshi
 //
@@ -10,38 +10,40 @@
 #include "basic_types.hh"
 
 
-struct io_vector
+struct iovec
 {
-	ucpu  bytes;
-	void* address;
+	void* base;
+	uptr  bytes;
 };
 
-class io_vector_iterator
+class iovec_iterator
 {
-	const io_vector* iovec;
-	ucpu             iovec_num;
+	const iovec* iov;
+	uint         iov_cnt;
 
-	// Current address is iov[index].address[offset]
-	ucpu             iovec_index;
-	ucpu             address_offset;
+	// Current address is iov[iov_index].address[base_offset]
+	uptr         iov_index;
+	uptr         base_offset;
 
 	void normalize();
+
 public:
-	io_vector_iterator() :
-	    iovec(0), iovec_num(0) {
+	iovec_iterator() :
+	    iov(0), iov_cnt(0) {
 		reset();
 	}
-	explicit io_vector_iterator(const io_vector* iov, ucpu num) :
-	    iovec(iov), iovec_num(num) {
+	iovec_iterator(const iovec* iov, ucpu num) :
+	    iov(iov), iov_cnt(num) {
 		reset();
 	}
 	void reset() {
-		iovec_index = address_offset = 0;
+		iov_index = base_offset = 0;
 	}
 	bool is_end() const {
-		return iovec_index >= iovec_num;
+		return iov_index >= iov_cnt;
 	}
 	u8* next_u8();
+	uptr left_bytes() const;
 };
 
 
@@ -49,14 +51,20 @@ class file;
 
 struct file_ops
 {
-	cause::stype (*write)(
-	    file* self, const void* data, uptr size, uptr offset);
+	typedef cause::stype (*write_fn)(
+	    file* x, const iovec* iov, int iov_cnt);
+	write_fn write;
 };
 
 // @brief  file like interface base class.
 
 class file
 {
+public:
+	cause::stype write(const iovec* iov, int iov_cnt) {
+		return ops->write(this, iov, iov_cnt);
+	}
+
 protected:
 	file() {}
 
@@ -66,11 +74,8 @@ private:
 
 public:
 	file_ops* ops;
-
-	int write(
-	    const io_vector* vectors,
-	    int              vector_count,
-	    ucpu             offset);
 };
 
-#endif  // Include guard.
+
+#endif  // include guard
+

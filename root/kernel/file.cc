@@ -1,44 +1,46 @@
-// @file   arch/x86_64/kernel/file.cpp
-// @author Kato Takeshi
-// @brief  DeviceInterface class implements.
+// @file   kernel/file.cc
+// @brief  file class implements.
 //
-// (C) 2010 Kato Takeshi
+// (C) 2010-2011 KATO Takeshi
+//
 
 #include "file.hh"
 
 
-inline void io_vector_iterator::normalize()
+inline void iovec_iterator::normalize()
 {
-	while (iovec_index < iovec_num) {
-		if (address_offset < iovec[iovec_index].bytes)
+	while (iov_index < iov_cnt) {
+		if (base_offset < iov[iov_index].bytes)
 			break;
-		iovec_index++;
-		address_offset = 0;
+		iov_index++;
+		base_offset = 0;
 	}
 }
 
 // Returns 1 char ptr, and increment.
 // @return  Returns next u8 ptr.
 // @return  If no buffer, returns null.
-u8* io_vector_iterator::next_u8()
+u8* iovec_iterator::next_u8()
 {
-	if (iovec_index >= iovec_num) {
+	if (iov_index >= iov_cnt)
 		return 0;
-	}
-	//if (address_offset >= iovec[iovec_index].bytes) {
-	//	return 0;
-	//}
 
-	u8* const addr = reinterpret_cast<u8*>(iovec[iovec_index].address);
-	u8* const r = &addr[address_offset];
+	u8* const base = reinterpret_cast<u8*>(iov[iov_index].base);
+	u8* const r = &base[base_offset];
 
-	address_offset++;
+	++base_offset;
 	normalize();
 
 	return r;
 }
 
-int file::write(const io_vector*, int, ucpu)
+uptr iovec_iterator::left_bytes() const
 {
-	return cause::INVALID_OPERATION;
+	uptr total = 0;
+
+	for (uptr i = iov_index; i < iov_cnt; ++i)
+		total += iov[i].bytes;
+
+	return total;
 }
+

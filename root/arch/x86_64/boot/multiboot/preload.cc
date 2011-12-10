@@ -17,7 +17,6 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "bootinfo.hh"
-#include "log.hh"
 #include "misc.hh"
 #include "multiboot2.h"
 #include "vga.hh"
@@ -27,7 +26,6 @@ extern "C" u8 self_baseadr[];
 extern "C" u8 self_size[];
 
 text_vga vga_dev;
-log_file vga_log;
 
 namespace {
 
@@ -110,8 +108,7 @@ cause::stype pre_load(u32 magic, const u32* tag)
 	// temporary
 	vga_dev.init(80, 25, (void*)0xb8000);
 
-	vga_log.attach(&vga_dev);
-	log_set(0, &vga_log);
+	log_set(0, &vga_dev);
 
 	log()("&tag : ")(&tag)(", tag : ")(tag);
 

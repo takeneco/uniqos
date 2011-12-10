@@ -106,7 +106,7 @@ private:
 		return buf;
 	}
 	bool is_txfifo_empty() const;
-	cause::stype write_(const void* data, uptr size);
+	cause::stype write_(const iovec* iov, int iov_cnt);
 
 	void on_intr_event();
 	static void on_intr_event_(void* param);
@@ -117,7 +117,7 @@ private:
 
 public:
 	static cause::stype write(
-	    file* self, const void* data, uptr size, uptr offset);
+	    file* self, const iovec* iov, int iov_cnt);
 	void dump();
 };
 
@@ -186,9 +186,9 @@ bool serial_ctrl::is_txfifo_empty() const
 }
 
 // TODO: exclusive
-cause::stype serial_ctrl::write_(const void* data, uptr size)
+cause::stype serial_ctrl::write_(const iovec* iov, int iov_cnt)
 {
-	const char* src = reinterpret_cast<const char*>(data);
+	iovec_iterator iov_itr(iov, iov_cnt);
 
 	buf_entry* buf = buf_queue.head();
 	if (buf == 0) {
@@ -197,13 +197,17 @@ cause::stype serial_ctrl::write_(const void* data, uptr size)
 			return cause::NO_MEMORY;
 	}
 
-	for (uptr i = 0; i < size; ++i) {
+	for (;;) {
+		const u8* c = iov_itr.next_u8();
+		if (!c)
+			break;
+
 		if (next_write >= buf_entry::BUF_SIZE) {
 			buf = buf_append();
 			if (buf == 0)
 				return cause::NO_MEMORY;
 		}
-		buf->write(next_write++, src[i]);
+		buf->write(next_write++, *c);
 	}
 
 	if (output_fifo_empty) {
@@ -215,13 +219,11 @@ cause::stype serial_ctrl::write_(const void* data, uptr size)
 }
 
 cause::stype serial_ctrl::write(
-    file* self, const void* data, uptr size, uptr offset)
+    file* self, const iovec* iov, int iov_cnt)
 {
-	offset=offset;
-
 	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(self);
 
-	return serial->write_(data, size);
+	return serial->write_(iov, iov_cnt);
 };
 
 void serial_ctrl::on_intr_event()
@@ -309,8 +311,7 @@ void serial_ctrl::transmit()
 
 void serial_ctrl::dump()
 {
-	kern_output* kout = kern_get_out();
-	kout->put_str("serial::dump()")->put_endl();
+	log()("serial::dump()")();
 }
 
 }

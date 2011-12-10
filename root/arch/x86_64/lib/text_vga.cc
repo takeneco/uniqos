@@ -19,20 +19,21 @@ void text_vga::init(u32 _width, u32 _height, void* _vram)
 	xpos = ypos = 0;
 }
 
-cause::stype text_vga::write(
-    file* self, const void* data, uptr size, uptr offset)
+cause::stype text_vga::write(file* x, const iovec* iov, int iov_cnt)
 {
-	return static_cast<text_vga*>(self)->_write(
-	    reinterpret_cast<const u8*>(data),
-	    size);
+	return static_cast<text_vga*>(x)->_write(iov, iov_cnt);
 }
 
-cause::stype text_vga::_write(const u8* data, uptr size)
+cause::stype text_vga::_write(const iovec* iov, int iov_cnt)
 {
-	for (uptr i = 0; i < size; ++i) {
-		if (data[i] == '\r')
+	iovec_iterator itr(iov, iov_cnt);
+	for (;;) {
+		const u8 *c = itr.next_u8();
+		if (!c)
+			break;
+		if (*c == '\r')
 			continue;
-		if (data[i] == '\n') {
+		if (*c == '\n') {
 			xpos = 0;
 			++ypos;
 			continue;
@@ -41,7 +42,7 @@ cause::stype text_vga::_write(const u8* data, uptr size)
 			xpos = 0;
 			++ypos;
 		}
-		putc(data[i]);
+		putc(*c);
 	}
 
 	return cause::OK;

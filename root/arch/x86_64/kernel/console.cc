@@ -155,7 +155,7 @@ cause::stype console_ctrl::write(
 file* attach_console(int w, int h, u64 vram_adr)
 {
 	///////
-	console_ctrl::console_ops.write = console_ctrl::write;
+	//console_ctrl::console_ops.write = console_ctrl::write;
 	///////
 
 	void* mem = memory::alloc(sizeof (console_ctrl));

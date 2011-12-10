@@ -4,7 +4,6 @@
 //
 
 #include "bootinfo.hh"
-#include "log.hh"
 #include "misc.hh"
 #include "string.hh"
 

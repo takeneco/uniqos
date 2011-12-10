@@ -22,7 +22,7 @@
 
 #include "arch.hh"
 #include "chain.hh"
-#include "log.hh"
+#include "log_target.hh"
 
 
 /// @brief  簡単なメモリ管理の実装
@@ -120,15 +120,15 @@ private:
 	bool   _free(void* p, adr_slot* slot);
 
 public:
-	void _debug_dump(adr_slot& slot) {
+	void _debug_dump(adr_slot& slot, log_target& log) {
 	 for(range*r=slot.free_ranges.head();r;r=slot.free_ranges.next(r))
-	  log()("free:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
+	  log("free:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
 	 for(range*r=slot.alloc_ranges.head();r;r=slot.alloc_ranges.next(r))
-	  log()("alloc:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
+	  log("alloc:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
 	}
-	void debug_dump() {
+	void debug_dump(log_target& log) {
 		for (unsigned i = 0; i < SLOT_COUNT; ++i) {
-			log()("slot[").u(i)("]:")();
+			log("slot[").u(i)("]:")();
 			_debug_dump(slots[i]);
 		}
 	}

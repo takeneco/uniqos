@@ -7,6 +7,7 @@
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
 #include "cheap_alloc.hh"
+#include "log_target.hh"
 
 
 typedef cheap_alloc<256> allocator;
@@ -41,6 +42,18 @@ extern struct load_info_
 
 	u64 bootinfo_adr;
 } load_info;
+
+
+// log
+
+class log : public log_target
+{
+public:
+	log();
+	~log();
+};
+
+void log_set(uint i, file* target);
 
 
 #endif  // include guard

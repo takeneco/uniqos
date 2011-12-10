@@ -77,8 +77,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	global_vars::gv.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
 
 	vga_dev.init(80, 25, (void*)0xb8000);
-	log_file vgalog(&vga_dev);
-	log_init(&vgalog);
+	log_init(&vga_dev);
 
 	cause::stype r = page_ctl_init();
 	if (r != cause::OK)
@@ -107,8 +106,7 @@ for(;;)native::hlt();
 	slab_init();
 
 	file* serial = create_serial();
-	log_file lf(serial);
-	log_init(&lf);
+	log_init(serial);
 
 	{
 	char* setup_log;
