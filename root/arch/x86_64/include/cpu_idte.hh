@@ -1,13 +1,13 @@
-/// @file   idte.hh
+/// @file   cpu_idte.hh
 /// @brief  IDT ops.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2011 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_IDTE_HH_
-#define ARCH_X86_64_INCLUDE_IDTE_HH_
+#ifndef ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
+#define ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 
-#include "base_types.hh"
+#include "basic_types.hh"
 
 
 namespace arch {
@@ -16,6 +16,7 @@ class idte
 {
 	typedef u64 type;
 	type e[2];
+
 public:
 	enum FLAGS {
 		INTR = 0x0e0000000000,
@@ -31,8 +32,8 @@ public:
 		       (         0x0000800000000000); // Enable(P) flag.
 		e[1] = (offset & 0xffffffff00000000) >> 32;
 	}
-	void set(void (*method)(), type seg, type ist, type dpl, type flags) {
-		set(reinterpret_cast<type>(method), seg, ist, dpl, flags);
+	void set(void (*handler)(), type seg, type ist, type dpl, type flags) {
+		set(reinterpret_cast<type>(handler), seg, ist, dpl, flags);
 	}
 	void disable() {
 		e[0] = e[1] = 0;
@@ -44,4 +45,4 @@ public:
 }  // namespace arch
 
 
-#endif  // Include guard
+#endif  // include guard

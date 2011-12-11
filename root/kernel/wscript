@@ -18,7 +18,7 @@ kern_defines = []
 
 
 setup_sources = [
-    'log.cc',
+    'log_target.cc',
     'string.cc',
 ]
 
