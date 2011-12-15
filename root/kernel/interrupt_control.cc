@@ -9,11 +9,13 @@
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 
+#include "log.hh"
 
 /// @brief 割り込み発生時に呼ばれる。
 /// @param vec 割り込みベクタ。
 extern "C" void on_interrupt(arch::intr_vec index)
 {
+	log()("onintr0x").u(index,16)();
 	global_vars::gv.intr_ctl_obj->call_interrupt(index);
 }
 

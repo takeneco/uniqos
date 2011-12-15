@@ -7,8 +7,9 @@
 #define ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
 
 #include "arch.hh"
-#include "base_types.hh"
+#include "basic_types.hh"
 #include "chain.hh"
+#include "event_queue.hh"
 #include "interrupt_control.hh"
 
 #include "global_vars.hh"
@@ -21,6 +22,7 @@ class core_page
 	page_ctl          page_ctl_obj;
 	arch::irq_ctl     irq_ctl_obj;
 	intr_ctl          intr_ctl_obj;
+	event_queue       event_ctl_obj;
 
 public:
 	core_page() {}
@@ -39,6 +41,7 @@ inline bool core_page::init()
 	gv.page_ctl_obj    = &page_ctl_obj;
 	gv.irq_ctl_obj     = &irq_ctl_obj;
 	gv.intr_ctl_obj    = &intr_ctl_obj;
+	gv.event_ctl_obj   = &event_ctl_obj;
 
 	return true;
 }

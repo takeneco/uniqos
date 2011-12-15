@@ -71,6 +71,38 @@ void func()
 	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
 }
 
+void disable_intr_from_8259A()
+{
+	enum {
+		PIC0_ICW1 = 0x20,
+		PIC0_OCW1 = 0x21,
+		PIC0_ICW2 = 0x21,
+		PIC0_ICW3 = 0x21,
+		PIC0_ICW4 = 0x21,
+		PIC1_ICW1 = 0xa0,
+		PIC1_OCW1 = 0xa1,
+		PIC1_ICW2 = 0xa1,
+		PIC1_ICW3 = 0xa1,
+		PIC1_ICW4 = 0xa1,
+	};
+
+	native::outb(0xff, PIC0_OCW1);
+	native::outb(0xff, PIC1_OCW1);
+
+	native::outb(0x11, PIC0_ICW1);
+	native::outb(0xf8, PIC0_ICW2); // 使わなさそうなベクタにマップしておく
+	native::outb(1<<2, PIC0_ICW3);
+	native::outb(0x01, PIC0_ICW4);
+
+	native::outb(0x11, PIC1_ICW1);
+	native::outb(0xf8, PIC1_ICW2);
+	native::outb(2   , PIC1_ICW3);
+	native::outb(0x01, PIC1_ICW4);
+
+	native::outb(0xff, PIC0_OCW1);
+	native::outb(0xff, PIC1_OCW1);
+}
+
 text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
@@ -86,24 +118,20 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	global_vars::gv.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
+	disable_intr_from_8259A();
 	cpu_init();
 
 	native::sti();
 
 	global_vars::gv.irq_ctl_obj->init();
 
-log()("ddd")();
-for(;;)native::hlt();
 	global_vars::gv.intr_ctl_obj->init();
 log()("eee")();
-for(;;)native::hlt();
-
-	global_vars::gv.events =
-		new (memory::alloc(sizeof (event_queue))) event_queue;
 
 	arch::apic_init();
 
 	slab_init();
+for(;;)native::hlt();
 
 	file* serial = create_serial();
 	log_init(serial);

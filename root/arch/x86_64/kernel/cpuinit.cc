@@ -328,8 +328,12 @@ int cpu_init()
 	native::gdt_ptr64 gdtptr;
 	gdtptr.set(sizeof cpu0_gdt, &cpu0_gdt);
 	native::lgdt(&gdtptr);
-	native::set_ss(cpu0_gdt.kern_data_offset());
 
+	native::set_ds(cpu0_gdt.kern_data_offset());
+	native::set_es(cpu0_gdt.kern_data_offset());
+	native::set_fs(cpu0_gdt.kern_data_offset());
+	native::set_gs(cpu0_gdt.kern_data_offset());
+	native::set_ss(cpu0_gdt.kern_data_offset());
 
 	mp_floating_pointer_structure* mpfps = search_mpfps();
 	g_mpfps = mpfps;

@@ -209,6 +209,18 @@ inline u16 get_ss() {
 	    "movw %%ax, %0" : "=rm" (ss) : : "%ax");
 	return ss;
 }
+inline void set_ds(u16 ds) {
+	asm volatile ("movw %0, %%ds" : : "r" (ds));
+}
+inline void set_es(u16 es) {
+	asm volatile ("movw %0, %%es" : : "r" (es));
+}
+inline void set_fs(u16 fs) {
+	asm volatile ("movw %0, %%fs" : : "r" (fs));
+}
+inline void set_gs(u16 gs) {
+	asm volatile ("movw %0, %%gs" : : "r" (gs));
+}
 inline void set_ss(u16 ss) {
 	asm volatile (
 	    "movw %0, %%ax \n"

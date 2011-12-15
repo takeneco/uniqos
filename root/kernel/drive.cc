@@ -18,10 +18,10 @@ void drive()
 {
 	log()("(C) KATO Takeshi")();
 
-	event_queue* queue = global_vars::gv.events;
+	event_queue* evctl = global_vars::gv.event_ctl_obj;
 	for (;;) {
 		for (;;) {
-			event_item* event = queue->pop();
+			event_item* event = evctl->pop();
 			if (!event)
 				break;
 
@@ -37,8 +37,8 @@ void drive()
 
 void post_event(event_item* event)
 {
-	event_queue* queue = global_vars::gv.events;
+	event_queue* evctl = global_vars::gv.event_ctl_obj;
 
-	queue->push(event);
+	evctl->push(event);
 }
 
