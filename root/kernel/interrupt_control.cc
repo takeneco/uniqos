@@ -15,7 +15,6 @@
 /// @param vec 割り込みベクタ。
 extern "C" void on_interrupt(arch::intr_vec index)
 {
-	log()("onintr0x").u(index,16)();
 	global_vars::gv.intr_ctl_obj->call_interrupt(index);
 }
 

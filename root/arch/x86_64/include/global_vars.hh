@@ -15,6 +15,7 @@ class irq_ctl;
 }  // namespace arch
 class intr_ctl;
 class memcache_control;
+class mempool_ctl;
 class core_class;
 class event_queue;
 
@@ -26,6 +27,7 @@ struct _vars
 {
 	core_page*       core_page_obj;
 	page_ctl*        page_ctl_obj;
+	mempool_ctl*     mempool_ctl_obj;
 	arch::irq_ctl*   irq_ctl_obj;
 	intr_ctl*        intr_ctl_obj;
 

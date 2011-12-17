@@ -139,6 +139,8 @@ public:
 
 	iterator end() { return iterator(0); }
 
+	bool is_empty() const { return side.get_front() == 0; }
+
 	// 1end, 2end & bidir
 	static const DATA* prev(const DATA* p) {
 		return (const_cast<DATA*>(p)->*LINK)().prev; }

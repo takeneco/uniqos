@@ -80,7 +80,6 @@ class mem_cache
 	enum { FREE_OBJS_LEN = 64 };
 	u16 free_objs_avail;
 	void* free_objs[FREE_OBJS_LEN];
-	u64 tmp[60];
 
 public:
 	bichain_node<mem_cache>& chain_hook() { return _chain_node; }
@@ -112,6 +111,93 @@ private:
 };
 
 mem_cache* shared_mem_cache(u32 obj_size);
+
+
+class mem_pool
+{
+	friend class mempool_ctl;
+
+public:
+	mem_pool(
+	    u32 _obj_size,
+	    arch::page::TYPE ptype = arch::page::INVALID);
+
+	u32 get_obj_size() const { return obj_size; }
+	u32 get_page_objs() const { return page_objs; }
+
+	void* alloc();
+	void free(void* ptr);
+
+	bichain_node<mem_pool>& chain_hook() { return _chain_node; }
+
+private:
+	class memobj
+	{
+		chain_node<memobj> _chain_node;
+	public:
+		chain_node<memobj>& chain_hook() { return _chain_node; }
+	};
+
+	class page
+	{
+	public:
+		page() :
+		    alloc_count(0)
+		{}
+
+		bool is_full() const {
+			return free_chain.is_empty();
+		}
+		bool is_free() const {
+			return alloc_count == 0;
+		}
+
+		void init_onpage(const mem_pool& parent);
+		memobj* alloc();
+		bool free(const mem_pool& parent, memobj* obj);
+
+		  chain_node<page>&   chain_hook() { return _chain_node; }
+		bichain_node<page>& bichain_hook() { return _chain_node; }
+
+	private:
+		u8* onpage_get_memory() {
+			return reinterpret_cast<u8*>(this + 1);
+		}
+
+	private:
+		chain<memobj, &memobj::chain_hook> free_chain;
+		u8* memory;
+		u32 alloc_count;
+
+		bichain_node<page> _chain_node;
+	};
+
+private:
+	static arch::page::TYPE auto_page_type(u32 objsize);
+	static u32 normalize_obj_size(u32 objsize);
+
+	void attach(page* pg);
+	page* new_page();
+
+private:
+	u32              obj_size;
+	arch::page::TYPE page_type;
+	uptr             page_size;
+	u32              page_objs;  ///< ページの中にあるオブジェクト数
+
+	typedef chain<memobj, &memobj::chain_hook> obj_chain;
+	obj_chain free_objs;
+
+	typedef   chain<page, &page::chain_hook> page_chain;
+	typedef bichain<page, &page::bichain_hook> page_bichain;
+	page_chain   free_pages;
+	page_bichain partial_pages;
+	page_bichain full_pages;
+
+	bichain_node<mem_pool> _chain_node;
+};
+
+mem_pool* mempool_create_shared(u32 objsize);
 
 
 #endif  // include guard

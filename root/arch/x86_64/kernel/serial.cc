@@ -76,7 +76,7 @@ class serial_ctrl : public file
 	/// バッファを読むときは buf_queue->tail() の next_read から読む。
 	u32 next_read;
 
-	mem_cache* buf_mc;
+	mem_pool* buf_mp;
 
 	bool output_fifo_empty;
 
@@ -98,7 +98,7 @@ private:
 		       (next_write == next_read && buf_queue.next(h) == 0);
 	}
 	buf_entry* buf_append() {
-		buf_entry* buf = new (buf_mc->alloc()) buf_entry;
+		buf_entry* buf = new (buf_mp->alloc()) buf_entry;
 		if (buf == 0)
 			return 0;
 		buf_queue.insert_head(buf);
@@ -173,7 +173,7 @@ cause::stype serial_ctrl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
-	buf_mc = shared_mem_cache(buf_entry::SIZE);
+	buf_mp = mempool_create_shared(buf_entry::SIZE);
 
 	return cause::OK;
 }
@@ -296,7 +296,7 @@ void serial_ctrl::transmit()
 		if (buf == 0)
 			break;
 		if (next_read == buf_entry::BUF_SIZE) {
-			buf_mc->free(buf_queue.remove_tail());
+			buf_mp->free(buf_queue.remove_tail());
 			buf = buf_queue.tail();
 			buf_is_last = buf == buf_queue.head();
 			next_read = 0;
@@ -316,13 +316,17 @@ void serial_ctrl::dump()
 
 }
 
+namespace {
+uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
+}
 file* create_serial()
 {
 	///////
 	serial_ctrl::serial_ops.write = serial_ctrl::write;
 	///////
 
-	void* mem = memory::alloc(sizeof (serial_ctrl));
+	//void* mem = memory::alloc(sizeof (serial_ctrl));
+	void* mem = tmp;
 	serial_ctrl* serial = new (mem) serial_ctrl(0x03f8, 4);
 
 	serial->configure();
