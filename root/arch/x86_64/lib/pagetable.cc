@@ -44,20 +44,29 @@ void dump_pte(log_target& x, pte* table, int depth)
 	table = (pte*)arch::map_phys_adr((uptr)table, arch::page::PHYS_L1_SIZE);
 
 	--depth;
+	bool nl = false;
 
 	for (int i = 0; i < 512; ++i) {
 		const pte& e = table[i];
 		if (e.get() & pte::P) {
-			indents(x, 3 - depth);
-			x("[").u(u32(i), 16)("] : ").u(e.get(), 16)();
+			if (!nl)
+				indents(x, 3 - depth);
+			x("[").u(u32(i), 16)("] : ").u(e.get(), 16);
 			if (!(e.get() & pte::PS) && depth >= 0) {
+				x(); // newline
+				nl = false;
 				pte* _table =
 				    reinterpret_cast<pte*>(
 				    static_cast<uptr>(e.get_adr()));
 				dump_pte(x, _table, depth);
+			} else {
+				nl ? x() : x("  ");
+				nl = !nl;
 			}
 		}
 	}
+	if (nl)
+		x();
 }
 
 }  // namespace arch
