@@ -24,7 +24,7 @@ def build(x):
 
 	linker_script = x.path.find_node('multiboot.ld')
 
-	ls_opt = '-T' + linker_script.abspath()
+	ls_opt = '-Wl,-T' + linker_script.abspath()
 
 	x.add_manual_dependency(target, linker_script)
 
@@ -43,12 +43,15 @@ def build(x):
 	defines = []
 	if x.env.debug_boot: defines.append('DEBUG_BOOT')
 
+	mapfile = x.path.find_or_declare('multiboot.map')
+	map_opt = '-Wl,-Map,' + mapfile.abspath()
+
 	x.program(
 	    target = target,
 	    source = source,
 	    defines = defines,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
-	    linkflags = ['-m32', '-nostdlib', '-static', ls_opt],
+	    linkflags = ['-m32', '-nostartfiles', '-static', ls_opt, map_opt],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)

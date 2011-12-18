@@ -7,7 +7,6 @@
 #include "kerninit.hh"
 
 #include "arch.hh"
-#include "basic_types.hh"
 #include "desctable.hh"
 #include "native_ops.hh"
 #include "setupdata.hh"
@@ -318,7 +317,7 @@ mp_floating_pointer_structure* search_mpfps()
 
 
 mp_floating_pointer_structure* g_mpfps;
-int cpu_init()
+cause::stype cpu_init()
 {
 	cpu0_gdt.null_entry.set_null();
 	cpu0_gdt.kern_code.set(0);
@@ -383,7 +382,7 @@ int cpu_init()
 
 	//pic_init();
 
-	return 0;
+	return cause::OK;
 }
 
 void cpu_test()

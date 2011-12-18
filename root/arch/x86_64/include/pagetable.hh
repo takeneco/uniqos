@@ -11,7 +11,7 @@
 #include "arch.hh"
 
 
-class kernel_log;
+class log_target;
 
 namespace arch {
 
@@ -101,7 +101,7 @@ public:
 };
 
 
-void dump_pte(kernel_log& x, pte* table, int level);
+void dump_pte(log_target& x, pte* table, int level);
 
 class page_table_base
 {
@@ -122,7 +122,7 @@ public:
 
 	pte* get_table() { return top; }
 
-	void dump(kernel_log& x) {
+	void dump(log_target& x) {
 		dump_pte(x, top, 4);
 	}
 };

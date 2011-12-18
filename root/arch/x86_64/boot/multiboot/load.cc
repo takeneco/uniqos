@@ -252,7 +252,8 @@ extern "C" u32 load(u32 magic, u32* tag)
 	    arch::page_table::EXIST | arch::page_table::WRITE);
 */
 
-	//pg_tbl.dump(log());
+	//log lg;
+	//pg_tbl.dump(lg);
 
 	load_info.entry_adr = elf->e_entry;
 	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());

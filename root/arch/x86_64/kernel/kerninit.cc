@@ -119,16 +119,31 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
 	disable_intr_from_8259A();
-	cpu_init();
+
+	r = cpu_init();
+	if (r != cause::OK)
+		return r;
 
 	native::sti();
 
-	global_vars::gv.irq_ctl_obj->init();
+	r = global_vars::gv.irq_ctl_obj->init();
+	if (r != cause::OK)
+		return r;
 
-	global_vars::gv.intr_ctl_obj->init();
+	r = global_vars::gv.intr_ctl_obj->init();
+	if (r != cause::OK)
+		return r;
 log()("eee")();
 
 	arch::apic_init();
+
+	global_vars::gv.mempool_ctl_obj->init();
+	if (r != cause::OK)
+		return r;
+
+	{
+		mem_pool* mp = mempool_create_shared(100);
+	}
 
 	slab_init();
 for(;;)native::hlt();

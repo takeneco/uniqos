@@ -43,7 +43,7 @@ enum {
 
 class buf_entry
 {
-	struct {
+	struct info {
 		bichain_node<buf_entry> chain_node;
 	} f;
 
@@ -52,7 +52,7 @@ class buf_entry
 public:
 	enum {
 		SIZE = arch::page::L1_SIZE,
-		BUF_SIZE = SIZE - sizeof f,
+		BUF_SIZE = SIZE - sizeof (info),
 	};
 
 public:

@@ -9,7 +9,7 @@
 #include "basic_types.hh"
 
 
-int cpu_init();
+cause::stype cpu_init();
 
 typedef void (*intr_handler)();
 

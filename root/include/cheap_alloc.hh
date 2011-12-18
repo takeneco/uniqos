@@ -81,7 +81,7 @@ public:
 private:
 	struct range
 	{
-		range() : bytes(0), _chain_node() {}
+		range() : bytes(0) {}
 
 		void set(uptr _adr, uptr _bytes) {
 			adr = _adr;
