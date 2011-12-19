@@ -13,7 +13,7 @@
 
 class text_vga : public file
 {
-	file_ops fops;
+	file::operations fops;
 
 	u32 width;
 	u32 height;
@@ -27,8 +27,9 @@ public:
 	void init(u32 _width, u32 _height, void* _vram);
 
 private:
-	static cause::stype write(file* x, const iovec* iov, int iov_cnt);
-	cause::stype _write(const iovec* iov, int iov_cnt);
+	static cause::stype op_write(
+	    file* x, const iovec* iov, int iov_cnt, uptr* bytes);
+	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
 
 	void putc(u8 c);
 };

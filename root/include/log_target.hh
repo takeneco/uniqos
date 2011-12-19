@@ -48,10 +48,11 @@ public:
 	log_target& operator () () { return endl(); }
 
 	log_target& write(const void* data, uptr bytes) {
+		uptr wrote;
 		iovec iov[1];
 		iov[0].base = const_cast<void*>(data);
 		iov[0].bytes = bytes;
-		target->write(iov, 1);
+		target->write(iov, 1, &wrote);
 		return *this;
 	}
 	log_target& c(char ch) {

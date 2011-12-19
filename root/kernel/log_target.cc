@@ -112,7 +112,8 @@ void log_target::_wr_s(smax n, s8 base, int bits)
 	iov[1].bytes = u_to_str(n, base, bits, buf);
 	iov[1].base = buf;
 
-	target->write(iov, 2);
+	uptr wrote;
+	target->write(iov, 2, &wrote);
 }
 
 void log_target::_wr_p(const void* p)
@@ -128,7 +129,8 @@ void log_target::_wr_p(const void* p)
 	    u_to_hexstr(reinterpret_cast<uptr>(p), sizeof p * 8, buf);
 	iov[1].base = buf;
 
-	target->write(iov, 2);
+	uptr wrote;
+	target->write(iov, 2, &wrote);
 }
 
 /// @param func  function name. null available.
@@ -165,7 +167,8 @@ void log_target::_wr_src(const char* path, int line, const char* func)
 		iov_count = 4;
 	}
 
-	target->write(iov, iov_count);
+	uptr wrote;
+	target->write(iov, iov_count, &wrote);
 }
 
 void log_wr_str(log_target* x, const char* s)

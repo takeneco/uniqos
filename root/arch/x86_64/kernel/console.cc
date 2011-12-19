@@ -27,7 +27,7 @@ class console_ctrl : public file
 
 public:
 	/// @todo: do not use global var.
-	static file_ops console_ops;
+	static file::operations console_ops;
 
 public:
 	console_ctrl(int width_, int height_, u64 vram_adr_);
@@ -44,7 +44,7 @@ public:
 	void dump();
 };
 
-file_ops console_ctrl::console_ops;
+file::operations console_ctrl::console_ops;
 
 console_ctrl::console_ctrl(int width_, int height_, u64 vram_adr_) :
 	width(width_),

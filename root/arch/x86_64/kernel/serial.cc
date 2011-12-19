@@ -85,7 +85,7 @@ class serial_ctrl : public file
 
 public:
 	/// @todo: do not use global var.
-	static file_ops serial_ops;
+	static file::operations serial_ops;
 
 public:
 	serial_ctrl(u16 base_port_, u16 irq_num_);
@@ -106,7 +106,7 @@ private:
 		return buf;
 	}
 	bool is_txfifo_empty() const;
-	cause::stype write_(const iovec* iov, int iov_cnt);
+	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
 
 	void on_intr_event();
 	static void on_intr_event_(void* param);
@@ -116,12 +116,12 @@ private:
 	void transmit();
 
 public:
-	static cause::stype write(
-	    file* self, const iovec* iov, int iov_cnt);
+	static cause::stype op_write(
+	    file* self, const iovec* iov, int iov_cnt, uptr* bytes);
 	void dump();
 };
 
-file_ops serial_ctrl::serial_ops;
+file::operations serial_ctrl::serial_ops;
 
 serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	base_port(base_port_),
@@ -186,8 +186,10 @@ bool serial_ctrl::is_txfifo_empty() const
 }
 
 // TODO: exclusive
-cause::stype serial_ctrl::write_(const iovec* iov, int iov_cnt)
+cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
+	uptr total = 0;
+
 	iovec_iterator iov_itr(iov, iov_cnt);
 
 	buf_entry* buf = buf_queue.head();
@@ -208,6 +210,7 @@ cause::stype serial_ctrl::write_(const iovec* iov, int iov_cnt)
 				return cause::NO_MEMORY;
 		}
 		buf->write(next_write++, *c);
+		++total;
 	}
 
 	if (output_fifo_empty) {
@@ -215,16 +218,16 @@ cause::stype serial_ctrl::write_(const iovec* iov, int iov_cnt)
 		transmit();
 	}
 
+	*bytes = total;
+
 	return cause::OK;
 }
 
-cause::stype serial_ctrl::write(
-    file* self, const iovec* iov, int iov_cnt)
+cause::stype serial_ctrl::op_write(
+    file* self, const iovec* iov, int iov_cnt, uptr* bytes)
 {
-	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(self);
-
-	return serial->write_(iov, iov_cnt);
-};
+	return static_cast<serial_ctrl*>(self)->write(iov, iov_cnt, bytes);
+}
 
 void serial_ctrl::on_intr_event()
 {
@@ -322,7 +325,7 @@ uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
 file* create_serial()
 {
 	///////
-	serial_ctrl::serial_ops.write = serial_ctrl::write;
+	serial_ctrl::serial_ops.write = serial_ctrl::op_write;
 	///////
 
 	//void* mem = memory::alloc(sizeof (serial_ctrl));

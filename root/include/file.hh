@@ -47,22 +47,31 @@ public:
 };
 
 
-class file;
-
-struct file_ops
-{
-	typedef cause::stype (*write_fn)(
-	    file* x, const iovec* iov, int iov_cnt);
-	write_fn write;
-};
-
 // @brief  file like interface base class.
 
 class file
 {
 public:
-	cause::stype write(const iovec* iov, int iov_cnt) {
-		return ops->write(this, iov, iov_cnt);
+	struct operations
+	{
+		typedef cause::stype (*seek_fn)(
+		    file* x, s64 offset, int whence);
+		seek_fn seek;
+
+		typedef cause::stype (*read_fn)(
+		    file* x, iovec* iov, int iov_cnt);
+		read_fn read;
+
+		typedef cause::stype (*write_fn)(
+		    file* x, const iovec* iov, int iov_cnt, uptr* bytes);
+		write_fn write;
+	};
+
+	enum seekdir { BEG = 0, CUR, END, };
+
+public:
+	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes) {
+		return ops->write(this, iov, iov_cnt, bytes);
 	}
 
 protected:
@@ -73,7 +82,7 @@ private:
 	void operator = (const file&);
 
 public:
-	file_ops* ops;
+	const operations* ops;
 };
 
 
