@@ -12,7 +12,10 @@
 
 namespace bootinfo {
 
-enum { TYPE_MEMALLOC = 0x80000001 };
+enum {
+	TYPE_MEMALLOC = 0x80000001,
+	TYPE_LOG,
+};
 struct mem_alloc_entry {
 	u64 adr;
 	u64 bytes;

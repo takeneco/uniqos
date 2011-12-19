@@ -56,4 +56,29 @@ public:
 void log_set(uint i, file* target);
 
 
+class memlog_file : public file
+{
+public:
+	static cause::stype setup();
+
+	memlog_file() {}
+	cause::stype open();
+	cause::stype close();
+
+private:
+	static cause::stype op_seek(file* x, s64 offset, int whence);
+	cause::stype seek(s64 offset, int whence);
+
+	static cause::stype op_read(file* x, iovec* iov, int iov_cnt);
+	cause::stype read(iovec* iov, int iov_cnt);
+
+	static cause::stype op_write(file* x, const iovec* iov, int iov_cnt);
+	cause::stype write(const iovec* iov, int iov_cnt);
+
+private:
+	u8* buf;
+	s64 current;
+};
+
+
 #endif  // include guard

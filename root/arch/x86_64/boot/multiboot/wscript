@@ -4,11 +4,12 @@
 #
 
 source = [
+	'cheap_alloc_use.cc',
 	'entry.S',
 	'log_access.cc',
 	'load.cc',
 	'loadinfo.cc',
-	'cheap_alloc_use.cc',
+	'memlog.cc',
 	'postload.cc',
 	'preload.cc',
 ]
