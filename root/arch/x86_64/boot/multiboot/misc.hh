@@ -66,11 +66,13 @@ public:
 	cause::stype close();
 
 private:
-	static cause::stype op_seek(file* x, s64 offset, int whence);
+	static cause::stype op_seek(
+	    file* x, s64 offset, int whence);
 	cause::stype seek(s64 offset, int whence);
 
-	static cause::stype op_read(file* x, iovec* iov, int iov_cnt);
-	cause::stype read(iovec* iov, int iov_cnt);
+	static cause::stype op_read(
+	    file* x, iovec* iov, int iov_cnt, uptr* bytes);
+	cause::stype read(iovec* iov, int iov_cnt, uptr* bytes);
 
 	static cause::stype op_write(
 	    file* x, const iovec* iov, int iov_cnt, uptr* bytes);

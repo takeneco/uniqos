@@ -59,7 +59,7 @@ public:
 		seek_fn seek;
 
 		typedef cause::stype (*read_fn)(
-		    file* x, iovec* iov, int iov_cnt);
+		    file* x, iovec* iov, int iov_cnt, uptr* bytes);
 		read_fn read;
 
 		typedef cause::stype (*write_fn)(
@@ -70,6 +70,12 @@ public:
 	enum seekdir { BEG = 0, CUR, END, };
 
 public:
+	cause::stype seek(s64 offset, int whence) {
+		return ops->seek(this, offset, whence);
+	}
+	cause::stype read(iovec* iov, int iov_cnt, uptr* bytes) {
+		return ops->read(this, iov, iov_cnt, bytes);
+	}
 	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->write(this, iov, iov_cnt, bytes);
 	}
