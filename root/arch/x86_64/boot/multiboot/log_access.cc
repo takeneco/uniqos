@@ -9,7 +9,7 @@
 
 namespace {
 
-enum { LOG_MODES = 1 };
+enum { LOG_MODES = 2 };
 file* log_tgt[LOG_MODES];
 
 } // namespace
@@ -20,8 +20,8 @@ void log_set(uint i, file* target)
 		log_tgt[i] = target;
 }
 
-log::log()
-:    log_target(log_tgt[0])
+log::log(int i)
+:    log_target(log_tgt[i])
 {
 }
 

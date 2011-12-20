@@ -52,7 +52,7 @@ public:
 		iovec iov[1];
 		iov[0].base = const_cast<void*>(data);
 		iov[0].bytes = bytes;
-		target->write(iov, 1, &wrote);
+		target->call_write(iov, 1, &wrote);
 		return *this;
 	}
 	log_target& c(char ch) {

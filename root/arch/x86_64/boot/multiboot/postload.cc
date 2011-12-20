@@ -83,6 +83,31 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	return size;
 }
 
+uptr store_log(uptr bootinfo_left, u8* bootinfo)
+{
+	bootinfo::log* tag_log = reinterpret_cast<bootinfo::log*>(bootinfo);
+
+	uptr size = sizeof *tag_log;
+	if (bootinfo_left < size)
+		return size;
+
+	memlog.call_seek(0, file::BEG);
+	iovec iov;
+	iov.base = tag_log->log;
+	iov.bytes = bootinfo_left - size;
+	uptr read_bytes;
+	cause::stype r = memlog.call_read(&iov, 1, &read_bytes);
+	if (is_fail(r))
+		return 0;
+
+	size += read_bytes;
+
+	tag_log->type = bootinfo::TYPE_LOG;
+	tag_log->size = size;
+
+	return size;
+}
+
 u8* bootinfo_alloc()
 {
 	void* p = get_alloc()->alloc(
@@ -123,6 +148,12 @@ bool store_bootinfo(const u32* mb_info)
 	wrote += size;
 	bootinfo_left -= size;
 
+	size = store_log(bootinfo_left, &bootinfo[wrote]);
+	if (size > bootinfo_left)
+		return false;
+	wrote += size;
+	bootinfo_left -= size;
+
 	// total size
 	*reinterpret_cast<u32*>(bootinfo) = wrote;
 
@@ -136,7 +167,7 @@ bool stack_test()
 	u32 i;
 	for (i = 0; stack_start[i] == 0 && i < 0xffff; ++i);
 
-	log()("left stack : ").u((i - 1) * 4);
+	log(1)("left stack : ").u((i - 1) * 4);
 
 	return i > 0;
 }
@@ -147,7 +178,7 @@ bool stack_test()
 cause::stype post_load(u32* mb_info)
 {
 	if (!store_bootinfo(mb_info)) {
-		log()("Could not pass bootinfo to kernel.")();
+		log(1)("Could not pass bootinfo to kernel.")();
 		return cause::FAIL;
 	}
 

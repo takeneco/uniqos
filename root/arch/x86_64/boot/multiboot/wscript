@@ -8,7 +8,7 @@ source = [
 	'entry.S',
 	'log_access.cc',
 	'load.cc',
-	'loadinfo.cc',
+	'global.cc',
 	'memlog.cc',
 	'postload.cc',
 	'preload.cc',

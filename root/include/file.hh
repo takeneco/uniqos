@@ -70,13 +70,13 @@ public:
 	enum seekdir { BEG = 0, CUR, END, };
 
 public:
-	cause::stype seek(s64 offset, int whence) {
+	cause::stype call_seek(s64 offset, int whence) {
 		return ops->seek(this, offset, whence);
 	}
-	cause::stype read(iovec* iov, int iov_cnt, uptr* bytes) {
+	cause::stype call_read(iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->read(this, iov, iov_cnt, bytes);
 	}
-	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes) {
+	cause::stype call_write(const iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->write(this, iov, iov_cnt, bytes);
 	}
 

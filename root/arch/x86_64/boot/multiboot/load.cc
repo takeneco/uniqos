@@ -174,7 +174,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 	if (r != cause::OK)
 		return r;
 
-	log()("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
+	log(1)("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
 
 	const Elf64_Ehdr* elf = reinterpret_cast<const Elf64_Ehdr*>(kernel);
 /*

@@ -49,7 +49,7 @@ extern struct load_info_
 class log : public log_target
 {
 public:
-	log();
+	log(int i = 0);
 	~log();
 };
 
@@ -81,7 +81,10 @@ private:
 private:
 	u8* buf;
 	s64 current;
+	s64 size;
 };
+
+extern memlog_file memlog;
 
 
 #endif  // include guard

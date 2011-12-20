@@ -105,18 +105,23 @@ cause::stype pre_load(u32 magic, const u32* tag)
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
 		return cause::INVALID_PARAMS;
 
+	cause::stype r = memlog_file::setup();
+	if (is_fail(r))
+		return r;
+
 	// temporary
 	vga_dev.init(80, 25, (void*)0xb8000);
 
-	log_set(0, &vga_dev);
+	log_set(0, &memlog);
+	log_set(1, &vga_dev);
 
-	log()("&tag : ")(&tag)(", tag : ")(tag);
+	log(1)("&tag : ")(&tag)(", tag : ")(tag);
 
 	const u32* p = tag;
 	const u32 tag_size = *p;
 	p += 2;
 
-	log()(", size : ").u(tag_size)();
+	log(1)(", size : ").u(tag_size)();
 
 	u32 read = 8;
 	while (read < tag_size) {
@@ -192,6 +197,10 @@ cause::stype pre_load(u32 magic, const u32* tag)
 		p += dec / sizeof *p;
 		read += dec;
 	}
+
+	r = memlog.open();
+	if (is_fail(r))
+		return r;
 
 	return cause::OK;
 }

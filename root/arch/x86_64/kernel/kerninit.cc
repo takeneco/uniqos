@@ -146,18 +146,17 @@ log()("eee")();
 	}
 
 	slab_init();
-for(;;)native::hlt();
 
+	const bootinfo::log* bootlog =
+	    reinterpret_cast<const bootinfo::log*>
+	    (get_bootinfo(bootinfo::TYPE_LOG));
+	if (bootlog) {
+		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
+	}
+
+for(;;)native::hlt();
 	file* serial = create_serial();
 	log_init(serial);
-
-	{
-	char* setup_log;
-	u32 setup_log_cur, setup_log_size;
-	setup::get_log(&setup_log, &setup_log_cur, &setup_log_size);
-	log().write(setup_log,
-	    setup_log_cur < setup_log_size ? setup_log_cur : setup_log_size);
-	}
 
 for (int i = 0; i < 4096; ++i) {
 	log()("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")();

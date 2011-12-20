@@ -20,12 +20,6 @@ void setup_get_mp_info(u8** ptr);
 
 const void* get_bootinfo(u32 tag_type);
 
-namespace setup {
-
-void get_log(char** buf, u32* cur, u32* size);
-
-} // namespace setup
-
 
 #endif  // include guard
 

@@ -16,6 +16,7 @@ enum {
 	TYPE_MEMALLOC = 0x80000001,
 	TYPE_LOG,
 };
+
 struct mem_alloc_entry {
 	u64 adr;
 	u64 bytes;
@@ -24,6 +25,12 @@ struct mem_alloc {
 	u32 type;
 	u32 size;
 	mem_alloc_entry entries[0];
+};
+
+struct log {
+	u32 type;
+	u32 size;
+	u8 log[0];
 };
 
 enum {

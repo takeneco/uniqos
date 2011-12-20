@@ -1,7 +1,7 @@
 /// @file  setupdata.cc
 /// @brief  Access to setup data.
 //
-// (C) KATO Takeshi 2010
+// (C) 2010-2011 KATO Takeshi
 //
 /// @todo 物理メモリマップを使うようにする。
 
@@ -40,18 +40,6 @@ void setup_get_mp_info(u8** ptr)
 {
 	*ptr = setup_get_ptr<u8>(SETUP_MP_FLOATING_POINTER);
 }
-
-namespace setup {
-
-void get_log(char** buf, u32* cur, u32* size)
-{
-	*buf = reinterpret_cast<char*>(
-	    (SETUP_LOGBUF_SEG << 4) + SETUP_LOGBUF_ADR);
-	*cur = setup_get_value<u32>(SETUP_LOGBUF_CUR);
-	*size = SETUP_LOGBUF_SIZE;
-}
-
-} // namespace setup
 
 
 #include "bootinfo.hh"
