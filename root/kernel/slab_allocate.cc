@@ -94,7 +94,7 @@ mem_cache::mem_cache(u32 _obj_size, arch::page::TYPE pt, bool force_offslab) :
 	    pt == arch::page::INVALID ? auto_page_type(_obj_size) : pt;
 
 	slab_page_size =
-	    arch::page::inline_page_size(slab_page_type);
+	    arch::page::size_of_type(slab_page_type);
 
 	slab_maxobjs =
 	    (slab_page_size - sizeof(slab)) /
@@ -162,7 +162,7 @@ mem_cache::slab* mem_cache::new_slab()
 	if (arch::page::alloc(slab_page_type, &padr) != cause::OK)
 		return 0;
 
-	void* p = arch::map_phys_mem(padr, slab_page_size);
+	void* p = arch::map_phys_adr(padr, slab_page_size);
 
 	slab* s = new (p) slab;
 	s->init_onslab(*this);

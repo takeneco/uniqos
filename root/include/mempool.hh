@@ -56,7 +56,6 @@ private:
 		memobj* alloc();
 		bool free(const mempool& pool, memobj* obj);
 
-		  chain_node<page>&   chain_hook() { return _chain_node; }
 		bichain_node<page>& bichain_hook() { return _chain_node; }
 
 	private:
@@ -66,8 +65,9 @@ private:
 
 	private:
 		chain<memobj, &memobj::chain_hook> free_chain;
-		u8* memory;
 		u32 alloc_count;
+
+		u8* memory;
 
 		bichain_node<page> _chain_node;
 	};

@@ -16,16 +16,17 @@ mpspec::const_mpfps* search_mpfps()
 	mpspec::const_mpfps* mpfps;
 
 	const uptr ebda =
-	    *reinterpret_cast<u16*>(arch::map_phys_mem(0x40e, 0x400)) << 4;
-	mpfps = mpspec::scan_mpfps(arch::map_phys_mem(ebda, 0x400), 0x400);
+	    *reinterpret_cast<u16*>(arch::map_phys_adr(0x40e, 0x400)) << 4;
+	mpfps = mpspec::scan_mpfps(arch::map_phys_adr(ebda, 0x400), 0x400);
 	if (mpfps)
 		return mpfps;
 
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0xf0000), 0x10000);
+	mpfps = mpspec::scan_mpfps(
+	    arch::map_phys_adr(0xf0000, 0x10000), 0x10000);
 	if (mpfps)
 		return mpfps;
 
-	mpfps = mpspec::scan_mpfps(arch::pmem::direct_map(0x9fc00), 0x400);
+	mpfps = mpspec::scan_mpfps(arch::map_phys_adr(0x9fc00, 0x400), 0x400);
 	if (mpfps)
 		return mpfps;
 log()("ebda=").u((u64)ebda,16)();
@@ -35,7 +36,7 @@ log()("ebda=").u((u64)ebda,16)();
 const mpspec::ioapic_entry* search_ioapic(mpspec::const_mpfps* mpfps)
 {
 	mpspec::const_mpcth* mpcth = reinterpret_cast<mpspec::const_mpcth*>(
-	    arch::pmem::direct_map(mpfps->mp_config_padr));
+	    arch::map_phys_adr(mpfps->mp_config_padr, 0 /*mpcth->base_table_legnth*/));
 
 	static const u16 type_size_map[] = {
 		sizeof (mpspec::processor_entry),
@@ -76,7 +77,7 @@ void* ioapic_base()
 		return 0;
 	}
 
-	return arch::pmem::direct_map(ioapic_etr->ioapic_map_padr);
+	return arch::map_phys_adr(ioapic_etr->ioapic_map_padr, 32);
 }
 
 }  // namespace arch

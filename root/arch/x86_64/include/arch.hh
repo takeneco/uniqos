@@ -80,8 +80,7 @@ enum {
 	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
 
-/// インライン展開される使い方を期待しているので、引数は定数で指定すること。
-inline uptr inline_page_size(TYPE pt)
+inline uptr size_of_type(TYPE pt)
 {
 	switch (pt) {
 	case L1: return L1_SIZE;
@@ -114,23 +113,13 @@ inline void* map_phys_adr(uptr padr, uptr /* size */) {
 inline void* map_phys_adr(void* padr, uptr size) {
 	return map_phys_adr(reinterpret_cast<uptr>(padr), size);
 }
-inline uptr unmap_phys_adr(void* vadr) {
+inline uptr unmap_phys_adr(void* vadr, uptr /* size */) {
 	return reinterpret_cast<uptr>(vadr) - PHYSICAL_ADRMAP;
-}
-inline void* map_phys_mem(uptr padr_from, uptr size) {
-	size = size;
-	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR+ padr_from);
-}
-inline void unmap_phys_mem(void* vadr) {
-	vadr = vadr;
 }
 
 namespace pmem
 {
 
-inline void* direct_map(uptr adr) {
-	return reinterpret_cast<void*>(PHYSICAL_MEMMAP_BASEADR + adr);
-}
 
 }  // namespace pmem
 

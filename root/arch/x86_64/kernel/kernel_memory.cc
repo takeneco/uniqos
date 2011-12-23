@@ -337,7 +337,7 @@ cause::stype init()
 		return r;
 
 	global_vars::gv.core =
-	    new (arch::map_phys_mem(p, sizeof (core_class)))
+	    new (arch::map_phys_adr(p, sizeof (core_class)))
 	    core_class;
 
 	return cause::OK;

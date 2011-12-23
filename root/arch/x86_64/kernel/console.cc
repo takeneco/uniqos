@@ -49,7 +49,7 @@ file::operations console_ctrl::console_ops;
 console_ctrl::console_ctrl(int width_, int height_, u64 vram_adr_) :
 	width(width_),
 	height(height_),
-	vram(reinterpret_cast<char*>(arch::pmem::direct_map(vram_adr_))),
+	vram(reinterpret_cast<char*>(arch::map_phys_adr(vram_adr_, width*height*2))),
 	cur_row(0),
 	cur_col(0),
 	clone_cur_row(0)

@@ -20,7 +20,7 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype)
     freeobj_count(0)
 {
 	page_size =
-	    arch::page::inline_page_size(page_type);
+	    arch::page::size_of_type(page_type);
 
 	page_objs = (page_size - sizeof (page)) / obj_size;
 
@@ -124,7 +124,7 @@ void mempool::delete_page(page* pg)
 	operator delete(pg, pg);
 
 	const cause::stype r =
-	    arch::page::free(page_type, arch::unmap_phys_adr(pg));
+	    arch::page::free(page_type, arch::unmap_phys_adr(pg, page_size));
 	if (is_fail(r)) {
 		log()(__func__)("() failed page free:").u(r)(" page:")(pg)();
 	}
