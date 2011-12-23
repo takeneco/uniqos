@@ -8,11 +8,7 @@
 #include "event_queue.hh"
 #include "global_vars.hh"
 
-
-////
 #include "log.hh"
-void serial_dump(void*);
-////
 
 void drive()
 {
@@ -29,9 +25,6 @@ void drive()
 		}
 
 		arch::halt();
-
-		//log_target& klog = log();
-		//serial_dump(((log_file&)klog).get_file());
 	}
 }
 

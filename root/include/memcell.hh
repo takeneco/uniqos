@@ -59,8 +59,15 @@ public:
 
 	void build_free_chain();
 
+	sptr get_free_pages() const { return free_pages; }
+	sptr get_alloc_pages() const { return alloc_pages; }
+
 	cause::stype reserve_1page(uptr* padr);
 	cause::stype free_1page(uptr padr);
+
+private:
+	cause::stype _reserve_1page(uptr* padr);
+	cause::stype _free_1page(uptr padr);
 
 private:
 	/// メモリアドレスを表現するときは uptr を使う。
@@ -100,6 +107,7 @@ private:
 	cell_chain free_chain;
 
 	page_t free_pages;
+	page_t alloc_pages;
 
 	/// すべての cell
 	cell* cell_table;
@@ -327,9 +335,32 @@ void mem_cell_base<CELLTYPE>::build_free_chain()
 	}
 
 	free_pages = free_count;
+	alloc_pages = 0;
 
 	if (down_level)
 		down_level->build_free_chain();
+}
+
+template<class CELLTYPE>
+cause::stype mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
+{
+	const cause::stype r = _reserve_1page(padr);
+
+	if (is_ok(r))
+		++alloc_pages;
+
+	return r;
+}
+
+template<class CELLTYPE>
+cause::stype mem_cell_base<CELLTYPE>::free_1page(uptr padr)
+{
+	const cause::stype r = _free_1page(padr);
+
+	if (is_ok(r))
+		--alloc_pages;
+
+	return r;
 }
 
 /// @brief １ページだけ予約する。
@@ -337,7 +368,7 @@ void mem_cell_base<CELLTYPE>::build_free_chain()
 /// @retval cause::OK 成功した。
 /// @retval cause::NO_MEMORY 空きメモリがない。
 template<class CELLTYPE>
-cause::stype mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
+cause::stype mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 {
 	cell* c;
 
@@ -353,11 +384,13 @@ cause::stype mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
 	const int offset = c->table.search_true();
 
 	c->table.set_false(offset);
+	--free_pages;
 
 	if (c->table.is_false_all())
 		free_chain.remove_head();
 
 	*padr = get_page_adr(c, offset);
+
 	return cause::OK;
 }
 
@@ -366,7 +399,7 @@ cause::stype mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
 ///                 ページサイズより小さなビットは無視してしまう。
 /// @retval cause::OK  Succeeded.
 template<class CELLTYPE>
-cause::stype mem_cell_base<CELLTYPE>::free_1page(uptr padr)
+cause::stype mem_cell_base<CELLTYPE>::_free_1page(uptr padr)
 {
 	cause::stype r = cause::OK;
 
@@ -377,11 +410,13 @@ cause::stype mem_cell_base<CELLTYPE>::free_1page(uptr padr)
 	const page_t page_of_c = page_of_cell(down_align_page(padr));
 
 	c.table.set_true(page_of_c);
+	++free_pages;
 
 	if (up_level && c.table.get_raw() == free_pattern) {
 		// 上位レベルへ返却する。
 		c.table.set_false_all();
-		r = up_level->free_1page(get_page_adr(&c, 0));
+		r = up_level->_free_1page(get_page_adr(&c, 0));
+		free_pages -= pages_in_cell();
 	}
 
 	return r;
@@ -398,7 +433,7 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 		return false;
 
 	uptr up_padr;
-	const cause::stype r = up_level->reserve_1page(&up_padr);
+	const cause::stype r = up_level->_reserve_1page(&up_padr);
 	if (r != cause::OK)
 		return false;
 
@@ -407,6 +442,8 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 	c.table.set_raw(free_pattern);
 
 	free_chain.insert_head(&c);
+
+	free_pages += pages_in_cell();
 
 	return true;
 }

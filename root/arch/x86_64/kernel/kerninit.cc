@@ -24,6 +24,7 @@
 
 
 void test();
+bool test_init();
 void cpu_test();
 file* create_serial();
 file* attach_console(int w, int h, u64 vram_adr);
@@ -142,7 +143,7 @@ log()("eee")();
 		return r;
 
 	{
-		mem_pool* mp = mempool_create_shared(100);
+		mempool* mp = mempool_create_shared(100);
 	}
 
 	slab_init();
@@ -154,13 +155,8 @@ log()("eee")();
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
 
-for(;;)native::hlt();
 	file* serial = create_serial();
 	log_init(serial);
-
-for (int i = 0; i < 4096; ++i) {
-	log()("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")();
-}
 
 /*
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
@@ -178,6 +174,7 @@ for (int i = 0; i < 4096; ++i) {
 
 //	cpu_test();
 //	serial_dump(serial);
+	log()("test_init() : ").u(test_init())();
 	//test();
 
 	return 0;

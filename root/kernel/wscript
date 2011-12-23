@@ -10,7 +10,7 @@ kern_sources = [
     'interrupt_control.cc',
     'kern_log.cc',
     'log_target.cc',
-    'mem_pool.cc',
+    'mempool.cc',
     'slab_allocate.cc',
     'string.cc',
 ]

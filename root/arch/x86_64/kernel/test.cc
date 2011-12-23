@@ -1,14 +1,15 @@
 /// @file  test.cc
-/// @brief Kernel internal virtual memory management.
 //
 // (C) 2010 KATO Takeshi
 //
 
 #include "basic_types.hh"
-#include "chain.hh"
-#include "kerninit.hh"
+#include "global_vars.hh"
+#include "mempool.hh"
+#include "page_ctl.hh"
+#include "log.hh"
+
 #include "memory_allocate.hh"
-#include "output.hh"
 
 
 class test_rand
@@ -22,6 +23,11 @@ class test_rand
 	}
 public:
 	test_rand(u32 s1=0, u32 s2=0) : seed1(s1), seed2(s2), seed3(0) {}
+	void init(u32 s1=0, u32 s2=0) {
+		seed1 = s1;
+		seed2 = s2;
+		seed3 = 0;
+	}
 
 	operator u32 () { return get(); }
 	operator u64 () {
@@ -38,6 +44,8 @@ public:
 	}
 };
 
+test_rand rnd;
+
 struct data {
 	chain_node<data> link;
 	uptr size;
@@ -51,8 +59,6 @@ void memory_test()
 	test_rand rnd;
 
 	for (;;) {
-		arch::wait(0x400000);
-
 		uptr total = 0;
 		uptr total_max = 0;
 		for (int i = 0; i < 100000; ++i) {
@@ -88,8 +94,54 @@ log().u(total_max, 16).endl();
 	}
 }
 
+void mempool_test()
+{
+	static u32 test_number = 0;
+	log()("---------------- test: ").u(test_number)(" --------")();
+	++test_number;
+
+	mempool* mp = mempool_create_shared(100);
+
+	const int N = 256;
+	chain<data, &data::chain_hook> ch[N];
+
+	int n;
+	for (n = 0; n < 0x2000; ++n) {
+		data* p = (data*)mp->alloc();
+		if (!p)
+			break;
+		u32 idx = rnd(N);
+
+		ch[idx].insert_head(p);
+	}
+
+	log()("n=").u(n,16)();
+	log lg;
+	global_vars::gv.page_ctl_obj->dump(lg);
+
+	for (int i = 0; i < N; ++i) {
+		for (;;) {
+			data* d = ch[i].remove_head();
+			if (!d)
+				break;
+			mp->free(d);
+		}
+	}
+
+	mp->collect_free_pages();
+
+	global_vars::gv.page_ctl_obj->dump(lg);
+}
+
+bool test_init()
+{
+	rnd.init(0, 0);
+	return true;
+}
+
 void test()
 {
-	memory_test();
+	//memory_test();
+	mempool_test();
 }
 

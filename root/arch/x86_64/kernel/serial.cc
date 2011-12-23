@@ -76,7 +76,7 @@ class serial_ctrl : public file
 	/// バッファを読むときは buf_queue->tail() の next_read から読む。
 	u32 next_read;
 
-	mem_pool* buf_mp;
+	mempool* buf_mp;
 
 	bool output_fifo_empty;
 

@@ -106,6 +106,18 @@ cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
 	return page_base[page_type].free_1page(padr);
 }
 
+void page_ctl::dump(log_target& lt)
+{
+	lt("lev      free_pages      alloc_pages")();
+
+	for (int i = 0; i < 5; ++i) {
+		lt("L").u(i + 1);
+		lt(" ").u(page_base[i].get_free_pages(), 16);
+		lt(" ").u(page_base[i].get_alloc_pages(), 16);
+		lt.endl();
+	}
+}
+
 
 namespace arch {
 namespace page {

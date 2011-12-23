@@ -9,6 +9,9 @@
 #include "log.hh"
 #include "native_ops.hh"
 
+#include "global_vars.hh"
+#include "interrupt_control.hh"
+
 
 namespace {
 
@@ -60,6 +63,12 @@ inline u32* local_apic_reg(uptr offset) {
 	return reinterpret_cast<u32*>(LOCAL_APIC_REG_BASE + offset);
 }
 
+interrupt_handler timer_ih;
+void timer_handler(void*)
+{
+	*local_apic_reg(LOCAL_APIC_EOI) = 0;
+}
+
 cause::stype local_apic_init()
 {
 	volatile u32* reg;
@@ -104,6 +113,11 @@ cause::stype local_apic_init()
 	kern_get_out()->put_str("cpuid(1)=")->put_u32hex(d)->put_c('\n');
 	*/
 
+	timer_ih.handler = timer_handler;
+	timer_ih.param = 0;
+	global_vars::gv.intr_ctl_obj->add_handler(
+		arch::INTR_APIC_TIMER, &timer_ih);
+
 	return cause::OK;
 }
 
@@ -145,12 +159,4 @@ void lapic_dump()
 
 	lg()();
 }
-
-extern "C" void interrupt_timer()
-{
-	//kern_get_out()->put_c('.');
-
-	*local_apic_reg(LOCAL_APIC_EOI) = 0;
-}
-
 

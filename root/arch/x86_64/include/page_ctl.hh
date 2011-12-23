@@ -6,11 +6,16 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
 #define ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
 
+#include "log_target.hh"
 #include "memcell.hh"
 
 
 class page_ctl
 {
+public:
+	void dump(log_target& lg);
+
+private:
 	mem_cell_base<u64> page_base[5];
 
 	bool pse;     ///< page-size extensions for 32bit paging.
