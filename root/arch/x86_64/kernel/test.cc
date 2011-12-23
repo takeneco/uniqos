@@ -12,6 +12,8 @@
 #include "memory_allocate.hh"
 
 
+void event_drive();
+
 class test_rand
 {
 	u32 seed1, seed2, seed3;
@@ -113,6 +115,8 @@ void mempool_test()
 		u32 idx = rnd(N);
 
 		ch[idx].insert_head(p);
+
+		event_drive();
 	}
 
 	log()("n=").u(n,16)();
@@ -126,6 +130,8 @@ void mempool_test()
 				break;
 			mp->free(d);
 		}
+
+		event_drive();
 	}
 
 	mp->collect_free_pages();

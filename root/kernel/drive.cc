@@ -10,20 +10,30 @@
 
 #include "log.hh"
 
+
+void test();
+
+void event_drive()
+{
+	event_queue* evctl = global_vars::gv.event_ctl_obj;
+
+	for (;;) {
+		event_item* event = evctl->pop();
+		if (!event)
+			break;
+
+		event->handler(event->param);
+	}
+}
+
 void drive()
 {
 	log()("(C) KATO Takeshi")();
 
-	event_queue* evctl = global_vars::gv.event_ctl_obj;
 	for (;;) {
-		for (;;) {
-			event_item* event = evctl->pop();
-			if (!event)
-				break;
+		event_drive();
 
-			event->handler(event->param);
-		}
-
+		//test();
 		arch::halt();
 	}
 }
