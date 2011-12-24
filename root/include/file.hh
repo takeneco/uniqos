@@ -44,6 +44,9 @@ public:
 	}
 	u8* next_u8();
 	uptr left_bytes() const;
+
+	uptr write(uptr bytes, const void* src);
+	uptr read(uptr bytes, void* dest);
 };
 
 
