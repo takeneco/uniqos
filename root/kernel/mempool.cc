@@ -4,7 +4,6 @@
 // (C) 2011 KATO Takeshi
 //
 
-#include "mempool.hh"
 #include "mempool_ctl.hh"
 
 #include "global_vars.hh"
@@ -12,19 +11,17 @@
 #include "placement_new.hh"
 
 
-mempool::mempool(u32 _obj_size, arch::page::TYPE ptype)
+mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 :   obj_size(normalize_obj_size(_obj_size)),
     page_type(ptype == arch::page::INVALID ? auto_page_type(obj_size) : ptype),
+    page_size(arch::page::size_of_type(page_type)),
+    page_objs((page_size - sizeof (page)) / obj_size),
+    total_obj_size(page_objs * obj_size),
     alloc_count(0),
     page_count(0),
-    freeobj_count(0)
+    freeobj_count(0),
+    page_pool(_page_pool)
 {
-	page_size =
-	    arch::page::size_of_type(page_type);
-
-	page_objs = (page_size - sizeof (page)) / obj_size;
-
-	total_obj_size = page_objs * obj_size;
 }
 
 void* mempool::alloc()
@@ -109,10 +106,22 @@ mempool::page* mempool::new_page()
 	if (arch::page::alloc(page_type, &padr) != cause::OK)
 		return 0;
 
-	void* p = arch::map_phys_adr(padr, page_size);
+	void* mem = arch::map_phys_adr(padr, page_size);
 
-	page* pg = new (p) page;
-	pg->init_onpage(*this);
+	page* pg;
+
+	if (page_pool) {
+		pg = new (page_pool->alloc()) page;
+		if (UNLIKELY(!pg)) {
+			arch::page::free(page_type, padr);
+			return 0;
+		}
+
+		pg->init_offpage(*this, mem);
+	} else {
+		pg = new (mem) page;
+		pg->init_onpage(*this);
+	}
 
 	++page_count;
 
@@ -123,10 +132,18 @@ void mempool::delete_page(page* pg)
 {
 	operator delete(pg, pg);
 
-	const cause::stype r =
-	    arch::page::free(page_type, arch::unmap_phys_adr(pg, page_size));
-	if (is_fail(r)) {
-		log()(__func__)("() failed page free:").u(r)(" page:")(pg)();
+	if (page_pool) {
+		const uptr adr =
+		    arch::unmap_phys_adr(pg->get_memory(), page_size);
+		page_pool->free(pg);
+		arch::page::free(page_type, adr);
+	} else {
+		const cause::stype r = arch::page::free(
+		    page_type, arch::unmap_phys_adr(pg, page_size));
+		if (is_fail(r)) {
+			log()(__func__)("() failed page free:").u(r)
+			     (" page:")(pg)();
+		}
 	}
 
 	--page_count;
@@ -160,16 +177,19 @@ void mempool::back_to_page(memobj* obj)
 
 
 /// @brief initialize as onpage.
-void mempool::page::init_onpage(const mempool& parent)
+void mempool::page::init_onpage(const mempool& pool)
 {
 	memory = onpage_get_memory();
 
-	const u32 objsize = parent.get_obj_size();
+	init(pool);
+}
 
-	for (int i = parent.get_page_objs() - 1; i >= 0; --i) {
-		void* obj = &memory[objsize * i];
-		free_chain.insert_head(new (obj) memobj);
-	}
+/// @brief initialize as offpage.
+void mempool::page::init_offpage(const mempool& pool, void* _memory)
+{
+	memory = reinterpret_cast<u8*>(_memory);
+
+	init(pool);
 }
 
 /// @brief  memobj を1つ確保する。
@@ -198,17 +218,37 @@ bool mempool::page::free(const mempool& pool, memobj* obj)
 	return true;
 }
 
+void mempool::page::init(const mempool& pool)
+{
+	const u32 objsize = pool.get_obj_size();
+
+	for (int i = pool.get_page_objs() - 1; i >= 0; --i) {
+		void* obj = &memory[objsize * i];
+		free_chain.insert_head(new (obj) memobj);
+	}
+}
+
+
+// mempool_ctl
 
 
 cause::stype mempool_ctl::init()
 {
-	mempool tmp_mp(sizeof (mempool), arch::page::L1);
+	mempool tmp_mp(sizeof (mempool), arch::page::L1, 0);
 	mempool::page* pg = tmp_mp.new_page();
+	if (UNLIKELY(!pg))
+		return cause::NO_MEMORY;
 
 	own_mempool = new (pg->alloc())
 	    mempool(sizeof (mempool), arch::page::L1);
+	if (UNLIKELY(!own_mempool))
+		return cause::NO_MEMORY;
 
 	own_mempool->attach(pg);
+
+	offpage_pool = shared_mempool(sizeof (mempool::page));
+	if (UNLIKELY(!offpage_pool))
+		return cause::NO_MEMORY;
 
 	return cause::OK;
 }
@@ -221,6 +261,21 @@ mempool* mempool_ctl::shared_mempool(u32 objsize)
 
 	if (!r)
 		r = create_shared(objsize);
+
+	return r;
+}
+
+mempool* mempool_ctl::exclusived_mempool(
+    u32 objsize,
+    arch::page::TYPE page_type,
+    PAGE_STYLE page_style)
+{
+	decide_params(&objsize, &page_type, &page_style);
+
+	mempool* pgpl = page_style == ONPAGE ? 0 : offpage_pool;
+
+	mempool* r =
+	    new (own_mempool->alloc()) mempool(objsize, page_type, pgpl);
 
 	return r;
 }
@@ -241,7 +296,15 @@ mempool* mempool_ctl::find_shared(u32 objsize)
 
 mempool* mempool_ctl::create_shared(u32 objsize)
 {
-	mempool* r = new (own_mempool->alloc()) mempool(objsize);
+	arch::page::TYPE page_type = arch::page::INVALID;
+	PAGE_STYLE page_style = ENTRUST;
+
+	decide_params(&objsize, &page_type, &page_style);
+
+	mempool* pgpl = page_style == ONPAGE ? 0 : offpage_pool;
+
+	mempool* r =
+	    new (own_mempool->alloc()) mempool(objsize, page_type, pgpl);
 	if (r == 0)
 		return 0;
 
@@ -257,6 +320,29 @@ mempool* mempool_ctl::create_shared(u32 objsize)
 
 	shared_chain.insert_tail(r);
 	return r;
+}
+
+void mempool_ctl::decide_params(
+    u32*              objsize,
+    arch::page::TYPE* page_type,
+    PAGE_STYLE*       page_style)
+{
+	*objsize = mempool::normalize_obj_size(*objsize);
+
+	if (*page_type == arch::page::INVALID)
+		*page_type = arch::page::type_of_size(*objsize * 8);
+
+	if (*page_style == ENTRUST) {
+		if (*objsize < 512) {
+			*page_style = ONPAGE;
+		} else {
+			uptr page_size = arch::page::size_of_type(*page_type);
+			if ((page_size % *objsize) < sizeof (mempool::page))
+				*page_style = OFFPAGE;
+			else
+				*page_style = ONPAGE;
+		}
+	}
 }
 
 mempool* mempool_create_shared(u32 objsize)

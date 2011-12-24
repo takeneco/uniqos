@@ -18,7 +18,8 @@ class mempool
 public:
 	mempool(
 	    u32 _obj_size,
-	    arch::page::TYPE ptype = arch::page::INVALID);
+	    arch::page::TYPE ptype = arch::page::INVALID,
+	    mempool* _page_pool = 0);
 
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
@@ -51,8 +52,12 @@ private:
 		bool is_free() const {
 			return alloc_count == 0;
 		}
+		u8* get_memory() {
+			return memory;
+		}
 
-		void init_onpage(const mempool& parent);
+		void init_onpage(const mempool& pool);
+		void init_offpage(const mempool& pool, void* _memory);
 		memobj* alloc();
 		bool free(const mempool& pool, memobj* obj);
 
@@ -62,6 +67,7 @@ private:
 		u8* onpage_get_memory() {
 			return reinterpret_cast<u8*>(this + 1);
 		}
+		void init(const mempool& pool);
 
 	private:
 		chain<memobj, &memobj::chain_hook> free_chain;
@@ -82,11 +88,11 @@ private:
 	void back_to_page(memobj* obj);
 
 private:
-	const u32        obj_size;
-	arch::page::TYPE page_type;
-	uptr             page_size;
-	uptr             total_obj_size;
-	u32              page_objs;  ///< ページの中にあるオブジェクト数
+	const u32              obj_size;
+	const arch::page::TYPE page_type;
+	const uptr             page_size;
+	const u32              page_objs;  ///< ページの中にあるオブジェクト数
+	const uptr             total_obj_size;
 
 	sptr             alloc_count;
 	sptr             page_count;
@@ -98,6 +104,8 @@ private:
 	typedef bichain<page, &page::bichain_hook> page_bichain;
 	page_bichain free_pages;
 	page_bichain full_pages;
+
+	mempool* const page_pool;
 
 	bichain_node<mempool> _chain_node;
 };

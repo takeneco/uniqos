@@ -14,18 +14,32 @@ class mempool_ctl
 	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
 
 public:
+	enum PAGE_STYLE {
+		ENTRUST,
+		ONPAGE,
+		OFFPAGE,
+	};
+
+public:
 	mempool_ctl() {}
 
 	cause::stype init();
 
 	mempool* shared_mempool(u32 objsize);
+	mempool* exclusived_mempool(
+	    u32 objsize,
+	    arch::page::TYPE page_type = arch::page::INVALID,
+	    PAGE_STYLE page_style = ENTRUST);
 
 private:
 	mempool* find_shared(u32 objsize);
 	mempool* create_shared(u32 objsize);
+	static void decide_params(
+	    u32* objsize, arch::page::TYPE* page_type, PAGE_STYLE* page_style);
 
 private:
 	mempool* own_mempool;
+	mempool* offpage_pool;
 	mempool_chain shared_chain;
 };
 
