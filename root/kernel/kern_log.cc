@@ -8,17 +8,17 @@
 
 namespace {
 
-file* log_tgt;
+file* log_tgt[2];
 
 }
 
-void log_init(file* target)
+void log_init(int type, file* target)
 {
-	log_tgt = target;
+	log_tgt[type] = target;
 }
 
-log::log(u32 /*type*/)
-:    log_target(log_tgt)
+log::log(u32 type)
+:    log_target(log_tgt[type])
 {
 }
 

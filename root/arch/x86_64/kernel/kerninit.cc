@@ -110,7 +110,8 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	global_vars::gv.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
 
 	vga_dev.init(80, 25, (void*)0xb8000);
-	log_init(&vga_dev);
+	log_init(0, &vga_dev);
+	log_init(1, &vga_dev);
 
 	cause::stype r = page_ctl_init();
 	if (r != cause::OK)
@@ -118,6 +119,10 @@ extern "C" int kern_init(u64 bootinfo_adr)
 
 	global_vars::gv.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
+
+	global_vars::gv.mempool_ctl_obj->init();
+	if (r != cause::OK)
+		return r;
 
 	disable_intr_from_8259A();
 
@@ -138,16 +143,6 @@ log()("eee")();
 
 	arch::apic_init();
 
-	global_vars::gv.mempool_ctl_obj->init();
-	if (r != cause::OK)
-		return r;
-
-	{
-		mempool* mp = mempool_create_shared(100);
-	}
-
-	slab_init();
-
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
 	    (get_bootinfo(bootinfo::TYPE_LOG));
@@ -156,7 +151,7 @@ log()("eee")();
 	}
 
 	file* serial = create_serial();
-	log_init(serial);
+	log_init(0, serial);
 
 /*
 	log()("ts1=")(&ts1)()("ts2=")(&ts2)();

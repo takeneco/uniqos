@@ -69,7 +69,7 @@ void intr_update()
 
 void unknown_exception(int n)
 {
-	log().str("Unknown exception 0x").u((u8)n, 16).str(" interrupted.").
+	log(1).str("Unknown exception 0x").u((u8)n, 16).str(" interrupted.").
 		endl();
 
 	for (;;)
@@ -373,7 +373,7 @@ UNKNOWN_EXCEPTION(0x07)
 
 extern "C" void on_exception_0x08()
 {
-	log()(__FILE__, __LINE__, __func__)();
+	log(1)(__FILE__, __LINE__, __func__)();
 	for (;;)
 		native::hlt();
 }

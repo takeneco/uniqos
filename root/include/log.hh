@@ -16,7 +16,7 @@ public:
 	~log();
 };
 
-void log_init(file* target);
+void log_init(int type, file* target);
 
 
 #endif  // include guard

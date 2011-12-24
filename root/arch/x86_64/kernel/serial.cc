@@ -277,8 +277,7 @@ void serial_ctrl::post_intr_event()
 /// 割り込み発生時に呼ばれる。
 void serial_ctrl::intr_handler(void* param)
 {
-	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(param);
-	serial->post_intr_event();
+	static_cast<serial_ctrl*>(param)->post_intr_event();
 }
 
 /// デバイスのFIFOのサイズだけ送信する。

@@ -7,6 +7,7 @@
 #include "arch.hh"
 #include "event_queue.hh"
 #include "global_vars.hh"
+#include "native_ops.hh"
 
 #include "log.hh"
 
@@ -18,7 +19,9 @@ void event_drive()
 	event_queue* evctl = global_vars::gv.event_ctl_obj;
 
 	for (;;) {
+		native::cli();
 		event_item* event = evctl->pop();
+		native::sti();
 		if (!event)
 			break;
 
