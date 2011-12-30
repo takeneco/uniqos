@@ -250,6 +250,10 @@ cause::stype mempool_ctl::init()
 	if (UNLIKELY(!offpage_pool))
 		return cause::NO_MEMORY;
 
+	cause::stype r = init_heap();
+	if (is_fail(r))
+		return r;
+
 	return cause::OK;
 }
 
@@ -278,6 +282,58 @@ mempool* mempool_ctl::exclusived_mempool(
 	    new (own_mempool->alloc()) mempool(objsize, page_type, pgpl);
 
 	return r;
+}
+
+namespace {
+
+struct heap
+{
+	mempool* mp;
+	u8 mem[];
+};
+
+}
+
+void* mempool_ctl::shared_alloc(u32 bytes)
+{
+	const u32 size = mempool::normalize_obj_size(bytes + sizeof (mempool*));
+
+	mempool* pool = 0;
+	for (mempool* mp = shared_chain.head();
+	     mp;
+	     mp = shared_chain.next(mp))
+	{
+		if (mp->get_obj_size() >= size) {
+			pool = mp;
+			break;
+		}
+	}
+
+	if (!pool)
+		return 0;
+
+	heap* h = static_cast<heap*>(pool->alloc());
+	if (!h)
+		return 0;
+
+	h->mp = pool;
+
+	return h->mem;
+}
+
+cause::stype mempool_ctl::init_heap()
+{
+	const uptr sizes[] = {
+		0x1000, 0x200000,
+	};
+
+	for (int i = 0; i < sizeof sizes / sizeof sizes[0]; ++i) {
+		mempool* pool = create_shared(sizes[i]);
+		if (!pool)
+			return cause::FAIL;
+	}
+
+	return cause::OK;
 }
 
 /// @brief  Find existing shared mem_cache.

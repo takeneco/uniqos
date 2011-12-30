@@ -30,8 +30,10 @@ public:
 	    u32 objsize,
 	    arch::page::TYPE page_type = arch::page::INVALID,
 	    PAGE_STYLE page_style = ENTRUST);
+	void* shared_alloc(u32 bytes);
 
 private:
+	cause::stype init_heap();
 	mempool* find_shared(u32 objsize);
 	mempool* create_shared(u32 objsize);
 	static void decide_params(
