@@ -137,11 +137,11 @@ void wait(u32 n)
 	native::hlt();
 }
 
+}
+
 void lapic_eoi()
 {
 	*local_apic_reg(LOCAL_APIC_EOI) = 0;
-}
-
 }
 
 void lapic_dump()

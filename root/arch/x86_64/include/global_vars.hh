@@ -8,6 +8,7 @@
 #define ARCH_X86_64_INCLUDE_GLOBAL_VARIABLES_HH_
 
 
+class cpu_ctl;
 class core_page;
 class page_ctl;
 namespace arch {
@@ -25,6 +26,7 @@ namespace global_vars {
 
 struct _vars
 {
+	cpu_ctl*         cpu_ctl_obj;
 	core_page*       core_page_obj;
 	page_ctl*        page_ctl_obj;
 	mempool_ctl*     mempool_ctl_obj;

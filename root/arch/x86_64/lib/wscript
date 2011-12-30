@@ -9,7 +9,6 @@
 
 kern_sources = [
     'mpspec.cc',
-    'ioapic.cc',
     'pagetable.cc',
     'text_vga.cc',
 ]
@@ -21,7 +20,6 @@ mb_sources = [
 
 setup_sources = [
     'mpspec.cc',
-    'ioapic.cc',
 ]
 
 def build(x):

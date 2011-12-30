@@ -113,7 +113,7 @@ inline void* map_phys_adr(uptr padr, uptr /* size */) {
 inline void* map_phys_adr(void* padr, uptr size) {
 	return map_phys_adr(reinterpret_cast<uptr>(padr), size);
 }
-inline uptr unmap_phys_adr(void* vadr, uptr /* size */) {
+inline uptr unmap_phys_adr(const void* vadr, uptr /* size */) {
 	return reinterpret_cast<uptr>(vadr) - PHYSICAL_ADRMAP;
 }
 

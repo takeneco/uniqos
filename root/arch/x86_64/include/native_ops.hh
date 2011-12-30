@@ -176,9 +176,7 @@ inline s64 bsrq_or0(u64 data) {
 // デバッグ用。
 inline u16 get_cs() {
 	u16 cs;
-	asm volatile (
-	    "movw %%cs, %%ax \n"
-	    "movw %%ax, %0" : "=rm" (cs) : : "%ax");
+	asm volatile ("movw %%cs, %0" : "=r" (cs));
 	return cs;
 }
 inline u16 get_ds() {
@@ -222,9 +220,10 @@ inline void set_gs(u16 gs) {
 	asm volatile ("movw %0, %%gs" : : "r" (gs));
 }
 inline void set_ss(u16 ss) {
-	asm volatile (
-	    "movw %0, %%ax \n"
-	    "movw %%ax, %%ss" : : "rm" (ss) : "%ax");
+	asm volatile ("movw %0, %%ss" : : "r" (ss));
+}
+inline void ltr(u16 tr) {
+	asm volatile ("ltr %0" : : "r" (tr));
 }
 
 // @brief Global/Interrupt Descriptor Table register.

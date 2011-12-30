@@ -5,7 +5,9 @@
 //
 
 #include "kerninit.hh"
+#include "cpu_ctl.hh"
 #include "cpu_idte.hh"
+#include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "log.hh"
 #include "native_ops.hh"
@@ -57,12 +59,12 @@ struct reg_stack_witherr
 	u64 ss;
 };
 
-arch::idte idt_vec[256];
 
 void intr_update()
 {
+	arch::idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
 	native::idt_ptr64 idtptr;
-	idtptr.set(sizeof (arch::idte) * 256, &idt_vec[0]);
+	idtptr.set(sizeof (arch::idte) * 256, idt);
 
 	native::lidt(&idtptr);
 }
@@ -239,6 +241,8 @@ void intr_0x8f();
 
 void intr_init()
 {
+	arch::idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
+
 	struct idt_params {
 		void (*handler)();
 		uint seg;
@@ -284,7 +288,7 @@ void intr_init()
 
 	for (int i = 0; i <= 31; ++i) {
 		const idt_params& e = exception_idt[i];
-		idt_vec[i].set(e.handler, 8 * e.seg, e.ist, e.dpl, e.flags);
+		idt[i].set(e.handler, 8 * e.seg, e.ist, e.dpl, e.flags);
 	}
 
 	void (* const idt_handler[])() = {
@@ -325,12 +329,12 @@ void intr_init()
 	};
 
 	for (int i = 0; i < 0x90; ++i) {
-		idt_vec[0x20 + i].set(
+		idt[0x20 + i].set(
 		    idt_handler[i], 8 * 1, 0, 0, arch::idte::INTR);
 	}
 ///*
 	for (int i = 0x90+0x20; i < 256; i++) {
-		idt_vec[i].disable();
+		idt[i].disable();
 	}
 /*
 	idt_vec[0x20].set(
@@ -347,15 +351,6 @@ void intr_init()
 	idt_vec[0x5f].set(
 	    interrupt_0x5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
 */
-	intr_update();
-}
-
-void intr_set_handler(int intr, intr_handler handler)
-{
-	idt_vec[intr].set(
-	    reinterpret_cast<u64>(handler),
-	    8 * 1, 0, 0, arch::idte::INTR);
-
 	intr_update();
 }
 

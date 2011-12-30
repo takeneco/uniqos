@@ -6,14 +6,10 @@
 #ifndef ARCH_X86_64_INCLUDE_IOAPIC_HH_
 #define ARCH_X86_64_INCLUDE_IOAPIC_HH_
 
-#include "base_types.hh"
+#include "basic_types.hh"
 
 
-namespace arch {
-
-void* ioapic_base();
-
-class ioapic_control
+class ioapic_ctl
 {
 	struct memmapped_regs {
 		u32 volatile ioregsel;
@@ -36,14 +32,11 @@ public:
 		LOW_ACTIVE   = 0x00002000,
 	};
 
-	ioapic_control() {}
-	ioapic_control(void* base) 
+	ioapic_ctl() {}
+	ioapic_ctl(void* base) 
 	    : regs(reinterpret_cast<memmapped_regs*>(base))
 	{}
-	cause::stype init_detect() {
-		regs = reinterpret_cast<memmapped_regs*>(ioapic_base());
-		return regs != 0 ? cause::OK : cause::NOT_FOUND;
-	}
+	cause::stype init_detect();
 
 	u32 read(u32 sel) {
 		regs->ioregsel = sel;
@@ -64,10 +57,7 @@ public:
 	}
 };
 
-
 void lapic_eoi();
-
-}  // namespace arch
 
 
 #endif  // include guard

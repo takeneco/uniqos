@@ -14,7 +14,7 @@ namespace arch {
 
 class irq_ctl
 {
-	ioapic_control ioapic;
+	ioapic_ctl ioapic;
 
 public:
 	cause::stype init();
