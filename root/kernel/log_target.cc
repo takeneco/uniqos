@@ -171,6 +171,31 @@ void log_target::_wr_src(const char* path, int line, const char* func)
 	target->call_write(iov, iov_count, &wrote);
 }
 
+void log_target::_wr_bin(uptr bytes, const void* data)
+{
+	const char sep = ' ';
+	iovec iov[2];
+	iov[1].bytes = 1;
+	iov[1].base = const_cast<char*>(&sep);
+
+	const u8* p = static_cast<const u8*>(data);
+
+	for (uptr i = 0; i < bytes; ++i) {
+		char buf[2];
+		iov[0].bytes = u_to_str(p[i], 16, 8, buf);
+		iov[0].base = buf;
+
+		uptr wrote;
+		if (i % 16 != 15) {
+			target->call_write(iov, 2, &wrote);
+		}
+		else {
+			target->call_write(iov, 1, &wrote);
+			endl();
+		}
+	}
+}
+
 void log_wr_str(log_target* x, const char* s)
 {
 	if (x)
@@ -199,5 +224,11 @@ void log_wr_src(log_target* x, const char* path, int line, const char* func)
 {
 	if (x)
 		x->_wr_src(path, line, func);
+}
+
+void log_wr_bin(log_target* x, uptr bytes, const void* data)
+{
+	if (x)
+		x->_wr_bin(bytes, data);
 }
 

@@ -18,6 +18,7 @@ void log_wr_u(log_target* x, u64 n, int base, int bits);
 void log_wr_s(log_target* x, s64 n, int base, int bits);
 void log_wr_p(log_target* x, const void* p);
 void log_wr_src(log_target* x, const char* path, int line, const char* func);
+void log_wr_bin(log_target* x, uptr bytes, const void* data);
 
 }  // extern "C"
 
@@ -29,6 +30,7 @@ class log_target
 	friend void log_wr_p(log_target* x, const void* p);
 	friend void log_wr_src(
 	    log_target* x, const char* path, int line, const char* func);
+	friend void log_wr_bin(log_target* x, uptr bytes, const void* data);
 
 protected:
 	log_target() {}
@@ -139,6 +141,10 @@ public:
 		log_wr_src(this, path, line, func);
 		return *this;
 	}
+	log_target& bin(uptr bytes, const void* data) {
+		log_wr_bin(this, bytes, data);
+		return *this;
+	}
 
 private:
 	void _wr_str(const char* s);
@@ -146,6 +152,7 @@ private:
 	void _wr_s(smax x, s8 base, int bits);
 	void _wr_p(const void* p);
 	void _wr_src(const char* path, int line, const char* func);
+	void _wr_bin(uptr bytes, const void* data);
 
 	file* target;
 };
