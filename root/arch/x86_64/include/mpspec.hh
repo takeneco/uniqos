@@ -127,6 +127,7 @@ public:
 
 	protected:
 		const void* get_next();
+		const void* get_next(u8 type);
 
 	private:
 		const u8* entry;
@@ -134,20 +135,21 @@ public:
 		u16       count;
 	};
 
-	template<class ENTRY> class entry_iterator : public iterator
+	template<class ENTRY, u8 TYPE> class entry_iterator : public iterator
 	{
 	public:
 		explicit entry_iterator(const mpspec* mps)
 		    : iterator(mps->get_mpcth()) {}
 		const ENTRY* get_next() {
-			return static_cast<const ENTRY*>(iterator::get_next());
+			return static_cast<const ENTRY*>(
+			    iterator::get_next(TYPE));
 		}
 	};
-	typedef entry_iterator<processor_entry> processor_iterator;
-	typedef entry_iterator<bus_entry>       bus_iterator;
-	typedef entry_iterator<ioapic_entry>    ioapic_iterator;
-	typedef entry_iterator<iointr_entry>    iointr_iterator;
-	typedef entry_iterator<localintr_entry> localintr_iterator;
+	typedef entry_iterator<processor_entry, PROCESSOR> processor_iterator;
+	typedef entry_iterator<bus_entry,       BUS>       bus_iterator;
+	typedef entry_iterator<ioapic_entry,    IOAPIC>    ioapic_iterator;
+	typedef entry_iterator<iointr_entry,    IOINTR>    iointr_iterator;
+	typedef entry_iterator<localintr_entry, LOCALINTR> localintr_iterator;
 
 public:
 	mpspec() {}

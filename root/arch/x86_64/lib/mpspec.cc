@@ -187,3 +187,12 @@ const void* mpspec::iterator::get_next()
 	return r;
 }
 
+const void* mpspec::iterator::get_next(u8 type)
+{
+	for (;;) {
+		const u8* e = static_cast<const u8*>(get_next());
+		if (e == 0 || *e == type)
+			return e;
+	}
+}
+

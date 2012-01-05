@@ -77,6 +77,8 @@ uptr page_ctl::calc_workarea_size(uptr _pmem_end)
 /// @return true を返す。
 bool page_ctl::init(uptr _pmem_end, void* buf)
 {
+	pmem_end = _pmem_end;
+
 	page_base[4].set_buf(buf, _pmem_end);
 
 	detect_paging_features();
@@ -108,6 +110,10 @@ cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
 
 void page_ctl::dump(log_target& lt)
 {
+	for (int i = 0; i < 5; ++i) {
+		page_base[i].dump(pmem_end, lt);
+	}
+
 	lt("lev      free_pages      alloc_pages")();
 
 	for (int i = 0; i < 5; ++i) {

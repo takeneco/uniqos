@@ -12,7 +12,7 @@
 #include "chain.hh"
 #include "placement_new.hh"
 
-#include "log.hh"
+#include "log_target.hh"
 
 
 /////////////////////////////////////////////////////////////////////
@@ -181,9 +181,9 @@ private:
 	bool import_uplevel_page();
 
 public:
-	void dump(uptr total_mem)
+	void dump(uptr total_mem, log_target& lt)
 	{
-		log()
+		lt("---- cell internal start ----")()
 		("page_size_bits = ").u(page_size_bits)()
 		("cell_size_bits = ").u(cell_size_bits)()
 		("up_level   = ")(up_level)()
@@ -191,17 +191,16 @@ public:
 		("free_pattern = ").u(free_pattern, 16)()
 		("free_pages = ").s(free_pages)();
 
-		log()("---- cell internal start ----")();
 		const uptr cells =
 		    up_div<uptr>(total_mem, U64(1) << cell_size_bits);
 		for (uptr i = 0; i < cells; ++i) {
 			if (i % 4 == 0)
-				log()("[").u(i)("]");
-			log()(" ").u(cell_table[i].table.get_raw(), 16);
+				lt("[").u(i)("]");
+			lt(" ").u(cell_table[i].table.get_raw(), 16);
 			if (i % 4 == 3 || i == (cells - 1))
-				log()();
+				lt();
 		}
-		log()("---- cell internal end ----")();
+		lt("---- cell internal end ----")();
 	}
 };
 
@@ -448,9 +447,9 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 	return true;
 }
 
-inline void memcell_test()
+inline void memcell_test(log_target& lt)
 {
-	log()("---- memcell test start")();
+	lt("---- memcell test start")();
 
 	mem_cell_base<u64> mcb[5];
 	char buf[8192], *bufp = buf;
@@ -464,7 +463,7 @@ inline void memcell_test()
 	const uptr total_mem = 32 * 1024 * 1024 - 1;
 	uptr buf_size;
 	buf_size = mcb[4].calc_buf_size(total_mem);
-	log()("buf_size = ").u(buf_size)();
+	lt("buf_size = ").u(buf_size)();
 
 	mcb[4].set_buf(bufp, total_mem);
 
@@ -473,27 +472,27 @@ inline void memcell_test()
 	mcb[4].build_free_chain();
 
 	for (u32 i = 0; i < 5; ++i) {
-		log()("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
-		mcb[i].dump(total_mem);
-		log()("-------- mcb[").u(i)("] end")();
+		lt("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
+		mcb[i].dump(total_mem, lt);
+		lt("-------- mcb[").u(i)("] end")();
 	}
 
 	uptr p[10];
 	for (u32 i = 0; i < 10; ++i) {
 		mcb[0].reserve_1page(&p[i]);
-		log()("reserve from mcb (").u(i)(") = ").u(p[i], 16)();
+		lt("reserve from mcb (").u(i)(") = ").u(p[i], 16)();
 	}
 	for (u32 i = 0; i < 9; ++i) {
 		mcb[0].free_1page(p[i]);
 	}
 
 	for (u32 i = 0; i < 5; ++i) {
-		log()("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
-		mcb[i].dump(total_mem);
-		log()("-------- mcb[").u(i)("] end")();
+		lt("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
+		mcb[i].dump(total_mem, lt);
+		lt("-------- mcb[").u(i)("] end")();
 	}
 
-	log()("---- memcell test end")();
+	lt("---- memcell test end")();
 }
 
 

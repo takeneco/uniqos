@@ -26,6 +26,7 @@
 #include "core_class.hh"
 #include "cheap_alloc.hh"
 #include "global_vars.hh"
+#include "log.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
 #include "setupdata.hh"

@@ -31,6 +31,8 @@ private:
 	int padr_width;
 	int vadr_width;
 
+	uptr pmem_end;
+
 	void detect_paging_features();
 
 public:
