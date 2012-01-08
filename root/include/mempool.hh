@@ -11,6 +11,8 @@
 #include "chain.hh"
 
 
+class log_target;
+
 class mempool
 {
 	friend class mempool_ctl;
@@ -28,6 +30,8 @@ public:
 	void* alloc();
 	void free(void* ptr);
 	void collect_free_pages();
+
+	void dump(log_target& lt);
 
 	bichain_node<mempool>& chain_hook() { return _chain_node; }
 
@@ -60,6 +64,8 @@ private:
 		void init_offpage(const mempool& pool, void* _memory);
 		memobj* alloc();
 		bool free(const mempool& pool, memobj* obj);
+
+		void dump(log_target& lt);
 
 		bichain_node<page>& bichain_hook() { return _chain_node; }
 
@@ -111,6 +117,7 @@ private:
 };
 
 mempool* mempool_create_shared(u32 objsize);
+void* mem_alloc(u32 bytes);
 
 
 #endif  // include guard

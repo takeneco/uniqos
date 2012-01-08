@@ -200,6 +200,12 @@ public:
 			if (i % 4 == 3 || i == (cells - 1))
 				lt();
 		}
+
+		for (cell* c = free_chain.head(); c; c = free_chain.next(c)) {
+			lt.u(get_page_adr(c,0),16)
+			("-").u(get_page_adr(c,cell_size_bits),16)
+			(":").u(c->table.get_raw(),16)();
+		}
 		lt("---- cell internal end ----")();
 	}
 };

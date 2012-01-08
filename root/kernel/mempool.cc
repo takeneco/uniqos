@@ -11,6 +11,12 @@
 #include "placement_new.hh"
 
 
+void* mem_alloc(u32 bytes)
+{
+	return global_vars::gv.mempool_ctl_obj->shared_alloc(bytes);
+}
+
+
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 :   obj_size(normalize_obj_size(_obj_size)),
     page_type(ptype == arch::page::INVALID ? auto_page_type(obj_size) : ptype),
@@ -71,6 +77,15 @@ void mempool::collect_free_pages()
 		memobj* obj = free_objs.remove_head();
 		back_to_page(obj);
 		--freeobj_count;
+	}
+}
+
+void mempool::dump(log_target& lt)
+{
+	lt("---- free_pages ----")();
+
+	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
+		pg->dump(lt);
 	}
 }
 
@@ -218,6 +233,17 @@ bool mempool::page::free(const mempool& pool, memobj* obj)
 	return true;
 }
 
+void mempool::page::dump(log_target& lt)
+{
+	lt("memory:")(memory)(", alloc_count:").u(alloc_count)();
+
+	lt("{");
+	for (memobj* obj = free_chain.head(); obj; obj = free_chain.next(obj)) {
+		lt(obj)(",");
+	}
+	lt("}")();
+}
+
 void mempool::page::init(const mempool& pool)
 {
 	const u32 objsize = pool.get_obj_size();
@@ -324,10 +350,10 @@ void* mempool_ctl::shared_alloc(u32 bytes)
 cause::stype mempool_ctl::init_heap()
 {
 	const uptr sizes[] = {
-		0x1000, 0x200000,
+		0x1000, 0x2000, 0x3000, 0x4000, 0x200000,
 	};
 
-	for (int i = 0; i < sizeof sizes / sizeof sizes[0]; ++i) {
+	for (uptr i = 0; i < sizeof sizes / sizeof sizes[0]; ++i) {
 		mempool* pool = create_shared(sizes[i]);
 		if (!pool)
 			return cause::FAIL;

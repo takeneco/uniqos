@@ -9,21 +9,16 @@
 #include "global_vars.hh"
 #include "kerninit.hh"
 #include "log.hh"
+#include "mempool.hh"
 #include "mpspec.hh"
 #include "native_ops.hh"
 #include "placement_new.hh"
 #include "string.hh"
 
 
-namespace {
-
-uptr cpu_ctl_buf[sizeof (cpu_ctl) / sizeof (uptr)];
-}  // namespace
-
-
 cause::stype cpu_init()
 {
-	cpu_ctl* cpu_ctl_obj = new (cpu_ctl_buf) cpu_ctl;
+	cpu_ctl* cpu_ctl_obj = new (mem_alloc(sizeof (cpu_ctl))) cpu_ctl;
 	global_vars::gv.cpu_ctl_obj = cpu_ctl_obj;
 
 	cause::stype r = cpu_ctl_obj->init();

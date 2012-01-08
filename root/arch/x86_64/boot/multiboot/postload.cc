@@ -59,7 +59,7 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	const allocator* alloc = get_alloc();
 
 	allocator::enum_desc ea_enum;
-	alloc->enum_alloc(SLOTM_NORMAL | SLOTM_BOOTHEAP, &ea_enum);
+	alloc->enum_alloc(SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL, &ea_enum);
 
 	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {

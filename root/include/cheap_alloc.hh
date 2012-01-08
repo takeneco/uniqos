@@ -126,10 +126,10 @@ public:
 	 for(range*r=slot.alloc_ranges.head();r;r=slot.alloc_ranges.next(r))
 	  log("alloc:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
 	}
-	void debug_dump(log_target& log) {
+	void debug_dump(log_target& lt) {
 		for (unsigned i = 0; i < SLOT_COUNT; ++i) {
-			log("slot[").u(i)("]:")();
-			_debug_dump(slots[i]);
+			lt("slot[").u(i)("]:")();
+			_debug_dump(slots[i], lt);
 		}
 	}
 };
@@ -584,6 +584,7 @@ private:
 	CHEAP_ALLOC* cheap_alloc;
 
 	struct slot_range {
+		slot_range() : enable(false) {}
 		bool enable;
 		uptr head;
 		uptr tail;
