@@ -17,6 +17,13 @@ save_regs:
 	movq %r9,  0x38(%rsp)
 	movq %r10, 0x40(%rsp)
 	movq %r11, 0x48(%rsp)
+
+	movq %rbx, 0x50(%rsp)
+	movq %rbp, 0x58(%rsp)
+	movq %r12, 0x60(%rsp)
+	movq %r13, 0x68(%rsp)
+	movq %r14, 0x70(%rsp)
+	movq %r15, 0x78(%rsp)
 	ret
 
 load_regs:
@@ -29,6 +36,13 @@ load_regs:
 	movq 0x38(%rsp), %r9
 	movq 0x40(%rsp), %r10
 	movq 0x48(%rsp), %r11
+
+	movq 0x50(%rsp), %rbx
+	movq 0x58(%rsp), %rbp
+	movq 0x60(%rsp), %r12
+	movq 0x68(%rsp), %r13
+	movq 0x70(%rsp), %r14
+	movq 0x78(%rsp), %r15
 	ret
 
 #define ENTRY_START(symbol) .globl symbol; symbol:
@@ -36,11 +50,11 @@ load_regs:
 
 .macro exception_handler handler, func
 	ENTRY_START(\handler)
-	subq  $8*9, %rsp
+	subq  $8 * 15, %rsp
 	call  save_regs
 	call  \func
 	call  load_regs
-	addq  $8*9, %rsp
+	addq  $8 * 15 + 8, %rsp
 	iretq
 	ENTRY_END(\handler)
 .endm
@@ -80,12 +94,12 @@ exception_handler exception_intr_0x1f, on_exception_0x1f
 
 .macro intr_handler handler, vec
 	ENTRY_START(\handler)
-	subq $8*9, %rsp
+	subq $8 * 15, %rsp
 	call save_regs
 	movl $\vec, %edi
 	call on_interrupt
 	call load_regs
-	addq $8*9, %rsp
+	addq $8 * 15, %rsp
 	iretq
 	ENTRY_END(\handler)
 .endm

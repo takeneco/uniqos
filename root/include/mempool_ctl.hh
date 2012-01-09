@@ -9,6 +9,8 @@
 #include "mempool.hh"
 
 
+class log_target;
+
 class mempool_ctl
 {
 	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
@@ -31,6 +33,8 @@ public:
 	    arch::page::TYPE page_type = arch::page::INVALID,
 	    PAGE_STYLE page_style = ENTRUST);
 	void* shared_alloc(u32 bytes);
+
+	void dump(log_target& lt);
 
 private:
 	cause::stype init_heap();

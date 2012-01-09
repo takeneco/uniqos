@@ -32,6 +32,13 @@ struct reg_stack
 	u64 r10;
 	u64 r11;
 
+	u64 rbx;
+	u64 rbp;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
+
 	u64 rip;
 	u64 cs;
 	u64 rf;
@@ -50,6 +57,13 @@ struct reg_stack_witherr
 	u64 r9;
 	u64 r10;
 	u64 r11;
+
+	u64 rbx;
+	u64 rbp;
+	u64 r12;
+	u64 r13;
+	u64 r14;
+	u64 r15;
 
 	u64 error_code;
 	u64 rip;
@@ -264,9 +278,10 @@ void intr_init()
 		{ exception_intr_0x0a, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0b, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0c, 1, 0, 0, arch::idte::TRAP },
-		//{ exception_intr_0x0d, 1, 1, 0, arch::idte::TRAP },
-		{ exception_intr_0x0d, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0e, 1, 0, 0, arch::idte::TRAP },
+		{ exception_intr_0x0d, 1, 1, 0, arch::idte::TRAP },
+		//{ exception_intr_0x0d, 1, 0, 0, arch::idte::TRAP },
+		{ exception_intr_0x0e, 1, 1, 0, arch::idte::TRAP },
+		//{ exception_intr_0x0e, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0f, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x10, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x11, 1, 0, 0, arch::idte::TRAP },
@@ -380,6 +395,34 @@ UNKNOWN_EXCEPTION(0x0c)
 
 extern "C" void on_exception_0x0d()
 {
+	reg_stack_witherr* stk = (reg_stack_witherr*)
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist1();
+	stk -= 1;
+	log(1)("stk:")(stk)();
+
+	log(1)
+	("rax:").u(stk->rax, 16)
+	(", rbx:").u(stk->rbx, 16)
+	(", rcx:").u(stk->rcx, 16)()
+	("rdx:").u(stk->rdx, 16)
+	(", rbp:").u(stk->rbp, 16)
+	(", rsi:").u(stk->rsi, 16)()
+	("rdi:").u(stk->rdi, 16)
+	(", r8 :").u(stk->r8, 16)
+	(", r9 :").u(stk->r9, 16)()
+	("r10:").u(stk->r10, 16)
+	(", r11:").u(stk->r11, 16)
+	(", r12:").u(stk->r12, 16)()
+	("r13:").u(stk->r13, 16)
+	(", r14:").u(stk->r14, 16)
+	(", r15:").u(stk->r15, 16)()
+	("rip:").u(stk->rip, 16)
+	(", cs :").u(stk->cs, 16)()
+	("rsp:").u(stk->rsp, 16)
+	(", ss :").u(stk->ss, 16)()
+	("rf :").u(stk->rf, 16)
+	(", err:").u(stk->error_code, 16)();
+
 	u64* stack=(u64*)0xffffffffffffc000;
 	stack--;
 /*
@@ -403,7 +446,40 @@ extern "C" void on_exception_0x0d()
 	unknown_exception(0x0d);
 }
 
-UNKNOWN_EXCEPTION(0x0e)
+extern "C" void on_exception_0x0e()
+{
+	reg_stack_witherr* stk = (reg_stack_witherr*)
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist1();
+	stk -= 1;
+	log(1)("stk:")(stk)();
+
+	log(1)
+	("rax:").u(stk->rax, 16)
+	(", rbx:").u(stk->rbx, 16)
+	(", rcx:").u(stk->rcx, 16)()
+	("rdx:").u(stk->rdx, 16)
+	(", rbp:").u(stk->rbp, 16)
+	(", rsi:").u(stk->rsi, 16)()
+	("rdi:").u(stk->rdi, 16)
+	(", r8 :").u(stk->r8, 16)
+	(", r9 :").u(stk->r9, 16)()
+	("r10:").u(stk->r10, 16)
+	(", r11:").u(stk->r11, 16)
+	(", r12:").u(stk->r12, 16)()
+	("r13:").u(stk->r13, 16)
+	(", r14:").u(stk->r14, 16)
+	(", r15:").u(stk->r15, 16)()
+	("rip:").u(stk->rip, 16)
+	(", cs :").u(stk->cs, 16)()
+	("rsp:").u(stk->rsp, 16)
+	(", ss :").u(stk->ss, 16)()
+	("rf :").u(stk->rf, 16)
+	(", err:").u(stk->error_code, 16)();
+
+
+	unknown_exception(0x0e);
+}
+
 UNKNOWN_EXCEPTION(0x0f)
 UNKNOWN_EXCEPTION(0x10)
 UNKNOWN_EXCEPTION(0x11)

@@ -158,6 +158,10 @@ public:
 			ist1l = adr & 0xffffffff;
 			ist1h = (adr >> 32) & 0xffffffff;
 		}
+		void* get_ist1() const {
+			return reinterpret_cast<void*>(
+			    u64(ist1h) << 32 | u64(ist1l));
+		}
 		u32 reserved_1;
 		u32 rsp0l;
 		u32 rsp0h;
