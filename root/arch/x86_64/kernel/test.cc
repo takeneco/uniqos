@@ -98,8 +98,8 @@ log().u(total_max, 16).endl();
 
 void mempool_test()
 {
-	static u32 test_number = 0;
-	log()("---------------- test: ").u(test_number)(" --------")();
+	static u64 test_number = 0;
+	log()("test:").u(test_number, 16)();
 	++test_number;
 
 	mempool* mp = mempool_create_shared(100);

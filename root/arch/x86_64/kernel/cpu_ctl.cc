@@ -86,11 +86,12 @@ cause::stype cpu_ctl::thread::init()
 	mem_fill(sizeof tss, 0, &tss);
 	tss.iomap_base = sizeof tss;
 
-	//TODO: 16 bytes aligment.
-	void* ist1 = mem_alloc(0x2000 - 0x30);
+	mempool* ist_mp = mempool_create_shared(0x2000);  // size of ist
+	void* ist1 = ist_mp->alloc();
+	mempool_release_shared(ist_mp);
 	if (!ist1)
 		return cause::NO_MEMORY;
-	tss.set_ist1(reinterpret_cast<uptr>(ist1) + 0x2000 - 0x30 - 8);
+	tss.set_ist1(reinterpret_cast<uptr>(ist1) + 0x2000);
 
 	return cause::OK;
 }

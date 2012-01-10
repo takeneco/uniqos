@@ -19,9 +19,7 @@ void event_drive()
 	event_queue* evctl = global_vars::gv.event_ctl_obj;
 
 	for (;;) {
-		native::cli();
 		event_item* event = evctl->pop();
-		native::sti();
 		if (!event)
 			break;
 
@@ -34,10 +32,11 @@ void drive()
 	log()("(C) KATO Takeshi")();
 
 	for (;;) {
-		event_drive();
-
 		//test();
-		arch::halt();
+
+		native::cli();
+		event_drive();
+		asm volatile ("sti;hlt");
 	}
 }
 

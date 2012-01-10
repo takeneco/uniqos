@@ -484,8 +484,13 @@ void mempool_ctl::decide_params(
 	}
 }
 
-mempool* mempool_create_shared(u32 objsize)
+extern "C" mempool* mempool_create_shared(u32 objsize)
 {
 	return global_vars::gv.mempool_ctl_obj->shared_mempool(objsize);
+}
+
+extern "C" void mempool_release_shared(mempool* mp)
+{
+	global_vars::gv.mempool_ctl_obj->release_shared_mempool(mp);
 }
 
