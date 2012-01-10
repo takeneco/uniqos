@@ -22,14 +22,19 @@ public:
 	    u32 _obj_size,
 	    arch::page::TYPE ptype = arch::page::INVALID,
 	    mempool* _page_pool = 0);
+	cause::stype destroy();
 
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
 	uptr get_total_obj_size() const { return total_obj_size; }
+	sptr get_alloc_count() const { return alloc_count; }
 
 	void* alloc();
 	void free(void* ptr);
 	void collect_free_pages();
+
+	sptr inc_shared_count() { return ++shared_count; }
+	sptr dec_shared_count() { return --shared_count; }
 
 	void dump(log_target& lt);
 
@@ -103,6 +108,7 @@ private:
 	sptr             alloc_count;
 	sptr             page_count;
 	sptr             freeobj_count;
+	sptr             shared_count;
 
 	typedef chain<memobj, &memobj::chain_hook> obj_chain;
 	obj_chain free_objs;

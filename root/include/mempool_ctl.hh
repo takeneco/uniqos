@@ -28,6 +28,8 @@ public:
 	cause::stype init();
 
 	mempool* shared_mempool(u32 objsize);
+	void release_shared_mempool(mempool* mp);
+
 	mempool* exclusived_mempool(
 	    u32 objsize,
 	    arch::page::TYPE page_type = arch::page::INVALID,

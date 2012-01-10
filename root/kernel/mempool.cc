@@ -26,8 +26,41 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
     alloc_count(0),
     page_count(0),
     freeobj_count(0),
+    shared_count(0),
     page_pool(_page_pool)
 {
+}
+
+cause::stype mempool::destroy()
+{
+	for (;;) {
+		memobj* obj = free_objs.remove_head();
+		back_to_page(obj);
+		--freeobj_count;
+	}
+
+	if (alloc_count != 0 ||
+	    page_count != 0 ||
+	    freeobj_count != 0 ||
+	    shared_count != 0 ||
+	    free_objs.head() != 0 ||
+	    free_pages.head() != 0 ||
+	    full_pages.head() != 0)
+	{
+		log()("FAULT:")
+		(__FILE__, __LINE__, __func__)("Bad operation.")()
+		("| alloc_count: ").u(alloc_count)
+		(", page_count: ").u(page_count)()
+		("| freeobj_count: ").u(freeobj_count)
+		(", shared_count: ").u(shared_count)()
+		("| free_objs.head(): ")(free_objs.head())()
+		("| free_pages.head(): ")(free_pages.head())()
+		("| full_pages.head(): ")(full_pages.head())();
+
+		return cause::FAIL;
+	}
+
+	return cause::OK;
 }
 
 void* mempool::alloc()
@@ -82,6 +115,11 @@ void mempool::collect_free_pages()
 
 void mempool::dump(log_target& lt)
 {
+	lt.u(obj_size, 16)(" ").
+	u(alloc_count, 16)(" ").
+	u(page_count, 16)(" ").
+	u(freeobj_count, 16)();
+
 	lt("---- free_pages ----")();
 
 	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
@@ -184,7 +222,7 @@ void mempool::back_to_page(memobj* obj)
 		}
 	}
 
-	log()(__func__)("() no matched page: obj:")(obj)();
+	log()("FAULT:")(__func__)("() no matched page: obj:")(obj)();
 }
 
 
@@ -292,7 +330,15 @@ mempool* mempool_ctl::shared_mempool(u32 objsize)
 	if (!r)
 		r = create_shared(objsize);
 
+	r->inc_shared_count();
+
 	return r;
+}
+
+void mempool_ctl::release_shared_mempool(mempool* mp)
+{
+	if (mp->dec_shared_count() == 0 && mp->get_alloc_count() == 0) 
+		mp->destroy();
 }
 
 mempool* mempool_ctl::exclusived_mempool(
@@ -345,6 +391,17 @@ void* mempool_ctl::shared_alloc(u32 bytes)
 	h->mp = pool;
 
 	return h->mem;
+}
+
+void mempool_ctl::dump(log_target& lt)
+{
+	lt("obj_size      alloc_count       page_count    freeobj_count")();
+	for (mempool* mp = shared_chain.head();
+	     mp;
+	     mp = shared_chain.next(mp))
+	{
+		mp->dump(lt);
+	}
 }
 
 cause::stype mempool_ctl::init_heap()
