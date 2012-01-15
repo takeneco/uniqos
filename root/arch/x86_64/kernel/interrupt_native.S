@@ -7,7 +7,7 @@
 
 .section .text
 
-save_regs:
+save_regs2:
 	movq %rax, 0x08(%rsp)
 	movq %rcx, 0x10(%rsp)
 	movq %rdx, 0x18(%rsp)
@@ -26,7 +26,7 @@ save_regs:
 	movq %r15, 0x78(%rsp)
 	ret
 
-load_regs:
+load_regs2:
 	movq 0x08(%rsp), %rax
 	movq 0x10(%rsp), %rcx
 	movq 0x18(%rsp), %rdx
@@ -51,9 +51,9 @@ load_regs:
 .macro exception_handler handler, func
 	ENTRY_START(\handler)
 	subq  $8 * 15, %rsp
-	call  save_regs
+	call  save_regs2
 	call  \func
-	call  load_regs
+	call  load_regs2
 	addq  $8 * 15 + 8, %rsp
 	iretq
 	ENTRY_END(\handler)
@@ -92,14 +92,134 @@ exception_handler exception_intr_0x1d, on_exception_0x1d
 exception_handler exception_intr_0x1e, on_exception_0x1e
 exception_handler exception_intr_0x1f, on_exception_0x1f
 
-.macro intr_handler handler, vec
+.macro intr_handler2 handler, vec
 	ENTRY_START(\handler)
 	subq $8 * 15, %rsp
-	call save_regs
+	call save_regs2
 	movl $\vec, %edi
 	call on_interrupt
-	call load_regs
+	call load_regs2
 	addq $8 * 15, %rsp
+	iretq
+	ENTRY_END(\handler)
+.endm
+
+// param :
+//   %rdi is pointer to regset
+// input stack layout :
+//      (%rsp)  return address
+//   8*1(%rsp)  saved %rdi
+//   8*2(%rsp)  error code or 0
+//   8*3(%rsp)  saved %rip
+//   8*4(%rsp)  saved %cs
+//   8*5(%rsp)  saved %rf
+//   8*6(%rsp)  saved %rsp
+//   8*7(%rsp)  saved %ss
+save_regs:
+	movq  %rax,     (%rdi)
+	movq  %rbx, 8*1 (%rdi)
+	movq  %rcx, 8*2 (%rdi)
+	movq  %rdx, 8*3 (%rdi)
+	movq  %rbp, 8*4 (%rdi)
+	movq  %rsi, 8*5 (%rdi)
+	movq  8*1(%rsp), %rax
+	movq  8*6(%rsp), %rbx
+	movq  8*3(%rsp), %rcx
+	movq  8*5(%rsp), %rdx
+	movq  %rax, 8*6 (%rdi)  // %rdi
+	movq  %rbx, 8*7 (%rdi)  // %rsp
+	movq  %r8,  8*8 (%rdi)
+	movq  %r9,  8*9 (%rdi)
+	movq  %r10, 8*10(%rdi)
+	movq  %r11, 8*11(%rdi)
+	movq  %r12, 8*12(%rdi)
+	movq  %r13, 8*13(%rdi)
+	movq  %r14, 8*14(%rdi)
+	movq  %r15, 8*15(%rdi)
+	movq  %rcx, 8*16(%rdi)  // %rip
+	movq  %rdx, 8*17(%rdi)  // %rf
+	movw  8*4(%rsp), %ax
+	movw  %ds, %bx
+	movw  %es, %cx
+	movw  %fs, %dx
+	movw  %gs, %bp
+	movw  8*7(%rsp), %si
+	movw  %ax, 8*18   (%rdi)  // %cs
+	movw  %bx, 8*18+2 (%rdi)  // %ds
+	movw  %cx, 8*18+4 (%rdi)  // %es
+	movw  %dx, 8*18+6 (%rdi)  // %fs
+	movw  %bp, 8*18+8 (%rdi)  // %gs
+	movw  %si, 8*18+10(%rdi)  // %ss
+	ret
+
+// param :
+//   %rdi is pointer to regset
+// output stack layout :
+//      (%rsp)  return address (pop by ret).
+//   8*1(%rsp)  loaded %rdi
+//   8*2(%rsp)  loaded %rip
+//   8*3(%rsp)  loaded %cs
+//   8*4(%rsp)  loaded %rf
+//   8*5(%rsp)  loaded %rsp
+//   8*6(%rsp)  loaded %ss
+load_regs:
+	movw  8*18+10(%rdi), %si  // %ss
+	movw  8*18+8 (%rdi), %bp  // %gs
+	movw  8*18+6 (%rdi), %dx  // %fs
+	movw  8*18+4 (%rdi), %cx  // %es
+	movw  8*18+2 (%rdi), %bx  // %ds
+	movw  8*18   (%rdi), %ax  // %cs
+	movq  %rsi, 8*6(%rsp)
+	movw  %bp, %gs
+	movw  %dx, %fs
+	movw  %cx, %es
+	movw  %bx, %ds
+	movq  %rax, 8*3(%rsp)
+	movq  8*17(%rdi), %rdx  // %rf
+	movq  8*16(%rdi), %rcx  // %rip
+	movq  8*15(%rdi), %r15
+	movq  8*14(%rdi), %r14
+	movq  8*13(%rdi), %r13
+	movq  8*12(%rdi), %r12
+	movq  8*11(%rdi), %r11
+	movq  8*10(%rdi), %r10
+	movq  8*9 (%rdi), %r9
+	movq  8*8 (%rdi), %r8
+	movq  8*7 (%rdi), %rbx  // %rsp
+	movq  8*6 (%rdi), %rax  // %rdi
+	movq  %rdx, 8*4(%rsp)
+	movq  %rcx, 8*2(%rsp)
+	movq  %rbx, 8*5(%rsp)
+	movq  %rax, 8*1(%rsp)
+	movq  8*5 (%rdi), %rsi
+	movq  8*4 (%rdi), %rbp
+	movq  8*3 (%rdi), %rdx
+	movq  8*2 (%rdi), %rcx
+	movq  8*1 (%rdi), %rbx
+	movq      (%rdi), %rax
+	ret
+
+// stack layout :
+//      (%rsp)  saved %rip
+//   8*1(%rsp)  saved %cs
+//   8*2(%rsp)  saved %rf
+//   8*3(%rsp)  saved %rsp
+//   8*4(%rsp)  saved %ss
+//   8*5(%rsp)  ptr to ptr to regset
+//   8*6(%rsp)  ptr to cpu_ctl::thread
+.macro intr_handler handler, vec
+	ENTRY_START(\handler)
+	pushq $0
+	pushq %rdi
+	movq  8*7(%rsp), %rdi
+	movq  (%rdi), %rdi     // regset
+	call  save_regs
+	movl  $\vec, %edi
+	call  on_interrupt
+	movq  8*7(%rsp), %rdi
+	movq  (%rdi), %rdi     // regset
+	call  load_regs
+	popq  %rdi
 	iretq
 	ENTRY_END(\handler)
 .endm

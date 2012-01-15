@@ -1,6 +1,6 @@
 /// @file   cpu_ctl.cc
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #include "cpu_ctl.hh"
@@ -15,6 +15,12 @@
 #include "placement_new.hh"
 #include "string.hh"
 
+
+namespace {
+	enum {
+		IST_BYTES = 0x2000,  // size of ist
+	};
+}
 
 cause::stype cpu_init()
 {
@@ -86,12 +92,32 @@ cause::stype cpu_ctl::thread::init()
 	mem_fill(sizeof tss, 0, &tss);
 	tss.iomap_base = sizeof tss;
 
-	mempool* ist_mp = mempool_create_shared(0x2000);  // size of ist
+	mempool* ist_mp = mempool_create_shared(IST_BYTES);
 	void* ist1 = ist_mp->alloc();
+	void* ist2 = ist_mp->alloc();
 	mempool_release_shared(ist_mp);
-	if (!ist1)
+	if (!ist1 || !ist2)
 		return cause::NO_MEMORY;
-	tss.set_ist1(reinterpret_cast<uptr>(ist1) + 0x2000);
+	uptr ist1_adr = reinterpret_cast<uptr>(ist1) + IST_BYTES - 16;
+	tss.set_ist1(ist1_adr);
+
+	uptr ist2_adr = reinterpret_cast<uptr>(ist2) + IST_BYTES - 16;
+	tss.set_ist2(ist2_adr);
+
+	mempool* regset_mp = mempool_create_shared(sizeof (regset));
+	regset* rs = static_cast<regset*>(regset_mp->alloc());
+	mempool_release_shared(regset_mp);
+	if (!rs)
+		return cause::NO_MEMORY;
+	kern_event_thread = rs;
+
+	struct ist_footer {
+		regset** rs;
+		thread* th;
+	};
+	ist_footer* istf = reinterpret_cast<ist_footer*>(ist1_adr);
+	istf->th = this;
+	istf->rs = &this->kern_event_thread;
 
 	return cause::OK;
 }
@@ -104,3 +130,4 @@ void halt() {
 }
 
 }  // namespace arch
+

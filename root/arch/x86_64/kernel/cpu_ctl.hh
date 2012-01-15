@@ -9,6 +9,7 @@
 #include "basic_types.hh"
 #include "cpu_idte.hh"
 #include "mpspec.hh"
+#include "regset.hh"
 
 
 class cpu_ctl
@@ -158,9 +159,17 @@ public:
 			ist1l = adr & 0xffffffff;
 			ist1h = (adr >> 32) & 0xffffffff;
 		}
+		void set_ist2(u64 adr) {
+			ist2l = adr & 0xffffffff;
+			ist2h = (adr >> 32) & 0xffffffff;
+		}
 		void* get_ist1() const {
 			return reinterpret_cast<void*>(
 			    u64(ist1h) << 32 | u64(ist1l));
+		}
+		void* get_ist2() const {
+			return reinterpret_cast<void*>(
+			    u64(ist2h) << 32 | u64(ist2l));
 		}
 		u32 reserved_1;
 		u32 rsp0l;
@@ -199,6 +208,7 @@ public:
 	public:
 		GDT gdt;
 		TSS tss;
+		regset* kern_event_thread;
 	};
 
 

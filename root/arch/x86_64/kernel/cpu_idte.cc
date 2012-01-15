@@ -278,9 +278,9 @@ void intr_init()
 		{ exception_intr_0x0a, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0b, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0c, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0d, 1, 1, 0, arch::idte::TRAP },
+		{ exception_intr_0x0d, 1, 2, 0, arch::idte::TRAP },
 		//{ exception_intr_0x0d, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0e, 1, 1, 0, arch::idte::TRAP },
+		{ exception_intr_0x0e, 1, 2, 0, arch::idte::TRAP },
 		//{ exception_intr_0x0e, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x0f, 1, 0, 0, arch::idte::TRAP },
 		{ exception_intr_0x10, 1, 0, 0, arch::idte::TRAP },
@@ -345,7 +345,7 @@ void intr_init()
 
 	for (int i = 0; i < 0x90; ++i) {
 		idt[0x20 + i].set(
-		    idt_handler[i], 8 * 1, 0, 0, arch::idte::INTR);
+		    idt_handler[i], 8 * 1, 1, 0, arch::idte::INTR);
 	}
 ///*
 	for (int i = 0x90+0x20; i < 256; i++) {
@@ -396,7 +396,7 @@ UNKNOWN_EXCEPTION(0x0c)
 extern "C" void on_exception_0x0d()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)
-	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist1();
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist2();
 	stk -= 1;
 	log(1)("stk:")(stk)();
 
@@ -449,7 +449,7 @@ extern "C" void on_exception_0x0d()
 extern "C" void on_exception_0x0e()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)
-	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist1();
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist2();
 	stk -= 1;
 	log(1)("stk:")(stk)();
 
