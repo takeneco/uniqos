@@ -155,21 +155,23 @@ public:
 	// Task State Segment
 	struct TSS
 	{
-		void set_ist1(u64 adr) {
-			ist1l = adr & 0xffffffff;
-			ist1h = (adr >> 32) & 0xffffffff;
+		void set_ist(u64 adr, int i) {
+			_set_ist(adr, ist_array[i * 2], ist_array[i * 2 + 1]);
 		}
-		void set_ist2(u64 adr) {
-			ist2l = adr & 0xffffffff;
-			ist2h = (adr >> 32) & 0xffffffff;
+		static void _set_ist(u64 adr, u32& l, u32& h) {
+			l = adr & 0xffffffff;
+			h = (adr >> 32) & 0xffffffff;
 		}
-		void* get_ist1() const {
+		const void* get_ist(int i) const {
+			return _get_ist(ist_array[i * 2], ist_array[i * 2 + 1]);
+		}
+		void* get_ist(int i) {
+			return _get_ist(ist_array[i * 2], ist_array[i * 2 + 1]);
+		}
+		static void* _get_ist(u32 l, u32 h) {
 			return reinterpret_cast<void*>(
-			    u64(ist1h) << 32 | u64(ist1l));
-		}
-		void* get_ist2() const {
-			return reinterpret_cast<void*>(
-			    u64(ist2h) << 32 | u64(ist2l));
+			    u64(h) << 32 |
+			    u64(l));
 		}
 		u32 reserved_1;
 		u32 rsp0l;
@@ -178,26 +180,35 @@ public:
 		u32 rsp1h;
 		u32 rsp2l;
 		u32 rsp2h;
-		u32 reserved_2;
-		u32 reserved_3;
-		u32 ist1l;
-		u32 ist1h;
-		u32 ist2l;
-		u32 ist2h;
-		u32 ist3l;
-		u32 ist3h;
-		u32 ist4l;
-		u32 ist4h;
-		u32 ist5l;
-		u32 ist5h;
-		u32 ist6l;
-		u32 ist6h;
-		u32 ist7l;
-		u32 ist7h;
+		union {
+			struct {
+				u32 reserved_2;
+				u32 reserved_3;
+				u32 ist1l;
+				u32 ist1h;
+				u32 ist2l;
+				u32 ist2h;
+				u32 ist3l;
+				u32 ist3h;
+				u32 ist4l;
+				u32 ist4h;
+				u32 ist5l;
+				u32 ist5h;
+				u32 ist6l;
+				u32 ist6h;
+				u32 ist7l;
+				u32 ist7h;
+			} ist;
+			u32 ist_array[16];
+		};
 		u32 reserved_4;
 		u32 reserved_5;
 		u16 reserved_6;
 		u16 iomap_base;
+	};
+	enum {
+		IST_INTR = 1,
+		IST_TRAP = 2,
 	};
 
 	class thread

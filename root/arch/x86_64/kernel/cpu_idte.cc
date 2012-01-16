@@ -396,7 +396,7 @@ UNKNOWN_EXCEPTION(0x0c)
 extern "C" void on_exception_0x0d()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)
-	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist2();
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist(cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 
@@ -449,7 +449,7 @@ extern "C" void on_exception_0x0d()
 extern "C" void on_exception_0x0e()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)
-	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist2();
+	    global_vars::gv.cpu_ctl_obj->get_tss(0)->get_ist(cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 

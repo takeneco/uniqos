@@ -93,16 +93,16 @@ cause::stype cpu_ctl::thread::init()
 	tss.iomap_base = sizeof tss;
 
 	mempool* ist_mp = mempool_create_shared(IST_BYTES);
-	void* ist1 = ist_mp->alloc();
-	void* ist2 = ist_mp->alloc();
+	void* ist_intr = ist_mp->alloc();
+	void* ist_trap = ist_mp->alloc();
 	mempool_release_shared(ist_mp);
-	if (!ist1 || !ist2)
+	if (!ist_intr || !ist_trap)
 		return cause::NO_MEMORY;
-	uptr ist1_adr = reinterpret_cast<uptr>(ist1) + IST_BYTES - 16;
-	tss.set_ist1(ist1_adr);
+	uptr ist_intr_adr = reinterpret_cast<uptr>(ist_intr) + IST_BYTES - 16;
+	tss.set_ist(ist_intr_adr, IST_INTR);
 
-	uptr ist2_adr = reinterpret_cast<uptr>(ist2) + IST_BYTES - 16;
-	tss.set_ist2(ist2_adr);
+	uptr ist_trap_adr = reinterpret_cast<uptr>(ist_trap) + IST_BYTES - 16;
+	tss.set_ist(ist_trap_adr, IST_TRAP);
 
 	mempool* regset_mp = mempool_create_shared(sizeof (regset));
 	regset* rs = static_cast<regset*>(regset_mp->alloc());
@@ -115,7 +115,7 @@ cause::stype cpu_ctl::thread::init()
 		regset** rs;
 		thread* th;
 	};
-	ist_footer* istf = reinterpret_cast<ist_footer*>(ist1_adr);
+	ist_footer* istf = reinterpret_cast<ist_footer*>(ist_intr_adr);
 	istf->th = this;
 	istf->rs = &this->kern_event_thread;
 
