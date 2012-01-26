@@ -1,7 +1,7 @@
 /// @file  interrupt_handler.S
 /// @brief interrupt handler.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 
@@ -104,101 +104,154 @@ exception_handler exception_intr_0x1f, on_exception_0x1f
 	ENTRY_END(\handler)
 .endm
 
-// param :
-//   %rdi is pointer to regset
-// input stack layout :
-//      (%rsp)  return address
-//   8*1(%rsp)  saved %rdi
-//   8*2(%rsp)  error code or 0
-//   8*3(%rsp)  saved %rip
-//   8*4(%rsp)  saved %cs
-//   8*5(%rsp)  saved %rf
-//   8*6(%rsp)  saved %rsp
-//   8*7(%rsp)  saved %ss
-save_regs:
-	movq  %rax,     (%rdi)
-	movq  %rbx, 8*1 (%rdi)
-	movq  %rcx, 8*2 (%rdi)
-	movq  %rdx, 8*3 (%rdi)
-	movq  %rbp, 8*4 (%rdi)
-	movq  %rsi, 8*5 (%rdi)
-	movq  8*1(%rsp), %rax
-	movq  8*6(%rsp), %rbx
-	movq  8*3(%rsp), %rcx
-	movq  8*5(%rsp), %rdx
-	movq  %rax, 8*6 (%rdi)  // %rdi
-	movq  %rbx, 8*7 (%rdi)  // %rsp
-	movq  %r8,  8*8 (%rdi)
-	movq  %r9,  8*9 (%rdi)
-	movq  %r10, 8*10(%rdi)
-	movq  %r11, 8*11(%rdi)
-	movq  %r12, 8*12(%rdi)
-	movq  %r13, 8*13(%rdi)
-	movq  %r14, 8*14(%rdi)
-	movq  %r15, 8*15(%rdi)
-	movq  %rcx, 8*16(%rdi)  // %rip
-	movq  %rdx, 8*17(%rdi)  // %rf
-	movw  8*4(%rsp), %ax
-	movw  %ds, %bx
-	movw  %es, %cx
+
+// Context switch
+//
+// input param:
+//   %rdi is pointer to new thread regset
+//   %rsi is pointer to old thread regset
+// input stack layout:
+//   (%rsp)  return address
+//
+// save regs:
+//   %rbx, %rbp, %r12, %r13, %r14, %r15, %rf,
+//   %rip, %cs, %ds, %es, %rsp, %ss, %fs, %gs
+// load regs:
+//   all
+ENTRY_START(switch_regset)
+	// save regs
+	popq  %rax                // load %rip (return address)
+	pushf
+	popq  %rcx                // load %rf
+	movq  %rbx, 8* 3(%rsi)
+	movq  %rbp, 8* 4(%rsi)
+	movq  %r12, 8*11(%rsi)
+	movq  %r13, 8*12(%rsi)
+	movq  %r14, 8*13(%rsi)
+	movq  %r15, 8*14(%rsi)
+	movq  %rax, 8*15(%rsi)    // save %rip
+	movw  %cs, %ax
+	movw  %ds, %dx
+	movw  %es, %bx
+	movw  %ax,  8*16  (%rsi)  // save %cs
+	movw  %dx,  8*16+2(%rsi)  // save %ds
+	movw  %bx,  8*16+4(%rsi)  // save %es
+	movq  %rcx, 8*17(%rsi)    // save %rf
+	movq  %rsp, 8*18(%rsi)
+	movw  %ss, %ax
 	movw  %fs, %dx
-	movw  %gs, %bp
-	movw  8*7(%rsp), %si
-	movw  %ax, 8*18   (%rdi)  // %cs
-	movw  %bx, 8*18+2 (%rdi)  // %ds
-	movw  %cx, 8*18+4 (%rdi)  // %es
-	movw  %dx, 8*18+6 (%rdi)  // %fs
-	movw  %bp, 8*18+8 (%rdi)  // %gs
-	movw  %si, 8*18+10(%rdi)  // %ss
+	movw  %gs, %bx
+	movw  %ax,  8*19  (%rsi)  // save %ss
+	movw  %dx,  8*19+2(%rsi)  // save %fs
+	movw  %bx,  8*19+2(%rsi)  // save %gs
+
+        // load regs
+	jmp   load_regs
+ENTRY_END(switch_regset)
+
+
+// Save regs to regset
+//
+// input stack layout:
+//      (%rsp)  return address
+//   8*1(%rsp)  error code or 0
+//   8*2(%rsp)  saved %rip
+//   8*3(%rsp)  saved %cs
+//   8*4(%rsp)  saved %rf
+//   8*5(%rsp)  saved %rsp
+//   8*6(%rsp)  saved %ss
+//   8*7(%rsp)  ptr to ptr to regset
+//   8*8(%rsp)  ptr to cpu_ctl::thread
+save_regs_on_intr:
+	movq  %rdi, -8(%rsp)
+	movq  8*7(%rsp), %rdi
+	movq  (%rdi), %rdi        // load regset
+
+	movq  %rax,     (%rdi)
+	movq  %rcx, 8* 1(%rdi)
+	movq  %rdx, 8* 2(%rdi)
+	movq  %rbx, 8* 3(%rdi)
+	movq  %rbp, 8* 4(%rdi)
+	movq  %rsi, 8* 5(%rdi)
+	movq   -8(%rsp), %rax     // load %rdi
+	movq  8*2(%rsp), %rbx     // load %rip
+	movw  8*3(%rsp), %cx      // load %cs
+	movw  %ds, %dx
+	movw  %es, %bp
+	movq  8*4(%rsp), %rsi     // load %rf
+	movq  %rax, 8* 6(%rdi)    // save %rdi
+	movq  %r8,  8* 7(%rdi)
+	movq  %r9,  8* 8(%rdi)
+	movq  %r10, 8* 9(%rdi)
+	movq  %r11, 8*10(%rdi)
+	movq  %r12, 8*11(%rdi)
+	movq  %r13, 8*12(%rdi)
+	movq  %r14, 8*13(%rdi)
+	movq  %r15, 8*14(%rdi)
+	movq  %rbx, 8*15(%rdi)    // save %rip
+	movw  %cx,  8*16  (%rdi)  // save %cs
+	movw  %dx,  8*16+2(%rdi)  // save %ds
+	movw  %bp,  8*16+4(%rdi)  // save %es
+	movq  %rsi, 8*17(%rdi)    // save %rf
+	movq  8*5(%rsp), %rax     // load %rsp
+	movw  8*6(%rsp), %bx      // load %ss
+	movw  %fs, %cx
+	movw  %gs, %dx
+	movq  %rax, 8*18  (%rdi)  // save %rsp
+	movw  %bx,  8*19  (%rdi)  // save %ss
+	movw  %cx,  8*19+2(%rdi)  // save %fs
+	movw  %dx,  8*19+4(%rdi)  // save %gs
 	ret
 
-// param :
-//   %rdi is pointer to regset
-// output stack layout :
-//      (%rsp)  return address (pop by ret).
-//   8*1(%rsp)  loaded %rdi
-//   8*2(%rsp)  loaded %rip
-//   8*3(%rsp)  loaded %cs
-//   8*4(%rsp)  loaded %rf
-//   8*5(%rsp)  loaded %rsp
-//   8*6(%rsp)  loaded %ss
+
+// Load regs and jump to new thread
+//
+// input stack layout:
+//      (%rsp)  error code or 0
+//   8*1(%rsp)  old data
+//   8*2(%rsp)  old data
+//   8*3(%rsp)  old data
+//   8*4(%rsp)  old data
+//   8*5(%rsp)  old data
+//   8*6(%rsp)  ptr to ptr to new regset
+//   8*7(%rsp)  ptr to new cpu_ctl::thread
+load_regs_on_intr:
+	movq  8*6(%rsp), %rdi
+	movq  (%rdi), %rdi        // load regset
+
+// input:
+//   %rdi is ptr to regset
 load_regs:
-	movw  8*18+10(%rdi), %si  // %ss
-	movw  8*18+8 (%rdi), %bp  // %gs
-	movw  8*18+6 (%rdi), %dx  // %fs
-	movw  8*18+4 (%rdi), %cx  // %es
-	movw  8*18+2 (%rdi), %bx  // %ds
-	movw  8*18   (%rdi), %ax  // %cs
-	movq  %rsi, 8*6(%rsp)
-	movw  %bp, %gs
-	movw  %dx, %fs
-	movw  %cx, %es
-	movw  %bx, %ds
-	movq  %rax, 8*3(%rsp)
-	movq  8*17(%rdi), %rdx  // %rf
-	movq  8*16(%rdi), %rcx  // %rip
-	movq  8*15(%rdi), %r15
-	movq  8*14(%rdi), %r14
-	movq  8*13(%rdi), %r13
-	movq  8*12(%rdi), %r12
-	movq  8*11(%rdi), %r11
-	movq  8*10(%rdi), %r10
-	movq  8*9 (%rdi), %r9
-	movq  8*8 (%rdi), %r8
-	movq  8*7 (%rdi), %rbx  // %rsp
-	movq  8*6 (%rdi), %rax  // %rdi
-	movq  %rdx, 8*4(%rsp)
-	movq  %rcx, 8*2(%rsp)
-	movq  %rbx, 8*5(%rsp)
-	movq  %rax, 8*1(%rsp)
-	movq  8*5 (%rdi), %rsi
-	movq  8*4 (%rdi), %rbp
-	movq  8*3 (%rdi), %rdx
-	movq  8*2 (%rdi), %rcx
-	movq  8*1 (%rdi), %rbx
+	movw  8*19+4 (%rdi), %dx  // load %gs
+	movw  8*19+2 (%rdi), %cx  // load %fs
+	movw  %dx, %gs
+	movw  %cx, %fs
+	movw  8*16+4 (%rdi), %bp  // load %es
+	movw  8*16+2 (%rdi), %dx  // load %ds
+	movq  8*14(%rdi), %r15
+	movq  8*13(%rdi), %r14
+	movq  8*12(%rdi), %r13
+	movq  8*11(%rdi), %r12
+	movq  8*10(%rdi), %r11
+	movq  8* 9(%rdi), %r10
+	movq  8* 8(%rdi), %r9
+	movq  8* 7(%rdi), %r8
+	movw  %bp, %es
+	movw  %dx, %ds
+	movq  8* 5(%rdi), %rsi
+	movq  8* 4(%rdi), %rbp
+	movq  8* 3(%rdi), %rbx
+	movq  8* 2(%rdi), %rdx
+	movq  8* 1(%rdi), %rcx
 	movq      (%rdi), %rax
-	ret
 
+	leaq  8*15(%rdi), %rsp
+        movq  8*-9(%rsp), %rdi    // load %rdi
+	iretq
+
+
+// Interrupt handler
+//
 // stack layout :
 //      (%rsp)  saved %rip
 //   8*1(%rsp)  saved %cs
@@ -210,17 +263,10 @@ load_regs:
 .macro intr_handler handler, vec
 	ENTRY_START(\handler)
 	pushq $0
-	pushq %rdi
-	movq  8*7(%rsp), %rdi
-	movq  (%rdi), %rdi     // regset
-	call  save_regs
+	call  save_regs_on_intr
 	movl  $\vec, %edi
 	call  on_interrupt
-	movq  8*7(%rsp), %rdi
-	movq  (%rdi), %rdi     // regset
-	call  load_regs
-	popq  %rdi
-	iretq
+	jmp   load_regs_on_intr
 	ENTRY_END(\handler)
 .endm
 
@@ -353,3 +399,4 @@ intr_handler interrupt_0x5f_handler, 0x5f
 //	interrupt_method 0x5f
 //ENTRY_END(interrupt_0x5f_handler)
 
+retf

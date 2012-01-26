@@ -22,6 +22,9 @@
 
 #include "memcell.hh"
 
+#include "mempool.hh"
+#include "regset.hh"
+
 
 void test();
 bool test_init();
@@ -104,6 +107,17 @@ void disable_intr_from_8259A()
 	native::outb(0xff, PIC1_OCW1);
 }
 
+extern "C" void switch_regset(regset* r1, regset* r2);
+
+thread* t1;
+thread* t2;
+
+void thread2()
+{
+	log()("xxx")();
+	switch_regset(&t1->rs, &t2->rs);
+}
+
 text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
@@ -171,6 +185,16 @@ log()("eee")();
 //	serial_dump(serial);
 	log()("test_init() : ").u(test_init())();
 	//test();
+
+	mempool* mp = mempool_create_shared(0x2000);
+	t2 = new (mp->alloc()) thread(
+	    (u64)thread2, (u64)mp->alloc() + 0x2000);
+
+	t1 = new (mp->alloc()) thread(0, 0);
+
+	log()("zzz")();
+	switch_regset(&t2->rs, &t1->rs);
+	log()("zzz")();
 
 	return 0;
 }
