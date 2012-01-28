@@ -9,7 +9,6 @@
 #include "core_class.hh"
 #include "global_vars.hh"
 #include "kerninit.hh"
-#include "output.hh"
 #include "memcache.hh"
 #include "memory_allocate.hh"
 #include "native_ops.hh"
@@ -36,44 +35,10 @@ void lapic_dump();
 void serial_dump(void*);
 cause::stype slab_init();
 
-#include "task.hh"
-extern "C" void task_switch(thread_state*, thread_state*);
-void create_thread(thread_state* ts, void (*entry)())
-{
-	u64 eflags;
-	asm volatile ("pushfq;popq %0": "=r"(eflags));
-	ts->eflags = eflags;
-
-	u64* stack = (u64*)memory::alloc(sizeof (u64) * 256);
-	stack[255] = (u64)entry;
-	ts->rsp = (u64)&stack[255];
-}
-thread_state ts1, ts2;
-
 namespace {
 
 }  // End of anonymous namespace
 
-
-kern_output* kout_;
-extern int kern_tail_addr;
-
-kern_output* kern_get_out()
-{
-	return kout_;
-}
-
-void func()
-{
-	log()("func")(1)();
-	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	log()("func")(2)();
-	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	log()("func")(3)();
-	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-	log()("func")(4)();
-	asm volatile ("callq task_switch" : : "a"(&ts2), "c"(&ts1));
-}
 
 void disable_intr_from_8259A()
 {
@@ -166,20 +131,6 @@ log()("eee")();
 
 	file* serial = create_serial();
 	log_init(0, serial);
-
-/*
-	log()("ts1=")(&ts1)()("ts2=")(&ts2)();
-	create_thread(&ts2, func);
-	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	log()("kerninit")(1)();
-	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	log()("kerninit")(2)();
-	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-	log()("kerninit")(3)();
-	asm volatile ("callq task_switch" : : "a"(&ts1), "c"(&ts2));
-*/
-
-//	memcell_test();
 
 //	cpu_test();
 //	serial_dump(serial);

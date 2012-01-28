@@ -17,11 +17,12 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "bootinfo.hh"
-#include "elf.hh"
 #include "misc.hh"
-#include "pagetable.hh"
-#include "string.hh"
+
+#include <bootinfo.hh>
+#include <elf.hh>
+#include <pagetable.hh>
+#include <string.hh>
 
 
 extern const u8 kernel[];
@@ -86,7 +87,6 @@ cause::stype load_segm_page(
 	if (map_vadr < phe->p_vaddr) {
 		const uptr gap_size = phe->p_vaddr - map_vadr;
 		mem_fill(gap_size, 0xAA, dest);
-//log()("fill adr = ").u(phys_vadr, 16)(", gap_size = ").u(gap_size, 16)();
 
 		map_vadr += gap_size;
 		dest += gap_size;
@@ -97,7 +97,6 @@ cause::stype load_segm_page(
 	const u64 file_offset = phe->p_offset + (map_vadr - phe->p_vaddr);
 	const sptr copy_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_filesz, dest_size);
-//log()("copy(")(dest)(", ")(kernel+file_offset)(", ").s(copy_size, 16)(")")();
 	mem_copy(copy_size, kernel + file_offset, dest);
 
 	map_vadr += copy_size;
@@ -107,14 +106,12 @@ cause::stype load_segm_page(
 	// BSS 領域を 0x00 で埋める。
 	const sptr fill_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_memsz, dest_size);
-//log()("fill(")(dest)(", ").s(fill_size, 16)(")")();
 	mem_fill(fill_size, 0x00, dest);
 
 	dest += fill_size;
 	dest_size -= fill_size;
 
 	// ページの残りを 0xAA で埋める。
-//log()("aa(")(dest)(", ").u(dest_size, 16)(")")();
 	mem_fill(dest_size, 0xAA, dest);
 
 	return cause::OK;

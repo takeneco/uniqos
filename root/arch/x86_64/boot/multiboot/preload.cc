@@ -16,18 +16,19 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "bootinfo.hh"
 #include "misc.hh"
-#include "multiboot2.h"
-#include "vga.hh"
+
+#include <bootinfo.hh>
+#include <multiboot2.h>
+#include <vga.hh>
 
 
 extern "C" u8 self_baseadr[];
 extern "C" u8 self_size[];
 
-text_vga vga_dev;
-
 namespace {
+
+text_vga vga_dev;
 
 const uptr BOOTHEAP_END = bootinfo::BOOTHEAP_END;
 
@@ -100,6 +101,10 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 
 }  // namespace
 
+
+/// @brief  Previous load kernel.
+/// @param[in] magic  multiboot magic code.
+/// @param[in] tag    multiboot info.
 cause::stype pre_load(u32 magic, const u32* tag)
 {
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
@@ -115,13 +120,9 @@ cause::stype pre_load(u32 magic, const u32* tag)
 	log_set(0, &memlog);
 	log_set(1, &vga_dev);
 
-	log(1)("&tag : ")(&tag)(", tag : ")(tag);
-
 	const u32* p = tag;
 	const u32 tag_size = *p;
 	p += 2;
-
-	log(1)(", size : ").u(tag_size)();
 
 	u32 read = 8;
 	while (read < tag_size) {
@@ -183,6 +184,28 @@ cause::stype pre_load(u32 magic, const u32* tag)
 			    (", entsize=").u(u32(mbt_elfsec->entsize))
 			    (", shndx=").u(u32(mbt_elfsec->shndx))();
 			*/
+			break;
+		}
+		case MULTIBOOT_TAG_TYPE_FRAMEBUFFER: {
+			const multiboot_tag_framebuffer* mbt_fb =
+			    reinterpret_cast<const multiboot_tag_framebuffer*>
+			    (mbt);
+			/*
+			log(1)("framebuffer : addr=")
+			    .u(mbt_fb->common.framebuffer_addr, 16)
+			    (", width=").u(mbt_fb->common.framebuffer_width)
+			    (", height=").u(mbt_fb->common.framebuffer_height)
+			    (", type=").u(mbt_fb->common.framebuffer_type);
+			*/
+			if (mbt_fb->common.framebuffer_type ==
+			    MULTIBOOT_FRAMEBUFFER_TYPE_EGA_TEXT)
+			{
+				vga_dev.init(
+				    mbt_fb->common.framebuffer_width,
+				    mbt_fb->common.framebuffer_height,
+				    (void*)mbt_fb->common.framebuffer_addr);
+			}
+			break;
 		}
 		case MULTIBOOT_TAG_TYPE_END:
 			read = tag_size; // force loop break

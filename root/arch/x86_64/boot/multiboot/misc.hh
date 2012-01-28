@@ -6,8 +6,8 @@
 #ifndef ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
-#include "cheap_alloc.hh"
-#include "log_target.hh"
+#include <cheap_alloc.hh>
+#include <log_target.hh>
 
 
 typedef cheap_alloc<256> allocator;

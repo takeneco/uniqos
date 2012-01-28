@@ -16,8 +16,6 @@
 #include "native_ops.hh"
 #include "placement_new.hh"
 
-#include "output.hh"
-void lapic_dump();
 
 namespace {
 

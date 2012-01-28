@@ -41,7 +41,7 @@ cause::stype text_vga::write(const iovec* iov, int iov_cnt, uptr* bytes)
 			++ypos;
 			continue;
 		}
-		if (xpos == width - 1) {
+		if (xpos >= width) {
 			xpos = 0;
 			++ypos;
 		}

@@ -16,9 +16,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "bootinfo.hh"
 #include "misc.hh"
-#include "string.hh"
+
+#include <bootinfo.hh>
+#include <string.hh>
 
 
 extern u32 stack_start[];
@@ -59,7 +60,8 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	const allocator* alloc = get_alloc();
 
 	allocator::enum_desc ea_enum;
-	alloc->enum_alloc(SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL, &ea_enum);
+	alloc->enum_alloc(
+	    SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL, &ea_enum);
 
 	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
 	for (;;) {

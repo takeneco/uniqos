@@ -17,7 +17,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "misc.hh"
-#include "placement_new.hh"
+#include <placement_new.hh>
 
 
 namespace {
