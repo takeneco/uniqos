@@ -13,6 +13,8 @@ kern_sources = [
     'mempool.cc',
     'slab_allocate.cc',
     'string.cc',
+    'thread.cc',
+    'thread_ctl.cc',
 ]
 
 kern_defines = []

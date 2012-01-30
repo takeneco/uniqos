@@ -22,7 +22,7 @@
 #include "memcell.hh"
 
 #include "mempool.hh"
-#include "regset.hh"
+#include <thread_ctl.hh>
 
 
 void test();
@@ -72,15 +72,13 @@ void disable_intr_from_8259A()
 	native::outb(0xff, PIC1_OCW1);
 }
 
-extern "C" void switch_regset(regset* r1, regset* r2);
-
-thread* t1;
-thread* t2;
+extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
+arch::regset rs1, rs2;
 
 void thread2()
 {
 	log()("xxx")();
-	switch_regset(&t1->rs, &t2->rs);
+	switch_regset(&rs1, &rs2);
 }
 
 text_vga vga_dev;
@@ -138,13 +136,18 @@ log()("eee")();
 	//test();
 
 	mempool* mp = mempool_create_shared(0x2000);
-	t2 = new (mp->alloc()) thread(
-	    (u64)thread2, (u64)mp->alloc() + 0x2000);
+	//new (mp->alloc()) thread(
+	//    (u64)thread2, (u64)mp->alloc() + 0x2000);
+	rs2.rip = (u64)thread2;
+	rs2.rsp = (u64)mp->alloc() + 0x2000;
+	rs2.cs = 8;
+	rs2.ds = rs2.es = rs2.ss = rs2.fs = rs2.gs = 16;
+	asm ("pushf; popq %0" : "=r"(rs2.rf));
 
-	t1 = new (mp->alloc()) thread(0, 0);
+	//new (mp->alloc()) thread(0, 0);
 
 	log()("zzz")();
-	switch_regset(&t2->rs, &t1->rs);
+	switch_regset(&rs2, &rs1);
 	log()("zzz")();
 
 	return 0;

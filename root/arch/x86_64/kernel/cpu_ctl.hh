@@ -9,7 +9,7 @@
 #include "basic_types.hh"
 #include "cpu_idte.hh"
 #include "mpspec.hh"
-#include "regset.hh"
+#include <thread_ctl.hh>
 
 
 class cpu_ctl
@@ -211,15 +211,16 @@ public:
 		IST_TRAP = 2,
 	};
 
-	class thread
+	class cpu_thread
 	{
 	public:
 		cause::stype init();
 
 	public:
+		thread_ctl thrd_ctl;
 		GDT gdt;
 		TSS tss;
-		regset* kern_event_thread;
+		arch::regset* kern_event_thread;
 	};
 
 
@@ -240,7 +241,7 @@ public:
 	}
 
 private:
-	thread threads[1];
+	cpu_thread threads[1];
 	arch::idte idt[256];
 	mpspec mps;
 };

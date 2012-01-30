@@ -80,7 +80,7 @@ cause::stype cpu_ctl::load()
 // cpu_ctl::thread
 
 
-cause::stype cpu_ctl::thread::init()
+cause::stype cpu_ctl::cpu_thread::init()
 {
 	gdt.null_entry.set_null();
 	gdt.kern_code.set(0);
@@ -104,16 +104,16 @@ cause::stype cpu_ctl::thread::init()
 	uptr ist_trap_adr = reinterpret_cast<uptr>(ist_trap) + IST_BYTES - 16;
 	tss.set_ist(ist_trap_adr, IST_TRAP);
 
-	mempool* regset_mp = mempool_create_shared(sizeof (regset));
-	regset* rs = static_cast<regset*>(regset_mp->alloc());
+	mempool* regset_mp = mempool_create_shared(sizeof (arch::regset));
+	arch::regset* rs = static_cast<arch::regset*>(regset_mp->alloc());
 	mempool_release_shared(regset_mp);
 	if (!rs)
 		return cause::NO_MEMORY;
 	kern_event_thread = rs;
 
 	struct ist_footer {
-		regset** rs;
-		thread* th;
+		arch::regset** rs;
+		cpu_thread* th;
 	};
 	ist_footer* istf = reinterpret_cast<ist_footer*>(ist_intr_adr);
 	istf->th = this;
