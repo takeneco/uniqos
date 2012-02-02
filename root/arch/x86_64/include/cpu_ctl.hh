@@ -239,6 +239,9 @@ public:
 	const mpspec* get_mpspec() const {
 		return &mps;
 	}
+	///
+	thread_ctl& get_thctl() { return threads[0].thrd_ctl; }
+	///
 
 private:
 	cpu_thread threads[1];

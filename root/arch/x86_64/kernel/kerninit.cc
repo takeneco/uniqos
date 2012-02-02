@@ -22,7 +22,7 @@
 #include "memcell.hh"
 
 #include "mempool.hh"
-#include <thread_ctl.hh>
+#include <cpu_ctl.hh>
 
 
 void test();
@@ -72,13 +72,11 @@ void disable_intr_from_8259A()
 	native::outb(0xff, PIC1_OCW1);
 }
 
-extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
-arch::regset rs1, rs2;
-
-void thread2()
+void thread3(void*)
 {
-	log()("xxx")();
-	switch_regset(&rs1, &rs2);
+	thread_ctl& tc = global_vars::gv.cpu_ctl_obj->get_thctl();
+	for (;;)
+		tc.manual_switch();
 }
 
 text_vga vga_dev;
@@ -135,20 +133,12 @@ log()("eee")();
 	log()("test_init() : ").u(test_init())();
 	//test();
 
-	mempool* mp = mempool_create_shared(0x2000);
-	//new (mp->alloc()) thread(
-	//    (u64)thread2, (u64)mp->alloc() + 0x2000);
-	rs2.rip = (u64)thread2;
-	rs2.rsp = (u64)mp->alloc() + 0x2000;
-	rs2.cs = 8;
-	rs2.ds = rs2.es = rs2.ss = rs2.fs = rs2.gs = 16;
-	asm ("pushf; popq %0" : "=r"(rs2.rf));
-
-	//new (mp->alloc()) thread(0, 0);
-
-	log()("zzz")();
-	switch_regset(&rs2, &rs1);
-	log()("zzz")();
+	thread_ctl& tc = global_vars::gv.cpu_ctl_obj->get_thctl();
+	thread* t;
+	tc.create_thread(thread3, 0, &t);
+	tc.wakeup(t);
+	for (int i = 0; i < 100; ++i)
+		tc.manual_switch();
 
 	return 0;
 }

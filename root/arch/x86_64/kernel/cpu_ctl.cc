@@ -119,6 +119,8 @@ cause::stype cpu_ctl::cpu_thread::init()
 	istf->th = this;
 	istf->rs = &this->kern_event_thread;
 
+	thrd_ctl.init();
+
 	return cause::OK;
 }
 

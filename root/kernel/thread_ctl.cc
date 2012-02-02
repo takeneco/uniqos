@@ -9,6 +9,8 @@
 #include <mempool.hh>
 #include <placement_new.hh>
 
+#include <log.hh>
+
 
 namespace {
 
@@ -35,12 +37,13 @@ cause::stype thread_ctl::init()
 		return cause::NO_MEMORY;
 	stack_mempool = mp;
 
-	thread* current = thread_mempool->alloc();
-	active_thread = current;
+	thread* current = static_cast<thread*>(thread_mempool->alloc());
+	running_thread = current;
 
 	return cause::OK;
 }
 
+#include <native_ops.hh>
 cause::stype thread_ctl::create_thread(
     uptr text, uptr param, thread** newthread)
 {
@@ -71,10 +74,27 @@ cause::stype thread_ctl::wakeup(thread* t)
 		return cause::OK;
 
 	sleeping_queue.remove(t);
-	running_queue.insert_tail(t);
+	ready_queue.insert_tail(t);
 
-	t->state = thread::SLEEPING;
+	t->state = thread::RUNNING;
 
 	return cause::OK;
+}
+
+extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
+
+void thread_ctl::manual_switch()
+{
+	thread* prev_run = running_thread;
+
+	thread* next_run = ready_queue.remove_head();
+	if (!next_run)
+		return;
+
+	ready_queue.insert_tail(running_thread);
+
+	running_thread = next_run;
+
+	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
 }
 

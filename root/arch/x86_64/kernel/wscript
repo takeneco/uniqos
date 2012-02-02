@@ -13,7 +13,7 @@ kern_linkflags = [
 kern_source = [
     'apic.cc',
     'entry.S',
-    'global_variables.cc',
+    'global_vars.cc',
     'cpu_idte.cc',
     'interrupt_native.S',
     'ioapic.cc',
