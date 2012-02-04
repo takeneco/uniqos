@@ -35,6 +35,8 @@ public:
 	void manual_switch();
 	///
 
+	thread* get_running_thread() { return running_thread; }
+
 private:
 	thread* running_thread;
 

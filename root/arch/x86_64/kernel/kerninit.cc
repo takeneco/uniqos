@@ -74,7 +74,7 @@ void disable_intr_from_8259A()
 
 void thread3(void*)
 {
-	thread_ctl& tc = global_vars::gv.cpu_ctl_obj->get_thctl();
+	thread_ctl& tc = global_vars::gv.logical_cpu_obj_array[0].thrd_ctl;
 	for (;;)
 		tc.manual_switch();
 }
@@ -133,7 +133,7 @@ log()("eee")();
 	log()("test_init() : ").u(test_init())();
 	//test();
 
-	thread_ctl& tc = global_vars::gv.cpu_ctl_obj->get_thctl();
+	thread_ctl& tc = global_vars::gv.logical_cpu_obj_array[0].thrd_ctl;
 	thread* t;
 	tc.create_thread(thread3, 0, &t);
 	tc.wakeup(t);

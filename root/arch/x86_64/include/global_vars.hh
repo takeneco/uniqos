@@ -9,6 +9,7 @@
 
 
 class cpu_ctl;
+class logical_cpu;
 class core_page;
 class page_ctl;
 namespace arch {
@@ -27,6 +28,7 @@ namespace global_vars {
 struct _vars
 {
 	cpu_ctl*         cpu_ctl_obj;
+	logical_cpu*     logical_cpu_obj_array;
 	core_page*       core_page_obj;
 	page_ctl*        page_ctl_obj;
 	mempool_ctl*     mempool_ctl_obj;

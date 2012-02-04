@@ -15,6 +15,30 @@
 class cpu_ctl
 {
 public:
+	cpu_ctl();
+
+	cause::stype init();
+
+	arch::idte* get_idt() {
+		return idt;
+	}
+	const mpspec* get_mpspec() const {
+		return &mps;
+	}
+
+private:
+	arch::idte idt[256];
+	mpspec mps;
+};
+
+
+class logical_cpu
+{
+public:
+	cause::stype init();
+	cause::stype load();
+
+public:
 	/// Global Descriptor Table Entry
 	struct gdte
 	{
@@ -198,7 +222,7 @@ public:
 				u32 ist6h;
 				u32 ist7l;
 				u32 ist7h;
-			} ist;
+			};
 			u32 ist_array[16];
 		};
 		u32 reserved_4;
@@ -211,42 +235,11 @@ public:
 		IST_TRAP = 2,
 	};
 
-	class cpu_thread
-	{
-	public:
-		cause::stype init();
+	thread_ctl thrd_ctl;
+	GDT gdt;
+	TSS tss;
 
-	public:
-		thread_ctl thrd_ctl;
-		GDT gdt;
-		TSS tss;
-		arch::regset* kern_event_thread;
-	};
-
-
-public:
-	cpu_ctl();
-
-	cause::stype init();
-	cause::stype load();
-
-	arch::idte* get_idt() {
-		return idt;
-	}
-	TSS* get_tss(int thread) {
-		return &threads[thread].tss;
-	}
-	const mpspec* get_mpspec() const {
-		return &mps;
-	}
-	///
-	thread_ctl& get_thctl() { return threads[0].thrd_ctl; }
-	///
-
-private:
-	cpu_thread threads[1];
-	arch::idte idt[256];
-	mpspec mps;
+	arch::regset* running_thread_regset;
 };
 
 
