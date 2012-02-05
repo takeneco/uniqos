@@ -6,7 +6,7 @@
 
 #include "log.hh"
 
-#include "string.hh"
+#include <string.hh>
 
 
 namespace {
@@ -82,7 +82,7 @@ void log_target::_wr_str(const char* s)
 		s = nullstr;
 	}
 
-	write(s, string_get_length(s));
+	write(s, str_len(s));
 }
 
 void log_target::_wr_u(umax n, u8 base, int bits)
@@ -139,7 +139,7 @@ void log_target::_wr_src(const char* path, int line, const char* func)
 	iovec iov[7];
 
 	iov[0].base = const_cast<char*>(path);
-	iov[0].bytes = string_get_length(path);
+	iov[0].bytes = str_len(path);
 
 	const char brace1 = '(';
 	iov[1].base = const_cast<char*>(&brace1);
@@ -157,7 +157,7 @@ void log_target::_wr_src(const char* path, int line, const char* func)
 	int iov_count;
 	if (func) {
 		iov[4].base = const_cast<char*>(func);
-		iov[4].bytes = string_get_length(func);
+		iov[4].bytes = str_len(func);
 
 		iov[5].base = const_cast<char*>(&sep);
 		iov[5].bytes = 1;

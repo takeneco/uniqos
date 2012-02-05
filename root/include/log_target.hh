@@ -1,6 +1,6 @@
 /// @file  log_target.hh
 //
-// (C) 2008-2011 KATO Takeshi
+// (C) 2008-2012 KATO Takeshi
 //
 
 #ifndef INCLUDE_LOG_TARGET_HH_
@@ -21,6 +21,7 @@ void log_wr_src(log_target* x, const char* path, int line, const char* func);
 void log_wr_bin(log_target* x, uptr bytes, const void* data);
 
 }  // extern "C"
+
 
 class log_target
 {
@@ -155,43 +156,6 @@ private:
 	void _wr_bin(uptr bytes, const void* data);
 
 	file* target;
-};
-
-
-void log_init(log_target* target);
-//log_target& log(u8 i=0);
-void log_set(u8 i, log_target* target);
-void log_set(u8 i, bool mask);
-
-//
-class kern_output : public file
-{
-	void putux(umax n, int bits);
-
-protected:
-	kern_output() {}
-
-public:
-	kern_output* PutStr(const char* str) { return put_str(str); }
-	kern_output* PutSDec(s64 n) { return put_sdec(n); }
-	kern_output* PutUDec(u64 n) { return put_udec(n); }
-	kern_output* PutU8Hex(u8 n) { return put_u8hex(n); }
-	kern_output* PutU16Hex(u16 n) { return put_u16hex(n); }
-	kern_output* PutU32Hex(u32 n) { return put_u32hex(n); }
-	kern_output* PutU64Hex(u64 n) { return put_u64hex(n); }
-
-	kern_output* put_c(char C);
-	kern_output* put_str(const char* str);
-	kern_output* put_sdec(s64 n);
-	kern_output* put_udec(u64 n);
-	kern_output* put_u8hex(u8 n);
-	kern_output* put_u16hex(u16 n);
-	kern_output* put_u32hex(u32 n);
-	kern_output* put_u64hex(u64 n);
-
-	kern_output* put_endl() { return put_c('\n'); }
-
-	virtual void Sync() {}
 };
 
 

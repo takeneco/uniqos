@@ -169,7 +169,7 @@ bool stack_test()
 	u32 i;
 	for (i = 0; stack_start[i] == 0 && i < 0xffff; ++i);
 
-	log(1)("left stack : ").u((i - 1) * 4);
+	log()("boot left stack : ").u((i - 1) * 4)();
 
 	return i > 0;
 }
@@ -179,13 +179,13 @@ bool stack_test()
 
 cause::stype post_load(u32* mb_info)
 {
+	if (!stack_test())
+		return cause::FAIL;
+
 	if (!store_bootinfo(mb_info)) {
 		log(1)("Could not pass bootinfo to kernel.")();
 		return cause::FAIL;
 	}
-
-	if (!stack_test())
-		return cause::FAIL;
 
 	return cause::OK;
 }

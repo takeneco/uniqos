@@ -16,8 +16,8 @@ typedef cheap_alloc_separator<allocator> separator;
 enum MEM_SLOT {
 	SLOT_INDEX_NORMAL = 0,
 
-	// カーネルへ jmp した直後にカーネルが RAM として使用可能なヒープを
-	// BOOTHEAP と呼ぶことにする。
+	// カーネルへ jmp した直後からカーネルがメモリをセットアップするまで
+	// の間に RAM として使用可能なヒープを BOOTHEAP と呼ぶことにする。
 	// メモリ管理上は BOOTHEAP を区別し、可能な限り空いたままにしておく。
 	SLOT_INDEX_BOOTHEAP = 1,
 
@@ -48,6 +48,8 @@ extern struct load_info_
 
 class log : public log_target
 {
+	DISALLOW_COPY_AND_ASSIGN(log);
+
 public:
 	log(int i = 0);
 	~log();
@@ -58,6 +60,8 @@ void log_set(uint i, file* target);
 
 class memlog_file : public file
 {
+	DISALLOW_COPY_AND_ASSIGN(memlog_file);
+
 public:
 	static cause::stype setup();
 

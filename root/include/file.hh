@@ -35,6 +35,7 @@ public:
 	iovec_iterator(const iovec* iov, ucpu num) :
 	    iov(iov), iov_cnt(num) {
 		reset();
+		normalize();
 	}
 	void reset() {
 		iov_index = base_offset = 0;

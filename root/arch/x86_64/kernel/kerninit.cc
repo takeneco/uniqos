@@ -118,15 +118,15 @@ log()("eee")();
 
 	arch::apic_init();
 
+	file* serial = create_serial();
+	log_init(0, serial);
+
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
 	    (get_bootinfo(bootinfo::TYPE_LOG));
 	if (bootlog) {
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
-
-	file* serial = create_serial();
-	log_init(0, serial);
 
 //	cpu_test();
 //	serial_dump(serial);

@@ -9,7 +9,7 @@
 #include "string.hh"
 
 
-inline void iovec_iterator::normalize()
+void iovec_iterator::normalize()
 {
 	while (iov_index < iov_cnt) {
 		if (base_offset < iov[iov_index].bytes)

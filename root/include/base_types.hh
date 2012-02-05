@@ -328,13 +328,5 @@ namespace log
 #define TOSTR_(x) #x
 #define TOSTR(x) TOSTR_(x)
 
-#ifdef __GNUC__
-# define LIKELY(x)   __builtin_expect(!!(x), 1)
-# define UNLIKELY(x) __builtin_expect(x, 0)
-#else  // !__GNUC__
-# define LIKELY(x)   x
-# define UNLIKELY(x) x
-#endif  // __GNUC__
-
 
 #endif  // include guards

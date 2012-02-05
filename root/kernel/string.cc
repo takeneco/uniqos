@@ -1,10 +1,10 @@
 /// @file   kernel/string.cc
 /// @brief  Memory ops.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
-#include "string.hh"
+#include <string.hh>
 
 
 void mem_move(uptr bytes, const void* src, void* dest)
@@ -39,7 +39,7 @@ void mem_fill(uptr bytes, u8 c, void* dest)
 		d[i] = c;
 }
 
-int string_get_length(const char* str)
+int str_len(const char* str)
 {
 	if (!str)
 		return 0;

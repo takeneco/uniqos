@@ -32,7 +32,7 @@ inline allocator* get_alloc() {
 }
 
 
-/// @brief  Initialize alloc.
+/// @brief  Initialize allocator.
 void init_alloc()
 {
 	new (get_alloc()) allocator;
