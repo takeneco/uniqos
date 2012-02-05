@@ -6,7 +6,6 @@
 #ifndef INCLUDE_THREAD_CTL_HH_
 #define INCLUDE_THREAD_CTL_HH_
 
-#include <chain.hh>
 #include <regset.hh>
 #include <thread.hh>
 

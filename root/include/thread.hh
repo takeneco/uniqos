@@ -6,12 +6,15 @@
 #ifndef INCLUDE_THREAD_HH_
 #define INCLUDE_THREAD_HH_
 
+#include <basic.hh>
 #include <chain.hh>
 #include <regset.hh>
 
 
 class thread
 {
+	DISALLOW_COPY_AND_ASSIGN(thread);
+
 	friend class thread_ctl;
 
 public:

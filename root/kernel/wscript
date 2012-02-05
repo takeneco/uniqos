@@ -5,6 +5,7 @@
 
 
 kern_sources = [
+    'cpu.cc',
     'drive.cc',
     'file.cc',
     'interrupt_control.cc',

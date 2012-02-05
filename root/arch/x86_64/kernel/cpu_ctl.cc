@@ -73,6 +73,10 @@ cause::stype cpu_ctl::init()
 
 cause::stype logical_cpu::init()
 {
+	cause::stype r = basic_cpu::init();
+	if (r != cause::OK)
+		return r;
+
 	gdt.null_entry.set_null();
 	gdt.kern_code.set(0);
 	gdt.kern_data.set(0);
@@ -103,9 +107,8 @@ cause::stype logical_cpu::init()
 	istf->lcpu = this;
 	istf->rs = &this->running_thread_regset;
 
-	thrd_ctl.init();
-
-	running_thread_regset = thrd_ctl.get_running_thread()->ref_regset();
+	running_thread_regset =
+	    get_thread_ctl().get_running_thread()->ref_regset();
 
 	return cause::OK;
 }

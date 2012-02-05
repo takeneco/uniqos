@@ -9,7 +9,7 @@
 #include "basic_types.hh"
 #include "cpu_idte.hh"
 #include "mpspec.hh"
-#include <thread_ctl.hh>
+#include <cpu.hh>
 
 
 class cpu_ctl
@@ -32,7 +32,7 @@ private:
 };
 
 
-class logical_cpu
+class logical_cpu : public basic_cpu
 {
 public:
 	cause::stype init();
@@ -235,7 +235,6 @@ public:
 		IST_TRAP = 2,
 	};
 
-	thread_ctl thrd_ctl;
 	GDT gdt;
 	TSS tss;
 
