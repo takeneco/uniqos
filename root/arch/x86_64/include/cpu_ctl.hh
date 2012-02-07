@@ -12,6 +12,13 @@
 #include <cpu.hh>
 
 
+namespace arch {
+
+basic_cpu* get_current_cpu();
+
+}  // namespace arch
+
+
 class cpu_ctl
 {
 public:

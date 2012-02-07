@@ -6,6 +6,7 @@
 
 #include "core_class.hh"
 #include "chain.hh"
+#include <cpu_ctl.hh>
 #include "event.hh"
 #include "file.hh"
 #include "global_vars.hh"
@@ -269,7 +270,10 @@ void serial_ctrl::post_intr_event()
 		return;
 
 	intr_posted = true;
-	post_event(&intr_event);
+
+	//post_event(&intr_event);
+	basic_cpu* cpu = arch::get_current_cpu();
+	cpu->post_intr_event(&intr_event);
 }
 
 /// 割り込み発生時に呼ばれる。

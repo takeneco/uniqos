@@ -22,6 +22,15 @@ namespace {
 	};
 }
 
+namespace arch {
+
+basic_cpu* get_current_cpu()
+{
+	return &global_vars::gv.logical_cpu_obj_array[0];
+}
+
+}  // namespace arch
+
 cause::stype cpu_init()
 {
 	cpu_ctl* cpu_ctl_obj = new (mem_alloc(sizeof (cpu_ctl))) cpu_ctl;
