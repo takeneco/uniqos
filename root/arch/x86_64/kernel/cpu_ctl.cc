@@ -3,7 +3,7 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
-#include "cpu_ctl.hh"
+#include <cpu.hh>
 
 #include "arch.hh"
 #include "global_vars.hh"
@@ -17,14 +17,22 @@
 
 
 namespace {
-	enum {
-		IST_BYTES = 0x2000,  // size of ist
-	};
-}
+
+enum {
+	IST_BYTES = 0x2000,  // size of ist
+};
+
+struct ist_footer_layout
+{
+	arch::regset** regs;
+	processor* proc;
+};
+
+}  // namespace
 
 namespace arch {
 
-basic_cpu* get_current_cpu()
+processor* get_current_cpu()
 {
 	return &global_vars::gv.logical_cpu_obj_array[0];
 }
@@ -33,17 +41,22 @@ basic_cpu* get_current_cpu()
 
 cause::stype cpu_init()
 {
-	cpu_ctl* cpu_ctl_obj = new (mem_alloc(sizeof (cpu_ctl))) cpu_ctl;
-	global_vars::gv.cpu_ctl_obj = cpu_ctl_obj;
+	cpu_share* cpu_share_obj =
+	    new (mem_alloc(sizeof (cpu_share))) cpu_share;
+	global_vars::gv.cpu_share_obj = cpu_share_obj;
 
-	cause::stype r = cpu_ctl_obj->init();
+	cause::stype r = cpu_share_obj->init();
 	if (is_fail(r))
 		return r;
 
-	intr_init();
+	arch::cpu_ctl::IDT* idt =
+	    new (mem_alloc(sizeof (arch::cpu_ctl::IDT))) arch::cpu_ctl::IDT;
 
-	logical_cpu* logi_cpus =
-	    new (mem_alloc(sizeof (logical_cpu[1]))) logical_cpu[1];
+	//intr_init();
+	idt->init();
+
+	processor* logi_cpus =
+	    new (mem_alloc(sizeof (processor[1]))) processor[1];
 	global_vars::gv.logical_cpu_obj_array = logi_cpus;
 
 	r = logi_cpus[0].init();
@@ -60,14 +73,14 @@ cause::stype cpu_init()
 }
 
 
-// cpu_ctl
+// cpu_share
 
 
-cpu_ctl::cpu_ctl()
+cpu_share::cpu_share()
 {
 }
 
-cause::stype cpu_ctl::init()
+cause::stype cpu_share::init()
 {
 	cause::stype r = mps.load();
 	if (is_fail(r))
@@ -77,15 +90,12 @@ cause::stype cpu_ctl::init()
 }
 
 
-// logical_cpu
+// arch::cpu_ctl
 
+namespace arch {
 
-cause::stype logical_cpu::init()
+cause::stype cpu_ctl::init()
 {
-	cause::stype r = basic_cpu::init();
-	if (r != cause::OK)
-		return r;
-
 	gdt.null_entry.set_null();
 	gdt.kern_code.set(0);
 	gdt.kern_data.set(0);
@@ -102,27 +112,14 @@ cause::stype logical_cpu::init()
 	mempool_release_shared(ist_mp);
 	if (!ist_intr || !ist_trap)
 		return cause::NO_MEMORY;
-	uptr ist_intr_adr = reinterpret_cast<uptr>(ist_intr) + IST_BYTES - 16;
-	tss.set_ist(ist_intr_adr, IST_INTR);
 
-	uptr ist_trap_adr = reinterpret_cast<uptr>(ist_trap) + IST_BYTES - 16;
-	tss.set_ist(ist_trap_adr, IST_TRAP);
-
-	struct ist_footer {
-		arch::regset** rs;
-		logical_cpu* lcpu;
-	};
-	ist_footer* istf = reinterpret_cast<ist_footer*>(ist_intr_adr);
-	istf->lcpu = this;
-	istf->rs = &this->running_thread_regset;
-
-	running_thread_regset =
-	    get_thread_ctl().get_running_thread()->ref_regset();
+	tss.set_ist(write_ist_layout(ist_intr), IST_INTR);
+	tss.set_ist(write_ist_layout(ist_trap), IST_TRAP);
 
 	return cause::OK;
 }
 
-cause::stype logical_cpu::load()
+cause::stype cpu_ctl::load()
 {
 	native::gdt_ptr64 gdtptr;
 	gdtptr.set(sizeof gdt, &gdt);
@@ -139,8 +136,27 @@ cause::stype logical_cpu::load()
 	return cause::OK;
 }
 
+void cpu_ctl::set_running_thread(thread* t)
+{
+	running_thread_regset = t->ref_regset();
+}
 
-namespace arch {
+/// @brief IST へ ist_footer_layout を書く。
+/// @return IST として使用するポインタを返す。
+//
+/// 割り込みハンドラが IST から情報をたどれるようにする。
+void* cpu_ctl::write_ist_layout(void* mem)
+{
+	ist_footer_layout* istf = static_cast<ist_footer_layout*>(mem);
+
+	istf -= 1;
+
+	istf->proc = static_cast<processor*>(this);
+	istf->regs = &this->running_thread_regset;
+
+	return istf;
+}
+
 
 void halt() {
 	native::hlt();

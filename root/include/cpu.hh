@@ -7,16 +7,18 @@
 #define INCLUDE_CPU_HH_
 
 #include <basic.hh>
+#include <cpu_ctl.hh>
 #include <event_queue.hh>
 #include <thread_ctl.hh>
 
 
-class basic_cpu
+/// Architecture independent part of processor control.
+class processor : public arch::cpu_ctl
 {
-	DISALLOW_COPY_AND_ASSIGN(basic_cpu);
+	DISALLOW_COPY_AND_ASSIGN(processor);
 
 public:
-	basic_cpu() {}
+	processor() {}
 
 	cause::stype init();
 	void run_intr_event();

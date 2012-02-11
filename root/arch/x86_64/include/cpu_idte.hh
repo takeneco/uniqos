@@ -7,10 +7,8 @@
 #ifndef ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 #define ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 
-#include "basic_types.hh"
+#include <basic_types.hh>
 
-
-namespace arch {
 
 class idte
 {
@@ -41,8 +39,6 @@ public:
 
 	u64 get(int i) const { return e[i]; }
 };
-
-}  // namespace arch
 
 
 #endif  // include guard

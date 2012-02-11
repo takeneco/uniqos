@@ -22,7 +22,7 @@
 #include "memcell.hh"
 
 #include "mempool.hh"
-#include <cpu_ctl.hh>
+#include <cpu.hh>
 
 
 void test();

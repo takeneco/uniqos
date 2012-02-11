@@ -5,7 +5,7 @@
 //
 
 #include "arch.hh"
-#include <cpu_ctl.hh>
+#include <cpu.hh>
 #include "event_queue.hh"
 #include "global_vars.hh"
 #include "native_ops.hh"
@@ -32,7 +32,7 @@ void drive()
 {
 	log()("(C) KATO Takeshi")();
 
-	basic_cpu* cpu = arch::get_current_cpu();
+	processor* cpu = arch::get_current_cpu();
 
 	for (;;) {
 		cpu->run_intr_event();

@@ -11,6 +11,8 @@
 #include <regset.hh>
 
 
+class processor;
+
 class thread
 {
 	DISALLOW_COPY_AND_ASSIGN(thread);
@@ -18,13 +20,16 @@ class thread
 	friend class thread_ctl;
 
 public:
-	thread(uptr text, uptr param, uptr stack, uptr stack_size);
+	thread(processor* _owner,
+	    uptr text, uptr param, uptr stack, uptr stack_size);
+
 	arch::regset* ref_regset() { return &rs; }
 
 	bichain_node<thread>& chain_node() { return _chain_node; }
 
 private:
 	bichain_node<thread> _chain_node;
+	processor* owner;
 
 	arch::regset rs;
 

@@ -14,7 +14,7 @@
 
 cause::stype ioapic_ctl::init_detect()
 {
-	const mpspec* mps = global_vars::gv.cpu_ctl_obj->get_mpspec();
+	const mpspec* mps = global_vars::gv.cpu_share_obj->get_mpspec();
 	mpspec::ioapic_iterator itr(mps);
 
 	const mpspec::ioapic_entry* ioapic_ent = itr.get_next();

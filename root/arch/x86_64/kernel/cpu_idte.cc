@@ -5,7 +5,7 @@
 //
 
 #include "kerninit.hh"
-#include "cpu_ctl.hh"
+#include <cpu.hh>
 #include "cpu_idte.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
@@ -74,11 +74,11 @@ struct reg_stack_witherr
 };
 
 
-void intr_update()
+void intr_update(idte* idt)
 {
-	arch::idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
+	//idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
 	native::idt_ptr64 idtptr;
-	idtptr.set(sizeof (arch::idte) * 256, idt);
+	idtptr.set(sizeof (idte) * 256, idt);
 
 	native::lidt(&idtptr);
 }
@@ -253,9 +253,9 @@ void intr_0x8f();
 
 }
 
-void intr_init()
+void intr_init(idte* idt)
 {
-	arch::idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
+	//idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
 
 	struct idt_params {
 		void (*handler)();
@@ -264,41 +264,41 @@ void intr_init()
 		uint dpl;
 		u64 flags;
 	} const exception_idt[] = {
-		{ exception_intr_0x00, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x01, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x02, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x03, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x04, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x05, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x06, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x07, 1, 0, 0, arch::idte::TRAP },
-		//{ exception_intr_0x08, 1, 1, 0, arch::idte::TRAP },
-		{ exception_intr_0x08, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x09, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0a, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0b, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0c, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0d, 1, 2, 0, arch::idte::TRAP },
-		//{ exception_intr_0x0d, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0e, 1, 2, 0, arch::idte::TRAP },
-		//{ exception_intr_0x0e, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x0f, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x10, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x11, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x12, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x13, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x14, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x15, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x16, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x17, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x18, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x19, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1a, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1b, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1c, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1d, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1e, 1, 0, 0, arch::idte::TRAP },
-		{ exception_intr_0x1f, 1, 0, 0, arch::idte::TRAP },
+		{ exception_intr_0x00, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x01, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x02, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x03, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x04, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x05, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x06, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x07, 1, 0, 0, idte::TRAP },
+		//{ exception_intr_0x08, 1, 1, 0, idte::TRAP },
+		{ exception_intr_0x08, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x09, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0a, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0b, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0c, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0d, 1, 2, 0, idte::TRAP },
+		//{ exception_intr_0x0d, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0e, 1, 2, 0, idte::TRAP },
+		//{ exception_intr_0x0e, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x0f, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x10, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x11, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x12, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x13, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x14, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x15, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x16, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x17, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x18, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x19, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1a, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1b, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1c, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1d, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1e, 1, 0, 0, idte::TRAP },
+		{ exception_intr_0x1f, 1, 0, 0, idte::TRAP },
 	};
 
 	for (int i = 0; i <= 31; ++i) {
@@ -345,28 +345,14 @@ void intr_init()
 
 	for (int i = 0; i < 0x90; ++i) {
 		idt[0x20 + i].set(
-		    idt_handler[i], 8 * 1, 1, 0, arch::idte::INTR);
+		    idt_handler[i], 8 * 1, 1, 0, idte::INTR);
 	}
-///*
+
 	for (int i = 0x90+0x20; i < 256; i++) {
 		idt[i].disable();
 	}
-/*
-	idt_vec[0x20].set(
-	    interrupt_20_handler, 8 * 1, 0, 0, arch::idte::INTR);
-	idt_vec[0x22].set(
-	    interrupt_20_handler, 8 * 1, 0, 0, arch::idte::INTR);
-	idt_vec[0x23].set(
-	    interrupt_20_handler, 8 * 1, 0, 0, arch::idte::INTR);
-	idt_vec[0x30].set(
-	    interrupt_20_handler, 8 * 1, 0, 0, arch::idte::INTR);
 
-	idt_vec[0x5e].set(
-	    interrupt_0x5e_handler, 8 * 1, 0, 0, arch::idte::INTR);
-	idt_vec[0x5f].set(
-	    interrupt_0x5f_handler, 8 * 1, 0, 0, arch::idte::INTR);
-*/
-	intr_update();
+	intr_update(idt);
 }
 
 #define UNKNOWN_EXCEPTION(vec) \
@@ -396,7 +382,7 @@ UNKNOWN_EXCEPTION(0x0c)
 extern "C" void on_exception_0x0d()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)global_vars::
-	    gv.logical_cpu_obj_array[0].tss.get_ist(logical_cpu::IST_TRAP);
+	    gv.logical_cpu_obj_array[0].tss.get_ist(arch::cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 
@@ -449,7 +435,7 @@ extern "C" void on_exception_0x0d()
 extern "C" void on_exception_0x0e()
 {
 	reg_stack_witherr* stk = (reg_stack_witherr*)global_vars::
-	    gv.logical_cpu_obj_array[0].tss.get_ist(logical_cpu::IST_TRAP);
+	    gv.logical_cpu_obj_array[0].tss.get_ist(arch::cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 

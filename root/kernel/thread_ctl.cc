@@ -6,6 +6,8 @@
 
 #include <thread_ctl.hh>
 
+#include <cpu.hh>
+#include <global_vars.hh>
 #include <mempool.hh>
 #include <placement_new.hh>
 
@@ -57,7 +59,7 @@ cause::stype thread_ctl::create_thread(
 		return cause::NO_MEMORY;
 	}
 
-	thread* t = new (p) thread(
+	thread* t = new (p) thread(&global_vars::gv.logical_cpu_obj_array[0],
 	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
 
 	t->state = thread::SLEEPING;

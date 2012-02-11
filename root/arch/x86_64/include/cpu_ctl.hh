@@ -9,41 +9,51 @@
 #include "basic_types.hh"
 #include "cpu_idte.hh"
 #include "mpspec.hh"
-#include <cpu.hh>
+#include "regset.hh"
 
 
+class thread;
+class processor;
 namespace arch {
 
-basic_cpu* get_current_cpu();
+processor* get_current_cpu();
 
 }  // namespace arch
 
 
-class cpu_ctl
+class cpu_share
 {
 public:
-	cpu_ctl();
+	cpu_share();
 
 	cause::stype init();
 
-	arch::idte* get_idt() {
-		return idt;
-	}
 	const mpspec* get_mpspec() const {
 		return &mps;
 	}
 
 private:
-	arch::idte idt[256];
 	mpspec mps;
 };
 
+// call by cpu_ctl::IDT
+void intr_init(idte* idt);
 
-class logical_cpu : public basic_cpu
+namespace arch {
+
+/// Architecture dependent part of processor control.
+class cpu_ctl
 {
 public:
+	class IDT;
+
 	cause::stype init();
 	cause::stype load();
+
+	void set_running_thread(thread* t);
+
+private:
+	void* write_ist_layout(void* mem);
 
 public:
 	/// Global Descriptor Table Entry
@@ -186,8 +196,9 @@ public:
 	// Task State Segment
 	struct TSS
 	{
-		void set_ist(u64 adr, int i) {
-			_set_ist(adr, ist_array[i * 2], ist_array[i * 2 + 1]);
+		void set_ist(void* adr, int i) {
+			_set_ist(reinterpret_cast<u64>(adr),
+			    ist_array[i * 2], ist_array[i * 2 + 1]);
 		}
 		static void _set_ist(u64 adr, u32& l, u32& h) {
 			l = adr & 0xffffffff;
@@ -247,6 +258,21 @@ public:
 
 	arch::regset* running_thread_regset;
 };
+
+
+// 別ヘッダへ移動予定
+class cpu_ctl::IDT
+{
+public:
+	void init() {
+		intr_init(idt);
+	}
+
+private:
+	idte idt[256];
+};
+
+}  // namespace arch
 
 
 #endif  // include guard

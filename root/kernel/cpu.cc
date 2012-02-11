@@ -1,5 +1,5 @@
 /// @file   cpu.cc
-/// @brief  basic_cpu class implementation.
+/// @brief  processor class implementation.
 //
 // (C) 2012 KATO Takeshi
 //
@@ -9,12 +9,22 @@
 #include <native_ops.hh>
 
 
-cause::stype basic_cpu::init()
+cause::stype processor::init()
 {
-	return thrdctl.init();
+	cause::stype r = arch::cpu_ctl::init();
+	if (is_fail(r))
+		return r;
+
+	r = thrdctl.init();
+	if (is_fail(r))
+		return r;
+
+	arch::cpu_ctl::set_running_thread(thrdctl.get_running_thread());
+
+	return cause::OK;
 }
 
-void basic_cpu::run_intr_event()
+void processor::run_intr_event()
 {
 	native::cli();
 
@@ -32,13 +42,13 @@ void basic_cpu::run_intr_event()
 /// @brief 外部割込みからのイベントを登録する。
 //
 /// 外部割込み中は CPU が割り込み禁止状態なので割り込み可否の制御はしない。
-void basic_cpu::post_intr_event(event_item* ev)
+void processor::post_intr_event(event_item* ev)
 {
 	intr_evq.push(ev);
 }
 
 /// @brief 外部割込みで登録されたイベントを返す。
-event_item* basic_cpu::get_next_intr_event()
+event_item* processor::get_next_intr_event()
 {
 	return intr_evq.pop();
 }
