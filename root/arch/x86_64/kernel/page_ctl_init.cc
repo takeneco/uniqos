@@ -198,7 +198,7 @@ cause::stype page_table_tmpalloc::alloc(u64* padr)
 
 	*padr = reinterpret_cast<u64>(p);
 
-	return p != 0 ? cause::OK : cause::NO_MEMORY;
+	return p != 0 ? cause::OK : cause::NOMEM;
 }
 
 cause::stype page_table_tmpalloc::free(u64 padr)
@@ -273,7 +273,7 @@ bool setup_core_page(void* page)
 }  // namespace
 
 
-/// @retval cause::NO_MEMORY  No enough physical memory.
+/// @retval cause::NOMEM  No enough physical memory.
 /// @retval cause::OK  Succeeds.
 cause::stype page_ctl_init()
 {
@@ -303,7 +303,7 @@ cause::stype page_ctl_init()
 	    false);
 	if (!buf) {
 		log()("bootheap is exhausted.")();
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 	}
 	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
 	if (setup_core_page(buf) == false)
@@ -321,7 +321,7 @@ cause::stype page_ctl_init()
 	    false);
 	if (!buf) {
 		log()("bootheap is exhausted.")();
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 	}
 
 	pgctl->init(pmem_end, buf);

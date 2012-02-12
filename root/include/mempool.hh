@@ -126,6 +126,8 @@ extern "C" mempool* mempool_create_shared(u32 objsize);
 extern "C" void mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 
+inline void* operator new (uptr, mempool* mp) { return mp->alloc(); }
+
 
 #endif  // include guard
 

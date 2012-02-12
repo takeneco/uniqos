@@ -1,14 +1,27 @@
 /// @file  mempool.cc
 /// @brief Memory pooler.
-//
-// (C) 2011 KATO Takeshi
-//
 
-#include "mempool_ctl.hh"
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
+//
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "global_vars.hh"
-#include "log.hh"
-#include "placement_new.hh"
+#include <mempool_ctl.hh>
+
+#include <global_vars.hh>
+#include <log.hh>
+#include <placement_new.hh>
 
 
 void* mem_alloc(u32 bytes)
@@ -116,9 +129,9 @@ void mempool::collect_free_pages()
 void mempool::dump(log_target& lt)
 {
 	lt.u(obj_size, 16)(" ").
-	u(alloc_count, 16)(" ").
-	u(page_count, 16)(" ").
-	u(freeobj_count, 16)();
+	   u(alloc_count, 16)(" ").
+	   u(page_count, 16)(" ").
+	   u(freeobj_count, 16)();
 
 	lt("---- free_pages ----")();
 
@@ -301,18 +314,18 @@ cause::stype mempool_ctl::init()
 	mempool tmp_mp(sizeof (mempool), arch::page::L1, 0);
 	mempool::page* pg = tmp_mp.new_page();
 	if (UNLIKELY(!pg))
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	own_mempool = new (pg->alloc())
 	    mempool(sizeof (mempool), arch::page::L1);
 	if (UNLIKELY(!own_mempool))
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	own_mempool->attach(pg);
 
 	offpage_pool = shared_mempool(sizeof (mempool::page));
 	if (UNLIKELY(!offpage_pool))
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	cause::stype r = init_heap();
 	if (is_fail(r))
@@ -364,7 +377,7 @@ struct heap
 	u8 mem[];
 };
 
-}
+}  // namespace
 
 void* mempool_ctl::shared_alloc(u32 bytes)
 {

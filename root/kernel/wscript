@@ -5,13 +5,13 @@
 
 
 kern_sources = [
-    'cpu.cc',
     'drive.cc',
     'file.cc',
     'interrupt_control.cc',
     'kern_log.cc',
     'log_target.cc',
     'mempool.cc',
+    'processor.cc',
     'slab_allocate.cc',
     'string.cc',
     'thread.cc',

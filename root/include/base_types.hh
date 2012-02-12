@@ -283,7 +283,7 @@ namespace cause
 		FAIL = 1,
 
 		/// メモリが不足している。
-		NO_MEMORY = 2,
+		NOMEM = 2,
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,
 		NOT_FOUND,

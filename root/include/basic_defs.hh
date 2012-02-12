@@ -3,8 +3,8 @@
 // (C) 2012 KATO Takeshi
 //
 
-#ifndef BASIC_DEFS_HH_
-#define BASIC_DEFS_HH_
+#ifndef INCLUDE_BASIC_DEFS_HH_
+#define INCLUDE_BASIC_DEFS_HH_
 
 
 /// Disable default copy constructor and operator=.
@@ -14,6 +14,21 @@
 /// public:
 /// };
 #define DISALLOW_COPY_AND_ASSIGN(T)  T(const T&);void operator=(const T&)
+
+
+/// Disable default copy constructor and operator=.
+/// class example : uncopyable
+/// {
+/// };
+class uncopyable
+{
+protected:
+	uncopyable() {}
+	~uncopyable() {}
+private:
+	uncopyable(const uncopyable&);
+	void operator=(const uncopyable&);
+};
 
 
 #ifdef __GNUC__

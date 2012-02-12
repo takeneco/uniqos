@@ -47,7 +47,7 @@ inline cause::stype page_table_alloc::alloc(uptr* padr)
 
 	*padr = reinterpret_cast<uptr>(p);
 
-	return p ? cause::OK : cause::NO_MEMORY;
+	return p ? cause::OK : cause::NOMEM;
 }
 
 inline cause::stype page_table_alloc::free(uptr padr)
@@ -141,7 +141,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 		    arch::page::PHYS_L2_SIZE,
 		    false);
 		if (!p)
-			return cause::NO_MEMORY;
+			return cause::NOMEM;
 
 		phys_adr = reinterpret_cast<uptr>(p);
 		r = load_segm_page(
@@ -174,30 +174,33 @@ extern "C" u32 load(u32 magic, u32* tag)
 	log(1)("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
 
 	const Elf64_Ehdr* elf = reinterpret_cast<const Elf64_Ehdr*>(kernel);
-/*
+
+#ifdef DEBUG_BOOT
+	log()("kernel binary debug information:")();
 	log()("e_ident : ").
-		u((u8)elf->e_ident[0], 16)(" ").
-		u((u8)elf->e_ident[1], 16)(" ").
-		u((u8)elf->e_ident[2], 16)(" ").
-		u((u8)elf->e_ident[3], 16)(" ").
-		u((u8)elf->e_ident[4], 16)(" ").
-		u((u8)elf->e_ident[5], 16)(" ").
-		u((u8)elf->e_ident[6], 16)(" ").
-		u((u8)elf->e_ident[7], 16)(" ")();
+	     u((u8)elf->e_ident[0], 16)(" ").
+	     u((u8)elf->e_ident[1], 16)(" ").
+	     u((u8)elf->e_ident[2], 16)(" ").
+	     u((u8)elf->e_ident[3], 16)(" ").
+	     u((u8)elf->e_ident[4], 16)(" ").
+	     u((u8)elf->e_ident[5], 16)(" ").
+	     u((u8)elf->e_ident[6], 16)(" ").
+	     u((u8)elf->e_ident[7], 16)(" ")();
 	log()("e_type : ").u((u16)elf->e_type, 16)
-		(", e_machine : ").u((u16)elf->e_machine)
-		(", e_version : ").u((u32)elf->e_version)();
+	     (", e_machine : ").u(elf->e_machine)
+	     (", e_version : ").u(elf->e_version)();
 	log()("e_entry : ").u((u64)elf->e_entry, 16)();
 	log()("e_phoff : ").u((u64)elf->e_phoff, 16)
-		(", e_ehsize : ").u((u16)elf->e_ehsize)();
-	log()("e_shoff : ").u((u64)elf->e_shoff)();
-	log()("e_flags : ").u((u32)elf->e_flags)();
-	log()("e_phentsize : ").u((u16)elf->e_phentsize)
-		(", e_phnum : ").u((u16)elf->e_phnum)();
-	log()("e_shentsize : ").u((u16)elf->e_shentsize)
-		(", e_shnum : ").u((u16)elf->e_shnum)();
-	log()("e_shstrndx : ").u((u16)elf->e_shstrndx)();
-*/
+	     (", e_ehsize : ").u(elf->e_ehsize)();
+	log()("e_shoff : ").u(elf->e_shoff)
+	     ("e_flags : ").u(elf->e_flags)();
+	log()("e_phentsize : ").u(elf->e_phentsize)
+	     (", e_phnum : ").u(elf->e_phnum)();
+	log()("e_shentsize : ").u(elf->e_shentsize)
+	     (", e_shnum : ").u(elf->e_shnum)();
+	log()("e_shstrndx : ").u(elf->e_shstrndx)();
+#endif  // DEBUG_BOOT
+
 	boot_page_table pg_tbl(0, 0);
 
 	const u8* ph = kernel + elf->e_phoff;
@@ -208,14 +211,17 @@ extern "C" u32 load(u32 magic, u32* tag)
 			if (is_fail(r))
 				return r;
 		}
-//		log()("p_type : ").u((u32)phe->p_type, 16)
-//			(", p_flags : ").u((u32)phe->p_flags, 16)();
-//		log()("p_offset : ").u((u64)phe->p_offset, 16)
-//			(", p_align : ").u((u64)phe->p_align)();
-//		log()("p_vaddr : ").u((u64)phe->p_vaddr, 16)
-//			(", p_paddr : ").u((u64)phe->p_paddr, 16)();
-//		log()("p_filesz : ").u((u64)phe->p_filesz, 16)
-//			(", p_memsz : ").u((u64)phe->p_memsz, 16)();
+#ifdef DEBUG_BOOT
+		log()("program header[").u(i)("]:")();
+		log()(" p_type : ").u((u32)phe->p_type, 16)
+		     (", p_flags : ").u((u32)phe->p_flags, 16)();
+		log()(" p_offset : ").u((u64)phe->p_offset, 16)
+		     (", p_align : ").u((u64)phe->p_align)();
+		log()(" p_vaddr : ").u((u64)phe->p_vaddr, 16)
+		     (", p_paddr : ").u((u64)phe->p_paddr, 16)();
+		log()(" p_filesz : ").u((u64)phe->p_filesz, 16)
+		     (", p_memsz : ").u((u64)phe->p_memsz, 16)();
+#endif  // DEBUG_BOOT
 		ph += elf->e_phentsize;
 	}
 
@@ -248,9 +254,6 @@ extern "C" u32 load(u32 magic, u32* tag)
 	    arch::page::PHYS_L2,
 	    arch::page_table::EXIST | arch::page_table::WRITE);
 */
-
-	//log lg;
-	//pg_tbl.dump(lg);
 
 	load_info.entry_adr = elf->e_entry;
 	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());

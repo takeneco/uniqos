@@ -5,10 +5,10 @@
 //
 
 #include "arch.hh"
-#include <cpu.hh>
 #include "event_queue.hh"
 #include "global_vars.hh"
 #include "native_ops.hh"
+#include <processor.hh>
 
 #include "log.hh"
 

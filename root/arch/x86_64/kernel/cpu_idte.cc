@@ -5,12 +5,12 @@
 //
 
 #include "kerninit.hh"
-#include <cpu.hh>
 #include "cpu_idte.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "log.hh"
 #include "native_ops.hh"
+#include <processor.hh>
 
 
 /// interrupt vector map

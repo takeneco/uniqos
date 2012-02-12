@@ -6,7 +6,6 @@
 
 #include "core_class.hh"
 #include "chain.hh"
-#include <cpu.hh>
 #include "event.hh"
 #include "file.hh"
 #include "global_vars.hh"
@@ -16,6 +15,7 @@
 #include "memory_allocate.hh"
 #include "native_ops.hh"
 #include "placement_new.hh"
+#include <processor.hh>
 
 
 namespace {
@@ -195,7 +195,7 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 	if (buf == 0) {
 		buf = buf_append();
 		if (buf == 0)
-			return cause::NO_MEMORY;
+			return cause::NOMEM;
 	}
 
 	for (;;) {
@@ -206,7 +206,7 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		if (next_write >= buf_entry::BUF_SIZE) {
 			buf = buf_append();
 			if (buf == 0)
-				return cause::NO_MEMORY;
+				return cause::NOMEM;
 		}
 		buf->write(next_write++, *c);
 		++total;

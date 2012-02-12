@@ -6,10 +6,10 @@
 
 #include <thread_ctl.hh>
 
-#include <cpu.hh>
 #include <global_vars.hh>
 #include <mempool.hh>
 #include <placement_new.hh>
+#include <processor.hh>
 
 #include <log.hh>
 
@@ -31,12 +31,12 @@ cause::stype thread_ctl::init()
 {
 	mempool* mp = mempool_create_shared(sizeof (thread));
 	if (!mp)
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 	thread_mempool = mp;
 
 	mp = mempool_create_shared(STACK_SIZE);
 	if (!mp)
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 	stack_mempool = mp;
 
 	thread* current = static_cast<thread*>(thread_mempool->alloc());
@@ -45,18 +45,17 @@ cause::stype thread_ctl::init()
 	return cause::OK;
 }
 
-#include <native_ops.hh>
 cause::stype thread_ctl::create_thread(
     uptr text, uptr param, thread** newthread)
 {
 	void* stack = stack_mempool->alloc();
 	if (!stack)
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	void* p = thread_mempool->alloc();
 	if (!p) {
 		stack_mempool->free(stack);
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 	}
 
 	thread* t = new (p) thread(&global_vars::gv.logical_cpu_obj_array[0],

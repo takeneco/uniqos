@@ -4,7 +4,7 @@
 // (C) 2012 KATO Takeshi
 //
 
-#include <cpu.hh>
+#include <processor.hh>
 
 #include <native_ops.hh>
 

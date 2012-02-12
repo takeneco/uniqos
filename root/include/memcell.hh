@@ -371,7 +371,7 @@ cause::stype mem_cell_base<CELLTYPE>::free_1page(uptr padr)
 /// @brief １ページだけ予約する。
 /// @param[out] padr 予約した物理ページのアドレスを返す。
 /// @retval cause::OK 成功した。
-/// @retval cause::NO_MEMORY 空きメモリがない。
+/// @retval cause::NOMEM 空きメモリがない。
 template<class CELLTYPE>
 cause::stype mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 {
@@ -383,7 +383,7 @@ cause::stype mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 			break;
 
 		if (!import_uplevel_page())
-			return cause::NO_MEMORY;
+			return cause::NOMEM;
 	}
 
 	const int offset = c->table.search_true();

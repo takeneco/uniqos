@@ -47,7 +47,7 @@ cause::stype memlog_file::open()
 
 	buf = reinterpret_cast<u8*>(p);
 	if (!buf)
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	size = current = 0;
 

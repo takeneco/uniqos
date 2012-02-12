@@ -22,7 +22,7 @@
 #include "memcell.hh"
 
 #include "mempool.hh"
-#include <cpu.hh>
+#include <processor.hh>
 
 
 void test();
@@ -115,7 +115,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	r = global_vars::gv.intr_ctl_obj->init();
 	if (r != cause::OK)
 		return r;
-log()("eee")();
 
 	arch::apic_init();
 
@@ -128,6 +127,7 @@ log()("eee")();
 	if (bootlog) {
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
+log(1)("eee")();
 
 //	cpu_test();
 //	serial_dump(serial);

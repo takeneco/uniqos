@@ -3,8 +3,6 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
-#include <cpu.hh>
-
 #include "arch.hh"
 #include "global_vars.hh"
 #include "kerninit.hh"
@@ -13,6 +11,7 @@
 #include "mpspec.hh"
 #include "native_ops.hh"
 #include "placement_new.hh"
+#include <processor.hh>
 #include "string.hh"
 
 
@@ -111,7 +110,7 @@ cause::stype cpu_ctl::init()
 	void* ist_trap = ist_mp->alloc();
 	mempool_release_shared(ist_mp);
 	if (!ist_intr || !ist_trap)
-		return cause::NO_MEMORY;
+		return cause::NOMEM;
 
 	tss.set_ist(write_ist_layout(ist_intr), IST_INTR);
 	tss.set_ist(write_ist_layout(ist_trap), IST_TRAP);
