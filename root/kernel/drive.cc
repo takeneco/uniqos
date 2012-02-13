@@ -17,7 +17,9 @@ void test();
 
 void event_drive()
 {
-	event_queue* evctl = global_vars::gv.event_ctl_obj;
+	//event_queue* evctl = global_vars::gv.event_ctl_obj;
+	event_queue* evctl = &global_vars::gv.logical_cpu_obj_array[0].
+	    get_soft_evq();
 
 	for (;;) {
 		event_item* event = evctl->pop();
@@ -30,7 +32,7 @@ void event_drive()
 
 void drive()
 {
-	log()("(C) KATO Takeshi")();
+	//log()("(C) KATO Takeshi")();
 
 	processor* cpu = arch::get_current_cpu();
 
@@ -41,7 +43,8 @@ void drive()
 
 		native::cli();
 		event_drive();
-		asm volatile ("sti;hlt");
+		//asm volatile ("sti;hlt");
+		cpu->sleep_current_thread();
 	}
 }
 

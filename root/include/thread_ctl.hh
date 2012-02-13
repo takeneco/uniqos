@@ -33,11 +33,18 @@ public:
 	///
 	void manual_switch();
 	///
+	void sleep_running_thread();
+	void ready_thread(thread* t);
 
 	thread* get_running_thread() { return running_thread; }
 
+	void set_event_thread(thread* t) { event_thread = t; }
+	void ready_event_thread();
+	void ready_event_thread_in_intr();
+
 private:
 	thread* running_thread;
+	thread* event_thread;
 
 	typedef bibochain<thread, &thread::chain_node> thread_chain;
 	thread_chain ready_queue;

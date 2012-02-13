@@ -4,7 +4,7 @@
 // (C) 2012 KATO Takeshi
 //
 
-#include <thread.hh>
+#include <processor.hh>
 
 
 thread::thread(
@@ -17,5 +17,11 @@ thread::thread(
 	owner(_owner),
 	rs(text, param, stack, stack_size)
 {
+	sleep_cancel_cmd = false;
+}
+
+void thread::ready()
+{
+	owner->get_thread_ctl().ready_thread(this);
 }
 

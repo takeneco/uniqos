@@ -25,7 +25,7 @@
 #include <processor.hh>
 
 
-void test();
+void test(void*);
 bool test_init();
 void cpu_test();
 file* create_serial();
@@ -72,14 +72,6 @@ void disable_intr_from_8259A()
 	native::outb(0xff, PIC1_OCW1);
 }
 
-void thread3(void*)
-{
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-	for (;;)
-		tc.manual_switch();
-}
-
 text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
@@ -120,6 +112,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 
 	file* serial = create_serial();
 	log_init(0, serial);
+	serial->sync = false;
 
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
@@ -136,12 +129,14 @@ log(1)("eee")();
 
 	thread_ctl& tc =
 	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-	thread* t;
-	tc.create_thread(thread3, 0, &t);
-	tc.wakeup(t);
-	for (int i = 0; i < 100; ++i)
-		tc.manual_switch();
 
+	tc.set_event_thread(tc.get_running_thread());
+
+	thread* t;
+	tc.create_thread(test, 0, &t);
+	tc.ready_thread(t);
+
+	serial->sync = true;
 	return 0;
 }
 

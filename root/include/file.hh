@@ -93,6 +93,8 @@ private:
 
 public:
 	const operations* ops;
+
+	bool sync;
 };
 
 

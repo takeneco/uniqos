@@ -1,7 +1,7 @@
 /// @file  serial.cc
 /// @brief serial port.
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #include "core_class.hh"
@@ -43,7 +43,14 @@ enum {
 class buf_entry
 {
 	struct info {
+		info()
+		:   client_thread(0),
+		    buf_size(buf_entry::BUF_SIZE)
+		{}
+
 		bichain_node<buf_entry> chain_node;
+		thread* client_thread;
+		uptr buf_size;
 	} f;
 
 	u8* buf() { return reinterpret_cast<u8*>(this + 1); }
@@ -59,6 +66,12 @@ public:
 
 	void write(u32 i, u8 c) { buf()[i] = c; }
 	u8 read(u32 i) { return buf()[i]; }
+
+	void set_client(thread* t) { f.client_thread = t; }
+	thread* get_client() { return f.client_thread; }
+
+	void set_bufsize(uptr bs) { f.buf_size = bs; }
+	uptr get_bufsize() const { return f.buf_size; }
 };
 
 
@@ -79,7 +92,9 @@ class serial_ctrl : public file
 
 	bool output_fifo_empty;
 
+	event_item write_event;
 	event_item intr_event;
+	bool write_posted;
 	volatile bool intr_posted;
 
 public:
@@ -106,6 +121,10 @@ private:
 	}
 	bool is_txfifo_empty() const;
 	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
+
+	void on_write_event();
+	static void on_write_event_(void* param);
+	void post_write_event();
 
 	void on_intr_event();
 	static void on_intr_event_(void* param);
@@ -140,6 +159,10 @@ cause::stype serial_ctrl::configure()
 	ih.param = this;
 	ih.handler = intr_handler;
 	global_vars::gv.intr_ctl_obj->add_handler(vec, &ih);
+
+	write_event.handler = on_write_event_;
+	write_event.param = this;
+	write_posted = false;
 
 	intr_event.handler = on_intr_event_;
 	intr_event.param = this;
@@ -203,7 +226,7 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		if (!c)
 			break;
 
-		if (next_write >= buf_entry::BUF_SIZE) {
+		if (next_write >= buf->get_bufsize()) {
 			buf = buf_append();
 			if (buf == 0)
 				return cause::NOMEM;
@@ -211,13 +234,27 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		buf->write(next_write++, *c);
 		++total;
 	}
-
+/*
 	if (output_fifo_empty) {
 		output_fifo_empty = false;
 		transmit();
 	}
+*/
+	if (output_fifo_empty) {
+		post_write_event();
+	}
 
 	*bytes = total;
+
+	thread_ctl& tc =
+	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+	if (sync) {
+		buf->set_bufsize(next_write);
+		buf->set_client(tc.get_running_thread());
+	//	tc.sleep_running_thread();
+	}
+
+	tc.ready_event_thread();
 
 	return cause::OK;
 }
@@ -226,6 +263,31 @@ cause::stype serial_ctrl::op_write(
     file* self, const iovec* iov, int iov_cnt, uptr* bytes)
 {
 	return static_cast<serial_ctrl*>(self)->write(iov, iov_cnt, bytes);
+}
+
+void serial_ctrl::on_write_event()
+{
+	transmit();
+}
+
+void serial_ctrl::on_write_event_(void* param)
+{
+	serial_ctrl* serial = static_cast<serial_ctrl*>(param);
+	serial->write_posted = false;
+	serial->on_write_event();
+}
+
+void serial_ctrl::post_write_event()
+{
+	if (write_posted) {
+		return;
+	}
+
+	write_posted = true;
+
+	processor* cpu = arch::get_current_cpu();
+	cpu->post_soft_event(&write_event);
+	cpu->get_thread_ctl().ready_event_thread();
 }
 
 void serial_ctrl::on_intr_event()
@@ -274,6 +336,7 @@ void serial_ctrl::post_intr_event()
 	//post_event(&intr_event);
 	processor* cpu = arch::get_current_cpu();
 	cpu->post_intr_event(&intr_event);
+	cpu->get_thread_ctl().ready_event_thread_in_intr();
 }
 
 /// 割り込み発生時に呼ばれる。
@@ -299,7 +362,15 @@ void serial_ctrl::transmit()
 	for (u32 i = 0; i < DEVICE_TXBUF_SIZE; ++i) {
 		if (buf == 0)
 			break;
-		if (next_read == buf_entry::BUF_SIZE) {
+		if (next_read == buf->get_bufsize()) {
+
+			thread* client = buf->get_client();
+			if (client) {
+				thread_ctl& tc = global_vars::
+				  gv.logical_cpu_obj_array[0].get_thread_ctl();
+				tc.ready_thread(client);
+			}
+
 			buf_mp->free(buf_queue.remove_tail());
 			buf = buf_queue.tail();
 			buf_is_last = buf == buf_queue.head();

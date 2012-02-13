@@ -12,6 +12,7 @@
 #include <processor.hh>
 
 #include <log.hh>
+#include <native_ops.hh>
 
 
 namespace {
@@ -97,5 +98,94 @@ void thread_ctl::manual_switch()
 	running_thread = next_run;
 
 	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
+}
+
+void thread_ctl::sleep_running_thread()
+{
+	thread* prev_run = running_thread;
+
+	processor& cpu = global_vars::gv.logical_cpu_obj_array[0];
+
+	native::cli();
+
+	if (prev_run->sleep_cancel_cmd == true) {
+		prev_run->sleep_cancel_cmd = false;
+log(1)("sleep_cancel")(prev_run)(";")();
+		native::sti();
+		return;
+	}
+
+	volatile thread::STATE* state = &prev_run->state;
+	*state = thread::SLEEPING;
+	sleeping_queue.insert_tail(prev_run);
+
+	thread* next_run;
+	for (int i=0;;i++) {
+		next_run = ready_queue.remove_head();
+
+		running_thread = next_run;
+
+		if (next_run)
+			break;
+
+		asm volatile ("sti;hlt":::"memory");
+		if (*state != thread::SLEEPING) {
+log(1)("ret;")();
+			return;
+		} else {
+log(1)("continue")(prev_run)(";")();
+			continue;
+		}
+	}
+
+	cpu.set_running_thread(next_run);
+	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
+
+	native::sti();
+}
+
+void thread_ctl::ready_thread(thread* t)
+{
+	native::cli();
+
+	if (t->state == thread::SLEEPING) {
+		sleeping_queue.remove(t);
+		ready_queue.insert_tail(t);
+		t->state = thread::RUNNING;
+	} else {
+		t->sleep_cancel_cmd = true;
+	}
+
+	native::sti();
+}
+
+void thread_ctl::ready_event_thread()
+{
+	thread* t = event_thread;
+
+	native::cli();
+
+	if (t->state == thread::SLEEPING) {
+		sleeping_queue.remove(t);
+		ready_queue.insert_tail(t);
+		t->state = thread::RUNNING;
+	} else {
+		t->sleep_cancel_cmd = true;
+	}
+
+	native::sti();
+}
+
+void thread_ctl::ready_event_thread_in_intr()
+{
+	thread* t = event_thread;
+
+	if (t->state == thread::SLEEPING) {
+		sleeping_queue.remove(t);
+		ready_queue.insert_tail(t);
+		t->state = thread::RUNNING;
+	} else {
+		t->sleep_cancel_cmd = true;
+	}
 }
 

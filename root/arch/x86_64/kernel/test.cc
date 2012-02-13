@@ -10,6 +10,7 @@
 #include "log.hh"
 
 #include "memory_allocate.hh"
+#include <processor.hh>
 
 
 void event_drive();
@@ -139,15 +140,27 @@ void mempool_test()
 	global_vars::gv.page_ctl_obj->dump(lg);
 }
 
+void switch_test()
+{
+	thread_ctl& tc =
+	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+
+	for (;;) {
+		log()(".");
+		tc.sleep_running_thread();
+	}
+}
+
 bool test_init()
 {
 	rnd.init(0, 0);
 	return true;
 }
 
-void test()
+void test(void*)
 {
 	//memory_test();
-	mempool_test();
+	//mempool_test();
+	switch_test();
 }
 

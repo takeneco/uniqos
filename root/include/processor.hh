@@ -24,8 +24,12 @@ public:
 	void run_intr_event();
 
 	void post_intr_event(event_item* ev);
+	void post_soft_event(event_item* ev);
+
+	void sleep_current_thread() { thrdctl.sleep_running_thread(); }
 
 	thread_ctl& get_thread_ctl() { return thrdctl; }
+	event_queue& get_soft_evq() { return soft_evq; }
 
 private:
 	event_item* get_next_intr_event();

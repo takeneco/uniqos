@@ -47,6 +47,11 @@ void processor::post_intr_event(event_item* ev)
 	intr_evq.push(ev);
 }
 
+void processor::post_soft_event(event_item* ev)
+{
+	soft_evq.push(ev);
+}
+
 /// @brief 外部割込みで登録されたイベントを返す。
 event_item* processor::get_next_intr_event()
 {

@@ -23,6 +23,8 @@ public:
 	thread(processor* _owner,
 	    uptr text, uptr param, uptr stack, uptr stack_size);
 
+	void ready();
+
 	arch::regset* ref_regset() { return &rs; }
 
 	bichain_node<thread>& chain_node() { return _chain_node; }
@@ -33,10 +35,12 @@ private:
 
 	arch::regset rs;
 
-	enum {
+	enum STATE {
 		RUNNING,
 		SLEEPING,
 	} state;
+
+	bool sleep_cancel_cmd;
 };
 
 
