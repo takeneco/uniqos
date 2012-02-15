@@ -91,11 +91,13 @@ class serial_ctrl : public file
 	mempool* buf_mp;
 
 	bool output_fifo_empty;
+	int tx_fifo_queued;
 
 	event_item write_event;
 	event_item intr_event;
 	bool write_posted;
 	volatile bool intr_posted;
+	volatile bool intr_pending;
 
 public:
 	/// @todo: do not use global var.
@@ -145,7 +147,9 @@ serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	base_port(base_port_),
 	irq_num(irq_num_),
 	next_read(0),
-	output_fifo_empty(true)
+	output_fifo_empty(true),
+	tx_fifo_queued(0),
+	intr_pending(false)
 {
 	ops = &serial_ops;
 }
@@ -234,13 +238,8 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		buf->write(next_write++, *c);
 		++total;
 	}
-/*
-	if (output_fifo_empty) {
-		output_fifo_empty = false;
-		transmit();
-	}
-*/
-	if (output_fifo_empty) {
+
+	if (tx_fifo_queued < DEVICE_TXBUF_SIZE) {
 		post_write_event();
 	}
 
@@ -292,6 +291,8 @@ void serial_ctrl::post_write_event()
 
 void serial_ctrl::on_intr_event()
 {
+	intr_pending = false;
+
 	const u8 intr_id = native::inb(base_port + INTR_ID);
 
 	switch (intr_id & 0x0e) {
@@ -304,12 +305,13 @@ void serial_ctrl::on_intr_event()
 
 		// 送信バッファが空になったときの割り込みは優先度が低いので
 		// ここで確認しておく。
-		if (is_txfifo_empty())
-			transmit();
+		if (!is_txfifo_empty())
+			break;
 
-		break;
+		// fall through
 
 	case 0x2:  // tx fifo empty
+		tx_fifo_queued = 0;
 		transmit();
 		// fall through
 	case 0x0:  // modem status
@@ -327,6 +329,8 @@ void serial_ctrl::on_intr_event_(void* param)
 
 void serial_ctrl::post_intr_event()
 {
+	intr_pending = true;
+
 	// TODO: exclusive
 	if (intr_posted)
 		return;
@@ -359,7 +363,11 @@ void serial_ctrl::transmit()
 	buf_entry* buf = buf_queue.tail();
 	bool buf_is_last = buf == buf_queue.head();
 
-	for (u32 i = 0; i < DEVICE_TXBUF_SIZE; ++i) {
+	int i;
+	for (i = tx_fifo_queued; i < DEVICE_TXBUF_SIZE; ++i) {
+		if (intr_pending)
+			break;
+
 		if (buf == 0)
 			break;
 		if (next_read == buf->get_bufsize()) {
@@ -380,8 +388,11 @@ void serial_ctrl::transmit()
 		}
 		if (buf_is_last && next_write == next_read)
 			break;
+
 		native::outb(buf->read(next_read++), base_port + TRANSMIT_DATA);
 	}
+
+	tx_fifo_queued = i;
 }
 
 void serial_ctrl::dump()

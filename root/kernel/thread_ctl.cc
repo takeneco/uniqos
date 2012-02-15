@@ -110,7 +110,6 @@ void thread_ctl::sleep_running_thread()
 
 	if (prev_run->sleep_cancel_cmd == true) {
 		prev_run->sleep_cancel_cmd = false;
-log(1)("sleep_cancel")(prev_run)(";")();
 		native::sti();
 		return;
 	}
@@ -123,20 +122,22 @@ log(1)("sleep_cancel")(prev_run)(";")();
 	for (int i=0;;i++) {
 		next_run = ready_queue.remove_head();
 
-		running_thread = next_run;
-
 		if (next_run)
 			break;
 
 		asm volatile ("sti;hlt":::"memory");
-		if (*state != thread::SLEEPING) {
-log(1)("ret;")();
+		//if (*state != thread::SLEEPING) {
+		if (prev_run == running_thread) {
+			///
+			ready_queue.remove_head();
+			///
 			return;
 		} else {
-log(1)("continue")(prev_run)(";")();
 			continue;
 		}
 	}
+
+	running_thread = next_run;
 
 	cpu.set_running_thread(next_run);
 	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
