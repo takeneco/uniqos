@@ -370,6 +370,11 @@ void serial_ctrl::transmit()
 
 		if (buf == 0)
 			break;
+		if (buf_is_last && next_write == next_read)
+			break;
+
+		native::outb(buf->read(next_read++), base_port + TRANSMIT_DATA);
+
 		if (next_read == buf->get_bufsize()) {
 
 			thread* client = buf->get_client();
@@ -383,13 +388,7 @@ void serial_ctrl::transmit()
 			buf = buf_queue.tail();
 			buf_is_last = buf == buf_queue.head();
 			next_read = 0;
-			if (buf == 0)
-				break;
 		}
-		if (buf_is_last && next_write == next_read)
-			break;
-
-		native::outb(buf->read(next_read++), base_port + TRANSMIT_DATA);
 	}
 
 	tx_fifo_queued = i;

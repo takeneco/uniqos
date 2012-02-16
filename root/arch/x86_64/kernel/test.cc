@@ -145,8 +145,10 @@ void switch_test()
 	thread_ctl& tc =
 	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
 
-	for (;;) {
+	for (int i = 0;; ++i) {
 		log()(".");
+		if ((i & 63) == 63)
+			log()();
 		tc.sleep_running_thread();
 	}
 }
