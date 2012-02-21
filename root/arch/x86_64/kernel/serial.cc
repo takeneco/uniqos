@@ -247,13 +247,14 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 
 	thread_ctl& tc =
 	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+
+	tc.ready_event_thread();
+
 	if (sync) {
 		buf->set_bufsize(next_write);
 		buf->set_client(tc.get_running_thread());
-	//	tc.sleep_running_thread();
+		tc.sleep_running_thread();
 	}
-
-	tc.ready_event_thread();
 
 	return cause::OK;
 }

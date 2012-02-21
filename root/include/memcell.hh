@@ -419,6 +419,7 @@ cause::stype mem_cell_base<CELLTYPE>::_free_1page(uptr padr)
 
 	if (up_level && c.table.get_raw() == free_pattern) {
 		// 上位レベルへ返却する。
+		free_chain.remove(&c);
 		c.table.set_false_all();
 		r = up_level->_free_1page(get_page_adr(&c, 0));
 		free_pages -= pages_in_cell();

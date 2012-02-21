@@ -399,4 +399,3 @@ intr_handler interrupt_0x5f_handler, 0x5f
 //	interrupt_method 0x5f
 //ENTRY_END(interrupt_0x5f_handler)
 
-retf

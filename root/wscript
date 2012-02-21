@@ -10,50 +10,51 @@ out = 'build'
 
 arch_name = 'x86_64'
 
-def configure_x86_64(conf):
-	conf.env.arch_name = arch_name
+def configure_x86_64(x):
+	x.env.arch_name = arch_name
 
-	conf.recurse('arch')
+	x.recurse('arch')
 
-	conf.env.CFLAGS = [
+	x.env.CFLAGS = [
 	    '-pipe', '-Wall', '-Wextra',
 	]
-	conf.env.CXXFLAGS = [
+	x.env.CXXFLAGS = [
 	    '-pipe', '-Wall', '-Wextra',
 	]
-	conf.env.INCLUDES = [
-	    conf.path.find_dir('include').abspath(),
-	    conf.path.find_dir('arch/' + arch_name + '/include').abspath()
+	x.env.INCLUDES = [
+	    x.path.find_dir('include').abspath(),
+	    x.path.find_dir('arch/' + arch_name + '/include').abspath()
 	]
 
-	conf.env.DEFINES_SETUP = [
+	x.env.DEFINES_SETUP = [
 	    'ARCH_LE',
 	]
-	conf.env.CFLAGS_SETUP = [
+	x.env.CFLAGS_SETUP = [
 	    '-mno-sse',
 	    '-fomit-frame-pointer', '-Os',
 	]
-	conf.env.CXXFLAGS_SETUP = [
+	x.env.CXXFLAGS_SETUP = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
 	    '-fomit-frame-pointer',
 	    '-Os',
 	]
 
-	conf.env.DEFINES_KERNEL = [
+	x.env.DEFINES_KERNEL = [
 	    'ARCH_LE',
 	]
-	conf.env.CFLAGS_KERNEL = [
+	x.env.CFLAGS_KERNEL = [
 	    '-mno-sse',
 	    '-fomit-frame-pointer', '-O2',
 	]
-	conf.env.CXXFLAGS_KERNEL = [
+	x.env.CXXFLAGS_KERNEL = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
 #	    '-fomit-frame-pointer',
 	    '-O2',
 	]
 
+	conf = x
 	if conf.options.compiler == 'clang':
 		conf.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
 		conf.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
@@ -117,10 +118,12 @@ def configure(x):
 	x.load('compiler_c')
 	x.load('compiler_cxx')
 	x.load('gcc gas')
-	x.recurse('tools')
+
+	#x.recurse('tools')
+
 
 def build(bld):
-	bld.recurse('tools')
+	#bld.recurse('tools')
 	bld.recurse('kernel')
 	bld.recurse('arch')
 

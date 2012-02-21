@@ -99,44 +99,59 @@ log().u(total_max, 16).endl();
 
 void mempool_test()
 {
+	log lg;
+
 	static u64 test_number = 0;
-	log()("test:").u(test_number, 16)();
+	log().u(test_number, 16)("|seed:");
+	rnd.dump(lg);
+	log();
 	++test_number;
 
 	mempool* mp = mempool_create_shared(100);
 
-	const int N = 256;
+	const int N = 15;
 	chain<data, &data::chain_hook> ch[N];
 
 	int n;
-	for (n = 0; n < 0x2000; ++n) {
+	int cnts[N] = {0};
+	for (n = 0; n < 0x4000; ++n) {
 		data* p = (data*)mp->alloc();
 		if (!p)
 			break;
+
+		for (int i = 0; i < N; ++i) {
+			data* q = ch[i].head();
+			for (; q; q = ch[i].next(q)) {
+				if (p == q) {
+					log()("XXX n=").u(n,16)(" / i=").u(i)();
+					mp->dump(lg);
+					for (;;) native::hlt();
+				}
+			}
+		}
+
 		u32 idx = rnd(N);
 
 		ch[idx].insert_head(p);
-
-		event_drive();
+		++cnts[idx];
 	}
 
-	log()("n=").u(n,16)();
-	log lg;
+	log()("sum n=").u(n,16)();
 	global_vars::gv.page_ctl_obj->dump(lg);
 
 	for (int i = 0; i < N; ++i) {
-		for (;;) {
+		int cnt;
+		for (cnt = 0;; ++cnt) {
 			data* d = ch[i].remove_head();
 			if (!d)
 				break;
 			mp->free(d);
 		}
 
-		event_drive();
+		mp->collect_free_pages();
 	}
 
-	mp->collect_free_pages();
-
+	log()("after collect_free_pages()")();
 	global_vars::gv.page_ctl_obj->dump(lg);
 }
 
@@ -146,10 +161,11 @@ void switch_test()
 	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
 
 	for (int i = 0;; ++i) {
-		log()(".");
-		if ((i & 63) == 63)
-			log()();
-		tc.sleep_running_thread();
+		mempool_test();
+		//log()(".");
+		//if ((i & 63) == 63)
+		//	log()();
+		//tc.sleep_running_thread();
 	}
 }
 

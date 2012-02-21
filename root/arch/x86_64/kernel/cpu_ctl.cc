@@ -102,7 +102,7 @@ cause::stype cpu_ctl::init()
 	gdt.user_data.set(3);
 	gdt.tss.set(&tss, sizeof tss, 0);
 
-	mem_fill(sizeof tss, 0, &tss);
+	//mem_fill(sizeof tss, 0, &tss);
 	tss.iomap_base = sizeof tss;
 
 	mempool* ist_mp = mempool_create_shared(IST_BYTES);
