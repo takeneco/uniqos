@@ -45,5 +45,8 @@ private:
 	event_queue soft_evq;
 };
 
+void preempt_enable();
+void preempt_disable();
+
 
 #endif  // include guards

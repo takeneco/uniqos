@@ -117,12 +117,9 @@ inline uptr unmap_phys_adr(const void* vadr, uptr /* size */) {
 	return reinterpret_cast<uptr>(vadr) - PHYSICAL_ADRMAP;
 }
 
-namespace pmem
-{
 
-
-}  // namespace pmem
-
+void intr_enable();
+void intr_disable();
 void halt();
 
 }  // namespace arch

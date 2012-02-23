@@ -6,6 +6,8 @@
 
 #include <processor.hh>
 
+#include <arch.hh>
+
 #include <native_ops.hh>
 
 
@@ -26,17 +28,18 @@ cause::stype processor::init()
 
 void processor::run_intr_event()
 {
-	native::cli();
-
 	for (;;) {
+		preempt_disable();
+
 		event_item* ev = get_next_intr_event();
+
+		preempt_enable();
+
 		if (!ev)
 			break;
 
 		ev->handler(ev->param);
 	}
-
-	native::sti();
 }
 
 /// @brief 外部割込みからのイベントを登録する。
@@ -56,5 +59,22 @@ void processor::post_soft_event(event_item* ev)
 event_item* processor::get_next_intr_event()
 {
 	return intr_evq.pop();
+}
+
+
+/// Preemption contorl
+
+void preempt_enable()
+{
+#if CONFIG_PREEMPT
+	arch::intr_enable();
+#endif  // CONFIG_PREEMPT
+}
+
+void preempt_disable()
+{
+#if CONFIG_PREEMPT
+	arch::intr_disable();
+#endif  // CONFIG_PREEMPT
 }
 

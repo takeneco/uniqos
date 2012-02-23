@@ -9,7 +9,7 @@
 #include "log.hh"
 #include "mempool.hh"
 #include "mpspec.hh"
-#include "native_ops.hh"
+#include <native_ops.hh>
 #include "placement_new.hh"
 #include <processor.hh>
 #include "string.hh"
@@ -156,6 +156,16 @@ void* cpu_ctl::write_ist_layout(void* mem)
 	return istf;
 }
 
+
+void intr_enable()
+{
+	native::cli();
+}
+
+void intr_disable()
+{
+	native::sti();
+}
 
 void halt() {
 	native::hlt();

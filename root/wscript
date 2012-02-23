@@ -10,6 +10,8 @@ out = 'build'
 
 arch_name = 'x86_64'
 
+import os.path
+
 def configure_x86_64(x):
 	x.env.arch_name = arch_name
 
@@ -110,6 +112,12 @@ def options(x):
 
 	x.recurse('arch')
 
+def def_config(x, config, name, default_val):
+	if name in config:
+		x.define('CONFIG_'+name, config[name])
+	elif default_val != None:
+		x.define('CONFIG_'+name, default_val)
+
 def configure(x):
 	x.env.debug_all = x.options.debug_all
 
@@ -120,6 +128,14 @@ def configure(x):
 	x.load('gcc gas')
 
 	#x.recurse('tools')
+
+	config = dict()
+	if os.path.isfile('config'):
+		execfile('config', config)
+
+	def_config(x, config, 'PREEMPT', 1)
+
+	x.write_config_header('config.h')
 
 
 def build(bld):
