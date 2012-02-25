@@ -123,6 +123,7 @@ private:
 	}
 	bool is_txfifo_empty() const;
 	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
+	cause::stype write_buf(iovec_iterator& iov_itr, uptr* bytes);
 
 	void on_write_event();
 	static void on_write_event_(void* param);
@@ -211,19 +212,45 @@ bool serial_ctrl::is_txfifo_empty() const
 	return (line_status & 0x20) != 0;
 }
 
-// TODO: exclusive
+/// @brief  Write to buffer.
+/// @param[out] bytes  write bytes.
+//
+/// 途中で失敗した場合は *bytes に出力したバイト数が返される。
 cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
-	uptr total = 0;
-
 	iovec_iterator iov_itr(iov, iov_cnt);
 
+	preempt_disable();
+
+	cause::stype r = write_buf(iov_itr, bytes);
+
+	preempt_enable();
+
+	if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
+		post_write_event();
+
+	thread_ctl& tc =
+	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+
+	tc.ready_event_thread();
+
+	if (sync) {
+		tc.sleep_running_thread();
+	}
+
+	return r;
+}
+
+cause::stype serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
+{
 	buf_entry* buf = buf_queue.head();
 	if (buf == 0) {
 		buf = buf_append();
 		if (buf == 0)
 			return cause::NOMEM;
 	}
+
+	uptr total = 0;
 
 	for (;;) {
 		const u8* c = iov_itr.next_u8();
@@ -239,21 +266,13 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		++total;
 	}
 
-	if (tx_fifo_queued < DEVICE_TXBUF_SIZE) {
-		post_write_event();
-	}
-
 	*bytes = total;
 
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-
-	tc.ready_event_thread();
-
 	if (sync) {
+		thread_ctl& tc =
+		    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
 		buf->set_bufsize(next_write);
 		buf->set_client(tc.get_running_thread());
-		tc.sleep_running_thread();
 	}
 
 	return cause::OK;
