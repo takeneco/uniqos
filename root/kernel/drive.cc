@@ -15,36 +15,46 @@
 
 void test();
 
-void event_drive()
+bool event_drive()
 {
-	//event_queue* evctl = global_vars::gv.event_ctl_obj;
 	event_queue* evctl = &global_vars::gv.logical_cpu_obj_array[0].
 	    get_soft_evq();
 
-	for (;;) {
-		event_item* event = evctl->pop();
-		if (!event)
-			break;
+	if (!evctl->probe())
+		return false;
 
-		event->handler(event->param);
-	}
+	preempt_disable();
+
+	event_item* event = evctl->pop();
+
+	preempt_enable();
+
+	//// no effect
+	//if (!event)
+	//	break;
+
+	event->handler(event->param);
+
+	return true;
 }
 
 void drive()
 {
-	//log()("(C) KATO Takeshi")();
-
 	processor* cpu = arch::get_current_cpu();
 
 	for (;;) {
-		cpu->run_intr_event();
+		bool soft_ev = event_drive();
 
-		//test();
+		arch::intr_disable();
 
-		native::cli();
-		event_drive();
-		//asm volatile ("sti;hlt");
-		cpu->sleep_current_thread();
+		bool intr_ev = cpu->run_all_intr_event();
+
+		if (soft_ev || intr_ev)
+			arch::intr_enable();
+		else
+			// 割り込み禁止の状態で呼び出す。
+			// x86依存
+			cpu->sleep_current_thread();
 	}
 }
 

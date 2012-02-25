@@ -21,7 +21,7 @@ public:
 	processor() {}
 
 	cause::stype init();
-	void run_intr_event();
+	bool run_all_intr_event();
 
 	void post_intr_event(event_item* ev);
 	void post_soft_event(event_item* ev);
@@ -32,6 +32,7 @@ public:
 	event_queue& get_soft_evq() { return soft_evq; }
 
 private:
+	bool probe_intr_event();
 	event_item* get_next_intr_event();
 
 private:

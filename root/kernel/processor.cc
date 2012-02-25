@@ -26,20 +26,22 @@ cause::stype processor::init()
 	return cause::OK;
 }
 
-void processor::run_intr_event()
+/// @brief 外部割込みからのイベントをすべて処理する。
+//
+/// 割り込み禁止状態で呼び出す必要がある。
+bool processor::run_all_intr_event()
 {
-	for (;;) {
-		preempt_disable();
+	if (!probe_intr_event())
+		return false;
 
+	do {
 		event_item* ev = get_next_intr_event();
 
-		preempt_enable();
-
-		if (!ev)
-			break;
-
 		ev->handler(ev->param);
-	}
+
+	} while (probe_intr_event());
+
+	return true;
 }
 
 /// @brief 外部割込みからのイベントを登録する。
@@ -53,6 +55,12 @@ void processor::post_intr_event(event_item* ev)
 void processor::post_soft_event(event_item* ev)
 {
 	soft_evq.push(ev);
+}
+
+/// @retval true 外部割込みによって登録されたイベントがある。
+bool processor::probe_intr_event()
+{
+	return intr_evq.probe();
 }
 
 /// @brief 外部割込みで登録されたイベントを返す。

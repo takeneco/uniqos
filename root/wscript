@@ -133,6 +133,7 @@ def configure(x):
 	if os.path.isfile('config'):
 		execfile('config', config)
 
+	def_config(x, config, 'DEBUG', 0)
 	def_config(x, config, 'PREEMPT', 1)
 
 	x.write_config_header('config.h')
