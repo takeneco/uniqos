@@ -72,13 +72,13 @@ cause::stype thread_ctl::create_thread(
 
 cause::stype thread_ctl::wakeup(thread* t)
 {
-	if (t->state == thread::RUNNING)
+	if (t->state == thread::READY)
 		return cause::OK;
 
 	sleeping_queue.remove(t);
 	ready_queue.insert_tail(t);
 
-	t->state = thread::RUNNING;
+	t->state = thread::READY;
 
 	return cause::OK;
 }
@@ -106,11 +106,11 @@ void thread_ctl::sleep_running_thread()
 
 	processor& cpu = global_vars::gv.logical_cpu_obj_array[0];
 
-	native::cli();
+	preempt_disable();
 
 	if (prev_run->sleep_cancel_cmd == true) {
 		prev_run->sleep_cancel_cmd = false;
-		native::sti();
+		preempt_enable();
 		return;
 	}
 
@@ -119,18 +119,15 @@ void thread_ctl::sleep_running_thread()
 	sleeping_queue.insert_tail(prev_run);
 
 	thread* next_run;
-	for (int i=0;;i++) {
+	for (;;) {
 		next_run = ready_queue.remove_head();
-
 		if (next_run)
 			break;
 
+		running_thread = 0;
 		asm volatile ("sti;hlt":::"memory");
-		//if (*state != thread::SLEEPING) {
-		if (prev_run == running_thread) {
-			///
-			ready_queue.remove_head();
-			///
+
+		if (*state == thread::READY) {
 			return;
 		} else {
 			continue;
@@ -142,7 +139,7 @@ void thread_ctl::sleep_running_thread()
 	cpu.set_running_thread(next_run);
 	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
 
-	native::sti();
+	preempt_enable();
 }
 
 void thread_ctl::ready_thread(thread* t)
@@ -152,12 +149,30 @@ void thread_ctl::ready_thread(thread* t)
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);
 		ready_queue.insert_tail(t);
-		t->state = thread::RUNNING;
+		t->state = thread::READY;
 	} else {
 		t->sleep_cancel_cmd = true;
 	}
 
 	native::sti();
+}
+
+void thread_ctl::switch_thread_after_intr(thread* t)
+{
+	if (running_thread)
+		ready_queue.insert_tail(running_thread);
+
+	ready_queue.remove(t);
+	running_thread = t;
+
+	processor& cpu = global_vars::gv.logical_cpu_obj_array[0];
+	cpu.set_running_thread(t);
+}
+
+void thread_ctl::switch_messenger_thread_after_intr()
+{
+	ready_event_thread_in_intr();
+	switch_thread_after_intr(event_thread);
 }
 
 void thread_ctl::ready_event_thread()
@@ -169,7 +184,7 @@ void thread_ctl::ready_event_thread()
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);
 		ready_queue.insert_tail(t);
-		t->state = thread::RUNNING;
+		t->state = thread::READY;
 	} else {
 		t->sleep_cancel_cmd = true;
 	}
@@ -182,9 +197,16 @@ void thread_ctl::ready_event_thread_in_intr()
 	thread* t = event_thread;
 
 	if (t->state == thread::SLEEPING) {
+		t->state = thread::READY;
 		sleeping_queue.remove(t);
-		ready_queue.insert_tail(t);
-		t->state = thread::RUNNING;
+
+//		if (running_thread == 0) {
+//			running_thread = t;
+//			global_vars::gv.logical_cpu_obj_array[0]
+//			    .set_running_thread(t);
+//		} else {
+			ready_queue.insert_tail(t);
+//		}
 	} else {
 		t->sleep_cancel_cmd = true;
 	}

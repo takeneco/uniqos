@@ -36,7 +36,7 @@ private:
 	arch::regset rs;
 
 	enum STATE {
-		RUNNING,
+		READY,
 		SLEEPING,
 	} state;
 

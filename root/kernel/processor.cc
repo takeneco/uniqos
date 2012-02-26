@@ -7,6 +7,7 @@
 #include <processor.hh>
 
 #include <arch.hh>
+#include <global_vars.hh>
 
 #include <native_ops.hh>
 
@@ -69,6 +70,11 @@ event_item* processor::get_next_intr_event()
 	return intr_evq.pop();
 }
 
+
+processor* get_current_cpu()
+{
+	return &global_vars::gv.logical_cpu_obj_array[0];
+}
 
 /// Preemption contorl
 

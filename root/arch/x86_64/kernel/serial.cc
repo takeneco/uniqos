@@ -357,10 +357,10 @@ void serial_ctrl::post_intr_event()
 
 	intr_posted = true;
 
-	//post_event(&intr_event);
 	processor* cpu = arch::get_current_cpu();
 	cpu->post_intr_event(&intr_event);
-	cpu->get_thread_ctl().ready_event_thread_in_intr();
+	//cpu->get_thread_ctl().ready_event_thread_in_intr();
+	cpu->get_thread_ctl().switch_messenger_thread_after_intr();
 }
 
 /// 割り込み発生時に呼ばれる。

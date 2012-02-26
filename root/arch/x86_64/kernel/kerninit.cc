@@ -98,6 +98,11 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (r != cause::OK)
 		return r;
 
+	thread_ctl& tc =
+	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+
+	tc.set_event_thread(tc.get_running_thread());
+
 	native::sti();
 
 	r = global_vars::gv.irq_ctl_obj->init();
@@ -126,11 +131,6 @@ log(1)("eee")();
 //	serial_dump(serial);
 	log()("test_init() : ").u(test_init())();
 	//test();
-
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-
-	tc.set_event_thread(tc.get_running_thread());
 
 	thread* t;
 	tc.create_thread(test, 0, &t);

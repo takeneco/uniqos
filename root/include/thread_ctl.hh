@@ -35,6 +35,8 @@ public:
 	///
 	void sleep_running_thread();
 	void ready_thread(thread* t);
+	void switch_thread_after_intr(thread* t);
+	void switch_messenger_thread_after_intr();
 
 	thread* get_running_thread() { return running_thread; }
 

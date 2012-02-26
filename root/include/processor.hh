@@ -46,6 +46,8 @@ private:
 	event_queue soft_evq;
 };
 
+processor* get_current_cpu();
+
 void preempt_enable();
 void preempt_disable();
 
