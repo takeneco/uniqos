@@ -23,6 +23,8 @@
 #include <log.hh>
 #include <placement_new.hh>
 
+#include <processor.hh>
+
 
 void* mem_alloc(u32 bytes)
 {
@@ -78,40 +80,26 @@ cause::stype mempool::destroy()
 
 void* mempool::alloc()
 {
-	memobj* obj = free_objs.remove_head();
-	if (obj) {
-		--freeobj_count;
-	} else {
-		page* pg = free_pages.head();
-		if (pg == 0) {
-			pg = new_page();
-			if (pg == 0)
-				return 0;
+	processor* proc = get_current_cpu();
 
-			free_pages.insert_head(pg);
-		}
+	proc->preempt_disable();
 
-		obj = pg->alloc();
+	void* r = _alloc();
 
-		if (pg->is_full()) {
-			free_pages.remove_head(); // remove pg
-			full_pages.insert_head(pg);
-		}
-	}
+	proc->preempt_enable();
 
-	++alloc_count;
-
-	return obj;
+	return r;
 }
 
 void mempool::free(void* ptr)
 {
-	memobj* obj = new (ptr) memobj;
+	processor* proc = get_current_cpu();
 
-	free_objs.insert_head(obj);
+	proc->preempt_disable();
 
-	--alloc_count;
-	++freeobj_count;
+	_dealloc(ptr);
+
+	proc->preempt_enable();
 }
 
 void mempool::collect_free_pages()
@@ -156,6 +144,44 @@ u32 mempool::normalize_obj_size(u32 objsize)
 	r = up_align<u32>(r, arch::BASIC_TYPE_ALIGN);
 
 	return r;
+}
+
+void* mempool::_alloc()
+{
+	memobj* obj = free_objs.remove_head();
+	if (obj) {
+		--freeobj_count;
+	} else {
+		page* pg = free_pages.head();
+		if (pg == 0) {
+			pg = new_page();
+			if (pg == 0)
+				return 0;
+
+			free_pages.insert_head(pg);
+		}
+
+		obj = pg->alloc();
+
+		if (pg->is_full()) {
+			free_pages.remove_head(); // remove pg
+			full_pages.insert_head(pg);
+		}
+	}
+
+	++alloc_count;
+
+	return obj;
+}
+
+void mempool::_dealloc(void* ptr)
+{
+	memobj* obj = new (ptr) memobj;
+
+	free_objs.insert_head(obj);
+
+	--alloc_count;
+	++freeobj_count;
 }
 
 void mempool::attach(page* pg)
@@ -505,5 +531,32 @@ extern "C" mempool* mempool_create_shared(u32 objsize)
 extern "C" void mempool_release_shared(mempool* mp)
 {
 	global_vars::gv.mempool_ctl_obj->release_shared_mempool(mp);
+}
+
+
+cause::stype page_alloc(arch::page::TYPE page_type, uptr* padr)
+{
+	processor* proc = get_current_cpu();
+
+	proc->preempt_disable();
+
+	cause::stype r = arch::page::alloc(page_type, padr);
+
+	proc->preempt_enable();
+
+	return r;
+}
+
+cause::stype page_dealloc(arch::page::TYPE page_type, uptr padr)
+{
+	processor* proc = get_current_cpu();
+
+	proc->preempt_disable();
+
+	cause::stype r = arch::page::free(page_type, padr);
+
+	proc->preempt_enable();
+
+	return r;
 }
 

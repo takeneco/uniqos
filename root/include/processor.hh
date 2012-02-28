@@ -23,6 +23,9 @@ public:
 	cause::stype init();
 	bool run_all_intr_event();
 
+	void preempt_disable();
+	void preempt_enable();
+
 	void post_intr_event(event_item* ev);
 	void post_soft_event(event_item* ev);
 
@@ -36,6 +39,8 @@ private:
 	event_item* get_next_intr_event();
 
 private:
+	u8 preempt_disable_nests;
+
 	thread_ctl thrdctl;
 
 	/// 外部割込みによって発生したイベントを溜める。

@@ -93,6 +93,9 @@ private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 	static u32 normalize_obj_size(u32 objsize);
 
+	void* _alloc();
+	void _dealloc(void* ptr);
+
 	void attach(page* pg);
 	page* new_page();
 	void delete_page(page* pg);
@@ -127,6 +130,9 @@ extern "C" void mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 
 inline void* operator new (uptr, mempool* mp) { return mp->alloc(); }
+
+cause::stype page_alloc(arch::page::TYPE page_type, uptr* padr);
+cause::stype page_dealloc(arch::page::TYPE page_type, uptr* padr);
 
 
 #endif  // include guard

@@ -14,6 +14,8 @@
 
 cause::stype processor::init()
 {
+	preempt_disable_nests = 0;
+
 	cause::stype r = arch::cpu_ctl::init();
 	if (is_fail(r))
 		return r;
@@ -43,6 +45,22 @@ bool processor::run_all_intr_event()
 	} while (probe_intr_event());
 
 	return true;
+}
+
+void processor::preempt_disable()
+{
+#if CONFIG_PREEMPT
+	arch::intr_disable();
+	++preempt_disable_nests;
+#endif  // CONFIG_PREEMPT
+}
+
+void processor::preempt_enable()
+{
+#if CONFIG_PREEMPT
+	if (--preempt_disable_nests == 0)
+		arch::intr_enable();
+#endif  // CONFIG_PREEMPT
 }
 
 /// @brief 外部割込みからのイベントを登録する。
