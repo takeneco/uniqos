@@ -220,11 +220,12 @@ cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
 
-	preempt_disable();
+	processor* proc = get_current_cpu();
+	proc->preempt_disable();
 
 	cause::stype r = write_buf(iov_itr, bytes);
 
-	preempt_enable();
+	proc->preempt_enable();
 
 	if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
 		post_write_event();
