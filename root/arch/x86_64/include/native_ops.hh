@@ -1,7 +1,7 @@
 /// @file native_ops.hh
 /// @brief  C言語から呼び出すアセンブラ命令
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
@@ -12,6 +12,62 @@
 
 namespace native {
 
+inline u8 mem_read8(const u8* ptr) {
+	u8 r;
+	asm volatile ("movb %1, %0" : "=r"(r) : "m"(*ptr));
+	return r;
+}
+inline u8 mem_read8(uptr adr) {
+	return mem_read8(reinterpret_cast<const u8*>(adr));
+}
+inline u16 mem_read16(const u16* ptr) {
+	u16 r;
+	asm volatile ("movw %1, %0" : "=r"(r) : "m"(*ptr));
+	return r;
+}
+inline u16 mem_read16(uptr adr) {
+	return mem_read16(reinterpret_cast<const u16*>(adr));
+}
+inline u32 mem_read32(const u32* ptr) {
+	u32 r;
+	asm volatile ("movl %1, %0" : "=r"(r) : "m"(*ptr));
+	return r;
+}
+inline u32 mem_read32(uptr adr) {
+	return mem_read32(reinterpret_cast<const u32*>(adr));
+}
+inline u64 mem_read64(const u64* ptr) {
+	u64 r;
+	asm volatile ("movq %1, %0" : "=r"(r) : "m"(*ptr));
+	return r;
+}
+inline u64 mem_read64(uptr adr) {
+	return mem_read64(reinterpret_cast<const u64*>(adr));
+}
+inline void mem_write8(u8 x, u8* ptr) {
+	asm volatile ("movb %1, %0" : "=m"(*ptr) : "r"(x));
+}
+inline void mem_write8(u8 x, uptr adr) {
+	mem_write8(x, reinterpret_cast<u8*>(adr));
+}
+inline void mem_write16(u16 x, u16* ptr) {
+	asm volatile ("movw %1, %0" : "=m"(*ptr) : "r"(x));
+}
+inline void mem_write16(u16 x, uptr adr) {
+	mem_write16(x, reinterpret_cast<u16*>(adr));
+}
+inline void mem_write32(u32 x, u32* ptr) {
+	asm volatile ("movl %1, %0" : "=m"(*ptr) : "r"(x));
+}
+inline void mem_write32(u32 x, uptr adr) {
+	mem_write32(x, reinterpret_cast<u32*>(adr));
+}
+inline void mem_write64(u64 x, u64* ptr) {
+	asm volatile ("movq %1, %0" : "=m"(*ptr) : "r"(x));
+}
+inline void mem_write64(u64 x, uptr adr) {
+	mem_write64(x, reinterpret_cast<u64*>(adr));
+}
 inline void hlt() {
 	asm volatile ("hlt");
 }
