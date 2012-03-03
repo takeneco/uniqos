@@ -25,6 +25,34 @@
 #include <processor.hh>
 
 
+thread* ta;
+thread* tb;
+void testA(void* p)
+{
+	processor* proc = get_current_cpu();
+	thread_ctl& tc = proc->get_thread_ctl();
+	for (u32 i=0;;++i) {
+		log()("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
+		if (i==0){
+			tc.ready_thread(tb);
+			proc->sleep_current_thread();
+		}
+	}
+}
+
+void testB(void* p)
+{
+	processor* proc = get_current_cpu();
+	thread_ctl& tc = proc->get_thread_ctl();
+	for (u32 i=0;;++i) {
+		log()("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
+		if (i==0){
+			tc.ready_thread(ta);
+			proc->sleep_current_thread();
+		}
+	}
+}
+
 void test(void*);
 bool test_init();
 void cpu_test();
@@ -34,6 +62,8 @@ void drive();
 void lapic_dump();
 void serial_dump(void*);
 cause::stype slab_init();
+bool hpet_init();
+u64 get_clock();
 
 namespace {
 
@@ -127,13 +157,24 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	}
 log(1)("eee")();
 
+	hpet_init();
+	log()("clock=").u(get_clock())();
+	log()("clock=").u(get_clock())();
+
 //	cpu_test();
 //	serial_dump(serial);
 	log()("test_init() : ").u(test_init())();
 	//test();
 
 	thread* t;
-	tc.create_thread(test, 0, &t);
+	//tc.create_thread(test, 0, &t);
+	//tc.ready_thread(t);
+
+	tc.create_thread(testA, 0, &t);
+	ta = t;
+	tc.ready_thread(t);
+	tc.create_thread(testB, 0, &t);
+	tb = t;
 	tc.ready_thread(t);
 
 	serial->sync = true;

@@ -6,7 +6,7 @@
 //
 
 #include "arch.hh"
-#include "misc.hh"
+#include <log.hh>
 #include "mpspec.hh"
 #include "native_ops.hh"
 
@@ -70,7 +70,7 @@ bool rsdp::test() const
 
 const rsdp* scan_rsdp(u32 base, u32 length)
 {
-	const u8* ptr = reinterpret_cast<const u8*>(base);
+	const u8* ptr = reinterpret_cast<const u8*>(arch::map_phys_adr(base, length));
 
 	// RSDP must be aligned to 16bytes.
 
@@ -87,7 +87,7 @@ const rsdp* scan_rsdp(u32 base, u32 length)
 const rsdp* search_rsdp()
 {
 	// search from EBDA(Extended BIOS Data Area)
-	const u16 ebda = *reinterpret_cast<u16*>(0x40e);
+	const u16 ebda = *reinterpret_cast<u16*>(arch::map_phys_adr(0x40e, sizeof (u16)));
 	const rsdp* rsdp = scan_rsdp(ebda, 1024);
 
 	if (rsdp == 0)
@@ -300,7 +300,7 @@ hpet_register* hpet_detect()
 	}
 
 	const rsdt_header* rsdth =
-	    reinterpret_cast<const rsdt_header*>(rsdp->rsdt_adr);
+	    reinterpret_cast<const rsdt_header*>(arch::map_phys_adr(rsdp->rsdt_adr, sizeof (rsdt_header)));
 	if (!rsdth->test()) {
 		log()("RSDT test failed.")();
 		return 0;
@@ -310,7 +310,7 @@ hpet_register* hpet_detect()
 	hpet_desc* hpetdesc = 0;
 	for (u32 i = 0; i < rsdth->get_entry_count(); ++i) {
 		DESCRIPTION_HEADER* dh =
-		    reinterpret_cast<DESCRIPTION_HEADER*>(e[i]);
+		    reinterpret_cast<DESCRIPTION_HEADER*>(arch::map_phys_adr(e[i], sizeof (DESCRIPTION_HEADER)));
 		if (!dh->test()) {
 			log()("DESCRIPTION_HEADER ")(dh)(" test failed.")();
 			return 0;
@@ -330,7 +330,7 @@ hpet_register* hpet_detect()
 	    static_cast<u64>(hpetdesc->base_adr[2]) << 32;
 
 	return reinterpret_cast<hpet_register*>(
-	    arch::pmem::direct_map(hpet_regadr));
+	    arch::map_phys_adr(hpet_regadr, sizeof (hpet_register)));
 }
 
 hpet_register* hpet_regs;
@@ -352,7 +352,14 @@ bool hpet_init()
 	hpetregs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
 	hpetregs->enable_legrep();
 
+	log()("hpet_regs=")(hpet_regs)();
+
 	return true;
+}
+
+u64 get_clock()
+{
+	return hpet_regs->counter;
 }
 
 /// @param usecs  specify mili secs.
@@ -371,7 +378,7 @@ void timer_sleep(u32 msecs)
 
 	native::cli();
 }
-
+/*
 extern "C" void on_interrupt()
 {
 	volatile u32* eoi = reinterpret_cast<u32*>(arch::pmem::direct_map(0xfee000b0));
@@ -379,3 +386,4 @@ extern "C" void on_interrupt()
 
 	log()("intr &eoi = ")(&eoi)();
 }
+*/
