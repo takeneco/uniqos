@@ -161,6 +161,18 @@ log(1)("eee")();
 	log()("clock=").u(get_clock())();
 	log()("clock=").u(get_clock())();
 
+	const mpspec* mps = get_current_cpu()->get_shared()->get_mpspec();
+	mpspec::processor_iterator proc_itr(mps);
+	for (;;) {
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+
+		log()("cpu : ").u(pe->localapic_id)();
+	}
+
+	lapic_post_init_ipi();
+
 //	cpu_test();
 //	serial_dump(serial);
 	log()("test_init() : ").u(test_init())();

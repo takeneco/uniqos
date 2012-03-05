@@ -48,9 +48,11 @@ public:
 	class IDT;
 
 	cause::stype init();
-	cause::stype load();
+	cause::stype load(cpu_share* sh);
 
 	void set_running_thread(thread* t);
+
+	const cpu_share* get_shared() { return shared; }
 
 private:
 	void* write_ist_layout(void* mem);
@@ -257,6 +259,7 @@ public:
 	TSS tss;
 
 	arch::regset* running_thread_regset;
+	cpu_share* shared;
 };
 
 

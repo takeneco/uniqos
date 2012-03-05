@@ -1,7 +1,7 @@
 /// @file  apic.cc
 /// @brief Control APIC.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #include "arch.hh"
@@ -16,7 +16,7 @@
 namespace {
 
 /// Local APIC Registers
-enum {
+enum LAPIC_REG {
 	LOCAL_APIC_REG_BASE = arch::PHYSICAL_MEMMAP_BASEADR + 0xfee00000,
 
 	/// ID
@@ -59,59 +59,41 @@ enum {
 	LOCAL_APIC_DCR = 0x03e0,
 };
 
-inline u32* local_apic_reg(uptr offset) {
-	return reinterpret_cast<u32*>(LOCAL_APIC_REG_BASE + offset);
+inline u32 read_reg(LAPIC_REG offset) {
+	return native::mem_read32(LOCAL_APIC_REG_BASE + offset);
+}
+inline void write_reg(u32 val, LAPIC_REG offset) {
+	native::mem_write32(val, LOCAL_APIC_REG_BASE + offset);
 }
 
 interrupt_handler timer_ih;
 void timer_handler(void*)
 {
-	*local_apic_reg(LOCAL_APIC_EOI) = 0;
+	write_reg(0, LOCAL_APIC_EOI);
 }
 
 cause::stype local_apic_init()
 {
 	volatile u32* reg;
 
-	log()("LAPIC version:").u(*local_apic_reg(LOCAL_APIC_VERSION), 16)();
+	log()("LAPIC version:").u(read_reg(LOCAL_APIC_VERSION), 16)();
 
 	// Local APIC enable
-	reg = local_apic_reg(LOCAL_APIC_SVR);
-	// 32bit アクセスは必須。
-	// コンパイラの最適化で 64bit アクセスにならないように注意。
-	u32 tmp = *reg;
-	// *reg = tmp | 0x0100;
-	asm volatile ("movl %1, %0" : "=m" (*reg) : "r" (tmp | 0x100));
+	u32 tmp = read_reg(LOCAL_APIC_SVR);
+	write_reg(tmp | 0x100, LOCAL_APIC_SVR);
 
-	*local_apic_reg(LOCAL_APIC_ID) = 0;
-	*local_apic_reg(LOCAL_APIC_LDR) = 0x1000000;
-	*local_apic_reg(LOCAL_APIC_DFR) = 0xffffffff;
+	write_reg(0, LOCAL_APIC_ID);
+	write_reg(0x1000000, LOCAL_APIC_LDR);
+	write_reg(0xffffffff, LOCAL_APIC_DFR);
 
 	// Task priority lowest
-	*local_apic_reg(LOCAL_APIC_TPR) = 0;
+	write_reg(0, LOCAL_APIC_TPR);
 
 	//*local_apic_reg(LOCAL_APIC_DCR) = 0xb; // clock/1
-	*local_apic_reg(LOCAL_APIC_DCR) = 0xa; // clock/128
+	write_reg(0xa, LOCAL_APIC_DCR); // clock/128
 
 	// one shot, unmask, とりあえずベクタ0x30
-	*local_apic_reg(LOCAL_APIC_LVT_TIMER) = arch::INTR_APIC_TIMER;
-
-	/*
-	reg = local_apic_reg(LOCAL_APIC_INI_COUNT);
-	for (;;) {
-		*reg = 0x800000;
-		asm volatile("hlt");
-		kern_get_out()->put_c('x');
-	}
-	*/
-
-	/*
-	int d;
-	asm volatile (
-	"cpuid" : "=d"(d): "a"(1)
-	);
-	kern_get_out()->put_str("cpuid(1)=")->put_u32hex(d)->put_c('\n');
-	*/
+	write_reg(arch::INTR_APIC_TIMER, LOCAL_APIC_LVT_TIMER);
 
 	timer_ih.handler = timer_handler;
 	timer_ih.param = 0;
@@ -121,7 +103,33 @@ cause::stype local_apic_init()
 	return cause::OK;
 }
 
+void set_ipi_dest(u32 id)
+{
+	id <<= 24;
+	write_reg(id, LOCAL_APIC_ICR_HIGH);
 }
+
+enum {
+	ICR_INIT_MODE = 0x000000500,
+
+	ICR_PHYSICAL_DEST = 0x000000000,
+	ICR_LOGICAL_DEST = 0x000000800,
+
+	ICR_DEASSERT_LEVEL = 0x00000000,
+	ICR_ASSERT_LEVEL = 0x00004000,
+
+	ICR_EDGE_TRIGGER = 0x00000000,
+	ICR_LEVEL_TRIGGER = 0x00008000,
+
+	ICR_BROADCAST = 0x000c0000,
+};
+void post_ipi(u8 vec, u64 flags)
+{
+	u64 val = vec | flags;
+	write_reg(val, LOCAL_APIC_ICR_LOW);
+}
+
+}  // namespace
 
 namespace arch {
 
@@ -132,8 +140,7 @@ cause::stype apic_init()
 
 void wait(u32 n)
 {
-	volatile u32* reg = local_apic_reg(LOCAL_APIC_INI_COUNT);
-	*reg = n;
+	write_reg(n, LOCAL_APIC_INI_COUNT);
 	native::hlt();
 }
 
@@ -141,22 +148,15 @@ void wait(u32 n)
 
 void lapic_eoi()
 {
-	*local_apic_reg(LOCAL_APIC_EOI) = 0;
+	write_reg(0, LOCAL_APIC_EOI);
 }
 
-void lapic_dump()
+void lapic_post_init_ipi()
 {
-	log lg;
-	lg("ISR:");
-
-	u32* reg = local_apic_reg(LOCAL_APIC_ISR_BASE);
-	reg += 4 * 8;
-	for (int i = 0; i < 8; ++i) {
-		reg -= 4;
-		u32 r = *reg;
-		lg.u(r, 16).c(' ');
-	}
-
-	lg()();
+	post_ipi(0,
+	    ICR_INIT_MODE |
+	    ICR_ASSERT_LEVEL |
+	    ICR_EDGE_TRIGGER |
+	    ICR_BROADCAST);
 }
 

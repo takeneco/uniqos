@@ -22,6 +22,7 @@ namespace arch {
 cause::stype apic_init();
 void wait(u32 n);
 }
+void lapic_post_init_ipi();
 
 #endif  // Include guard.
 

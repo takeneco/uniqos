@@ -62,7 +62,7 @@ cause::stype cpu_init()
 	if (is_fail(r))
 		return r;
 
-	r = logi_cpus[0].load();
+	r = logi_cpus[0].load(cpu_share_obj);
 	if (is_fail(r))
 		return r;
 
@@ -118,8 +118,10 @@ cause::stype cpu_ctl::init()
 	return cause::OK;
 }
 
-cause::stype cpu_ctl::load()
+cause::stype cpu_ctl::load(cpu_share* sh)
 {
+	shared = sh;
+
 	native::gdt_ptr64 gdtptr;
 	gdtptr.set(sizeof gdt, &gdt);
 	native::lgdt(&gdtptr);
