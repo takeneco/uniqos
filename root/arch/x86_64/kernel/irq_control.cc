@@ -6,11 +6,10 @@
 //
 
 #include "base_types.hh"
-#include "core_class.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "ioapic.hh"
-#include "irq_control.hh"
+#include "irq_ctl.hh"
 
 
 namespace arch {

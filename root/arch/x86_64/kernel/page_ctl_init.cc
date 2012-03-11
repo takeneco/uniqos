@@ -21,11 +21,9 @@
 /// それ以降は page_ctl を通してメモリを管理する。
 
 #include "arch.hh"
-#include "basic_types.hh"
 #include "bootinfo.hh"
-#include "core_class.hh"
 #include "cheap_alloc.hh"
-#include "global_vars.hh"
+#include "gv_page.hh"
 #include "log.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
@@ -261,13 +259,19 @@ cause::stype load_page(const tmp_alloc& alloc, page_ctl* ctl)
 	return cause::OK;
 }
 
-bool setup_core_page(void* page)
+bool setup_gv_page(void* page, uptr bytes)
 {
-	core_page* core_page_obj = new (page) core_page;
+	gv_page* gv_page_obj = new (page) gv_page;
 
-	log()("core_page size: ").u(sizeof *core_page_obj)();
+	log()("gv_page size: ").u(sizeof *gv_page_obj)();
+	if (bytes < sizeof (gv_page)) {
+		log()("!!! No enough bytes for gv_page. "
+		    "page size=").u(bytes)(
+		    ", sizeof gv_page=").u(sizeof (gv_page))();
+		return false;
+	}
 
-	return core_page_obj->init();
+	return gv_page_obj->init();
 }
 
 }  // namespace
@@ -306,7 +310,7 @@ cause::stype page_ctl_init()
 		return cause::NOMEM;
 	}
 	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
-	if (setup_core_page(buf) == false)
+	if (setup_gv_page(buf, arch::page::PHYS_L1_SIZE) == false)
 		return cause::UNKNOWN;
 
 	page_ctl* pgctl = get_page_ctl();

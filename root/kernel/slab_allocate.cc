@@ -284,7 +284,7 @@ mem_cache* memcache_control::shared_new(u32 obj_size)
 	return newmc;
 }
 
-
+/*
 cause::stype slab_init()
 {
 	global_vars::gv.memcache_ctl =
@@ -294,7 +294,7 @@ cause::stype slab_init()
 
 	return cause::OK;
 }
-
+*/
 mem_cache* shared_mem_cache(u32 obj_size)
 {
 	return global_vars::gv.memcache_ctl->shared_mem_cache(obj_size);

@@ -4,15 +4,13 @@
 // (C) 2011-2012 KATO Takeshi
 //
 
-#include "core_class.hh"
 #include "chain.hh"
 #include "event.hh"
 #include "file.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
-#include "irq_control.hh"
-#include "memcache.hh"
-#include "memory_allocate.hh"
+#include <irq_ctl.hh>
+#include <mempool.hh>
 #include "native_ops.hh"
 #include "placement_new.hh"
 #include <processor.hh>
@@ -415,11 +413,6 @@ void serial_ctrl::transmit()
 	tx_fifo_queued = i;
 }
 
-void serial_ctrl::dump()
-{
-	log()("serial::dump()")();
-}
-
 }
 
 namespace {
@@ -438,11 +431,5 @@ file* create_serial()
 	serial->configure();
 
 	return serial;
-}
-
-void serial_dump(void* p)
-{
-	serial_ctrl* s = (serial_ctrl*)p;
-	s->dump();
 }
 

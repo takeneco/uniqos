@@ -10,7 +10,7 @@
 
 class cpu_share;
 class processor;
-class core_page;
+class gv_page;
 class page_ctl;
 namespace arch {
 class irq_ctl;
@@ -30,7 +30,7 @@ struct _vars
 {
 	cpu_share*         cpu_share_obj;
 	processor*       logical_cpu_obj_array;
-	core_page*       core_page_obj;
+	gv_page*           gv_page_obj;
 	page_ctl*        page_ctl_obj;
 	mempool_ctl*     mempool_ctl_obj;
 	arch::irq_ctl*   irq_ctl_obj;

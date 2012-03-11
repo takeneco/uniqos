@@ -55,7 +55,7 @@ struct data {
 
 	chain_node<data>& chain_hook() { return link; }
 };
-
+/*
 void memory_test()
 {
 	chain<data, &data::chain_hook> ch;
@@ -96,7 +96,7 @@ log().u(total_max, 16).endl();
 		}
 	}
 }
-
+*/
 void mempool_test()
 {
 	log lg;
@@ -114,7 +114,7 @@ void mempool_test()
 
 	int n;
 	int cnts[N] = {0};
-	for (n = 0; n < 0x4000; ++n) {
+	for (n = 0; n < 0x20000; ++n) {
 		data* p = (data*)mp->alloc();
 		if (!p)
 			break;
@@ -157,8 +157,8 @@ void mempool_test()
 
 void switch_test()
 {
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+	//thread_ctl& tc =
+	//    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
 
 	for (int i = 0;; ++i) {
 		mempool_test();
@@ -178,7 +178,9 @@ bool test_init()
 void test(void*)
 {
 	//memory_test();
-	//mempool_test();
-	switch_test();
+	for (;;) {
+		mempool_test();
+	}
+	//switch_test();
 }
 

@@ -6,11 +6,13 @@
 
 #include "arch.hh"
 #include "bootinfo.hh"
-#include "core_class.hh"
 #include "global_vars.hh"
+#include "interrupt_control.hh"
+#include "irq_ctl.hh"
 #include "kerninit.hh"
-#include "memcache.hh"
+#include "log.hh"
 #include "memory_allocate.hh"
+#include "mempool_ctl.hh"
 #include "native_ops.hh"
 
 #include "setupdata.hh"

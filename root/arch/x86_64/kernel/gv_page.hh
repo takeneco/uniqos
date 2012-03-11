@@ -1,10 +1,10 @@
-/// @file  core_class.hh
+/// @file  gv_page.hh
 //
 // (C) 2012 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
-#define ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
+#ifndef ARCH_X86_64_INCLUDE_GV_PAGE_HH_
+#define ARCH_X86_64_INCLUDE_GV_PAGE_HH_
 
 #include "arch.hh"
 #include "basic_types.hh"
@@ -15,11 +15,14 @@
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "mempool_ctl.hh"
-#include "irq_control.hh"
+#include "irq_ctl.hh"
 #include "rcspec.hh"
 
 
-class core_page
+/// @brief  Global variable page.
+//
+/// カーネルの初期化時にまとめてメモリを割り当てる。
+class gv_page
 {
 	page_ctl          page_ctl_obj;
 	mempool_ctl       mempool_ctl_obj;
@@ -29,11 +32,11 @@ class core_page
 	resource_spec     rc_spec_obj;
 
 public:
-	core_page() {}
+	gv_page() {}
 	bool init();
 };
 
-inline bool core_page::init()
+inline bool gv_page::init()
 {
 	if (sizeof *this > arch::page::PHYS_L1_SIZE) {
 		return false;
@@ -41,7 +44,7 @@ inline bool core_page::init()
 
 	using namespace global_vars;
 
-	gv.core_page_obj   = this;
+	gv.gv_page_obj   = this;
 	gv.page_ctl_obj    = &page_ctl_obj;
 	gv.mempool_ctl_obj = &mempool_ctl_obj;
 	gv.irq_ctl_obj     = &irq_ctl_obj;
@@ -265,7 +268,7 @@ inline allocatable_page_array::allocatable_page_array()
 	for (int i = 0; i < ARRAY_LENGTH; ++i)
 		page_array[i].init(this);
 }
-
+/*
 /// @brief カーネル自身が使うメモリを管理する。
 //
 /// @test このクラスは物理メモリ１ページに収まらなければならない。
@@ -286,19 +289,10 @@ public:
 	void* alloc(uptr size);
 	cause::stype free(void* ptr);
 };
-
+*/
 }  // namespace kmem
 
 }  // namespace arch
-
-
-class core_class
-{
-public:
-	//arch::kmem::kernel_memory kmem_ctrl;
-
-
-};
 
 
 #endif  // include guard
