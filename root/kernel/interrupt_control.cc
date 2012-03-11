@@ -5,7 +5,6 @@
 //
 
 #include "arch_specs.hh"
-#include "core_class.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 

@@ -1,11 +1,11 @@
 /// @file  global_vars.hh
 /// @brief Global variables declaration.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_GLOBAL_VARIABLES_HH_
-#define ARCH_X86_64_INCLUDE_GLOBAL_VARIABLES_HH_
+#ifndef ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
+#define ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
 
 
 class cpu_share;
@@ -20,6 +20,7 @@ class memcache_control;
 class mempool_ctl;
 class core_class;
 class event_queue;
+class resource_spec;
 
 
 namespace global_vars {
@@ -39,6 +40,7 @@ struct _vars
 	core_class*      core;
 	event_queue*     event_ctl_obj;
 
+	resource_spec*     rc_spec;
 	void* bootinfo;
 };
 

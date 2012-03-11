@@ -1,6 +1,6 @@
 /// @file  core_class.hh
 //
-// (C) 2011 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_CORE_CLASS_HH_
@@ -16,6 +16,7 @@
 #include "page_ctl.hh"
 #include "mempool_ctl.hh"
 #include "irq_control.hh"
+#include "rcspec.hh"
 
 
 class core_page
@@ -25,6 +26,7 @@ class core_page
 	arch::irq_ctl     irq_ctl_obj;
 	intr_ctl          intr_ctl_obj;
 	event_queue       event_ctl_obj;
+	resource_spec     rc_spec_obj;
 
 public:
 	core_page() {}
@@ -45,6 +47,7 @@ inline bool core_page::init()
 	gv.irq_ctl_obj     = &irq_ctl_obj;
 	gv.intr_ctl_obj    = &intr_ctl_obj;
 	gv.event_ctl_obj   = &event_ctl_obj;
+	gv.rc_spec         = &rc_spec_obj;
 
 	return true;
 }
