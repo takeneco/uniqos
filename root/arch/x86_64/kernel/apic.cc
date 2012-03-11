@@ -111,6 +111,7 @@ void set_ipi_dest(u32 id)
 
 enum {
 	ICR_INIT_MODE = 0x000000500,
+	ICR_STARTUP_MODE = 0x00000600,
 
 	ICR_PHYSICAL_DEST = 0x000000000,
 	ICR_LOGICAL_DEST = 0x000000800,
@@ -155,6 +156,15 @@ void lapic_post_init_ipi()
 {
 	post_ipi(0,
 	    ICR_INIT_MODE |
+	    ICR_ASSERT_LEVEL |
+	    ICR_EDGE_TRIGGER |
+	    ICR_BROADCAST);
+}
+
+void lapic_post_startup_ipi(u8 vec)
+{
+	post_ipi(vec,
+	    ICR_STARTUP_MODE |
 	    ICR_ASSERT_LEVEL |
 	    ICR_EDGE_TRIGGER |
 	    ICR_BROADCAST);

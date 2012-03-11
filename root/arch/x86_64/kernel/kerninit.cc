@@ -1,7 +1,7 @@
 /// @file  kerninit.cc
 /// @brief Call kernel initialize funcs.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #include "arch.hh"
@@ -25,6 +25,8 @@
 #include <processor.hh>
 
 
+extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
+extern char _binary_arch_x86_64_kernel_ap_boot_bin_size[];
 thread* ta;
 thread* tb;
 void testA(void* p)
@@ -64,6 +66,7 @@ void serial_dump(void*);
 cause::stype slab_init();
 bool hpet_init();
 u64 get_clock();
+u64 usecs_to_count(u64 usecs);
 
 namespace {
 
@@ -100,6 +103,12 @@ void disable_intr_from_8259A()
 
 	native::outb(0xff, PIC0_OCW1);
 	native::outb(0xff, PIC1_OCW1);
+}
+
+void apentry()
+{
+	log(1)("apentry()")();
+	for(;;)native::hlt();
 }
 
 text_vga vga_dev;
@@ -172,6 +181,44 @@ log(1)("eee")();
 	}
 
 	lapic_post_init_ipi();
+	u64 initipi_clock = get_clock();
+
+	struct ap_param {
+		u64 pml4;
+		u64 entry_point;
+		void* stack;
+	};
+
+	log(1)("apboot_start=").p(_binary_arch_x86_64_kernel_ap_boot_bin_start)();
+	log(1)("apboot_size=").p(_binary_arch_x86_64_kernel_ap_boot_bin_size)();
+	u8* apboot_start = (u8*)_binary_arch_x86_64_kernel_ap_boot_bin_start;
+	uptr apboot_size = (uptr)_binary_arch_x86_64_kernel_ap_boot_bin_size;
+	u8* dest = (u8*)arch::map_phys_adr(0x1000, apboot_size);
+	for (uptr i = 0; i < apboot_size; ++i) {
+		dest[i] = apboot_start[i];
+	}
+	ap_param* app = (ap_param*)up_align<uptr>((uptr)&dest[apboot_size], 8);
+	app->pml4 = native::get_cr3();
+	app->entry_point = (u64)apentry;
+	mempool* stackmp = mempool_create_shared(0x2000);
+	u8* apstack = (u8*)stackmp->alloc();
+	app->stack = apstack + 0x2000;
+
+	u64 _10ms = usecs_to_count(10000);
+	u64 i;
+	for (i = 0; ; ++i) {
+		if (get_clock() >= (initipi_clock + _10ms))
+			break;
+	}
+	log(1)("loop count:").u(i)();
+	lapic_post_startup_ipi(0x01);
+	u64 startupipi_clock = get_clock();
+	u64 _200ms = usecs_to_count(200000);
+	for (i = 0; ; ++i) {
+		if (get_clock() >= (startupipi_clock + _200ms))
+			break;
+	}
+	log(1)("loop count:").u(i)();
 
 //	cpu_test();
 //	serial_dump(serial);
@@ -179,16 +226,16 @@ log(1)("eee")();
 	//test();
 
 	thread* t;
-	//tc.create_thread(test, 0, &t);
-	//tc.ready_thread(t);
-
+	tc.create_thread(test, 0, &t);
+	tc.ready_thread(t);
+/*
 	tc.create_thread(testA, 0, &t);
 	ta = t;
 	tc.ready_thread(t);
 	tc.create_thread(testB, 0, &t);
 	tb = t;
 	tc.ready_thread(t);
-
+*/
 	serial->sync = true;
 	return 0;
 }

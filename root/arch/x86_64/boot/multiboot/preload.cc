@@ -95,8 +95,9 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 	    tag_size,
 	    true);
 
-	// BDA : BIOS Data Area
-	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0x4ff, false);
+	// BDA : BIOS Data Area 0 -  0x4ff
+	// Startup IPI use        - 0x1fff
+	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0x2000, false);
 }
 
 }  // namespace

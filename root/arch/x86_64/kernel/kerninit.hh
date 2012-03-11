@@ -23,6 +23,7 @@ cause::stype apic_init();
 void wait(u32 n);
 }
 void lapic_post_init_ipi();
+void lapic_post_startup_ipi(u8 vec);
 
 #endif  // Include guard.
 

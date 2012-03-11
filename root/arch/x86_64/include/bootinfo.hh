@@ -34,7 +34,7 @@ struct log {
 };
 
 enum {
-	MAX_BYTES = 0x80000,
+	MAX_BYTES = 0x60000,
 
 	// Available memory end during kernel boot.
 	BOOTHEAP_END   = 0x01ffffff,

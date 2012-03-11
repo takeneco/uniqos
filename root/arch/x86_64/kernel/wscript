@@ -49,7 +49,24 @@ def build(x):
 	mapfile = x.path.find_or_declare('kernel.map')
 	kern_linkflags.append('-Wl,-Map,' + mapfile.abspath())
 
-	x(  features  = 'asm c cxx cxxprogram',
+	ap_target = x.path.find_or_declare('ap_boot.bin')
+	ap_ld = x.path.find_node('ap_boot.ld')
+	ap_ldflags = ['-nostdlib']
+	ap_ldflags.append('-Wl,-T' + ap_ld.abspath())
+	x.add_manual_dependency(ap_target, ap_ld)
+	x(  features  = 'asm c cprogram',
+	    target    = ap_target,
+	    source    = 'ap_boot.S',
+	    linkflags = ap_ldflags)
+	ap_obj = x.path.find_or_declare('ap_boot_obj.o')
+	x(  rule = '${OBJCOPY} -I binary -O elf64-x86-64 -B i386 '
+	           '${SRC} ${TGT}',
+	    target = ap_obj,
+	    source = ap_target)
+	kern_source.append(ap_obj)
+
+	x.program(
+	    features  = 'asm c cxx',
 	    target    = kern_target,
 	    source    = kern_source,
 	    use       = ['kernel_libs', 'kernel_objs', 'KERNEL'],

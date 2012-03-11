@@ -362,6 +362,11 @@ u64 get_clock()
 	return hpet_regs->counter;
 }
 
+u64 usecs_to_count(u64 usecs)
+{
+	return hpet_regs->usecs_to_count(usecs);
+}
+
 /// @param usecs  specify mili secs.
 void timer_sleep(u32 msecs)
 {
