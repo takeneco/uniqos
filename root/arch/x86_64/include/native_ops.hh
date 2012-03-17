@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 
-#include "basic_types.hh"
+#include <basic_types.hh>
 
 
 namespace native {
@@ -133,100 +133,6 @@ inline u64 get_cr4_64() {
 inline void set_cr4(u64 cr4) {
 	asm volatile ("movq %0, %%cr4" : : "r" (cr4));
 }
-/// @{
-/// @name ビット検索関数。
-/// _or0 の関数は、0 を入力すると -1 を返す。
-inline s16 bsfw(u16 data) {
-	s16 index;
-	asm volatile ("bsfw %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s16 bsfw_or0(u16 data) {
-	s16 index;
-	asm volatile (
-	    "bsfw %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movw $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s32 bsfl(u32 data) {
-	s32 index;
-	asm volatile ("bsfl %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s32 bsfl_or0(u32 data) {
-	s32 index;
-	asm volatile (
-	    "bsfl %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movl $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s64 bsfq(u64 data) {
-	s64 index;
-	asm volatile ("bsfq %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s32 bsfq_or0(u64 data) {
-	s64 index;
-	asm volatile (
-	    "bsfq %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movq $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s16 bsrw(u16 data) {
-	s16 index;
-	asm volatile ("bsrw %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s16 bsrw_or0(u16 data) {
-	s16 index;
-	asm volatile (
-	    "bsrw %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movw $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s32 bsrl(u32 data) {
-	s32 index;
-	asm volatile ("bsrl %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s32 bsrl_or0(u32 data) {
-	u32 index;
-	asm volatile (
-	    "bsrl %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movl $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s64 bsrq(u64 data) {
-	s64 index;
-	asm volatile ("bsrq %1, %0" : "=r" (index) : "rm" (data));
-	return index;
-}
-inline s64 bsrq_or0(u64 data) {
-	s64 index;
-	asm volatile (
-	    "bsrq %1, %0 \n\t"
-	    "jnz 1f \n\t"
-	    "movq $-1, %0 \n\t"
-	    "1: \n\t"
-	    : "=r" (index) : "rm" (data));
-	return index;
-}
-/// @}
 
 // セグメントレジスタの値を返す。
 // デバッグ用。
@@ -316,16 +222,12 @@ struct gidt_ptr64 {
 typedef gidt_ptr64 gdt_ptr64;
 typedef gidt_ptr64 idt_ptr64;
 
-// @brief lgdt を実行する。
 inline void lgdt(gdt_ptr64* ptr) {
 	asm volatile ("lgdt %0" : : "m"(*ptr));
 }
-
 inline void sgdt(gdt_ptr64* ptr) {
 	asm volatile ("sgdt %0" : "=m"(*ptr));
 }
-
-// @brief lidt を実行する。
 inline void lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m"(*ptr));
 }
@@ -345,20 +247,6 @@ inline u64 read_msr(u32 adr)
 }
 
 }  // namespace native
-
-
-inline s16 bitscan_forward_16(u16 data) { return native::bsfw_or0(data); }
-inline s32 bitscan_forward_32(u32 data) { return native::bsfl_or0(data); }
-inline s64 bitscan_forward_64(u64 data) { return native::bsfq_or0(data); }
-inline s16 bitscan_forward(u16 data) { return native::bsfw_or0(data); }
-inline s32 bitscan_forward(u32 data) { return native::bsfl_or0(data); }
-inline s64 bitscan_forward(u64 data) { return native::bsfq_or0(data); }
-inline s16 bitscan_reverse_16(u16 data) { return native::bsrw_or0(data); }
-inline s32 bitscan_reverse_32(u32 data) { return native::bsrl_or0(data); }
-inline s64 bitscan_reverse_64(u64 data) { return native::bsrq_or0(data); }
-inline s16 bitscan_reverse(u16 data) { return native::bsrw_or0(data); }
-inline s32 bitscan_reverse(u32 data) { return native::bsrl_or0(data); }
-inline s64 bitscan_reverse(u64 data) { return native::bsrq_or0(data); }
 
 
 #endif  // include guard

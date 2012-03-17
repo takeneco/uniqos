@@ -1,14 +1,14 @@
 /// @file  int_bitset.hh
 /// @brief Bitmap structure.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010,2012 KATO Takeshi
 //
 
 #ifndef INT_BITSET_HH_
 #define INT_BITSET_HH_
 
 #include "arch.hh"
-#include "native_ops.hh"
+#include <bitops.hh>
 
 
 template<class TYPE>
@@ -42,14 +42,10 @@ public:
 	bool is_false_all() { return field == b(0); }
 
 	int search_true() const {
-		const int r = static_cast<int>(bitscan_forward(field));
-		// assert(r >= 0)
-		return r;
+		return arch::find_first_setbit(field);
 	}
 	int search_false() const {
-		const int r = static_cast<int>(bitscan_forward(~field));
-		// assert(r >= 0)
-		return r;
+		return arch::find_first_setbit(~field);
 	}
 };
 
