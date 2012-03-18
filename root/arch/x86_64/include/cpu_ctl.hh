@@ -54,6 +54,9 @@ public:
 
 	const cpu_share* get_shared() { return shared; }
 
+	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
+	u8 get_original_lapic_id() const { return original_lapic_id; }
+
 private:
 	void* write_ist_layout(void* mem);
 
@@ -260,6 +263,8 @@ public:
 
 	arch::regset* running_thread_regset;
 	cpu_share* shared;
+
+	u8 original_lapic_id;
 };
 
 

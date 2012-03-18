@@ -23,10 +23,6 @@ def configure_x86_64(x):
 	x.env.CXXFLAGS = [
 	    '-pipe', '-Wall', '-Wextra',
 	]
-	x.env.INCLUDES = [
-	    x.path.find_dir('include').abspath(),
-	    x.path.find_dir('arch/' + arch_name + '/include').abspath()
-	]
 
 	x.env.DEFINES_SETUP = [
 	    'ARCH_LE',
@@ -127,20 +123,21 @@ def configure(x):
 	x.load('compiler_cxx')
 	x.load('gcc gas')
 
-	#x.recurse('tools')
-
 	config = dict()
 	if os.path.isfile('config'):
 		execfile('config', config)
 
 	def_config(x, config, 'DEBUG', 0)
+	def_config(x, config, 'MAX_CPUS', 1)
 	def_config(x, config, 'PREEMPT', 1)
 
-	x.write_config_header('config.h')
+	x.write_config_header('include/config.h')
 
 
-def build(bld):
-	#bld.recurse('tools')
-	bld.recurse('kernel')
-	bld.recurse('arch')
+def build(x):
+	x.env.append_value('INCLUDES', '#include')
+	x.env.append_value('INCLUDES', '#arch/'+arch_name+'/include')
+
+	x.recurse('kernel')
+	x.recurse('arch')
 
