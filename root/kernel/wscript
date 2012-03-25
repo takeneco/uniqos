@@ -11,6 +11,7 @@ kern_sources = [
     'kern_log.cc',
     'log_target.cc',
     'mempool.cc',
+    'mempool_ctl.cc',
     'processor.cc',
     'slab_allocate.cc',
     'string.cc',
