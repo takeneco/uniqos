@@ -9,6 +9,7 @@
 #include <basic.hh>
 #include <cpu_ctl.hh>
 #include <event_queue.hh>
+#include <page_ctl.hh>
 #include <thread_ctl.hh>
 
 
@@ -31,6 +32,7 @@ public:
 
 	void sleep_current_thread() { thrdctl.sleep_running_thread(); }
 
+	arch::page_ctl& get_page_ctl() { return pagectl; }
 	thread_ctl& get_thread_ctl() { return thrdctl; }
 	event_queue& get_soft_evq() { return soft_evq; }
 
@@ -40,6 +42,8 @@ private:
 
 private:
 	u8 preempt_disable_nests;
+
+	arch::page_ctl pagectl;
 
 	thread_ctl thrdctl;
 

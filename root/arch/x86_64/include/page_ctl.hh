@@ -6,17 +6,21 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
 #define ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
 
+#include <arch.hh>
 #include "log_target.hh"
 #include "memcell.hh"
 
 
+namespace arch {
+
+/// @brief Page control
 class page_ctl
 {
 public:
 	void dump(log_target& lg);
 
 private:
-	mem_cell_base<u64> page_base[5];
+	mem_cell_base<u64> page_base[page::LEVEL_COUNT];
 
 	bool pse;     ///< page-size extensions for 32bit paging.
 	bool pae;     ///< physical-address extension.
@@ -48,6 +52,8 @@ public:
 	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
 	cause::stype free(arch::page::TYPE pt, uptr padr);
 };
+
+}  // namespace arch
 
 
 #endif  // include guard

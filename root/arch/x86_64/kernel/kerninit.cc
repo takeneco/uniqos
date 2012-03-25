@@ -69,6 +69,7 @@ cause::stype slab_init();
 bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
+class gv_page;
 
 namespace {
 
@@ -122,7 +123,14 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	log_init(0, &vga_dev);
 	log_init(1, &vga_dev);
 
-	cause::stype r = page_ctl_init();
+	cause::stype r = cpupage_init();
+	if (r != cause::OK)
+		return r;
+
+log(1)("eee")();
+	for (;;) native::hlt();
+
+	r = page_ctl_init();
 	if (r != cause::OK)
 		return r;
 
@@ -166,7 +174,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (bootlog) {
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
-log(1)("eee")();
 
 	hpet_init();
 	log()("clock=").u(get_clock())();

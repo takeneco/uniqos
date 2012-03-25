@@ -78,6 +78,8 @@ public:
 	void enum_alloc(slot_mask slotm, enum_desc* x) const;
 	bool enum_alloc_next(enum_desc* x, uptr* adr, uptr* bytes) const;
 
+	uptr total_free_bytes(slot_mask slotm) const;
+
 private:
 	struct range
 	{
@@ -311,6 +313,24 @@ bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
 	} else {
 		return false;
 	}
+}
+
+template<int BUF_COUNT>
+uptr cheap_alloc<BUF_COUNT>::total_free_bytes(slot_mask slotm) const
+{
+	enum_desc ed;
+	enum_free(slotm, &ed);
+
+	uptr total = 0;
+	uptr adr, bytes;
+	for (;;) {
+		if (enum_free_next(&ed, &adr, &bytes))
+			total += bytes;
+		else
+			break;
+	}
+
+	return total;
 }
 
 /// @brief  Search unused entry from entry_buf[].

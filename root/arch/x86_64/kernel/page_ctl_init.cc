@@ -25,8 +25,11 @@
 #include "cheap_alloc.hh"
 #include "gv_page.hh"
 #include "log.hh"
+#include <mpspec.hh>
+#include "native_ops.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
+#include <processor.hh>
 #include "setupdata.hh"
 
 
@@ -73,7 +76,7 @@ void init_sep(tmp_separator* sep)
 	}
 }
 
-inline page_ctl* get_page_ctl() {
+inline arch::page_ctl* get_page_ctl() {
 	return global_vars::gv.page_ctl_obj;
 }
 
@@ -100,6 +103,30 @@ u64 search_padr_end()
 	}
 
 	return adr_end;
+}
+
+/// @brief AVAILABLE とされているメモリのバイト数を返す。
+u64 total_avail_pmem()
+{
+	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	if (src == 0)
+		return 0;
+
+	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+
+	const void* mmap_end = (const u8*)mmap + mmap->size;
+	const multiboot_mmap_entry* entry = mmap->entries;
+
+	u64 total = 0;
+	while (entry < mmap_end) {
+		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
+			total += entry->len;
+
+		entry = (const multiboot_mmap_entry*)
+		    ((const u8*)entry + mmap->entry_size);
+	}
+
+	return total;
 }
 
 /// @brief 物理メモリの末端アドレスを返す。
@@ -243,7 +270,7 @@ cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
 	return cause::OK;
 }
 
-cause::stype load_page(const tmp_alloc& alloc, page_ctl* ctl)
+cause::stype load_page(const tmp_alloc& alloc, arch::page_ctl* ctl)
 {
 	tmp_alloc::enum_desc ea_enum;
 	alloc.enum_free(SLOTM_ANY, &ea_enum);
@@ -274,8 +301,221 @@ bool setup_gv_page(void* page, uptr bytes)
 	return gv_page_obj->init();
 }
 
+/// @return mpspec の情報からCPUの数を数えて返す。
+int count_cpus(const mpspec& mps)
+{
+	int cpu_num = 0;
+
+	mpspec::processor_iterator proc_itr(&mps);
+	for (;;) {
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+		++cpu_num;
+	}
+
+	return cpu_num;
+}
+
+processor* create_processor(u8 lapic_id, tmp_alloc* heap)
+{
+	void* buf = heap->alloc(
+	    SLOTM_BOOTHEAP | SLOTM_PAM1,
+	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE,
+	    false);
+	if (!buf)
+		return 0;
+
+	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
+
+	processor* proc = new (buf) processor;
+	proc->set_original_lapic_id(lapic_id);
+
+	return proc;
+}
+
+/// @brief processor_objs を作成する。
+cause::stype create_processor_objs(
+    const mpspec& mps, /// [in] CPUの情報を含んだ mpspec
+    tmp_alloc* heap)   /// [in] ヒープ
+{
+	const int cpu_cnt = global_vars::gv.processor_cnt;
+
+	processor** const proc_ary = global_vars::gv.processor_objs;
+
+	// processor はCPUごとに別ページになるように１ページを固定で割り当てる。
+	// processor のサイズが１ページを超えたら何とかする。
+	if (sizeof (processor) >= arch::page::PHYS_L1_SIZE)
+		log()("!!! sizeof (processor) is too large.")();
+
+	// ID が cpu_cnt 以下の CPU は ID を変更せずに登録する。
+
+	int detected = 0;
+	for (mpspec::processor_iterator proc_itr(&mps); ; )
+	{
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+
+		const u8 id = pe->localapic_id;
+		if (id < cpu_cnt)
+		// && global_vars::gv.processor_objs[pe->localapic_id] == 0)
+		{
+			proc_ary[id] = create_processor(id, heap);
+			if (!proc_ary[id]) {
+				log()("!!! No enough memory.")();
+				return cause::NOMEM;
+			}
+
+			++detected;
+		}
+	}
+
+	// TODO: local apic ID が跳んでいる場合の処理
+
+	return cause::OK;
+}
+
+cause::stype init_page_ctl(arch::page_ctl* pgctl, tmp_alloc* heap)
+{
+	const uptr pmem_end = search_pmem_end();
+	const uptr buf_bytes = pgctl->calc_workarea_size(pmem_end);
+
+	void* buf = heap->alloc(
+	    SLOTM_BOOTHEAP | SLOTM_PAM1,
+	    buf_bytes,
+	    arch::page::PHYS_L1_SIZE,
+	    false);
+
+	if (!buf) {
+		log(1)("No enough memory");
+		return cause::NOMEM;
+	}
+	buf = arch::map_phys_adr(buf, buf_bytes);
+
+	pgctl->init(pmem_end, buf);
+	return cause::OK;
+}
+
+bool assign_mem_piece(
+    tmp_alloc* avail_mem,
+    uptr* assign_bytes,
+    arch::page_ctl* pgctl)
+{
+	tmp_alloc::enum_desc ed;
+
+	avail_mem->enum_free(1 << 0, &ed);
+
+	uptr adr, bytes;
+	const bool r = avail_mem->enum_free_next(&ed, &adr, &bytes);
+	if (!r)
+		return false;
+
+	if (bytes > *assign_bytes) {
+		uptr endadr = adr + *assign_bytes;
+		endadr = down_align<uptr>(endadr, arch::page::PHYS_L1_SIZE);
+		if (endadr < adr) {
+			// TODO
+		}
+		bytes = endadr - adr;
+	}
+
+	log(1)("assign: ").u(adr, 16)(" size:").u(bytes, 16)();
+
+	pgctl->load_free_range(adr, bytes);
+	*assign_bytes -= bytes;
+
+	avail_mem->reserve(1 << 0, adr, bytes, true);
+
+	return true;
+}
+
+void assign_mem(tmp_alloc* mem, int cpu)
+{
+	arch::page_ctl& pgctl =
+	    global_vars::gv.processor_objs[cpu]->get_page_ctl();
+
+	// 未割り当てのメモリサイズを未割り当てのCPU数で割る
+	uptr assign_bytes = mem->total_free_bytes(1 << 0) /
+	    (global_vars::gv.processor_cnt - cpu);
+
+	do {
+		assign_mem_piece(mem, &assign_bytes, &pgctl);
+	} while (assign_bytes >= arch::page::L1_SIZE);
+
+	pgctl.build();
+}
+
 }  // namespace
 
+
+cause::stype cpupage_init()
+{
+	tmp_alloc heap;
+	tmp_separator sep(&heap);
+
+	init_sep(&sep);
+
+	if (load_avail(&sep) == false) {
+		log()("Available memory detection failed.")();
+		return cause::FAIL;
+	}
+	if (load_alloced(&heap) == false) {
+		log()("Could not detect alloced memory. Might be abnormal.")();
+	}
+
+	const u64 padr_end = search_padr_end();
+
+	cause::stype r = setup_pam1(padr_end, &heap);
+	if (is_fail(r))
+		return r;
+
+	// PAM1 が利用可能になれば mpspec をロード可能になる。
+	mpspec mps;
+	r = mps.load();
+	if (is_fail(r)) {
+		// TODO: mpspec が無い場合は単一CPUとして処理する。
+		return r;
+	}
+
+	global_vars::gv.processor_cnt = count_cpus(mps);
+
+	// init gvar
+	for (int i = 0; i < CONFIG_MAX_CPUS; ++i)
+		global_vars::gv.processor_objs[i] = 0;
+
+	r = create_processor_objs(mps, &heap);
+	if (is_fail(r))
+		return r;
+
+	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
+		log(1)("proc[").u(i)("]: ")(global_vars::gv.processor_objs[i])();
+	}
+
+	const uptr total_pmem_bytes = total_avail_pmem();
+	log(1)("total_pmem: ").u(total_pmem_bytes, 16)();
+
+	tmp_alloc mem;
+	tmp_separator memsep(&mem);
+	memsep.set_slot_range(0, 0, U64(0xffffffffffffffff));
+	load_avail(&memsep);
+
+	uptr left_pmem_bytes = total_pmem_bytes;
+	for (int cpu = 0; cpu < global_vars::gv.processor_cnt; ++cpu) {
+		log(1)("cpu : ").u(cpu)();
+		arch::page_ctl& pgctl =
+		    global_vars::gv.processor_objs[cpu]->get_page_ctl();
+
+		r = init_page_ctl(&pgctl, &heap);
+		if (is_fail(r))
+			return r;
+
+		assign_mem(&mem, cpu);
+	}
+
+	return cause::OK;
+}
 
 /// @retval cause::NOMEM  No enough physical memory.
 /// @retval cause::OK  Succeeds.
@@ -313,7 +553,7 @@ cause::stype page_ctl_init()
 	if (setup_gv_page(buf, arch::page::PHYS_L1_SIZE) == false)
 		return cause::UNKNOWN;
 
-	page_ctl* pgctl = get_page_ctl();
+	arch::page_ctl* pgctl = get_page_ctl();
 
 	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
 	const uptr pmem_end = search_pmem_end();

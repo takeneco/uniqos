@@ -1,6 +1,6 @@
 /// @file  kerninit.hh
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010,2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_KERNEL_KERNINIT_HH_
@@ -9,6 +9,7 @@
 #include "basic_types.hh"
 
 
+cause::stype cpupage_init();
 cause::stype cpu_init();
 
 typedef void (*intr_handler)();

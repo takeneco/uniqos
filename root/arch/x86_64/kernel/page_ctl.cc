@@ -1,13 +1,33 @@
 /// @file  page_ctl.cc
 /// @brief Physical page management.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #include "global_vars.hh"
 #include "page_ctl.hh"
 #include "pagetable.hh"
 
+
+namespace arch {
+namespace page {
+
+const int page_size_bits[] = {
+	L1_SIZE_BITS,
+	L2_SIZE_BITS,
+	L3_SIZE_BITS,
+	L4_SIZE_BITS,
+	L5_SIZE_BITS,
+};
+
+int bits_of_level(unsigned int page_type)
+{
+	if (page_type > HIGHEST)
+		return 0;
+	return page_size_bits[page_type];
+}
+
+}  // namespace page
 
 void page_ctl::detect_paging_features()
 {
@@ -125,7 +145,6 @@ void page_ctl::dump(log_target& lt)
 }
 
 
-namespace arch {
 namespace page {
 
 cause::stype alloc(TYPE page_type, uptr* padr)

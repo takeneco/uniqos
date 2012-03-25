@@ -24,7 +24,7 @@
 /// カーネルの初期化時にまとめてメモリを割り当てる。
 class gv_page
 {
-	page_ctl          page_ctl_obj;
+	arch::page_ctl    page_ctl_obj;
 	mempool_ctl       mempool_ctl_obj;
 	arch::irq_ctl     irq_ctl_obj;
 	intr_ctl          intr_ctl_obj;

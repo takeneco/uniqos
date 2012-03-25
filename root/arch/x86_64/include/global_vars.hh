@@ -45,6 +45,7 @@ struct _vars
 	resource_spec*     rc_spec;
 	void* bootinfo;
 
+	int                processor_cnt;
 	processor*         processor_objs[CONFIG_MAX_CPUS];
 };
 

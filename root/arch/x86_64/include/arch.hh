@@ -55,6 +55,8 @@ enum TYPE {
 	PHYS_L4 = L7,
 	PHYS_HIGHEST = PHYS_L4,
 };
+enum { LEVEL_COUNT = HIGHEST + 1 };
+
 /// page size params.
 enum {
 	PHYS_L1_SIZE_BITS = 12,
@@ -79,6 +81,7 @@ enum {
 	L4_SIZE      = U64(1) << L4_SIZE_BITS, // 128MiB
 	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
+int bits_of_level(unsigned int page_type);
 
 inline uptr size_of_type(TYPE pt)
 {
