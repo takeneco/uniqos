@@ -317,7 +317,7 @@ int count_cpus(const mpspec& mps)
 	return cpu_num;
 }
 
-processor* create_processor(u8 lapic_id, tmp_alloc* heap)
+cpu_node* create_processor(u8 lapic_id, tmp_alloc* heap)
 {
 	void* buf = heap->alloc(
 	    SLOTM_BOOTHEAP | SLOTM_PAM1,
@@ -329,7 +329,7 @@ processor* create_processor(u8 lapic_id, tmp_alloc* heap)
 
 	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
 
-	processor* proc = new (buf) processor;
+	cpu_node* proc = new (buf) cpu_node;
 	proc->set_original_lapic_id(lapic_id);
 
 	return proc;
@@ -340,13 +340,13 @@ cause::stype create_processor_objs(
     const mpspec& mps, /// [in] CPUの情報を含んだ mpspec
     tmp_alloc* heap)   /// [in] ヒープ
 {
-	const int cpu_cnt = global_vars::gv.processor_cnt;
+	const int cpu_cnt = global_vars::gv.cpu_node_cnt;
 
-	processor** const proc_ary = global_vars::gv.processor_objs;
+	cpu_node** const proc_ary = global_vars::gv.cpu_node_objs;
 
-	// processor はCPUごとに別ページになるように１ページを固定で割り当てる。
-	// processor のサイズが１ページを超えたら何とかする。
-	if (sizeof (processor) >= arch::page::PHYS_L1_SIZE)
+	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
+	// cpu_node のサイズが１ページを超えたら何とかする。
+	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE)
 		log()("!!! sizeof (processor) is too large.")();
 
 	// ID が cpu_cnt 以下の CPU は ID を変更せずに登録する。
@@ -434,11 +434,11 @@ bool assign_mem_piece(
 void assign_mem(tmp_alloc* mem, int cpu)
 {
 	arch::page_ctl& pgctl =
-	    global_vars::gv.processor_objs[cpu]->get_page_ctl();
+	    global_vars::gv.cpu_node_objs[cpu]->get_page_ctl();
 
 	// 未割り当てのメモリサイズを未割り当てのCPU数で割る
 	uptr assign_bytes = mem->total_free_bytes(1 << 0) /
-	    (global_vars::gv.processor_cnt - cpu);
+	    (global_vars::gv.cpu_node_cnt - cpu);
 
 	do {
 		assign_mem_piece(mem, &assign_bytes, &pgctl);
@@ -479,18 +479,18 @@ cause::stype cpupage_init()
 		return r;
 	}
 
-	global_vars::gv.processor_cnt = count_cpus(mps);
+	global_vars::gv.cpu_node_cnt = count_cpus(mps);
 
 	// init gvar
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i)
-		global_vars::gv.processor_objs[i] = 0;
+		global_vars::gv.cpu_node_objs[i] = 0;
 
 	r = create_processor_objs(mps, &heap);
 	if (is_fail(r))
 		return r;
 
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
-		log(1)("proc[").u(i)("]: ")(global_vars::gv.processor_objs[i])();
+		log(1)("proc[").u(i)("]: ")(global_vars::gv.cpu_node_objs[i])();
 	}
 
 	const uptr total_pmem_bytes = total_avail_pmem();
@@ -502,10 +502,10 @@ cause::stype cpupage_init()
 	load_avail(&memsep);
 
 	uptr left_pmem_bytes = total_pmem_bytes;
-	for (int cpu = 0; cpu < global_vars::gv.processor_cnt; ++cpu) {
+	for (int cpu = 0; cpu < global_vars::gv.cpu_node_cnt; ++cpu) {
 		log(1)("cpu : ").u(cpu)();
 		arch::page_ctl& pgctl =
-		    global_vars::gv.processor_objs[cpu]->get_page_ctl();
+		    global_vars::gv.cpu_node_objs[cpu]->get_page_ctl();
 
 		r = init_page_ctl(&pgctl, &heap);
 		if (is_fail(r))
