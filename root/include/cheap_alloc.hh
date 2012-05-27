@@ -1,15 +1,15 @@
 /// @file   cheap_alloc.hh
 /// @brief  cheap address allocation implement.
 
-//  uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
 //
-//  uniqos is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  uniqos is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -58,13 +58,13 @@ public:
 
 	enum { SLOT_COUNT = 8 };
 
-	/// Must be call for initialize.
+	/// Must call for initialize.
 	cheap_alloc() {}
 
 	bool add_free(slot_index slot, uptr adr, uptr bytes);
 	bool reserve(slot_mask slotm, uptr adr, uptr bytes, bool forget);
 	void* alloc(slot_mask slotm, uptr bytes, uptr align, bool forget);
-	bool free(slot_mask slotm, void* p);
+	bool dealloc(slot_mask slotm, void* p);
 
 	/// @brief cheap_alloc を使用後にメモリの状態を列挙するときの列挙子。
 	struct enum_desc
@@ -136,7 +136,7 @@ public:
 	}
 };
 
-/// @brief  Add memory to free_chain.
+/// @brief  Add free memory.
 //
 /// @retval true  Succeeds.
 /// @retval false No enough working memory.
@@ -200,10 +200,6 @@ bool cheap_alloc<BUF_COUNT>::reserve(
 /// - free() で開放するときは forget = false としなければならない。
 /// - free() で開放しない場合でも、割り当てたことを覚えておいて、
 ///   後で enum_alloc() で知りたいときは forget = false としなければならない。
-/// - forget = true とすると、add_free() で avoid = true を指定したメモリを
-///   優先的に割り当てる。
-///   forget = true ならばメモリ管理の終了とともにメモリが開放されるという
-///   考え方なので、avoid のメモリを避ける必要はないということ。
 template<int BUF_COUNT>
 void* cheap_alloc<BUF_COUNT>::alloc(
     slot_mask slotm,
@@ -223,10 +219,10 @@ void* cheap_alloc<BUF_COUNT>::alloc(
 	return reinterpret_cast<void*>(ent->adr);
 }
 
-/// @brief  Free memory.
-/// @param[in] p  Ptr to memory to free.
+/// @brief  Deallocate memory.
+/// @param[in] p  Ptr to memory to deallocate.
 template<int BUF_COUNT>
-bool cheap_alloc<BUF_COUNT>::free(slot_mask slotm, void* p)
+bool cheap_alloc<BUF_COUNT>::dealloc(slot_mask slotm, void* p)
 {
 	bool r;
 	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
