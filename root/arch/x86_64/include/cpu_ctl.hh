@@ -13,10 +13,10 @@
 
 
 class thread;
-class processor;
+class cpu_node;
 namespace arch {
 
-processor* get_current_cpu();
+cpu_node* get_current_cpu();
 
 }  // namespace arch
 

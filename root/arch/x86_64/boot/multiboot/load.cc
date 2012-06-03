@@ -52,7 +52,7 @@ inline cause::stype page_table_alloc::alloc(uptr* padr)
 
 inline cause::stype page_table_alloc::free(uptr padr)
 {
-	bool b = get_alloc()->free(
+	bool b = get_alloc()->dealloc(
 	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
 
 	return b ? cause::OK : cause::FAIL;
