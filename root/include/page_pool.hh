@@ -17,19 +17,20 @@ class page_pool
 public:
 	page_pool();
 
-	uptr calc_workarea_size(uptr pmem_end_);
+	void set_range(uptr head_adr, uptr tail_adr);
+	uptr calc_workarea_bytes();
 
-	bool init(uptr pmem_end_, void* buf);
-	bool load_setupdump();
-	bool load_free_range(u64 adr, u64 bytes);
+	bool init(uptr mem_bytes, void* buf);
+	bool load_free_range(uptr adr, uptr bytes);
 	void build();
 
 	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
 	cause::stype free(arch::page::TYPE pt, uptr padr);
 
 private:
-	mem_cell_base<u64> page_base[arch::page::LEVEL_COUNT];
-	uptr pmem_end;
+	mem_cell_base<uptr> page_base[arch::page::LEVEL_COUNT];
+	uptr adr_offset;
+	uptr pool_bytes;
 };
 
 

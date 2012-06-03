@@ -20,7 +20,6 @@
 #ifndef INCLUDE_CHEAP_ALLOC_HH_
 #define INCLUDE_CHEAP_ALLOC_HH_
 
-#include "arch.hh"
 #include "chain.hh"
 #include "log_target.hh"
 

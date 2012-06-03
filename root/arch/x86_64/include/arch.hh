@@ -1,7 +1,7 @@
 /// @file  arch.hh
 /// @brief x86_64 hardware parameters.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_ARCH_HH_
@@ -28,6 +28,7 @@ enum {
 };
 enum {
 	PHYSICAL_ADRMAP = U64(0xffff800000000000),
+	PHYS_MAP_ADR = U64(0xffff800000000000),
 };
 
 /////////////////////////////////////////////////////////////////////
@@ -111,15 +112,16 @@ cause::stype free(TYPE page_type, uptr padr);
 }  // namespace page
 
 inline void* map_phys_adr(uptr padr, uptr /* size */) {
-	return reinterpret_cast<void*>(PHYSICAL_ADRMAP + padr);
+	return reinterpret_cast<void*>(PHYS_MAP_ADR + padr);
 }
 inline void* map_phys_adr(void* padr, uptr size) {
 	return map_phys_adr(reinterpret_cast<uptr>(padr), size);
 }
 inline uptr unmap_phys_adr(const void* vadr, uptr /* size */) {
-	return reinterpret_cast<uptr>(vadr) - PHYSICAL_ADRMAP;
+	return reinterpret_cast<uptr>(vadr) - PHYS_MAP_ADR;
 }
 
+int get_cpu_id();
 
 void intr_enable();
 void intr_disable();

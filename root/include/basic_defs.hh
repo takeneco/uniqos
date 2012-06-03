@@ -31,6 +31,9 @@ private:
 };
 
 
+#define num_of_array(array) (sizeof array / sizeof array[0])
+
+
 #ifdef __GNUC__
 # define LIKELY(x)   __builtin_expect(!!(x), 1)
 # define UNLIKELY(x) __builtin_expect(x, 0)
@@ -38,6 +41,19 @@ private:
 # define LIKELY(x)   x
 # define UNLIKELY(x) x
 #endif  // __GNUC__
+
+template<class xint> bool test_overlap(
+    xint a1, xint a2, xint b1, xint b2, xint* r1, xint* r2)
+{
+	const xint p1 = max(a1, b1);
+	const xint p2 = min(a2, b2);
+	if (p1 > p2)
+		return false;
+
+	*r1 = p1;
+	*r2 = p2;
+	return true;
+}
 
 
 #endif  // include guards
