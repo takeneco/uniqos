@@ -382,6 +382,7 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 	{
 		uptr e_head = ent->adr;
 		uptr e_tail = e_head + ent->bytes - 1;
+		bool outofrange = false;
 
 		if (e_head < r_head && r_tail < e_tail) {
 			if (forget == false) {
@@ -410,6 +411,8 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 			}
 
 			e_head = r_tail + 1;
+			if (e_head == 0)
+				outofrange = true;
 		}
 
 		if (r_head <= e_tail && e_tail <= r_tail) {
@@ -422,9 +425,11 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 			}
 
 			e_tail = r_head - 1;
+			if (e_tail == UPTR(-1))
+				outofrange = true;
 		}
 
-		if (e_head > e_tail) {
+		if (e_head > e_tail || outofrange) {
 			range* next_ent = slot->free_ranges.next(ent);
 			slot->free_ranges.remove(ent);
 			free_range(ent);

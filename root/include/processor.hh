@@ -1,26 +1,30 @@
-/// @file  cpu.hh
+/// @file  cpu_node.hh
 //
 // (C) 2012 KATO Takeshi
 //
 
-#ifndef INCLUDE_CPU_HH_
-#define INCLUDE_CPU_HH_
+#ifndef INCLUDE_CPU_NODE_HH_
+#define INCLUDE_CPU_NODE_HH_
 
 #include <basic.hh>
+#include <config.h>
 #include <cpu_ctl.hh>
 #include <event_queue.hh>
 #include <page_ctl.hh>
 #include <thread_ctl.hh>
 
 
+class page_pool;
+
 /// Architecture independent part of processor control.
-class processor : public arch::cpu_ctl
+class cpu_node : public arch::cpu_ctl
 {
-	DISALLOW_COPY_AND_ASSIGN(processor);
+	DISALLOW_COPY_AND_ASSIGN(cpu_node);
 
 public:
-	processor() {}
+	cpu_node() {}
 
+	cause::type set_page_pool(int pri, page_pool* pp);
 	cause::stype init();
 	bool run_all_intr_event();
 
@@ -53,9 +57,14 @@ private:
 	event_queue intr_evq;
 
 	event_queue soft_evq;
+
+	page_pool* page_pools[CONFIG_MAX_CPUS];
 };
 
-processor* get_current_cpu();
+int get_cpu_node_count();
+cpu_node* get_cpu_node();
+cpu_node* get_cpu_node(int cpuid);
+cpu_node* get_current_cpu();
 
 void preempt_enable();
 void preempt_disable();

@@ -1,5 +1,5 @@
-/// @file   cpu.cc
-/// @brief  processor class implementation.
+/// @file   cpu_node.cc
+/// @brief  cpu_node class implementation.
 //
 // (C) 2012 KATO Takeshi
 //
@@ -12,11 +12,19 @@
 #include <native_ops.hh>
 
 
-cause::stype processor::init()
+/// @brief  page_pool を指定する。
+cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
+{
+	page_pools[pri] = pp;
+
+	return cause::OK;
+}
+
+cause::type cpu_node::init()
 {
 	preempt_disable_nests = 0;
 
-	cause::stype r = arch::cpu_ctl::init();
+	cause::type r = arch::cpu_ctl::init();
 	if (is_fail(r))
 		return r;
 
@@ -32,7 +40,7 @@ cause::stype processor::init()
 /// @brief 外部割込みからのイベントをすべて処理する。
 //
 /// 割り込み禁止状態で呼び出す必要がある。
-bool processor::run_all_intr_event()
+bool cpu_node::run_all_intr_event()
 {
 	if (!probe_intr_event())
 		return false;
@@ -47,7 +55,7 @@ bool processor::run_all_intr_event()
 	return true;
 }
 
-void processor::preempt_disable()
+void cpu_node::preempt_disable()
 {
 #if CONFIG_PREEMPT
 	arch::intr_disable();
@@ -55,7 +63,7 @@ void processor::preempt_disable()
 #endif  // CONFIG_PREEMPT
 }
 
-void processor::preempt_enable()
+void cpu_node::preempt_enable()
 {
 #if CONFIG_PREEMPT
 	if (--preempt_disable_nests == 0)
@@ -66,30 +74,47 @@ void processor::preempt_enable()
 /// @brief 外部割込みからのイベントを登録する。
 //
 /// 外部割込み中は CPU が割り込み禁止状態なので割り込み可否の制御はしない。
-void processor::post_intr_event(event_item* ev)
+void cpu_node::post_intr_event(event_item* ev)
 {
 	intr_evq.push(ev);
 }
 
-void processor::post_soft_event(event_item* ev)
+void cpu_node::post_soft_event(event_item* ev)
 {
 	soft_evq.push(ev);
 }
 
 /// @retval true 外部割込みによって登録されたイベントがある。
-bool processor::probe_intr_event()
+bool cpu_node::probe_intr_event()
 {
 	return intr_evq.probe();
 }
 
 /// @brief 外部割込みで登録されたイベントを返す。
-event_item* processor::get_next_intr_event()
+event_item* cpu_node::get_next_intr_event()
 {
 	return intr_evq.pop();
 }
 
 
-processor* get_current_cpu()
+int get_cpu_node_count()
+{
+	return global_vars::gv.cpu_node_cnt;
+}
+
+cpu_node* get_cpu_node()
+{
+	const int id = arch::get_cpu_id();
+
+	return global_vars::gv.cpu_node_objs[id];
+}
+
+cpu_node* get_cpu_node(int cpuid)
+{
+	return global_vars::gv.cpu_node_objs[cpuid];
+}
+
+cpu_node* get_current_cpu()
 {
 	return &global_vars::gv.logical_cpu_obj_array[0];
 }

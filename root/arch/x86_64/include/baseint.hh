@@ -1,7 +1,7 @@
-/// @file  baseint.hh
-/// @brief Builtin int types.
+/// @file  inttype.hh
+/// @brief int types definition.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_BASEINT_HH_
@@ -30,10 +30,11 @@ typedef s16_ harf_sptr_;
 typedef s64_ smax_;
 typedef u64_ umax_;
 
-#  define u32cast_(n)  n
-#  define u64cast_(n)  n ## ULL
+#  define suffix_u32(n)   n
+#  define suffix_u64(n)   n ## ULL
+#  define suffix_uptr(n)  suffix_u32(n)
 
-#else  // !ARCH_W32 && !ARCH_IA32
+#else  // defined ARCH_W32 || defined ARCH_IA32
 
 typedef   signed char      s8_;
 typedef unsigned char      u8_;
@@ -55,9 +56,10 @@ typedef s32_ harf_sptr_;
 typedef s64_ smax_;
 typedef u64_ umax_;
 
-#  define u32cast_(n)  n
-#  define u64cast_(n)  n ## UL
+#  define suffix_u32(n)   n
+#  define suffix_u64(n)   n ## UL
+#  define suffix_uptr(n)  suffix_u64(n)
 
-#endif  // ARCH_IA32
+#endif  // defined ARCH_W32 || defined ARCH_IA32
 
-#endif  // include guards
+#endif  // include guard

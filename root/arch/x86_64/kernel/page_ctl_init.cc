@@ -28,6 +28,7 @@
 #include <mpspec.hh>
 #include "native_ops.hh"
 #include "page_ctl.hh"
+#include <page_pool.hh>
 #include "pagetable.hh"
 #include <processor.hh>
 #include "setupdata.hh"
@@ -39,16 +40,16 @@ typedef cheap_alloc<64>                  tmp_alloc;
 typedef cheap_alloc_separator<tmp_alloc> tmp_separator;
 
 enum MEM_SLOT {
-	SLOT_INDEX_HIGH     = 0,
+	SLOT_INDEX_PAM2     = 0,
 	SLOT_INDEX_PAM1     = 1,
 	SLOT_INDEX_BOOTHEAP = 2,
 };
 enum MEM_SLOT_MASK {
-	SLOTM_HIGH     = 1 << SLOT_INDEX_HIGH,
+	SLOTM_PAM2     = 1 << SLOT_INDEX_PAM2,
 	SLOTM_PAM1     = 1 << SLOT_INDEX_PAM1,
 	SLOTM_BOOTHEAP = 1 << SLOT_INDEX_BOOTHEAP,
 
-	SLOTM_ANY = SLOTM_HIGH | SLOTM_PAM1 | SLOTM_BOOTHEAP,
+	SLOTM_ANY = SLOTM_PAM2 | SLOTM_PAM1 | SLOTM_BOOTHEAP,
 };
 enum {
 	BOOTHEAP_END = bootinfo::BOOTHEAP_END,
@@ -62,7 +63,7 @@ const struct {
 } setup_heap_slots[] = {
 	{ SLOT_INDEX_BOOTHEAP, 0,                     BOOTHEAP_END            },
 	{ SLOT_INDEX_PAM1,     BOOTHEAP_END + 1,      SETUP_PAM1_MAPEND       },
-	{ SLOT_INDEX_HIGH,     SETUP_PAM1_MAPEND + 1, U64(0xffffffffffffffff) },
+	{ SLOT_INDEX_PAM2,     SETUP_PAM1_MAPEND + 1, U64(0xffffffffffffffff) },
 };
 
 inline arch::page_ctl* get_page_ctl() {
@@ -384,6 +385,28 @@ int count_cpus(const mpspec& mps)
 	return cpu_num;
 }
 
+/// @brief  page_pool から 1page を割り当てて cpu_node を作る。
+/// @return  If succeeds, returns ptr to cpu_node.
+///          If failed, returns nullptr.
+cpu_node* create_cpu_node(page_pool* pp)
+{
+	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
+	// cpu_node のサイズが１ページを超えたらソースレベルで何とかする。
+	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE)
+		log()("!!! sizeof (cpu_node) is too large.")();
+
+	uptr page_adr;
+	cause::type r = pp->alloc(arch::page::PHYS_L1, &page_adr);
+	if (is_fail(r))
+		return 0;
+
+	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
+
+	cpu_node* cn = new (buf) cpu_node;
+
+	return cn;
+}
+
 cpu_node* create_processor(u8 lapic_id, tmp_alloc* heap)
 {
 	void* buf = heap->alloc(
@@ -521,8 +544,6 @@ bool assign_ram_piece(
 		bytes = endadr - adr;
 	}
 
-	log(1)("assign: ").u(adr, 16)(" size:").u(bytes, 16)();
-
 	node_ram->add_free(0, adr, bytes);
 	*assign_bytes -= bytes;
 
@@ -563,22 +584,22 @@ cause::stype _proj_free_mem(
 	tmp_alloc::enum_desc ed;
 	node_ram->enum_free(1 << 0, &ed);
 
-	const uptr free_h = free_adr;
-	const uptr free_t = free_adr + free_bytes - 1;
+	const uptr free_l = free_adr;
+	const uptr free_h = free_adr + free_bytes - 1;
 
 	for (;;) {
 		uptr ram_adr, ram_bytes;
 		if (!node_ram->enum_free_next(&ed, &ram_adr, &ram_bytes))
 			break;
 
-		const uptr ram_h = ram_adr;
-		const uptr ram_t = ram_adr + ram_bytes - 1;
-		uptr add_h, add_t;
+		const uptr ram_l = ram_adr;
+		const uptr ram_h = ram_adr + ram_bytes - 1;
+		uptr add_l, add_h;
 
-		if (test_overlap(ram_h, ram_t, free_h, free_t, &add_h, &add_t))
+		if (test_overlap(ram_l, ram_h, free_l, free_h, &add_l, &add_h))
 		{
-			const uptr add_adr = add_h;
-			const uptr add_bytes = add_t - add_h + 1;
+			const uptr add_adr = add_l;
+			const uptr add_bytes = add_h - add_l + 1;
 			if (!node_heap->add_free(0, add_adr, add_bytes))
 				return cause::FAIL;
 		}
@@ -614,6 +635,79 @@ cause::stype proj_free_mem(
 	return cause::OK;
 }
 
+cause::stype load_page_pool(
+    const tmp_alloc* node_ram,
+    tmp_alloc* node_heap,
+    page_pool* pp)
+{
+	tmp_alloc::enum_desc ed;
+	node_ram->enum_free(1 << 0, &ed);
+
+	uptr lower_adr = UPTR(-1);
+	uptr higher_adr = 0;
+
+	for (;;) {
+		uptr adr, bytes;
+		if (!node_ram->enum_free_next(&ed, &adr, &bytes))
+			break;
+
+		lower_adr = min(lower_adr, adr);
+		higher_adr = max(higher_adr, adr + bytes - 1);
+	}
+
+	pp->set_range(lower_adr, higher_adr);
+
+	uptr workarea_bytes = pp->calc_workarea_bytes();
+	void* workarea_mem = node_heap->alloc(
+	    1 << 0, workarea_bytes, arch::BASIC_TYPE_ALIGN, false);
+	if (!pp->init(workarea_bytes, arch::map_phys_adr(workarea_mem, workarea_bytes)))
+		return cause::FAIL;
+
+	node_heap->enum_free(1 << 0, &ed);
+	for (;;) {
+		uptr adr, bytes;
+		if (!node_heap->enum_free_next(&ed, &adr, &bytes))
+			break;
+
+		pp->load_free_range(adr, bytes);
+	}
+
+	pp->build();
+
+	return cause::OK;
+}
+
+void set_page_pool_to_cpu_node(int cpu_node_id)
+{
+	page_pool** const pps = global_vars::gv.page_pool_objs;
+
+	cpu_node* cn = global_vars::gv.cpu_node_objs[cpu_node_id];
+
+	const int n = global_vars::gv.page_pool_cnt;
+	int pp_id = cpu_node_id;
+	for (int i = 0; i < n; ++i) {
+		cn->set_page_pool(i, pps[pp_id]);
+		if (++pp_id >= n)
+			pp_id = 0;
+	}
+}
+
+cause::type create_cpu_nodes()
+{
+	const int n = global_vars::gv.cpu_node_cnt;
+	for (int i = 0; i < n; ++i) {
+		page_pool* pp = global_vars::gv.page_pool_objs[i];
+		cpu_node* cn = create_cpu_node(pp);
+		if (!cn)
+			return cause::FAIL;
+		global_vars::gv.cpu_node_objs[i] = cn;
+
+		set_page_pool_to_cpu_node(i);
+	}
+
+	return cause::OK;
+}
+
 }  // namespace
 
 
@@ -641,10 +735,21 @@ cause::stype cpupage_init()
 	}
 
 	global_vars::gv.cpu_node_cnt = min(count_cpus(mps), CONFIG_MAX_CPUS);
+	global_vars::gv.page_pool_cnt = global_vars::gv.cpu_node_cnt;
 
 	// init gvar
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i)
 		global_vars::gv.cpu_node_objs[i] = 0;
+
+	const uptr page_pool_objs_sz =
+	    sizeof (page_pool*) * global_vars::gv.cpu_node_cnt;
+	global_vars::gv.page_pool_objs =
+	    new (arch::map_phys_adr(heap.alloc(
+	        SLOTM_ANY,
+	        page_pool_objs_sz,
+	        arch::BASIC_TYPE_ALIGN,
+	        false), page_pool_objs_sz)
+	    ) page_pool*[global_vars::gv.cpu_node_cnt];
 
 	tmp_alloc* avail_ram = new (allocate_tmp_alloc(&heap)) tmp_alloc;
 	if (!avail_ram)
@@ -662,7 +767,7 @@ cause::stype cpupage_init()
 	void* node_ram_mem = allocate_tmp_alloc(&heap);
 	void* node_heap_mem = allocate_tmp_alloc(&heap);
 
-	for (int i = 0; i < global_vars::gv.cpu_node_cnt; ++i) {
+	for (int i = 0; i < global_vars::gv.page_pool_cnt; ++i) {
 		// 未割り当てのメモリサイズを未割り当てのCPU数で割る
 		const uptr assign_bytes = avail_ram->total_free_bytes(1 << 0) /
 		    (global_vars::gv.cpu_node_cnt - i);
@@ -673,37 +778,42 @@ cause::stype cpupage_init()
 		assign_ram(assign_bytes, avail_ram, node_ram);
 		proj_free_mem(&heap, node_ram, node_heap);
 
-		void* p = node_heap->alloc(1 << 0, sizeof (cpu_node), arch::BASIC_TYPE_ALIGN, false);
-		p = arch::map_phys_adr(p, sizeof (cpu_node));
-		cpu_node* cn = new (p) cpu_node;
-		arch::page_ctl& pgctl = cn->get_page_ctl();
+		void* pp_mem = node_heap->alloc(1 << 0, sizeof (page_pool), arch::BASIC_TYPE_ALIGN, false);
+		page_pool* pp = new (arch::map_phys_adr(pp_mem, sizeof (page_pool))) page_pool;
+		global_vars::gv.page_pool_objs[i] = pp;
+
+		load_page_pool(node_ram, node_heap, pp);
+
+		cpu_node* cn = create_cpu_node(pp);
+
 		global_vars::gv.cpu_node_objs[i] = cn;
 
-		//heap.dealloc(SLOTM_ANY, node_ram);
-
 		node_ram->~tmp_alloc();
-		operator delete(node_ram, node_ram_mem);
 		node_heap->~tmp_alloc();
+		operator delete(node_ram, node_ram_mem);
 		operator delete(node_heap, node_heap_mem);
 	}
+
+	r = create_cpu_nodes();
+	if (is_fail(r))
+		return r;
+
+	//heap.dealloc(SLOTM_ANY, node_ram_mem);
+	//heap.dealloc(SLOTM_ANY, node_heap_mem);
+
+for(;;)native::hlt();
 
 	r = create_processor_objs(mps, &heap);
 	if (is_fail(r))
 		return r;
 
-	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
-		log(1)("proc[").u(i)("]: ")(global_vars::gv.cpu_node_objs[i])();
-	}
-
 	const uptr total_pmem_bytes = total_avail_pmem();
-	log(1)("total_pmem: ").u(total_pmem_bytes, 16)();
 
 	tmp_alloc mem;
 	tmp_separator memsep(&mem);
 	memsep.set_slot_range(0, 0, U64(0xffffffffffffffff));
 	load_avail(&memsep);
 
-	uptr left_pmem_bytes = total_pmem_bytes;
 	for (int cpu = 0; cpu < global_vars::gv.cpu_node_cnt; ++cpu) {
 		log(1)("cpu : ").u(cpu)();
 		arch::page_ctl& pgctl =
