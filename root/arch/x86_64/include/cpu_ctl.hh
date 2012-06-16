@@ -47,6 +47,8 @@ class cpu_ctl
 public:
 	class IDT;
 
+	cpu_ctl() : original_lapic_id(-1) {}
+
 	cause::stype init();
 	cause::stype load(cpu_share* sh);
 
@@ -56,6 +58,9 @@ public:
 
 	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
 	u8 get_original_lapic_id() const { return original_lapic_id; }
+	bool original_lapic_id_is_enable() const {
+		return original_lapic_id != (u8)-1;
+	}
 
 private:
 	void* write_ist_layout(void* mem);

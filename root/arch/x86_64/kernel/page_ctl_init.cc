@@ -1,7 +1,7 @@
 /// @file  page_ctl_init.cc
 /// @brief Page control initialize.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 /// 物理アドレスに直接マッピングされた仮想アドレスのことを
@@ -66,9 +66,6 @@ const struct {
 	{ SLOT_INDEX_PAM2,     SETUP_PAM1_MAPEND + 1, U64(0xffffffffffffffff) },
 };
 
-inline arch::page_ctl* get_page_ctl() {
-	return global_vars::gv.page_ctl_obj;
-}
 
 /// @brief 物理アドレス空間の末端アドレスを返す。
 //
@@ -93,56 +90,6 @@ u64 search_padr_end()
 	}
 
 	return adr_end;
-}
-
-/// @brief AVAILABLE とされているメモリのバイト数を返す。
-u64 total_avail_pmem()
-{
-	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
-	if (src == 0)
-		return 0;
-
-	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
-
-	const void* mmap_end = (const u8*)mmap + mmap->size;
-	const multiboot_mmap_entry* entry = mmap->entries;
-
-	u64 total = 0;
-	while (entry < mmap_end) {
-		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
-			total += entry->len;
-
-		entry = (const multiboot_mmap_entry*)
-		    ((const u8*)entry + mmap->entry_size);
-	}
-
-	return total;
-}
-
-/// @brief 物理メモリの末端アドレスを返す。
-u64 search_pmem_end()
-{
-	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
-	if (src == 0)
-		return 0;
-
-	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
-
-	const void* mmap_end = (const u8*)mmap + mmap->size;
-	const multiboot_mmap_entry* entry = mmap->entries;
-
-	u64 pmem_end = 0;
-	while (entry < mmap_end) {
-		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE)
-			pmem_end = max<u64>(
-			    pmem_end,
-			    entry->addr + entry->len - 1);
-
-		entry = (const multiboot_mmap_entry*)
-		    ((const u8*)entry + mmap->entry_size);
-	}
-
-	return pmem_end;
 }
 
 /// @brief  物理的に存在するメモリを調べて tmp_separator に積む。
@@ -205,13 +152,16 @@ cause::stype setup_heap(tmp_alloc* heap)
 		    setup_heap_slots[i].slot_tail);
 	}
 
-	if (is_fail(load_avail(&sep))) {
+	cause::type r = load_avail(&sep);
+	if (is_fail(r)) {
 		log()("!!! Available memory detection failed.")();
-		return cause::FAIL;
+		return r;
 	}
-	if (is_fail(load_allocated(heap))) {
+
+	r = load_allocated(heap);
+	if (is_fail(r)) {
 		log()("!!! Could not detect alloced memory.")();
-		return cause::FAIL;
+		return r;
 	}
 
 	return cause::OK;
@@ -259,7 +209,8 @@ inline u64 phys_to_virt_2(u64 padr) { return arch::PHYS_MAP_ADR + padr; }
 /// @retval true  Succeeds.
 /// @retval false Failed.
 //
-/// padr_end が 6GiB 以上の場合でも、最大 6GiB まで作成する。
+/// BOOTHEAP だけを使い、padr_end が 6GiB 以上の場合でも
+/// 最大 6GiB まで作成する。
 cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
 {
 	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1>
@@ -300,7 +251,8 @@ cause::stype setup_pam2(u64 padr_end, tmp_alloc* heap)
 
 	page_table_tmpalloc pt_alloc(heap, SLOTM_BOOTHEAP | SLOTM_PAM1);
 
-	arch::pte* cr3 = reinterpret_cast<arch::pte*>(native::get_cr3());
+	arch::pte* cr3 = static_cast<arch::pte*>(
+	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
 
 	page_table_2 pg_tbl(cr3, &pt_alloc);
 
@@ -338,22 +290,6 @@ void* allocate_tmp_alloc(tmp_alloc* heap)
 	return arch::map_phys_adr(p, tmp_alloc_pagesz);
 }
 
-cause::stype load_page(const tmp_alloc& alloc, arch::page_ctl* ctl)
-{
-	tmp_alloc::enum_desc ea_enum;
-	alloc.enum_free(SLOTM_ANY, &ea_enum);
-
-	for (;;) {
-		uptr adr, bytes;
-		const bool r = alloc.enum_free_next(&ea_enum, &adr, &bytes);
-		if (!r)
-			break;
-		ctl->load_free_range(adr, bytes);
-	}
-
-	return cause::OK;
-}
-
 bool setup_gv_page(void* page, uptr bytes)
 {
 	gv_page* gv_page_obj = new (page) gv_page;
@@ -385,142 +321,42 @@ int count_cpus(const mpspec& mps)
 	return cpu_num;
 }
 
-/// @brief  page_pool から 1page を割り当てて cpu_node を作る。
-/// @return  If succeeds, returns ptr to cpu_node.
-///          If failed, returns nullptr.
-cpu_node* create_cpu_node(page_pool* pp)
+/// @brief メモリを切り出す。
+//
+/// *ar の範囲をページアライメントに合わせて両端を切り落とし、
+/// それでも assign_bytes より大きければ、あまりを切り落とす。
+/// @retval true  成功した。
+/// @retval false 割り当てられるページが無いため失敗した。
+///               この場合は *ar には戻り値が設定されない。
+bool cut_ram(uptr assign_bytes, adr_range* ar)
 {
-	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
-	// cpu_node のサイズが１ページを超えたらソースレベルで何とかする。
-	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE)
-		log()("!!! sizeof (cpu_node) is too large.")();
+	const uptr page_size = arch::page::PHYS_L1_SIZE;
 
-	uptr page_adr;
-	cause::type r = pp->alloc(arch::page::PHYS_L1, &page_adr);
-	if (is_fail(r))
-		return 0;
-
-	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
-
-	cpu_node* cn = new (buf) cpu_node;
-
-	return cn;
-}
-
-cpu_node* create_processor(u8 lapic_id, tmp_alloc* heap)
-{
-	void* buf = heap->alloc(
-	    SLOTM_BOOTHEAP | SLOTM_PAM1,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    false);
-	if (!buf)
-		return 0;
-
-	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
-
-	cpu_node* proc = new (buf) cpu_node;
-	proc->set_original_lapic_id(lapic_id);
-
-	return proc;
-}
-
-/// @brief processor_objs を作成する。
-cause::stype create_processor_objs(
-    const mpspec& mps, /// [in] CPUの情報を含んだ mpspec
-    tmp_alloc* heap)   /// [in] ヒープ
-{
-	const int cpu_cnt = global_vars::gv.cpu_node_cnt;
-
-	cpu_node** const proc_ary = global_vars::gv.cpu_node_objs;
-
-	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
-	// cpu_node のサイズが１ページを超えたら何とかする。
-	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE)
-		log()("!!! sizeof (processor) is too large.")();
-
-	// ID が cpu_cnt 以下の CPU は ID を変更せずに登録する。
-
-	int detected = 0;
-	for (mpspec::processor_iterator proc_itr(&mps); ; )
-	{
-		const mpspec::processor_entry* pe = proc_itr.get_next();
-		if (!pe)
-			break;
-
-		const u8 id = pe->localapic_id;
-		if (id < cpu_cnt)
-		// && global_vars::gv.processor_objs[pe->localapic_id] == 0)
-		{
-			proc_ary[id] = create_processor(id, heap);
-			if (!proc_ary[id]) {
-				log()("!!! No enough memory.")();
-				return cause::NOMEM;
-			}
-
-			++detected;
-		}
-	}
-
-	// TODO: local apic ID が跳んでいる場合の処理
-
-	return cause::OK;
-}
-
-cause::stype init_page_ctl(arch::page_ctl* pgctl, tmp_alloc* heap)
-{
-	const uptr pmem_end = search_pmem_end();
-	const uptr buf_bytes = pgctl->calc_workarea_size(pmem_end);
-
-	void* buf = heap->alloc(
-	    SLOTM_BOOTHEAP | SLOTM_PAM1,
-	    buf_bytes,
-	    arch::page::PHYS_L1_SIZE,
-	    false);
-
-	if (!buf) {
-		log(1)("No enough memory");
-		return cause::NOMEM;
-	}
-	buf = arch::map_phys_adr(buf, buf_bytes);
-
-	pgctl->init(pmem_end, buf);
-	return cause::OK;
-}
-
-bool assign_mem_piece(
-    tmp_alloc* avail_mem,
-    uptr* assign_bytes,
-    arch::page_ctl* pgctl)
-{
-	tmp_alloc::enum_desc ed;
-
-	avail_mem->enum_free(1 << 0, &ed);
-
-	uptr adr, bytes;
-	const bool r = avail_mem->enum_free_next(&ed, &adr, &bytes);
-	if (!r)
+	const uptr low = up_align(ar->low_adr(), page_size);
+	if (low < ar->low_adr())
 		return false;
 
-	if (bytes > *assign_bytes) {
-		uptr endadr = adr + *assign_bytes;
-		endadr = down_align<uptr>(endadr, arch::page::PHYS_L1_SIZE);
-		if (endadr < adr) {
-			// TODO
-		}
-		bytes = endadr - adr;
-	}
+	const uptr high = down_align(ar->high_adr() + 1, page_size) - 1;
+	if (high > ar->high_adr())
+		return false;
 
-	log(1)("assign: ").u(adr, 16)(" size:").u(bytes, 16)();
+	const uptr bytes = high - low + 1;
+	if (bytes < page_size)
+		return false;
 
-	pgctl->load_free_range(adr, bytes);
-	*assign_bytes -= bytes;
-
-	avail_mem->reserve(1 << 0, adr, bytes, true);
+	ar->set_ab(low, min(bytes, assign_bytes));
 
 	return true;
 }
 
+/// @brief avail_ram から node_ram へメモリを移す
+//
+/// avail_ram から *assign_bytes を上限として node_ram へ移す。
+/// node_ram へ移されたメモリは avail_ram から除外し、移したメモリサイズを
+/// *assign_bytes から減算する。
+/// @retval true  成功した。
+/// @retval false 失敗した。
+/// @note この関数が失敗する状況からソフトで復旧するのは難しい。
 bool assign_ram_piece(
     uptr* assign_bytes,
     tmp_alloc* avail_ram,
@@ -530,49 +366,37 @@ bool assign_ram_piece(
 
 	avail_ram->enum_free(1 << 0, &ed);
 
-	uptr adr, bytes;
-	const bool r = avail_ram->enum_free_next(&ed, &adr, &bytes);
-	if (!r)
+	adr_range ar;
+	if (!avail_ram->enum_free_next(&ed, &ar))
 		return false;
 
-	if (bytes > *assign_bytes) {
-		uptr endadr = adr + *assign_bytes;
-		endadr = down_align<uptr>(endadr, arch::page::PHYS_L1_SIZE);
-		if (endadr < adr) {
-			// TODO
-		}
-		bytes = endadr - adr;
+	if (!cut_ram(*assign_bytes, &ar)) {
+		// 半端なページを捨てる
+		if (!avail_ram->reserve(1 << 0, ar, true))
+			return false;
+
+		return true;
 	}
 
-	node_ram->add_free(0, adr, bytes);
-	*assign_bytes -= bytes;
+	if (!node_ram->add_free(0, ar))
+		return false;
 
-	avail_ram->reserve(1 << 0, adr, bytes, true);
+	*assign_bytes -= ar.bytes();
+
+	if (!avail_ram->reserve(1 << 0, ar, true))
+		return false;
 
 	return true;
 }
 
-void assign_mem(tmp_alloc* mem, int cpu)
-{
-	arch::page_ctl& pgctl =
-	    global_vars::gv.cpu_node_objs[cpu]->get_page_ctl();
-
-	// 未割り当てのメモリサイズを未割り当てのCPU数で割る
-	uptr assign_bytes = mem->total_free_bytes(1 << 0) /
-	    (global_vars::gv.cpu_node_cnt - cpu);
-
-	do {
-		assign_mem_piece(mem, &assign_bytes, &pgctl);
-	} while (assign_bytes >= arch::page::L1_SIZE);
-
-	pgctl.build();
-}
-
-void assign_ram(uptr assign_bytes, tmp_alloc* avail_ram, tmp_alloc* node_ram)
+bool assign_ram(uptr assign_bytes, tmp_alloc* avail_ram, tmp_alloc* node_ram)
 {
 	do {
-		assign_ram_piece(&assign_bytes, avail_ram, node_ram);
+		if (!assign_ram_piece(&assign_bytes, avail_ram, node_ram))
+			return false;
 	} while (assign_bytes >= arch::page::L1_SIZE);
+
+	return true;
 }
 
 cause::stype _proj_free_mem(
@@ -643,7 +467,7 @@ cause::stype load_page_pool(
 	tmp_alloc::enum_desc ed;
 	node_ram->enum_free(1 << 0, &ed);
 
-	uptr lower_adr = UPTR(-1);
+	uptr lower_adr = UPTR_MAX;
 	uptr higher_adr = 0;
 
 	for (;;) {
@@ -677,6 +501,32 @@ cause::stype load_page_pool(
 	return cause::OK;
 }
 
+/// @brief  page_pool から1ページを割り当てて cpu_node を作る。
+/// @return  If succeeds, returns ptr to cpu_node.
+///          If failed, returns nullptr.
+cpu_node* create_cpu_node(page_pool* pp)
+{
+	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
+	// cpu_node のサイズが１ページを超えたらソースレベルで何とかする。
+	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE) {
+		log()("!!! sizeof (cpu_node) is too large.")();
+		return 0;
+	}
+
+	uptr page_adr;
+	cause::type r = pp->alloc(arch::page::PHYS_L1, &page_adr);
+	if (is_fail(r)) {
+		log()("!!! No enough memory.")();
+		return 0;
+	}
+
+	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
+
+	cpu_node* cn = new (buf) cpu_node;
+
+	return cn;
+}
+
 void set_page_pool_to_cpu_node(int cpu_node_id)
 {
 	page_pool** const pps = global_vars::gv.page_pool_objs;
@@ -704,6 +554,50 @@ cause::type create_cpu_nodes()
 
 		set_page_pool_to_cpu_node(i);
 	}
+
+	return cause::OK;
+}
+
+/// @brief  Local APIC ID を振りなおす。
+//
+/// Local APIC ID が 0 から始まる連番になるようにする。
+cause::type renumber_cpu_ids(const mpspec& mps)
+{
+	const int cpu_cnt = get_cpu_node_count();
+	cpu_node** const cns = global_vars::gv.cpu_node_objs;
+
+	int left = cpu_cnt;
+
+	// ID が cpu_cnt 以下の CPU は ID を変更せずに登録する。
+	for (mpspec::processor_iterator proc_itr(&mps); ; ) {
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+
+		const u8 id = pe->localapic_id;
+		if (id < cpu_cnt) {
+			cns[id]->set_original_lapic_id(id);
+			--left;
+		}
+	}
+
+	int cns_i = 0;
+	for (mpspec::processor_iterator proc_itr(&mps); ; ) {
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+
+		const u8 id = pe->localapic_id;
+		if (id >= cpu_cnt) {
+			while (cns[cns_i]->original_lapic_id_is_enable())
+				++cns_i;
+			cns[cns_i]->set_original_lapic_id(id);
+			--left;
+		}
+	}
+
+	if (left != 0)
+		return cause::FAIL;
 
 	return cause::OK;
 }
@@ -756,7 +650,7 @@ cause::stype cpupage_init()
 		return cause::NOMEM;
 
 	tmp_separator sep(avail_ram);
-	sep.set_slot_range(0, 0, ~uptr(0));
+	sep.set_slot_range(0, 0, UPTR_MAX);
 	r = load_avail(&sep);
 	if (is_fail(r)) {
 		log()("!!! Available memory detection failed.")();
@@ -769,24 +663,24 @@ cause::stype cpupage_init()
 
 	for (int i = 0; i < global_vars::gv.page_pool_cnt; ++i) {
 		// 未割り当てのメモリサイズを未割り当てのCPU数で割る
-		const uptr assign_bytes = avail_ram->total_free_bytes(1 << 0) /
+		const uptr assign_bytes =
+		    avail_ram->total_free_bytes(1 << 0) /
 		    (global_vars::gv.cpu_node_cnt - i);
 
 		tmp_alloc* node_ram = new (node_ram_mem) tmp_alloc;
 		tmp_alloc* node_heap = new (node_heap_mem) tmp_alloc;
 
-		assign_ram(assign_bytes, avail_ram, node_ram);
+		if (!assign_ram(assign_bytes, avail_ram, node_ram))
+			log()("!! Page assign to node failed.")();
 		proj_free_mem(&heap, node_ram, node_heap);
 
 		void* pp_mem = node_heap->alloc(1 << 0, sizeof (page_pool), arch::BASIC_TYPE_ALIGN, false);
 		page_pool* pp = new (arch::map_phys_adr(pp_mem, sizeof (page_pool))) page_pool;
 		global_vars::gv.page_pool_objs[i] = pp;
 
-		load_page_pool(node_ram, node_heap, pp);
-
-		cpu_node* cn = create_cpu_node(pp);
-
-		global_vars::gv.cpu_node_objs[i] = cn;
+		r = load_page_pool(node_ram, node_heap, pp);
+		if (is_fail(r))
+			return r;
 
 		node_ram->~tmp_alloc();
 		node_heap->~tmp_alloc();
@@ -798,33 +692,14 @@ cause::stype cpupage_init()
 	if (is_fail(r))
 		return r;
 
+	r = renumber_cpu_ids(mps);
+	if (is_fail(r))
+		return r;
+
 	//heap.dealloc(SLOTM_ANY, node_ram_mem);
 	//heap.dealloc(SLOTM_ANY, node_heap_mem);
 
 for(;;)native::hlt();
-
-	r = create_processor_objs(mps, &heap);
-	if (is_fail(r))
-		return r;
-
-	const uptr total_pmem_bytes = total_avail_pmem();
-
-	tmp_alloc mem;
-	tmp_separator memsep(&mem);
-	memsep.set_slot_range(0, 0, U64(0xffffffffffffffff));
-	load_avail(&memsep);
-
-	for (int cpu = 0; cpu < global_vars::gv.cpu_node_cnt; ++cpu) {
-		log(1)("cpu : ").u(cpu)();
-		arch::page_ctl& pgctl =
-		    global_vars::gv.cpu_node_objs[cpu]->get_page_ctl();
-
-		r = init_page_ctl(&pgctl, &heap);
-		if (is_fail(r))
-			return r;
-
-		assign_mem(&mem, cpu);
-	}
 
 	return cause::OK;
 }
@@ -855,28 +730,6 @@ cause::stype page_ctl_init()
 	if (setup_gv_page(buf, arch::page::PHYS_L1_SIZE) == false)
 		return cause::UNKNOWN;
 
-	arch::page_ctl* pgctl = get_page_ctl();
-
-	// 物理メモリの終端アドレス。これを物理メモリサイズとする。
-	const uptr pmem_end = search_pmem_end();
-
-	buf = heap.alloc(
-	    SLOTM_BOOTHEAP,
-	    pgctl->calc_workarea_size(pmem_end),
-	    arch::page::PHYS_L1_SIZE,
-	    false);
-	if (!buf) {
-		log()("bootheap is exhausted.")();
-		return cause::NOMEM;
-	}
-
-	pgctl->init(pmem_end, buf);
-
-	r = load_page(heap, pgctl);
-	if (r != cause::OK)
-		return r;
-
-	pgctl->build();
 
 	return cause::OK;
 }
