@@ -20,8 +20,8 @@
 #ifndef INCLUDE_CHEAP_ALLOC_HH_
 #define INCLUDE_CHEAP_ALLOC_HH_
 
-#include "chain.hh"
-#include "log_target.hh"
+#include <chain.hh>
+#include <log_target.hh>
 
 
 /// @brief  簡単なメモリ管理の実装
@@ -43,6 +43,7 @@
 /// - reserve() / alloc() / free() / enum_xxx() は対象スロットを
 ///   ビットマスク (1 << index) で指定する。
 ///
+/// @attention
 /// - このクラスは作業メモリが不足してエラー(false)を返すことがある。
 ///   その場合はクラスのオブジェクトを破壊した可能性があり使い続けられない。
 /// - 作業メモリ不足にならないように、大きめの BUF_COUNT を指定するしかない。
@@ -60,7 +61,9 @@ public:
 	/// Must call for initialize.
 	cheap_alloc() {}
 
+	bool add_free(slot_index slot, const adr_range& ar);
 	bool add_free(slot_index slot, uptr adr, uptr bytes);
+	bool reserve(slot_mask slotm, const adr_range& ar, bool forget);
 	bool reserve(slot_mask slotm, uptr adr, uptr bytes, bool forget);
 	void* alloc(slot_mask slotm, uptr bytes, uptr align, bool forget);
 	bool dealloc(slot_mask slotm, void* p);
@@ -73,8 +76,10 @@ public:
 		const range* range_node;
 	};
 	void enum_free(slot_mask slotm, enum_desc* x) const;
+	bool enum_free_next(enum_desc* x, adr_range* ar) const;
 	bool enum_free_next(enum_desc* x, uptr* adr, uptr* bytes) const;
 	void enum_alloc(slot_mask slotm, enum_desc* x) const;
+	bool enum_alloc_next(enum_desc* x, adr_range* ar) const;
 	bool enum_alloc_next(enum_desc* x, uptr* adr, uptr* bytes) const;
 
 	uptr total_free_bytes(slot_mask slotm) const;
@@ -140,6 +145,22 @@ public:
 /// @retval true  Succeeds.
 /// @retval false No enough working memory.
 template<int BUF_COUNT>
+bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, const adr_range& ar)
+{
+	const uptr bytes = ar.bytes();
+	if (bytes == 0)
+		return true;
+
+	range* ent = new_range(ar.low_adr(), bytes);
+	if (ent == 0)
+		return false;
+
+	slots[slot].free_ranges.insert_head(ent);
+
+	return true;
+}
+
+template<int BUF_COUNT>
 bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 {
 	if (bytes == 0)
@@ -156,8 +177,7 @@ bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 
 /// @brief 指定したメモリ範囲をメモリ確保の対象外にする。
 /// @param[in] slotm  slot mask.
-/// @param[in] adr    取り除くメモリの先頭アドレス。
-/// @param[in] bytes  取り除くメモリのバイト数。
+/// @param[in] ar     取り除くメモリの範囲。
 /// @param[in] forget true ならばメモリ確保の対象外にしたことを忘れる。
 /// @retval true  Succeeds.
 /// @retval false No enough working memory.
@@ -169,6 +189,26 @@ bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 ///   あったこと自体を忘れてしまう。
 /// - forget = false ならば、対象外にしたメモリ範囲を enum_xxx() で
 ///   拾うことができる。
+template<int BUF_COUNT>
+bool cheap_alloc<BUF_COUNT>::reserve(
+    slot_mask slotm,
+    const adr_range& ar,
+    bool forget)
+{
+	const uptr adr = ar.low_adr();
+	const uptr bytes = ar.bytes();
+
+	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
+		if (!is_masked(i, slotm))
+			continue;
+
+		if (_reserve(adr, bytes, forget, &slots[i]) == false)
+			return false;
+	}
+
+	return true;
+}
+
 template<int BUF_COUNT>
 bool cheap_alloc<BUF_COUNT>::reserve(
     slot_mask slotm,
@@ -246,7 +286,7 @@ void cheap_alloc<BUF_COUNT>::enum_free(slot_mask slotm, enum_desc* x) const
 
 template<int BUF_COUNT>
 bool cheap_alloc<BUF_COUNT>::enum_free_next(
-    enum_desc* x, uptr* adr, uptr* bytes) const
+    enum_desc* x, adr_range* ar) const
 {
 	for (slot_index i = x->index; i < SLOT_COUNT; ++i) {
 		if (!is_masked(i, x->slotm))
@@ -265,12 +305,24 @@ bool cheap_alloc<BUF_COUNT>::enum_free_next(
 	}
 
 	if (x->range_node) {
-		*adr = x->range_node->adr;
-		*bytes = x->range_node->bytes;
+		ar->set_ab(x->range_node->adr, x->range_node->bytes);
 		return true;
 	} else {
 		return false;
 	}
+}
+
+template<int BUF_COUNT>
+bool cheap_alloc<BUF_COUNT>::enum_free_next(
+    enum_desc* x, uptr* adr, uptr* bytes) const
+{
+	adr_range ar;
+	const bool r = enum_free_next(x, &ar);
+
+	*adr = ar.low_adr();
+	*bytes = ar.bytes();
+
+	return r;
 }
 
 template<int BUF_COUNT>
@@ -283,7 +335,7 @@ void cheap_alloc<BUF_COUNT>::enum_alloc(slot_mask slotm, enum_desc* x) const
 
 template<int BUF_COUNT>
 bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
-    enum_desc* x, uptr* adr, uptr* bytes) const
+    enum_desc* x, adr_range* ar) const
 {
 	for (slot_index i = x->index; i < SLOT_COUNT; ++i) {
 		if (!is_masked(i, x->slotm))
@@ -302,12 +354,24 @@ bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
 	}
 
 	if (x->range_node) {
-		*adr = x->range_node->adr;
-		*bytes = x->range_node->bytes;
+		ar->set_ab(x->range_node->adr, x->range_node->bytes);
 		return true;
 	} else {
 		return false;
 	}
+}
+
+template<int BUF_COUNT>
+bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
+    enum_desc* x, uptr* adr, uptr* bytes) const
+{
+	adr_range ar;
+	const bool r = enum_alloc_next(x, &ar);
+
+	*adr = ar.low_adr();
+	*bytes = ar.bytes();
+
+	return r;
 }
 
 template<int BUF_COUNT>
@@ -425,7 +489,7 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 			}
 
 			e_tail = r_head - 1;
-			if (e_tail == UPTR(-1))
+			if (e_tail == UPTR_MAX)
 				outofrange = true;
 		}
 

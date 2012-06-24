@@ -5,6 +5,7 @@
 
 
 kern_sources = [
+    'cpu_node.cc',
     'drive.cc',
     'file.cc',
     'interrupt_control.cc',
@@ -12,7 +13,8 @@ kern_sources = [
     'log_target.cc',
     'mempool.cc',
     'mempool_ctl.cc',
-    'processor.cc',
+    'page.cc',
+    'page_pool.cc',
     'slab_allocate.cc',
     'string.cc',
     'thread.cc',

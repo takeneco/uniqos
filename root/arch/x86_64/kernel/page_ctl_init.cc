@@ -27,6 +27,7 @@
 #include "log.hh"
 #include <mpspec.hh>
 #include "native_ops.hh"
+#include <page.hh>
 #include "page_ctl.hh"
 #include <page_pool.hh>
 #include "pagetable.hh"
@@ -271,6 +272,43 @@ cause::stype setup_pam2(u64 padr_end, tmp_alloc* heap)
 	}
 
 	return cause::OK;
+}
+
+/// @brief ヒープから 1 ページ分のメモリを確保する。
+//
+/// ページのサイズは計算して決める。
+/// 確保したメモリはページ管理ができるようになってから
+/// page_heap_dealloc() で開放する。
+void* page_heap_alloc(tmp_alloc* heap, uptr bytes)
+{
+	bytes += sizeof (cpuword);
+
+	const arch::page::TYPE page_type = arch::page::type_of_size(bytes);
+	const uptr page_sz = size_of_type(page_type);
+
+	cpuword* p = static_cast<cpuword*>(
+	    heap->alloc(SLOTM_ANY, page_sz, page_sz, false));
+
+	if (!p)
+		log()("!!! No enough memory.")();
+
+	p[0] = page_type;
+
+	return arch::map_phys_adr(&p[1], page_sz);
+}
+
+/// @brief page_heap_alloc() で確保したメモリを開放する。
+cause::type page_heap_dealloc(void* p)
+{
+	cpuword* page = static_cast<cpuword*>(p);
+	page -= 1;
+
+	const arch::page::TYPE page_type =
+	    static_cast<arch::page::TYPE>(page[0]);
+
+	const uptr padr = arch::unmap_phys_adr(page, size_of_type(page_type));
+
+	return page_dealloc(page_type, padr);
 }
 
 /// @brief ヒープから tmp_alloc 用のメモリを確保する。
@@ -527,13 +565,15 @@ cpu_node* create_cpu_node(page_pool* pp)
 	return cn;
 }
 
-void set_page_pool_to_cpu_node(int cpu_node_id)
+void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
 {
 	page_pool** const pps = global_vars::gv.page_pool_objs;
 
 	cpu_node* cn = global_vars::gv.cpu_node_objs[cpu_node_id];
 
 	const int n = global_vars::gv.page_pool_cnt;
+	cn->set_page_pool_cnt(n);
+
 	int pp_id = cpu_node_id;
 	for (int i = 0; i < n; ++i) {
 		cn->set_page_pool(i, pps[pp_id]);
@@ -696,10 +736,8 @@ cause::stype cpupage_init()
 	if (is_fail(r))
 		return r;
 
-	//heap.dealloc(SLOTM_ANY, node_ram_mem);
-	//heap.dealloc(SLOTM_ANY, node_heap_mem);
-
-for(;;)native::hlt();
+	page_heap_dealloc(node_ram_mem);
+	page_heap_dealloc(node_heap_mem);
 
 	return cause::OK;
 }

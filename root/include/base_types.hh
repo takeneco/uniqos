@@ -1,13 +1,13 @@
-/// @file  btypes.hh
+/// @file  basic_types.hh
 /// @brief 共通で使う型・関数など。
 //
-// (C) 2008-2011 KATO Takeshi
+// (C) 2008-2012 KATO Takeshi
 //
 
-#ifndef BTYPES_HH_
-#define BTYPES_HH_
+#ifndef INCLUDE_BASIC_TYPES_HH_
+#define INCLUDE_BASIC_TYPES_HH_
 
-#include "baseint.hh"
+#include <inttype.hh>
 
 
 typedef s8_        s8;
@@ -30,9 +30,10 @@ typedef harf_uptr_ harf_uptr;
 
 typedef unsigned int uint;
 
-#define U32(n) u32cast_(n)
-#define U64CAST(n) u64cast_(n)
-#define U64(n) u64cast_(n)
+#define U32(n)  suffix_u32(n)
+#define U64(n)  suffix_u64(n)
+#define UPTR(n) suffix_uptr(n)
+
 
 inline u16 swap16_(u16 x) {
 	return (x >> 8) | (x << 8);
@@ -256,29 +257,10 @@ private:
  * エラーコード
  *-------------------------------------------------------------------*/
 
-namespace result {
-	// 0以上なら成功
-	// 0未満なら失敗
-	enum stype {
-		OK = 0,
-		FAIL = -1,
-		NO_MEMORY = -2,
-		INVALID_PARAMS = -3,
-		INVALID_OPERATION = -4,
-		UNKNOWN = -6,
-	};
-
-	typedef signed int type;
-	inline bool isok(type t) { return t >= 0; }
-	inline bool isfail(type t) { return t < 0; }
-}
-
-/**
- * @brief  Cause of error identification.
- */
+/// @brief  Cause of error identification.
 namespace cause
 {
-	enum stype {
+	enum type {
 		OK = 0,
 		FAIL = 1,
 
@@ -295,12 +277,50 @@ namespace cause
 		UNKNOWN = 1000,
 	};
 
-	typedef u32 type;
-	inline bool IsOk(type x) { return x == OK; }
-	inline bool IsFail(type x) { return x != OK; }
+	typedef type stype;
+	typedef u32 ftype;
+	inline bool IsOk(ftype x) { return x == OK; }
+	inline bool IsFail(ftype x) { return x != OK; }
 	inline bool is_ok(stype x) { return x == OK; }
 	inline bool is_fail(stype x) { return x != OK; }
 }
+
+struct adr_range
+{
+	uptr low;
+	uptr high;
+
+	adr_range() {}
+	adr_range(const adr_range& ar)
+	: low(ar.low), high(ar.high)
+	{}
+
+	uptr low_adr() const { return low; }
+	uptr high_adr() const { return high; }
+	uptr bytes() const { return high - low + 1; }
+
+	void set_ab(uptr adr, uptr bytes) {
+		low = adr;
+		high = adr + bytes - 1;
+	}
+	void set_lh(uptr low_adr, uptr high_adr) {
+		low = low_adr;
+		high = high_adr;
+	}
+
+	static adr_range gen_ab(uptr adr, uptr bytes) {
+		adr_range r;
+		r.low = adr;
+		r.high = adr + bytes - 1;
+		return r;
+	}
+	static adr_range gen_lh(uptr low_adr, uptr high_adr) {
+		adr_range r;
+		r.low = low_adr;
+		r.high = high_adr;
+		return r;
+	}
+};
 
 /**
  * @brief  Log information.
@@ -329,4 +349,4 @@ namespace log
 #define TOSTR(x) TOSTR_(x)
 
 
-#endif  // include guards
+#endif  // include guard

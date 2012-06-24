@@ -6,11 +6,11 @@
 #ifndef INCLUDE_CPU_NODE_HH_
 #define INCLUDE_CPU_NODE_HH_
 
+#include <arch.hh>
 #include <basic.hh>
 #include <config.h>
 #include <cpu_ctl.hh>
 #include <event_queue.hh>
-#include <page_ctl.hh>
 #include <thread_ctl.hh>
 
 
@@ -24,6 +24,10 @@ class cpu_node : public arch::cpu_ctl
 public:
 	cpu_node() {}
 
+	cause::type set_page_pool_cnt(int cnt) {
+		page_pool_cnt = cnt;
+		return cause::OK;
+	}
 	cause::type set_page_pool(int pri, page_pool* pp);
 	cause::stype init();
 	bool run_all_intr_event();
@@ -36,9 +40,11 @@ public:
 
 	void sleep_current_thread() { thrdctl.sleep_running_thread(); }
 
-	arch::page_ctl& get_page_ctl() { return pagectl; }
 	thread_ctl& get_thread_ctl() { return thrdctl; }
 	event_queue& get_soft_evq() { return soft_evq; }
+
+	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
+	cause::type page_dealloc(arch::page::TYPE page_type, uptr padr);
 
 private:
 	bool probe_intr_event();
@@ -46,8 +52,6 @@ private:
 
 private:
 	u8 preempt_disable_nests;
-
-	arch::page_ctl pagectl;
 
 	thread_ctl thrdctl;
 
@@ -58,6 +62,7 @@ private:
 
 	event_queue soft_evq;
 
+	int        page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];
 };
 

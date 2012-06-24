@@ -17,7 +17,7 @@ class page_pool
 public:
 	page_pool();
 
-	void set_range(uptr head_adr, uptr tail_adr);
+	void set_range(uptr low_adr, uptr high_adr);
 	uptr calc_workarea_bytes();
 
 	bool init(uptr mem_bytes, void* buf);
@@ -25,7 +25,7 @@ public:
 	void build();
 
 	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
-	cause::stype free(arch::page::TYPE pt, uptr padr);
+	cause::stype dealloc(arch::page::TYPE pt, uptr padr);
 
 private:
 	mem_cell_base<uptr> page_base[arch::page::LEVEL_COUNT];
