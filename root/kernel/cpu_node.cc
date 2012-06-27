@@ -4,12 +4,12 @@
 // (C) 2012 KATO Takeshi
 //
 
-#include <processor.hh>
+#include <cpu_node.hh>
 
 #include <arch.hh>
 #include <global_vars.hh>
-
-#include <native_ops.hh>
+#include <log.hh>
+#include <page_pool.hh>
 
 
 /// @brief  page_pool を指定する。
@@ -82,6 +82,30 @@ void cpu_node::post_intr_event(event_item* ev)
 void cpu_node::post_soft_event(event_item* ev)
 {
 	soft_evq.push(ev);
+}
+
+cause::type cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
+{
+	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
+		const cause::type r = page_pools[i]->alloc(page_type, padr);
+		if (is_ok(r))
+			return cause::OK;
+	}
+
+	return cause::FAIL;
+}
+
+cause::type cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
+{
+	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
+		const cause::type r = page_pools[i]->dealloc(page_type, padr);
+		if (is_ok(r))
+			return cause::OK;
+	}
+
+	log()("!!! cpu_node::page_dealloc() failed.")();
+
+	return cause::FAIL;
 }
 
 /// @retval true 外部割込みによって登録されたイベントがある。

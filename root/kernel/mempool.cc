@@ -19,11 +19,10 @@
 
 #include <mempool_ctl.hh>
 
-#include <global_vars.hh>
 #include <log.hh>
+#include <page.hh>
 #include <placement_new.hh>
-
-#include <processor.hh>
+#include <cpu_node.hh>
 
 
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
@@ -74,8 +73,7 @@ cause::stype mempool::destroy()
 
 void* mempool::alloc()
 {
-	processor* proc = get_current_cpu();
-
+	cpu_node* proc = get_cpu_node();
 	proc->preempt_disable();
 
 	void* r = _alloc();
@@ -85,10 +83,9 @@ void* mempool::alloc()
 	return r;
 }
 
-void mempool::free(void* ptr)
+void mempool::dealloc(void* ptr)
 {
-	processor* proc = get_current_cpu();
-
+	cpu_node* proc = get_cpu_node();
 	proc->preempt_disable();
 
 	_dealloc(ptr);
@@ -122,6 +119,79 @@ void mempool::dump(log_target& lt)
 	}
 }
 
+void* mempool::node::alloc()
+{
+	memobj* obj = free_objs.remove_head();
+	if (obj) {
+		--freeobj_cnt;
+	} else {
+		page* pg = free_pages.head();
+		if (pg == 0)
+			return 0;
+
+		obj = pg->alloc();
+
+		if (pg->is_full()) {
+			free_pages.remove_head(); // remove pg
+			full_pages.insert_head(pg);
+		}
+	}
+
+	++alloc_cnt;
+
+	return obj;
+}
+
+void mempool::node::dealloc(void* ptr)
+{
+	memobj* obj = new (ptr) memobj;
+
+	free_objs.insert_head(obj);
+
+	--alloc_cnt;
+	++freeobj_cnt;
+}
+
+void mempool::node::supply_page(page* new_page)
+{
+	free_pages.insert_head(new_page);
+}
+
+void mempool::node::include_dirty_page(page* page)
+{
+	if (page->is_full())
+		free_pages.insert_head(page);
+	else
+		full_pages.insert_head(page);
+
+	++page_cnt;
+	alloc_cnt += page->count_alloc();
+}
+
+/// @param[in] owner  ページのサイズ情報へのアクセスとページの開放に使用する
+void mempool::node::back_to_page(memobj* obj, mempool* owner)
+{
+	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
+		if (pg->free(*owner, obj)) {
+			if (pg->is_free()) {
+				free_pages.remove(pg);
+				owner->delete_page(pg);
+			}
+			return;
+		}
+	}
+
+	for (page* pg = full_pages.head(); pg; pg = full_pages.next(pg)) {
+		if (pg->free(*owner, obj)) {
+			full_pages.remove(pg);
+			free_pages.insert_head(pg);
+			return;
+		}
+	}
+
+	log()("!!!FAULT:")(__func__)("() no matched page: obj:")(obj)();
+}
+
 arch::page::TYPE mempool::auto_page_type(u32 objsize)
 {
 	arch::page::TYPE r = arch::page::type_of_size(objsize * 4);
@@ -135,47 +205,41 @@ u32 mempool::normalize_obj_size(u32 objsize)
 {
 	u32 r = max<u32>(objsize, sizeof (page));
 
-	r = up_align<u32>(r, arch::BASIC_TYPE_ALIGN);
+	r = up_align<u32>(r, sizeof (cpuword));
 
 	return r;
 }
 
 void* mempool::_alloc()
 {
-	memobj* obj = free_objs.remove_head();
-	if (obj) {
-		--freeobj_count;
-	} else {
-		page* pg = free_pages.head();
-		if (pg == 0) {
-			pg = new_page();
-			if (pg == 0)
-				return 0;
+	const int cpuid = arch::get_cpu_id();
 
-			free_pages.insert_head(pg);
-		}
+	node* nd = mempool_nodes[cpuid];
 
-		obj = pg->alloc();
+	void* r = nd->alloc();
+	if (!r) {
+		page* pg = new_page();
+		if (UNLIKELY(!pg))
+			return 0;
 
-		if (pg->is_full()) {
-			free_pages.remove_head(); // remove pg
-			full_pages.insert_head(pg);
-		}
+		nd->supply_page(pg);
+
+		r = nd->alloc();
 	}
 
-	++alloc_count;
+	if (r)
+		++alloc_count;
 
-	return obj;
+	return r;
 }
 
 void mempool::_dealloc(void* ptr)
 {
-	memobj* obj = new (ptr) memobj;
+	const int cpuid = arch::get_cpu_id();
 
-	free_objs.insert_head(obj);
+	mempool_nodes[cpuid]->dealloc(ptr);
 
 	--alloc_count;
-	++freeobj_count;
 }
 
 void mempool::attach(page* pg)
@@ -188,8 +252,15 @@ void mempool::attach(page* pg)
 
 mempool::page* mempool::new_page()
 {
+	const int cpuid = arch::get_cpu_id();
+
+	return new_page(cpuid);
+}
+
+mempool::page* mempool::new_page(int cpuid)
+{
 	uptr padr;
-	if (arch::page::alloc(page_type, &padr) != cause::OK)
+	if (page_alloc(cpuid, page_type, &padr) != cause::OK)
 		return 0;
 
 	void* mem = arch::map_phys_adr(padr, page_size);
@@ -221,10 +292,10 @@ void mempool::delete_page(page* pg)
 	if (page_pool) {
 		const uptr adr =
 		    arch::unmap_phys_adr(pg->get_memory(), page_size);
-		page_pool->free(pg);
-		arch::page::free(page_type, adr);
+		page_pool->dealloc(pg);
+		page_dealloc(page_type, adr);
 	} else {
-		const cause::stype r = arch::page::free(
+		const cause::stype r = page_dealloc(
 		    page_type, arch::unmap_phys_adr(pg, page_size));
 		if (is_fail(r)) {
 			log()(__func__)("() failed page free:").u(r)
@@ -256,6 +327,11 @@ void mempool::back_to_page(memobj* obj)
 	}
 
 	log()("FAULT:")(__func__)("() no matched page: obj:")(obj)();
+}
+
+void mempool::set_node(int i, node* nd)
+{
+	mempool_nodes[i] = nd;
 }
 
 
