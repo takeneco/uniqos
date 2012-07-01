@@ -1,6 +1,6 @@
 /// @file  cpu_ctl.hh
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_KERNEL_CPU_CTL_HH_
@@ -37,7 +37,7 @@ private:
 };
 
 // call by cpu_ctl::IDT
-void intr_init(idte* idt);
+cause::type intr_init(idte* idt);
 
 namespace arch {
 
@@ -277,8 +277,8 @@ public:
 class cpu_ctl::IDT
 {
 public:
-	void init() {
-		intr_init(idt);
+	cause::type init() {
+		return intr_init(idt);
 	}
 
 private:
@@ -286,6 +286,24 @@ private:
 };
 
 }  // namespace arch
+
+/// CPUの共有データ
+class cpu_ctl_common
+{
+public:
+	cpu_ctl_common();
+
+	cause::type init();
+
+	const mpspec* get_mpspec() const {
+		return &mps;
+	}
+
+private:
+	mpspec mps;
+
+	arch::cpu_ctl::IDT idt;
+};
 
 
 #endif  // include guard

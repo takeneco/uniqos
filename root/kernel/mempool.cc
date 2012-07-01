@@ -37,6 +37,8 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
     shared_count(0),
     page_pool(_page_pool)
 {
+	for (cpu_id i = 0; i < CONFIG_MAX_CPUS; ++i)
+		mempool_nodes[i] = 0;
 }
 
 cause::stype mempool::destroy()
@@ -73,10 +75,25 @@ cause::stype mempool::destroy()
 
 void* mempool::alloc()
 {
-	cpu_node* proc = get_cpu_node();
+	const cpu_id cpuid = arch::get_cpu_id();
+	cpu_node* proc = get_cpu_node(cpuid);
+
 	proc->preempt_disable();
 
-	void* r = _alloc();
+	void* r = _alloc(cpuid);
+
+	proc->preempt_enable();
+
+	return r;
+}
+
+void* mempool::alloc(cpu_id cpuid)
+{
+	cpu_node* proc = get_cpu_node();
+
+	proc->preempt_disable();
+
+	void* r = _alloc(cpuid);
 
 	proc->preempt_enable();
 
@@ -111,6 +128,11 @@ void mempool::dump(log_target& lt)
 	   u(alloc_count, 16)(" ").
 	   u(page_count, 16)(" ").
 	   u(freeobj_count, 16)();
+
+	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
+		node* nd = mempool_nodes[i];
+		log()("nd[").u(i)("]=")(nd)();
+	}
 
 	lt("---- free_pages ----")();
 
@@ -210,15 +232,13 @@ u32 mempool::normalize_obj_size(u32 objsize)
 	return r;
 }
 
-void* mempool::_alloc()
+void* mempool::_alloc(cpu_id cpuid)
 {
-	const int cpuid = arch::get_cpu_id();
-
 	node* nd = mempool_nodes[cpuid];
 
 	void* r = nd->alloc();
 	if (!r) {
-		page* pg = new_page();
+		page* pg = new_page(cpuid);
 		if (UNLIKELY(!pg))
 			return 0;
 
@@ -250,17 +270,10 @@ void mempool::attach(page* pg)
 		free_pages.insert_head(pg);
 }
 
-mempool::page* mempool::new_page()
-{
-	const int cpuid = arch::get_cpu_id();
-
-	return new_page(cpuid);
-}
-
 mempool::page* mempool::new_page(int cpuid)
 {
 	uptr padr;
-	if (page_alloc(cpuid, page_type, &padr) != cause::OK)
+	if (is_fail(page_alloc(cpuid, page_type, &padr)))
 		return 0;
 
 	void* mem = arch::map_phys_adr(padr, page_size);

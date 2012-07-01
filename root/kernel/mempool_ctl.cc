@@ -98,7 +98,7 @@ cause::type mempool_ctl::exclusived_mempool(
                                 ///<      INVALID を指定すると適当なものが
 				///<      選択される。
     PAGE_STYLE page_style,      ///< [in] ONPAGE/OFFPAGE/ENTRUST を指定する。
-    mempool** mp)               ///< [out] 生成された mempool が返される。
+    mempool** new_mp)           ///< [out] 生成された mempool が返される。
 {
 	cause::type r = decide_params(&objsize, &page_type, &page_style);
 	if (is_fail(r))
@@ -106,10 +106,19 @@ cause::type mempool_ctl::exclusived_mempool(
 
 	mempool* opp = page_style == ONPAGE ? 0 : offpage_mp;
 
-	*mp = new (mempool_mp->alloc()) mempool(objsize, page_type, opp);
+	*new_mp = new (mempool_mp->alloc()) mempool(objsize, page_type, opp);
 
-	if (!*mp)
+	if (!*new_mp)
 		return cause::NOMEM;
+
+	const cpu_id cpu_num = get_cpu_node_count();
+	for (int i = 0; i < cpu_num; ++i) {
+		mempool::node* nd = new (node_mp->alloc(i)) mempool::node;
+		if (!nd)
+			return cause::NOMEM;
+
+		(*new_mp)->set_node(i, nd);
+	}
 
 	return cause::OK;
 }
@@ -229,18 +238,29 @@ cause::type mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 	if (!*new_mp)
 		return cause::NOMEM;
 
+	const cpu_id cpu_num = get_cpu_node_count();
+	for (int i = 0; i < cpu_num; ++i) {
+		mempool::node* nd = new (node_mp->alloc(i)) mempool::node;
+		if (!nd)
+			return cause::NOMEM;
+
+		(*new_mp)->set_node(i, nd);
+	}
+
 	for (mempool* mp = shared_chain.front();
 	     mp;
 	     mp = shared_chain.next(mp))
 	{
 		if (objsize < mp->get_obj_size()) {
 			shared_chain.insert_prev(mp, *new_mp);
+
 			return cause::OK;
 		}
 	}
 
 	shared_chain.insert_tail(*new_mp);
-	return r;
+
+	return cause::OK;
 }
 
 /// @brief  mempool を生成するときのパラメータを決定する。
@@ -302,9 +322,11 @@ cause::type mempool_ctl::decide_params(
 /// mempool に含まれる mempool:node も生成する。
 cause::stype mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 {
+	const int cpuid = arch::get_cpu_id();
+
 	// mempool を作成するための一時的な mempool。
 	mempool tmp_mempool_mp(sizeof (mempool), arch::page::L1, 0);
-	mempool::page* mempool_pg = tmp_mempool_mp.new_page();
+	mempool::page* mempool_pg = tmp_mempool_mp.new_page(cpuid);
 	if (!mempool_pg)
 		return cause::NOMEM;
 
@@ -314,16 +336,14 @@ cause::stype mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 		return cause::NOMEM;
 
 	mempool* mempool_mp = new (mempool_pg->alloc())
-	    mempool(sizeof (mempool::node), arch::page::L1, 0);
+	    mempool(sizeof (mempool), arch::page::L1, 0);
 	if (!mempool_mp)
 		return cause::NOMEM;
 
 	mempool* ctl_mp = new (mempool_pg->alloc())
-	    mempool(sizeof (mempool::node), arch::page::L1, 0);
+	    mempool(sizeof (mempool_ctl), arch::page::L1, 0);
 	if (!ctl_mp)
 		return cause::NOMEM;
-
-	const int cpuid = arch::get_cpu_id();
 
 	const int cpu_num = get_cpu_node_count();
 	for (int i = 0; i < cpu_num; ++i) {

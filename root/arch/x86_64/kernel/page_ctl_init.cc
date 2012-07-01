@@ -21,7 +21,7 @@
 /// それ以降は page_ctl を通してメモリを管理する。
 
 #include "arch.hh"
-#include "bootinfo.hh"
+#include <bootinfo.hh>
 #include "cheap_alloc.hh"
 #include "gv_page.hh"
 #include "log.hh"
@@ -31,7 +31,7 @@
 #include "page_ctl.hh"
 #include <page_pool.hh>
 #include "pagetable.hh"
-#include <processor.hh>
+#include <cpu_node.hh>
 #include "setupdata.hh"
 
 
@@ -73,7 +73,7 @@ const struct {
 /// AVAILABLE でないアドレスも計算に含める。
 u64 search_padr_end()
 {
-	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	const void* src = bootinfo::get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
 	if (src == 0)
 		return 0;
 
@@ -96,9 +96,9 @@ u64 search_padr_end()
 /// @brief  物理的に存在するメモリを調べて tmp_separator に積む。
 /// @retval cause::OK   成功した。
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
-cause::stype load_avail(tmp_separator* heap)
+cause::type load_avail(tmp_separator* heap)
 {
-	const void* src = get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	const void* src = bootinfo::get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
 	if (src == 0)
 		return cause::FAIL;
 
@@ -123,9 +123,9 @@ cause::stype load_avail(tmp_separator* heap)
 /// @brief  前フェーズから使用中のメモリを tmp_alloc から外す。
 /// @retval cause::OK   成功した。
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
-cause::stype load_allocated(tmp_alloc* heap)
+cause::type load_allocated(tmp_alloc* heap)
 {
-	const void* src = get_bootinfo(bootinfo::TYPE_MEMALLOC);
+	const void* src = bootinfo::get_bootinfo(bootinfo::TYPE_MEMALLOC);
 	if (src == 0)
 		return cause::FAIL;
 
@@ -142,7 +142,7 @@ cause::stype load_allocated(tmp_alloc* heap)
 }
 
 /// @brief ヒープを作る。
-cause::stype setup_heap(tmp_alloc* heap)
+cause::type setup_heap(tmp_alloc* heap)
 {
 	tmp_separator sep(heap);
 
@@ -177,11 +177,11 @@ public:
 	page_table_tmpalloc(tmp_alloc* _alloc, tmp_alloc::slot_mask _slotm)
 	    : tmpalloc(_alloc), slotm(_slotm)
 	{}
-	cause::stype alloc(u64* padr);
-	cause::stype free(u64 padr);
+	cause::type alloc(u64* padr);
+	cause::type free(u64 padr);
 };
 
-cause::stype page_table_tmpalloc::alloc(u64* padr)
+cause::type page_table_tmpalloc::alloc(u64* padr)
 {
 	void* p = tmpalloc->alloc(
 	    slotm,
@@ -194,7 +194,7 @@ cause::stype page_table_tmpalloc::alloc(u64* padr)
 	return p != 0 ? cause::OK : cause::NOMEM;
 }
 
-cause::stype page_table_tmpalloc::free(u64 padr)
+cause::type page_table_tmpalloc::free(u64 padr)
 {
 	void* p = reinterpret_cast<void*>(padr);
 
@@ -212,7 +212,7 @@ inline u64 phys_to_virt_2(u64 padr) { return arch::PHYS_MAP_ADR + padr; }
 //
 /// BOOTHEAP だけを使い、padr_end が 6GiB 以上の場合でも
 /// 最大 6GiB まで作成する。
-cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
+cause::type setup_pam1(u64 padr_end, tmp_alloc* heap)
 {
 	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1>
 	    page_table_1;
@@ -227,7 +227,7 @@ cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
 
 	for (uptr padr = 0; padr < padr_end; padr += arch::page::PHYS_L2_SIZE)
 	{
-		const cause::stype r = pg_tbl.set_page(
+		const cause::type r = pg_tbl.set_page(
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
@@ -245,7 +245,7 @@ cause::stype setup_pam1(u64 padr_end, tmp_alloc* heap)
 /// @param[in] heap      Memory allocator.
 /// @retval true  Succeeds.
 /// @retval false Failed.
-cause::stype setup_pam2(u64 padr_end, tmp_alloc* heap)
+cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
 {
 	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_2>
 	    page_table_2;
@@ -261,7 +261,7 @@ cause::stype setup_pam2(u64 padr_end, tmp_alloc* heap)
 	     padr < padr_end;
 	     padr += arch::page::PHYS_L2_SIZE)
 	{
-		const cause::stype r = pg_tbl.set_page(
+		const cause::type r = pg_tbl.set_page(
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
@@ -437,7 +437,7 @@ bool assign_ram(uptr assign_bytes, tmp_alloc* avail_ram, tmp_alloc* node_ram)
 	return true;
 }
 
-cause::stype _proj_free_mem(
+cause::type _proj_free_mem(
     uptr free_adr,               ///< [in] 空きメモリのアドレス
     uptr free_bytes,             ///< [in] 空きメモリのサイズ
     const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
@@ -474,7 +474,7 @@ cause::stype _proj_free_mem(
 //
 /// @retval cause::OK    成功した。
 /// @retval cause::FAIL  node_heap のエントリがあふれた。
-cause::stype proj_free_mem(
+cause::type proj_free_mem(
     const tmp_alloc* heap,       ///< [in] 空きメモリ情報
     const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
           tmp_alloc* node_heap)  ///< [in,out] メモリ割当先ノードのヒープ
@@ -488,7 +488,7 @@ cause::stype proj_free_mem(
 		if (!end)
 			break;
 
-		const cause::stype r =
+		const cause::type r =
 		    _proj_free_mem(adr, bytes, node_ram, node_heap);
 		if (is_fail(r))
 			return r;
@@ -497,7 +497,7 @@ cause::stype proj_free_mem(
 	return cause::OK;
 }
 
-cause::stype load_page_pool(
+cause::type load_page_pool(
     const tmp_alloc* node_ram,
     tmp_alloc* node_heap,
     page_pool* pp)
@@ -645,14 +645,14 @@ cause::type renumber_cpu_ids(const mpspec& mps)
 }  // namespace
 
 
-cause::stype cpupage_init()
+cause::type cpu_page_init()
 {
 	tmp_alloc heap;
 	setup_heap(&heap);
 
 	const u64 padr_end = search_padr_end();
 
-	cause::stype r = setup_pam1(padr_end, &heap);
+	cause::type r = setup_pam1(padr_end, &heap);
 	if (is_fail(r))
 		return r;
 
