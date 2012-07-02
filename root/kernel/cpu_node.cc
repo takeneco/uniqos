@@ -1,8 +1,21 @@
 /// @file   cpu_node.cc
 /// @brief  cpu_node class implementation.
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2012 KATO Takeshi
 //
-// (C) 2012 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cpu_node.hh>
 
@@ -11,6 +24,32 @@
 #include <log.hh>
 #include <page_pool.hh>
 
+#include <native_ops.hh>
+
+/// @class cpu_node
+//
+/// cpu_node の初期化方法
+///
+/// (1) コンストラクタを呼び出す。
+///     割り込み制御が可能になる。
+/// (2) set_page_pool_cnt() と set_page_pool() で page_pool を設定する。
+///     ページ割り当てが可能になる。mempool によるメモリ割り当ても可能。
+/// (3) 各CPU から setup() を呼び出す。
+
+cpu_node::cpu_node() :
+	preempt_disable_nests(0)
+{
+}
+
+cause::type cpu_node::set_page_pool_cnt(int cnt)
+{
+	page_pool_cnt = cnt;
+
+	for (cpu_id i = cnt; i < num_of_array(page_pools); ++i)
+		page_pools[i] = 0;
+
+	return cause::OK;
+}
 
 /// @brief  page_pool を指定する。
 cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
@@ -20,13 +59,12 @@ cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
 	return cause::OK;
 }
 
-cause::type cpu_node::init()
+cause::type cpu_node::setup()
 {
-	preempt_disable_nests = 0;
-
-	cause::type r = arch::cpu_ctl::init();
+	cause::type r = arch::cpu_ctl::setup();
 	if (is_fail(r))
 		return r;
+log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
 	r = thrdctl.init();
 	if (is_fail(r))
@@ -121,27 +159,23 @@ event_item* cpu_node::get_next_intr_event()
 }
 
 
-int get_cpu_node_count()
+cpu_id get_cpu_node_count()
 {
 	return global_vars::gv.cpu_node_cnt;
 }
 
 cpu_node* get_cpu_node()
 {
-	const int id = arch::get_cpu_id();
+	const cpu_id id = arch::get_cpu_id();
 
 	return global_vars::gv.cpu_node_objs[id];
 }
 
-cpu_node* get_cpu_node(int cpuid)
+cpu_node* get_cpu_node(cpu_id cpuid)
 {
 	return global_vars::gv.cpu_node_objs[cpuid];
 }
 
-cpu_node* get_current_cpu()
-{
-	return &global_vars::gv.logical_cpu_obj_array[0];
-}
 
 /// Preemption contorl
 

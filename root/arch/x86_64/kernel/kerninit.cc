@@ -6,6 +6,7 @@
 
 #include "arch.hh"
 #include "bootinfo.hh"
+#include <cpu_node.hh>
 #include "global_vars.hh"
 #include "interrupt_control.hh"
 #include "irq_ctl.hh"
@@ -18,13 +19,12 @@
 #include "setupdata.hh"
 #include "boot_access.hh"
 #include "event_queue.hh"
-#include "placement_new.hh"
+#include <new_ops.hh>
 #include "vga.hh"
 
 #include "memcell.hh"
 
 #include "mempool.hh"
-#include <processor.hh>
 
 
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
@@ -33,7 +33,7 @@ thread* ta;
 thread* tb;
 void testA(void* p)
 {
-	processor* proc = get_current_cpu();
+	cpu_node* proc = get_cpu_node();
 	thread_ctl& tc = proc->get_thread_ctl();
 	for (u32 i=0;;++i) {
 		log()("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
@@ -46,7 +46,7 @@ void testA(void* p)
 
 void testB(void* p)
 {
-	processor* proc = get_current_cpu();
+	cpu_node* proc = get_cpu_node();
 	thread_ctl& tc = proc->get_thread_ctl();
 	for (u32 i=0;;++i) {
 		log()("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
@@ -70,10 +70,6 @@ bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
 class gv_page;
-
-namespace {
-
-}  // End of anonymous namespace
 
 
 void disable_intr_from_8259A()
@@ -123,32 +119,29 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	log_init(0, &vga_dev);
 	log_init(1, &vga_dev);
 
-	cause::stype r = cpupage_init();
-	if (r != cause::OK)
-		return r;
-
-log(1)("eee")();
-	for (;;) native::hlt();
-
-	r = page_ctl_init();
-	if (r != cause::OK)
+	cause::type r = cpu_page_init();
+	if (is_fail(r))
 		return r;
 
 	global_vars::gv.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
-	global_vars::gv.mempool_ctl_obj->init();
-	if (r != cause::OK)
+	r = mempool_init();
+	if (is_fail(r))
 		return r;
 
 	disable_intr_from_8259A();
 
-	r = cpu_init();
-	if (r != cause::OK)
+	r = cpu_common_init();
+	if (is_fail(r))
 		return r;
 
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+	r = cpu_setup();
+	if (is_fail(r))
+		return r;
+log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
+
+	thread_ctl& tc = get_cpu_node()->get_thread_ctl();
 
 	tc.set_event_thread(tc.get_running_thread());
 
@@ -179,15 +172,6 @@ log(1)("eee")();
 	log()("clock=").u(get_clock())();
 	log()("clock=").u(get_clock())();
 
-	const mpspec* mps = get_current_cpu()->get_shared()->get_mpspec();
-	mpspec::processor_iterator proc_itr(mps);
-	for (;;) {
-		const mpspec::processor_entry* pe = proc_itr.get_next();
-		if (!pe)
-			break;
-
-		log()("cpu : ").u(pe->localapic_id)();
-	}
 
 	lapic_post_init_ipi();
 	u64 initipi_clock = get_clock();
@@ -209,7 +193,10 @@ log(1)("eee")();
 	ap_param* app = (ap_param*)up_align<uptr>((uptr)&dest[apboot_size], 8);
 	app->pml4 = native::get_cr3();
 	app->entry_point = (u64)apentry;
-	mempool* stackmp = mempool_create_shared(0x2000);
+	mempool* stackmp;
+	r = mempool_create_shared(0x2000, &stackmp);
+	if (is_fail(r))
+		return r;
 	u8* apstack = (u8*)stackmp->alloc();
 	app->stack = apstack + 0x2000;
 

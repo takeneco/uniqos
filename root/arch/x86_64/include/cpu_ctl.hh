@@ -6,7 +6,6 @@
 #ifndef ARCH_X86_64_KERNEL_CPU_CTL_HH_
 #define ARCH_X86_64_KERNEL_CPU_CTL_HH_
 
-#include "basic_types.hh"
 #include "cpu_idte.hh"
 #include "mpspec.hh"
 #include "regset.hh"
@@ -14,27 +13,13 @@
 
 class thread;
 class cpu_node;
+
 namespace arch {
 
 cpu_node* get_current_cpu();
 
 }  // namespace arch
 
-
-class cpu_share
-{
-public:
-	cpu_share();
-
-	cause::stype init();
-
-	const mpspec* get_mpspec() const {
-		return &mps;
-	}
-
-private:
-	mpspec mps;
-};
 
 // call by cpu_ctl::IDT
 cause::type intr_init(idte* idt);
@@ -47,14 +32,13 @@ class cpu_ctl
 public:
 	class IDT;
 
+protected:
 	cpu_ctl() : original_lapic_id(-1) {}
 
-	cause::stype init();
-	cause::stype load(cpu_share* sh);
+	cause::type setup();
 
+public:
 	void set_running_thread(thread* t);
-
-	const cpu_share* get_shared() { return shared; }
 
 	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
 	u8 get_original_lapic_id() const { return original_lapic_id; }
@@ -63,7 +47,9 @@ public:
 	}
 
 private:
-	void* write_ist_layout(void* mem);
+	cause::type setup_tss();
+	cause::type setup_gdt();
+	void* ist_layout(void* mem);
 
 public:
 	/// Global Descriptor Table Entry
@@ -267,7 +253,6 @@ public:
 	TSS tss;
 
 	arch::regset* running_thread_regset;
-	cpu_share* shared;
 
 	u8 original_lapic_id;
 };

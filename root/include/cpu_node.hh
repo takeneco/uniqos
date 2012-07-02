@@ -16,20 +16,18 @@
 
 class page_pool;
 
-/// Architecture independent part of processor control.
+/// Architecture independent part of cpu control.
 class cpu_node : public arch::cpu_ctl
 {
 	DISALLOW_COPY_AND_ASSIGN(cpu_node);
 
 public:
-	cpu_node() {}
+	cpu_node();
 
-	cause::type set_page_pool_cnt(int cnt) {
-		page_pool_cnt = cnt;
-		return cause::OK;
-	}
+	cause::type set_page_pool_cnt(int cnt);
 	cause::type set_page_pool(int pri, page_pool* pp);
-	cause::stype init();
+
+	cause::type setup();
 	bool run_all_intr_event();
 
 	void preempt_disable();
@@ -62,17 +60,17 @@ private:
 
 	event_queue soft_evq;
 
-	int        page_pool_cnt;
+	cpu_id     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];
 };
 
-int get_cpu_node_count();
+cpu_id get_cpu_node_count();
 cpu_node* get_cpu_node();
-cpu_node* get_cpu_node(int cpuid);
-cpu_node* get_current_cpu();
+cpu_node* get_cpu_node(cpu_id cpuid);
 
 void preempt_enable();
 void preempt_disable();
 
 
-#endif  // include guards
+#endif  // include guard
+
