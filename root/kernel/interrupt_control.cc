@@ -1,30 +1,32 @@
 /// @file   interrupt_control.cc
 /// @brief  interrupt.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
-#include "arch_specs.hh"
 #include "global_vars.hh"
 #include "interrupt_control.hh"
+#include <mempool.hh>
+#include <new_ops.hh>
 
 #include "log.hh"
 
+
 /// @brief 割り込み発生時に呼ばれる。
 /// @param vec 割り込みベクタ。
-extern "C" void on_interrupt(arch::intr_vec index)
+extern "C" void on_interrupt(arch::intr_id index)
 {
-	global_vars::gv.intr_ctl_obj->call_interrupt(index);
+	global_vars::core.intr_ctl_obj->call_interrupt(index);
 }
 
 
-cause::stype intr_ctl::init()
+cause::type intr_ctl::init()
 {
 	return cause::OK;
 }
 
-cause::stype
-intr_ctl::add_handler(arch::intr_vec vec, interrupt_handler* h)
+cause::type
+intr_ctl::add_handler(arch::intr_id vec, interrupt_handler* h)
 {
 	if (vec > arch::INTR_UPPER)
 		return cause::INVALID_PARAMS;
@@ -37,16 +39,13 @@ intr_ctl::add_handler(arch::intr_vec vec, interrupt_handler* h)
 	return cause::OK;
 }
 
-cause::stype
-intr_ctl::set_post_handler(arch::intr_vec vec, post_intr_handler h)
+cause::type
+intr_ctl::set_post_handler(arch::intr_id vec, post_intr_handler h)
 {
 	handler_table[vec].post_handler = h;
 
 	return cause::OK;
 }
-
-#include "log.hh"
-
 
 void intr_ctl::call_interrupt(u32 vector)
 {
@@ -61,5 +60,20 @@ void intr_ctl::call_interrupt(u32 vector)
 
 	if (it.post_handler)
 		handler_table[vector].post_handler();
+}
+
+cause::type intr_setup()
+{
+	intr_ctl* intrc = new (mem_alloc(sizeof (intr_ctl))) intr_ctl;
+	if (!intrc)
+		return cause::NOMEM;
+
+	global_vars::core.intr_ctl_obj = intrc;
+
+	cause::type r = intrc->init();
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
 }
 

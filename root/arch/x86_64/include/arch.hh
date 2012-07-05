@@ -12,6 +12,11 @@
 
 namespace arch {
 
+typedef u32 _cpu_id;
+typedef u64 _cpuword;
+
+typedef u8 intr_id;
+
 enum {
 	BITS_PER_BYTE = 8,
 
@@ -129,5 +134,9 @@ void halt();
 
 }  // namespace arch
 
+typedef arch::_cpu_id cpu_id;
+typedef arch::_cpuword cpuword;
+
 
 #endif  // include guard
+

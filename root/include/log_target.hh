@@ -6,7 +6,7 @@
 #ifndef INCLUDE_LOG_TARGET_HH_
 #define INCLUDE_LOG_TARGET_HH_
 
-#include "file.hh"
+#include <file.hh>
 
 
 class log_target;
@@ -138,6 +138,8 @@ public:
 		write("\r\n", 2);
 		return *this;
 	}
+	// src(SRCPOS)
+#define SRCPOS  __FILE__,__LINE__,__func__
 	log_target& src(const char* path, int line, const char* func) {
 		log_wr_src(this, path, line, func);
 		return *this;

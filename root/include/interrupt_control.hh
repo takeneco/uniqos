@@ -1,6 +1,6 @@
 /// @file  interrupt_control.hh
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #ifndef INCLUDE_INTERRUPT_CONTROL_HH_
@@ -30,6 +30,7 @@ class intr_ctl
 	typedef
 	    chain<interrupt_handler, &interrupt_handler::chain_hook>
 	    intr_handler_chain;
+
 	typedef void (* post_intr_handler)();
 
 	struct intr_task
@@ -47,12 +48,12 @@ public:
 	intr_ctl() {}
 
 	cause::stype init();
-	cause::stype add_handler(arch::intr_vec vec, interrupt_handler* h);
-	cause::stype set_post_handler(arch::intr_vec vec, post_intr_handler h);
+	cause::stype add_handler(arch::intr_id vec, interrupt_handler* h);
+	cause::stype set_post_handler(arch::intr_id vec, post_intr_handler h);
 	void call_interrupt(u32 vector);
 };
 
-extern "C" void on_interrupt(arch::intr_vec index);
+extern "C" void on_interrupt(arch::intr_id index);
 
 
 #endif  // include guard

@@ -14,7 +14,6 @@
 namespace arch
 {
 
-typedef u8 intr_vec;
 enum {
 	INTR_UPPER = 0x5f,
 	INTR_COUNT = INTR_UPPER + 1,

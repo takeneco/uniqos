@@ -7,15 +7,17 @@
 #ifndef ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
 #define ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
 
+#include <arch.hh> // cpu_id
 #include <config.h>
 
 
-class cpu_share;
-class processor;
+class cpu_ctl_common;
+class irq_ctl;
+class cpu_node;
+class page_pool;
 class gv_page;
 namespace arch {
 class page_ctl;
-class irq_ctl;
 }  // namespace arch
 class intr_ctl;
 class memcache_control;
@@ -30,13 +32,8 @@ namespace global_vars {
 
 struct _vars
 {
-	cpu_share*         cpu_share_obj;
-	processor*       logical_cpu_obj_array;
 	gv_page*           gv_page_obj;
 	arch::page_ctl*    page_ctl_obj;
-	mempool_ctl*     mempool_ctl_obj;
-	arch::irq_ctl*   irq_ctl_obj;
-	intr_ctl*        intr_ctl_obj;
 
 	memcache_control*  memcache_ctl;
 	core_class*      core;
@@ -44,13 +41,37 @@ struct _vars
 
 	resource_spec*     rc_spec;
 	void* bootinfo;
-
-	int                processor_cnt;
-	processor*         processor_objs[CONFIG_MAX_CPUS];
 };
 
 
 extern _vars gv;
+
+struct _arch
+{
+	cpu_ctl_common*    cpu_ctl_common_obj;
+	irq_ctl*           irq_ctl_obj;
+};
+
+extern _arch arch;
+
+struct _core
+{
+	/// page_pool_objs のエントリ数
+	int                page_pool_cnt;
+
+	page_pool**        page_pool_objs;
+
+	mempool_ctl*       mempool_ctl_obj;
+	intr_ctl*          intr_ctl_obj;
+
+	/// カーネルが認識している CPU の数
+	/// @note システムに搭載されている CPU の数ではない
+	cpu_id             cpu_node_cnt;
+
+	cpu_node*          cpu_node_objs[CONFIG_MAX_CPUS];
+};
+
+extern _core core;
 
 }  // namespace global_vars
 

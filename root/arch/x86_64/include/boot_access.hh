@@ -64,61 +64,6 @@
 #define SETUP_FREEMEM_DUMP           0x0400
 /// Setupフェーズ終了後の使用メモリ情報
 #define SETUP_USEDMEM_DUMP           0x0500
-/// MP Floating Pointer Structure raw copy(16 bytes)
-#define SETUP_MP_FLOATING_POINTER    0x0600
-/// MP Configuration Table Header raw copy
-#define SETUP_MP_CONFIGURATION_TABLE 0x0610
-
-/// Full kernel load address by bootloader.
-#define SETUP_KERN_ADR             0x100000
-
-/// Kernel extract temporaly address.
-#define KERN_EXTTMP_ADR          0x00200000
-#define KERN_EXTTMP_SIZE         0x00100000
-
-/// Kernel constantly use paging table.
-/// @{
-/// Page Directory Pointer Table Entry (1MiB).
-#define KERN_PDPTE_PADR          0x01000000
-/// Page Directry Entry (size variable).
-#define KERN_PDE_PADR            0x01100000
-/// @}
-
-/// Reserved memory address from 0.
-/// - 0x0100000:0x0ffffff for legacy device dma use.
-/// - 0x1000000:0x10fffff for PDPTE kernel area.
-#define SETUP_MEMMGR_RESERVED_PADR 0x010fffff
-
-/// Finally kernel execute virtual address.
-#define KERN_FINAL_VADR  0xffffffff00000000
-#define KERN_FINAL_SIZE  0x0000000100000000
-
-
-#ifndef ASM_SOUCE
-
-#include "basic_types.hh"
-
-// setup data access methods.
-
-template<class T> inline T setup_get_value(u64 off) {
-	return *reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
-template<class T> inline void setup_set_value(u64 off, T val) {
-	*reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off) = val;
-}
-template<class T> inline T* setup_get_ptr(u64 off) {
-	return reinterpret_cast<T*>((SETUP_DATA_SEG << 4) + off);
-}
-
-// free memory info.
-
-struct setup_memory_dumpdata
-{
-	u64 head;
-	u64 bytes;
-};
-
-#endif  // ASM_SOURCE
 
 
 #endif  // include guard

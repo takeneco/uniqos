@@ -30,6 +30,8 @@ typedef s16_ harf_sptr_;
 typedef s64_ smax_;
 typedef u64_ umax_;
 
+const uptr_ UPTR_MAX = 0xffffffff;
+
 #  define suffix_u32(n)   n
 #  define suffix_u64(n)   n ## ULL
 #  define suffix_uptr(n)  suffix_u32(n)
@@ -55,6 +57,8 @@ typedef u32_ harf_uptr_;
 typedef s32_ harf_sptr_;
 typedef s64_ smax_;
 typedef u64_ umax_;
+
+const uptr_ UPTR_MAX = 0xffffffffffffffffUL;
 
 #  define suffix_u32(n)   n
 #  define suffix_u64(n)   n ## UL

@@ -15,6 +15,16 @@
 class log_target;
 class mempool_ctl;
 
+/// @brief 同じサイズのメモリブロックの割り当てを管理する。
+///        スラブアロケータのようなもの。
+//
+/// 初期化方法
+/// (1) コンストラクタを呼び出す。
+/// (2) cpu_node の数だけ set_node() を呼び出して node を設定する。
+///     node は cpu_node に対応する領域を割り当てるべき。
+///
+/// mempool_ctl 経由で mempool を生成すれば、node の生成には
+/// mempool_ctl::node_mp を使う。
 class mempool
 {
 	friend class mempool_ctl;
@@ -31,6 +41,7 @@ public:
 	sptr get_alloc_count() const { return alloc_count; }
 
 	void* alloc();
+	void* alloc(cpu_id cpuid);
 	void dealloc(void* ptr);
 	void collect_free_pages();
 
@@ -124,11 +135,10 @@ private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 	static u32 normalize_obj_size(u32 objsize);
 
-	void* _alloc();
+	void* _alloc(cpu_id cpuid);
 	void _dealloc(void* ptr);
 
 	void attach(page* pg);
-	page* new_page();
 	page* new_page(int cpuid);
 	void delete_page(page* pg);
 	void back_to_page(memobj* obj);

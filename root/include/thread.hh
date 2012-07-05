@@ -11,7 +11,7 @@
 #include <regset.hh>
 
 
-class processor;
+class cpu_node;
 
 class thread
 {
@@ -20,7 +20,7 @@ class thread
 	friend class thread_ctl;
 
 public:
-	thread(processor* _owner,
+	thread(cpu_node* _owner,
 	    uptr text, uptr param, uptr stack, uptr stack_size);
 
 	void ready();
@@ -31,7 +31,7 @@ public:
 
 private:
 	bichain_node<thread> _chain_node;
-	processor* owner;
+	cpu_node* owner;
 
 	arch::regset rs;
 
