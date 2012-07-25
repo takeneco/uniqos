@@ -17,7 +17,7 @@ class thread
 {
 	DISALLOW_COPY_AND_ASSIGN(thread);
 
-	friend class thread_ctl;
+	friend class thread_queue;
 
 public:
 	thread(cpu_node* _owner,
@@ -41,7 +41,9 @@ private:
 	} state;
 
 	bool sleep_cancel_cmd;
+	bool anti_sleep_flag;
 };
 
 
 #endif  // include guard
+

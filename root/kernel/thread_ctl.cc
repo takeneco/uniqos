@@ -1,15 +1,15 @@
-// @file   thread_ctl.cc
-// @brief  thread_ctl class implements.
+// @file   thread_queue.cc
+// @brief  thread_queue class implements.
 //
 // (C) 2012 KATO Takeshi
 //
 
-#include <thread_ctl.hh>
+#include <thread_queue.hh>
 
 #include <global_vars.hh>
 #include <mempool.hh>
 #include <placement_new.hh>
-#include <processor.hh>
+#include <cpu_node.hh>
 
 #include <log.hh>
 #include <native_ops.hh>
@@ -22,31 +22,31 @@ const uptr STACK_SIZE = 0x1000;
 }
 
 
-thread_ctl::thread_ctl() :
+thread_queue::thread_queue(cpu_node* _owner) :
+	owner_cpu(_owner),
 	thread_mempool(0),
 	stack_mempool(0)
 {
 }
 
-cause::stype thread_ctl::init()
+cause::type thread_queue::init()
 {
-	mempool* mp = mempool_create_shared(sizeof (thread));
-	if (!mp)
-		return cause::NOMEM;
-	thread_mempool = mp;
+	cause::type r = mempool_create_shared(sizeof (thread), &thread_mempool);
+	if (is_fail(r))
+		return r;
 
-	mp = mempool_create_shared(STACK_SIZE);
-	if (!mp)
-		return cause::NOMEM;
-	stack_mempool = mp;
+	r = mempool_create_shared(STACK_SIZE, &stack_mempool);
+	if (is_fail(r))
+		return r;
 
-	thread* current = static_cast<thread*>(thread_mempool->alloc());
+	thread* current = new (thread_mempool->alloc()) thread(get_cpu_node(),
+	    0, 0, 0, 0);
 	running_thread = current;
 
 	return cause::OK;
 }
 
-cause::stype thread_ctl::create_thread(
+cause::type thread_queue::create_thread(
     uptr text, uptr param, thread** newthread)
 {
 	void* stack = stack_mempool->alloc();
@@ -55,11 +55,11 @@ cause::stype thread_ctl::create_thread(
 
 	void* p = thread_mempool->alloc();
 	if (!p) {
-		stack_mempool->free(stack);
+		stack_mempool->dealloc(stack);
 		return cause::NOMEM;
 	}
 
-	thread* t = new (p) thread(&global_vars::gv.logical_cpu_obj_array[0],
+	thread* t = new (p) thread(get_cpu_node(),
 	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
 
 	t->state = thread::SLEEPING;
@@ -70,7 +70,7 @@ cause::stype thread_ctl::create_thread(
 	return cause::OK;
 }
 
-cause::stype thread_ctl::wakeup(thread* t)
+cause::type thread_queue::wakeup(thread* t)
 {
 	if (t->state == thread::READY)
 		return cause::OK;
@@ -85,128 +85,81 @@ cause::stype thread_ctl::wakeup(thread* t)
 
 extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
 
-void thread_ctl::manual_switch()
+/// @brief  呼び出し元スレッドは READY のままでスレッドを切り替える。
+/// @retval true スレッド切り替えの後、実行順が戻ってきた。
+/// @retval false 切り替えるスレッドがなかった。
+/// @note preempt_enable / intr_enable の状態で呼び出す必要がある。
+bool thread_queue::force_switch_thread()
 {
-	thread* prev_run = running_thread;
+	thread* prev_thr = running_thread;
 
-	thread* next_run = ready_queue.remove_head();
-	if (!next_run)
-		return;
+	thread* next_thr = ready_queue.remove_head();
+	if (!next_thr)
+		return false;
 
 	ready_queue.insert_tail(running_thread);
 
-	running_thread = next_run;
+	running_thread = next_thr;
 
-	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
+	switch_regset(next_thr->ref_regset(), prev_thr->ref_regset());
+
+	return true;
 }
 
-void thread_ctl::sleep_running_thread()
+/// @brief  running_thread を SLEEPING にする。
+void thread_queue::sleep()
 {
 	thread* prev_run = running_thread;
 
-	processor& cpu = global_vars::gv.logical_cpu_obj_array[0];
+	arch::intr_disable();
 
-	preempt_disable();
-
-	if (prev_run->sleep_cancel_cmd == true) {
-		prev_run->sleep_cancel_cmd = false;
-		preempt_enable();
+	if (prev_run->anti_sleep_flag == true) {
+		prev_run->anti_sleep_flag = false;
+		arch::intr_enable();
 		return;
 	}
 
-	volatile thread::STATE* state = &prev_run->state;
-	*state = thread::SLEEPING;
+	prev_run->state = thread::SLEEPING;
 	sleeping_queue.insert_tail(prev_run);
 
-	thread* next_run;
-	for (;;) {
-		next_run = ready_queue.remove_head();
-		if (next_run)
-			break;
-
-		running_thread = 0;
-		asm volatile ("sti;hlt":::"memory");
-
-		if (*state == thread::READY) {
-			return;
-		} else {
-			continue;
-		}
-	}
+	thread* next_run = ready_queue.remove_head();
+	// message_thread は常に READY なので、next_run は 0 にならない。
 
 	running_thread = next_run;
-
-	cpu.set_running_thread(next_run);
+	owner_cpu->set_running_thread(next_run);
 	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
 
-	preempt_enable();
+	arch::intr_enable();
 }
 
-void thread_ctl::ready_thread(thread* t)
+void thread_queue::ready(thread* t)
 {
-	native::cli();
+	preempt_disable_section _pds;
 
-	if (t->state == thread::SLEEPING) {
-		sleeping_queue.remove(t);
-		ready_queue.insert_tail(t);
-		t->state = thread::READY;
-	} else {
-		t->sleep_cancel_cmd = true;
-	}
-
-	native::sti();
+	_ready(t);
 }
 
-void thread_ctl::switch_thread_after_intr(thread* t)
+void thread_queue::ready_np(thread* t)
 {
-	if (running_thread)
-		ready_queue.insert_tail(running_thread);
+	_ready(t);
+}
+
+void thread_queue::switch_thread_after_intr(thread* t)
+{
+	ready_queue.insert_tail(running_thread);
 
 	ready_queue.remove(t);
 	running_thread = t;
 
-	processor& cpu = global_vars::gv.logical_cpu_obj_array[0];
-	cpu.set_running_thread(t);
+	owner_cpu->set_running_thread(t);
 }
 
-void thread_ctl::switch_messenger_thread_after_intr()
+void thread_queue::_ready(thread* t)
 {
-	ready_event_thread_in_intr();
-	switch_thread_after_intr(event_thread);
-}
-
-void thread_ctl::ready_event_thread()
-{
-	thread* t = event_thread;
-
-	native::cli();
-
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);
 		ready_queue.insert_tail(t);
 		t->state = thread::READY;
-	} else {
-		t->sleep_cancel_cmd = true;
-	}
-
-	native::sti();
-}
-
-void thread_ctl::ready_event_thread_in_intr()
-{
-	thread* t = event_thread;
-
-	if (t->state == thread::SLEEPING) {
-		t->state = thread::READY;
-		sleeping_queue.remove(t);
-
-//		if (running_thread == 0) {
-//			running_thread = t;
-//			global_vars::gv.logical_cpu_obj_array[0]
-//			    .set_running_thread(t);
-//		} else {
-			ready_queue.insert_tail(t);
-//		}
 	} else {
 		t->sleep_cancel_cmd = true;
 	}

@@ -1,27 +1,41 @@
 // @file   thread.cc
 // @brief  thread class implements.
-//
-// (C) 2012 KATO Takeshi
-//
 
-#include <processor.hh>
+//  UNIQOS  --  Unique Operating System
+//  (C) 2012 KATO Takeshi
+//
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <cpu_node.hh>
 
 
 thread::thread(
-    processor* _owner,
+    cpu_node* _owner,
     uptr text,
     uptr param,
     uptr stack,
     uptr stack_size
 ) :
 	owner(_owner),
-	rs(text, param, stack, stack_size)
+	rs(text, param, stack, stack_size),
+	anti_sleep_flag(false)
 {
 	sleep_cancel_cmd = false;
 }
 
 void thread::ready()
 {
-	owner->get_thread_ctl().ready_thread(this);
+	owner->get_thread_ctl().ready(this);
 }
 

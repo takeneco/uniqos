@@ -22,7 +22,7 @@
 #include <cpu_node.hh>
 #include <global_vars.hh>
 #include <log.hh>
-#include <placement_new.hh>
+#include <new_ops.hh>
 
 
 void* mem_alloc(u32 bytes)
@@ -72,7 +72,7 @@ cause::type mempool_ctl::shared_mempool(u32 objsize, mempool** mp)
 
 	mempool* _mp = find_shared(objsize);
 
-	if (!mp) {
+	if (!_mp) {
 		cause::type r = create_shared(objsize, &_mp);
 		if (is_fail(r))
 			return r;
@@ -95,8 +95,8 @@ void mempool_ctl::release_shared_mempool(mempool* mp)
 cause::type mempool_ctl::exclusived_mempool(
     u32 objsize,                ///< [in] オブジェクトサイズ。
     arch::page::TYPE page_type, ///< [in] ページタイプを指定する。
-                                ///<      INVALID を指定すると適当なものが
-				///<      選択される。
+                                ///<      INVALID を指定すると適当
+                                ///<      選択される。
     PAGE_STYLE page_style,      ///< [in] ONPAGE/OFFPAGE/ENTRUST を指定する。
     mempool** new_mp)           ///< [out] 生成された mempool が返される。
 {
@@ -112,7 +112,7 @@ cause::type mempool_ctl::exclusived_mempool(
 		return cause::NOMEM;
 
 	const cpu_id cpu_num = get_cpu_node_count();
-	for (int i = 0; i < cpu_num; ++i) {
+	for (cpu_id i = 0; i < cpu_num; ++i) {
 		mempool::node* nd = new (node_mp->alloc(i)) mempool::node;
 		if (!nd)
 			return cause::NOMEM;
@@ -239,7 +239,7 @@ cause::type mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 		return cause::NOMEM;
 
 	const cpu_id cpu_num = get_cpu_node_count();
-	for (int i = 0; i < cpu_num; ++i) {
+	for (cpu_id i = 0; i < cpu_num; ++i) {
 		mempool::node* nd = new (node_mp->alloc(i)) mempool::node;
 		if (!nd)
 			return cause::NOMEM;
@@ -320,7 +320,7 @@ cause::type mempool_ctl::decide_params(
 //
 /// mempool を使って mempool_ctl を生成するために、mempool も生成する。
 /// mempool に含まれる mempool:node も生成する。
-cause::stype mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
+cause::type mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 {
 	const int cpuid = arch::get_cpu_id();
 

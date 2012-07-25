@@ -28,30 +28,45 @@ public:
 	cause::type set_page_pool(int pri, page_pool* pp);
 
 	cause::type setup();
+
+	cause::type start_message_loop();
+	void ready_messenger();
+	void ready_messenger_np();
+	void switch_messenger_after_intr();
+
 	bool run_all_intr_event();
 
-	void preempt_disable();
-	void preempt_enable();
+	u8   inc_preempt_disable() { return ++preempt_disable_cnt; }
+	u8   dec_preempt_disable() { return --preempt_disable_cnt; }
 
 	void post_intr_event(event_item* ev);
 	void post_soft_event(event_item* ev);
 
-	void sleep_current_thread() { thrdctl.sleep_running_thread(); }
-
-	thread_ctl& get_thread_ctl() { return thrdctl; }
+	thread_queue& get_thread_ctl() { return thread_q; }
 	event_queue& get_soft_evq() { return soft_evq; }
 
 	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
 	cause::type page_dealloc(arch::page::TYPE page_type, uptr padr);
 
 private:
+	static void preempt_wait();
+
 	bool probe_intr_event();
 	event_item* get_next_intr_event();
 
-private:
-	u8 preempt_disable_nests;
+	bool run_message();
+	void message_loop();
+	static void message_loop_entry(void* _cpu_node);
 
-	thread_ctl thrdctl;
+private:
+
+#if CONFIG_PREEMPT
+	s8 preempt_disable_cnt;
+#endif  // CONFIG_PREEMPT
+
+	thread_queue thread_q;
+
+	thread* message_thread;
 
 	/// 外部割込みによって発生したイベントを溜める。
 	/// intr_evq を操作するときは CPU が割り込み禁止状態になっていなければ
@@ -68,8 +83,24 @@ cpu_id get_cpu_node_count();
 cpu_node* get_cpu_node();
 cpu_node* get_cpu_node(cpu_id cpuid);
 
-void preempt_enable();
 void preempt_disable();
+void preempt_enable();
+
+class preempt_disable_section
+{
+	cpu_node* cn;
+public:
+	preempt_disable_section();
+	~preempt_disable_section();
+};
+
+class preempt_enable_section
+{
+	cpu_node* cn;
+public:
+	preempt_enable_section();
+	~preempt_enable_section();
+};
 
 
 #endif  // include guard

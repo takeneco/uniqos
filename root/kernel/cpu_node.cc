@@ -1,15 +1,15 @@
 /// @file   cpu_node.cc
 /// @brief  cpu_node class implementation.
 
-//  Uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2012 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -24,7 +24,6 @@
 #include <log.hh>
 #include <page_pool.hh>
 
-#include <native_ops.hh>
 
 /// @class cpu_node
 //
@@ -37,7 +36,8 @@
 /// (3) 各CPU から setup() を呼び出す。
 
 cpu_node::cpu_node() :
-	preempt_disable_nests(0)
+	preempt_disable_cnt(0),
+	thread_q(this)
 {
 }
 
@@ -64,20 +64,49 @@ cause::type cpu_node::setup()
 	cause::type r = arch::cpu_ctl::setup();
 	if (is_fail(r))
 		return r;
-log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
-	r = thrdctl.init();
+	r = thread_q.init();
 	if (is_fail(r))
 		return r;
 
-	arch::cpu_ctl::set_running_thread(thrdctl.get_running_thread());
+	arch::cpu_ctl::set_running_thread(thread_q.get_running_thread());
 
 	return cause::OK;
 }
 
+cause::type cpu_node::start_message_loop()
+{
+	cause::type r = thread_q.create_thread(
+	    &cpu_node::message_loop_entry, this, &message_thread);
+	if (is_fail(r))
+		return r;
+
+	r = thread_q.wakeup(message_thread);
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
+}
+
+void cpu_node::ready_messenger()
+{
+	thread_q.ready(message_thread);
+}
+
+void cpu_node::ready_messenger_np()
+{
+	thread_q.ready_np(message_thread);
+}
+
+void cpu_node::switch_messenger_after_intr()
+{
+	thread_q.switch_thread_after_intr(message_thread);
+}
+
 /// @brief 外部割込みからのイベントをすべて処理する。
-//
-/// 割り込み禁止状態で呼び出す必要がある。
+/// @retval true  何らかのメッセージを処理した。
+/// @retval false 処理するメッセージがなかった。
+/// @note  preempt_disable の状態で呼び出す必要がある。
 bool cpu_node::run_all_intr_event()
 {
 	if (!probe_intr_event())
@@ -93,20 +122,9 @@ bool cpu_node::run_all_intr_event()
 	return true;
 }
 
-void cpu_node::preempt_disable()
+void cpu_node::preempt_wait()
 {
-#if CONFIG_PREEMPT
-	arch::intr_disable();
-	++preempt_disable_nests;
-#endif  // CONFIG_PREEMPT
-}
-
-void cpu_node::preempt_enable()
-{
-#if CONFIG_PREEMPT
-	if (--preempt_disable_nests == 0)
-		arch::intr_enable();
-#endif  // CONFIG_PREEMPT
+	arch::intr_wait();
 }
 
 /// @brief 外部割込みからのイベントを登録する。
@@ -115,11 +133,17 @@ void cpu_node::preempt_enable()
 void cpu_node::post_intr_event(event_item* ev)
 {
 	intr_evq.push(ev);
+	thread_q.ready_np(message_thread);
 }
 
 void cpu_node::post_soft_event(event_item* ev)
 {
+	preempt_enable();
+
 	soft_evq.push(ev);
+	thread_q.ready_np(message_thread);
+
+	preempt_disable();
 }
 
 cause::type cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
@@ -158,38 +182,137 @@ event_item* cpu_node::get_next_intr_event()
 	return intr_evq.pop();
 }
 
+/// @brief  メッセージを１つだけ処理する。
+/// @retval true  メッセージを処理した。
+/// @retval false 処理するメッセージがなかった。
+/// @note  preempt_disable の状態で呼び出す必要がある。
+bool cpu_node::run_message()
+{
+	event_queue& evq = get_soft_evq();
+
+	if (!evq.probe())
+		return false;
+
+	event_item* event = evq.pop();
+
+	event->handler(event->param);
+
+	return true;
+}
+
+void cpu_node::message_loop()
+{
+	for (;;) {
+		arch::intr_enable();
+		arch::intr_disable();
+
+		if (run_all_intr_event())
+			continue;
+
+		if (run_message())
+			continue;
+
+		if (thread_q.force_switch_thread())
+			continue;
+
+		arch::intr_wait();
+	}
+}
+
+void cpu_node::message_loop_entry(void* _cpu_node)
+{
+	static_cast<cpu_node*>(_cpu_node)->message_loop();
+}
+
 
 cpu_id get_cpu_node_count()
 {
-	return global_vars::gv.cpu_node_cnt;
+	return global_vars::core.cpu_node_cnt;
 }
 
 cpu_node* get_cpu_node()
 {
 	const cpu_id id = arch::get_cpu_id();
 
-	return global_vars::gv.cpu_node_objs[id];
+	return global_vars::core.cpu_node_objs[id];
 }
 
 cpu_node* get_cpu_node(cpu_id cpuid)
 {
-	return global_vars::gv.cpu_node_objs[cpuid];
+	return global_vars::core.cpu_node_objs[cpuid];
 }
 
 
 /// Preemption contorl
 
-void preempt_enable()
-{
-#if CONFIG_PREEMPT
-	arch::intr_enable();
-#endif  // CONFIG_PREEMPT
-}
-
 void preempt_disable()
 {
 #if CONFIG_PREEMPT
+
 	arch::intr_disable();
+
+	get_cpu_node()->inc_preempt_disable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+void preempt_enable()
+{
+#if CONFIG_PREEMPT
+
+	if (get_cpu_node()->dec_preempt_disable() == 0)
+		arch::intr_enable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+preempt_disable_section::preempt_disable_section()
+{
+#if CONFIG_PREEMPT
+
+	arch::intr_disable();
+
+	cn = get_cpu_node();
+
+	cn->inc_preempt_disable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+preempt_disable_section::~preempt_disable_section()
+{
+#if CONFIG_PREEMPT
+
+	if (cn->dec_preempt_disable() == 0)
+	{
+		arch::intr_enable();
+	}
+
+#endif  // CONFIG_PREEMPT
+}
+
+preempt_enable_section::preempt_enable_section()
+{
+#if CONFIG_PREEMPT
+
+	cn = get_cpu_node();
+
+	if (cn->dec_preempt_disable() == 0)
+	{
+		arch::intr_enable();
+	}
+
+#endif  // CONFIG_PREEMPT
+}
+
+preempt_enable_section::~preempt_enable_section()
+{
+#if CONFIG_PREEMPT
+
+	arch::intr_disable();
+
+	cn->inc_preempt_disable();
+
 #endif  // CONFIG_PREEMPT
 }
 

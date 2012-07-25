@@ -1,15 +1,15 @@
 /// @file  mempool.cc
 /// @brief Memory pooler.
 
-//  Uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2011-2012 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -75,39 +75,29 @@ cause::stype mempool::destroy()
 
 void* mempool::alloc()
 {
-	const cpu_id cpuid = arch::get_cpu_id();
-	cpu_node* proc = get_cpu_node(cpuid);
+	preempt_disable_section _pds;
 
-	proc->preempt_disable();
+	const cpu_id cpuid = arch::get_cpu_id();
 
 	void* r = _alloc(cpuid);
-
-	proc->preempt_enable();
 
 	return r;
 }
 
 void* mempool::alloc(cpu_id cpuid)
 {
-	cpu_node* proc = get_cpu_node();
-
-	proc->preempt_disable();
+	preempt_disable_section _pds;
 
 	void* r = _alloc(cpuid);
-
-	proc->preempt_enable();
 
 	return r;
 }
 
 void mempool::dealloc(void* ptr)
 {
-	cpu_node* proc = get_cpu_node();
-	proc->preempt_disable();
+	preempt_disable_section _pds;
 
 	_dealloc(ptr);
-
-	proc->preempt_enable();
 }
 
 void mempool::collect_free_pages()
