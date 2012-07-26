@@ -12,6 +12,5 @@ _start:
 	movq  $STACK_END, %rsp
 	movq  %rax, %rdi
 	call  kern_init
-	call  kern_service
 1:hlt
 jmp 1b

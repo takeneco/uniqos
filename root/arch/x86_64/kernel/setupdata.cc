@@ -1,55 +1,33 @@
-/// @file  setupdata.cc
+/// @file   bootinfo.cc
 /// @brief  Access to setup data.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2012 KATO Takeshi
 //
-// (C) 2010-2011 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
-/// @todo 物理メモリマップを使うようにする。
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "global_vars.hh"
-#include "setupdata.hh"
+#include <bootinfo.hh>
 
-#include "boot_access.hh"
-
-
-void setup_get_display_mode(u32* width, u32* height, u32* vram)
-{
-	*width  = setup_get_value<u32>(SETUP_DISP_WIDTH);
-	*height = setup_get_value<u32>(SETUP_DISP_HEIGHT);
-	*vram   = setup_get_value<u32>(SETUP_DISP_VRAM);
-}
-
-void setup_get_display_cursor(u32* row, u32* col)
-{
-	*row = setup_get_value<u32>(SETUP_DISP_CURROW);
-	*col = setup_get_value<u32>(SETUP_DISP_CURCOL);
-}
-
-void setup_get_free_memdump(setup_memory_dumpdata** freedump, u32* num)
-{
-	*freedump = setup_get_ptr<setup_memory_dumpdata>(SETUP_FREEMEM_DUMP);
-	*num = setup_get_value<u32>(SETUP_FREEMEM_DUMP_COUNT);
-}
-
-void setup_get_used_memdump(setup_memory_dumpdata** useddump, u32* num)
-{
-	*useddump = setup_get_ptr<setup_memory_dumpdata>(SETUP_USEDMEM_DUMP);
-	*num = setup_get_value<u32>(SETUP_USEDMEM_DUMP_COUNT);
-}
-
-void setup_get_mp_info(u8** ptr)
-{
-	*ptr = setup_get_ptr<u8>(SETUP_MP_FLOATING_POINTER);
-}
+#include <global_vars.hh>
 
 
-#include "bootinfo.hh"
-#include "multiboot2.h"
-
+namespace bootinfo {
 
 const void* get_bootinfo(u32 tag_type)
 {
 	const u8* bootinfo =
-	    reinterpret_cast<const u8*>(global_vars::gv.bootinfo);
+	    reinterpret_cast<const u8*>(global_vars::arch.bootinfo);
 
 	const u32 total_size = *reinterpret_cast<const u32*>(bootinfo);
 
@@ -69,4 +47,6 @@ const void* get_bootinfo(u32 tag_type)
 
 	return 0;
 }
+
+}  // namespace bootinfo
 

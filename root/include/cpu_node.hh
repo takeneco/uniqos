@@ -11,7 +11,7 @@
 #include <config.h>
 #include <cpu_ctl.hh>
 #include <event_queue.hh>
-#include <thread_ctl.hh>
+#include <thread_queue.hh>
 
 
 class page_pool;

@@ -6,18 +6,17 @@
 #ifndef INCLUDE_EVENT_QUEUE_HH_
 #define INCLUDE_EVENT_QUEUE_HH_
 
-#include "event.hh"
+#include <event.hh>
 
 
 class event_queue
 {
-///
-public:
-///
 	bochain<event_item, &event_item::chain_hook> event_chain;
+
 public:
 	void push(event_item* e) { event_chain.insert_tail(e); }
 	event_item* pop() { return event_chain.remove_head(); }
+
 	bool probe() {
 		return event_chain.head() != 0;
 	}
@@ -25,3 +24,4 @@ public:
 
 
 #endif  // include guard
+

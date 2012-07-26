@@ -13,7 +13,7 @@
 namespace arch {
 
 typedef u32 _cpu_id;
-typedef u64 _cpuword;
+typedef u64 _cpu_word;
 
 typedef u8 intr_id;
 
@@ -26,13 +26,10 @@ enum {
 	IRQ_CPU_OFFSET = 0x00,
 	IRQ_PIC_OFFSET = 0x20,
 
-	// this is not hw param.
-	PHYSICAL_MEMMAP_BASEADR = U64(0xffff800000000000),
 	// Interrupt vector
 	INTR_APIC_TIMER = 0x30,
 };
 enum {
-	PHYSICAL_ADRMAP = U64(0xffff800000000000),
 	PHYS_MAP_ADR = U64(0xffff800000000000),
 };
 
@@ -111,9 +108,6 @@ inline TYPE type_of_size(uptr size)
 	else                      return INVALID;
 }
 
-cause::stype alloc(TYPE page_type, uptr* padr);
-cause::stype free(TYPE page_type, uptr padr);
-
 }  // namespace page
 
 inline void* map_phys_adr(uptr padr, uptr /* size */) {
@@ -130,12 +124,13 @@ int get_cpu_id();
 
 void intr_enable();
 void intr_disable();
+void intr_wait();
 void halt();
 
 }  // namespace arch
 
 typedef arch::_cpu_id cpu_id;
-typedef arch::_cpuword cpuword;
+typedef arch::_cpu_word cpu_word;
 
 
 #endif  // include guard

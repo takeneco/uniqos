@@ -1,13 +1,13 @@
 /// @file  bootinfo.hh
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_BOOTINFO_HH_
 #define ARCH_X86_64_INCLUDE_BOOTINFO_HH_
 
-#include "basic_types.hh"
-#include "multiboot2.h"
+#include <basic_types.hh>
+#include <multiboot2.h>
 
 
 namespace bootinfo {
@@ -40,7 +40,10 @@ enum {
 	BOOTHEAP_END   = 0x01ffffff,
 };
 
+const void* get_bootinfo(u32 tag_type);
+
 }  // namespace bootinfo
 
 
 #endif  // include guard
+
