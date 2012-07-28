@@ -13,43 +13,22 @@
 
 class cpu_ctl_common;
 class irq_ctl;
-class cpu_node;
+
 class page_pool;
-class gv_page;
-namespace arch {
-class page_ctl;
-}  // namespace arch
-class intr_ctl;
-class memcache_control;
 class mempool_ctl;
-class core_class;
-class event_queue;
-class resource_spec;
+class intr_ctl;
+class cpu_node;
 
 
 namespace global_vars {
 
-
-struct _vars
-{
-	gv_page*           gv_page_obj;
-	arch::page_ctl*    page_ctl_obj;
-
-	memcache_control*  memcache_ctl;
-	core_class*      core;
-	event_queue*     event_ctl_obj;
-
-	resource_spec*     rc_spec;
-	void* bootinfo;
-};
-
-
-extern _vars gv;
-
 struct _arch
 {
 	cpu_ctl_common*    cpu_ctl_common_obj;
+
 	irq_ctl*           irq_ctl_obj;
+
+	void*              bootinfo;
 };
 
 extern _arch arch;
@@ -62,6 +41,7 @@ struct _core
 	page_pool**        page_pool_objs;
 
 	mempool_ctl*       mempool_ctl_obj;
+
 	intr_ctl*          intr_ctl_obj;
 
 	/// カーネルが認識している CPU の数
@@ -77,3 +57,4 @@ extern _core core;
 
 
 #endif  // include guard
+

@@ -125,7 +125,6 @@ int get_cpu_id();
 void intr_enable();
 void intr_disable();
 void intr_wait();
-void halt();
 
 }  // namespace arch
 

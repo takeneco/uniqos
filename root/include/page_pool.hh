@@ -1,4 +1,4 @@
-/// @file  page_pool.cc
+/// @file  page_pool.hh
 //
 // (C) 2012 KATO Takeshi
 //
@@ -10,10 +10,9 @@
 #include <memcell.hh>
 
 
-/// @brief Page control
+/// @brief Page pool
 class page_pool
 {
-
 public:
 	page_pool();
 
@@ -24,8 +23,8 @@ public:
 	bool load_free_range(uptr adr, uptr bytes);
 	void build();
 
-	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
-	cause::stype dealloc(arch::page::TYPE pt, uptr padr);
+	cause::type alloc(arch::page::TYPE pt, uptr* padr);
+	cause::type dealloc(arch::page::TYPE pt, uptr padr);
 
 private:
 	mem_cell_base<uptr> page_base[arch::page::LEVEL_COUNT];

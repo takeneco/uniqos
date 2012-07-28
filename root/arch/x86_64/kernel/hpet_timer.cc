@@ -279,7 +279,7 @@ struct hpet_register
 
 	void unset_timer(timer_index i) {
 		timer[i].config_l32 = timer[i].config_l32 & 0xffff8030;
-		timer[i].comparator = U64CAST(0xffffffffffffffff);
+		timer[i].comparator = U64(0xffffffffffffffff);
 	}
 
 	/// set time on nonperiodicmode
@@ -383,12 +383,4 @@ void timer_sleep(u32 msecs)
 
 	native::cli();
 }
-/*
-extern "C" void on_interrupt()
-{
-	volatile u32* eoi = reinterpret_cast<u32*>(arch::pmem::direct_map(0xfee000b0));
-	*eoi = 0;
 
-	log()("intr &eoi = ")(&eoi)();
-}
-*/

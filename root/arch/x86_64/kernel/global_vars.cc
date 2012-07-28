@@ -1,15 +1,16 @@
 /// @file  global_vars.cc
 /// @brief Global variables definition.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010,2012 KATO Takeshi
 //
 
-#include "global_vars.hh"
+#include <global_vars.hh>
 
 
 namespace global_vars {
 
-_vars gv;
+_arch arch;
+_core core;
 
 }  // namespace global_vars
 

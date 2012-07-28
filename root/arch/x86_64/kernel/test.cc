@@ -3,14 +3,12 @@
 // (C) 2010 KATO Takeshi
 //
 
-#include "basic_types.hh"
+#include <cpu_node.hh>
 #include "global_vars.hh"
 #include "mempool.hh"
+#include "native_ops.hh"
 #include "page_ctl.hh"
 #include "log.hh"
-
-#include "memory_allocate.hh"
-#include <processor.hh>
 
 
 void event_drive();
@@ -107,14 +105,15 @@ void mempool_test()
 	log();
 	++test_number;
 
-	mempool* mp = mempool_create_shared(100);
+	mempool* mp;
+	cause::type r = mempool_create_shared(100, &mp);
 
 	const int N = 15;
 	chain<data, &data::chain_hook> ch[N];
 
 	int n;
 	int cnts[N] = {0};
-	for (n = 0; n < 0x20000; ++n) {
+	for (n = 0; n < 0x80000; ++n) {
 		data* p = (data*)mp->alloc();
 		if (!p)
 			break;
@@ -137,7 +136,6 @@ void mempool_test()
 	}
 
 	log()("sum n=").u(n,16)();
-	global_vars::gv.page_ctl_obj->dump(lg);
 
 	for (int i = 0; i < N; ++i) {
 		int cnt;
@@ -145,14 +143,13 @@ void mempool_test()
 			data* d = ch[i].remove_head();
 			if (!d)
 				break;
-			mp->free(d);
+			mp->dealloc(d);
 		}
 
 		mp->collect_free_pages();
 	}
 
 	log()("after collect_free_pages()")();
-	global_vars::gv.page_ctl_obj->dump(lg);
 }
 
 void switch_test()

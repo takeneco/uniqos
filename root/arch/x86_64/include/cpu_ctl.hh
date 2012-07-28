@@ -6,20 +6,13 @@
 #ifndef ARCH_X86_64_KERNEL_CPU_CTL_HH_
 #define ARCH_X86_64_KERNEL_CPU_CTL_HH_
 
-#include "cpu_idte.hh"
-#include "mpspec.hh"
-#include "regset.hh"
+#include <cpu_idte.hh>
+#include <mpspec.hh>
+#include <regset.hh>
 
 
 class thread;
 class cpu_node;
-
-namespace arch {
-
-cpu_node* get_current_cpu();
-
-}  // namespace arch
-
 
 // call by cpu_ctl::IDT
 cause::type intr_init(idte* idt);
@@ -266,6 +259,8 @@ public:
 		return intr_init(idt);
 	}
 
+	idte* get() { return idt; }
+
 private:
 	idte idt[256];
 };
@@ -279,6 +274,8 @@ public:
 	cpu_ctl_common();
 
 	cause::type init();
+
+	cause::type setup_idt();
 
 	const mpspec* get_mpspec() const {
 		return &mps;

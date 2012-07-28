@@ -4,20 +4,19 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
-#include "arch.hh"
+#include <arch.hh>
+#include <global_vars.hh>
+#include <intr_ctl.hh>
 #include "kerninit.hh"
-#include "log.hh"
-#include "native_ops.hh"
-
-#include "global_vars.hh"
-#include "interrupt_control.hh"
+#include <log.hh>
+#include <native_ops.hh>
 
 
 namespace {
 
 /// Local APIC Registers
 enum LAPIC_REG {
-	LOCAL_APIC_REG_BASE = arch::PHYSICAL_MEMMAP_BASEADR + 0xfee00000,
+	LOCAL_APIC_REG_BASE = arch::PHYS_MAP_ADR + 0xfee00000,
 
 	/// ID
 	LOCAL_APIC_ID = 0x0020,
@@ -72,10 +71,8 @@ void timer_handler(void*)
 	write_reg(0, LOCAL_APIC_EOI);
 }
 
-cause::stype local_apic_init()
+cause::type local_apic_init()
 {
-	volatile u32* reg;
-
 	log()("LAPIC version:").u(read_reg(LOCAL_APIC_VERSION), 16)();
 
 	// Local APIC enable
@@ -97,7 +94,7 @@ cause::stype local_apic_init()
 
 	timer_ih.handler = timer_handler;
 	timer_ih.param = 0;
-	global_vars::gv.intr_ctl_obj->add_handler(
+	global_vars::core.intr_ctl_obj->add_handler(
 		arch::INTR_APIC_TIMER, &timer_ih);
 
 	return cause::OK;
@@ -134,7 +131,7 @@ void post_ipi(u8 vec, u64 flags)
 
 namespace arch {
 
-cause::stype apic_init()
+cause::type apic_init()
 {
 	return local_apic_init();
 }
@@ -168,5 +165,16 @@ void lapic_post_startup_ipi(u8 vec)
 	    ICR_ASSERT_LEVEL |
 	    ICR_EDGE_TRIGGER |
 	    ICR_BROADCAST);
+}
+
+namespace arch {
+
+int get_cpu_id()
+{
+	const u32 id = read_reg(LOCAL_APIC_ID);
+
+	return id >> 24;
+}
+
 }
 

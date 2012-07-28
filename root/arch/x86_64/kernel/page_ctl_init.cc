@@ -20,19 +20,19 @@
 ///
 /// それ以降は page_ctl を通してメモリを管理する。
 
-#include "arch.hh"
+#include <page_ctl.hh>
+
+#include <arch.hh>
 #include <bootinfo.hh>
-#include "cheap_alloc.hh"
-#include "gv_page.hh"
-#include "log.hh"
+#include <cheap_alloc.hh>
+#include <global_vars.hh>
+#include <log.hh>
 #include <mpspec.hh>
-#include "native_ops.hh"
+#include <native_ops.hh>
 #include <page.hh>
-#include "page_ctl.hh"
 #include <page_pool.hh>
-#include "pagetable.hh"
+#include <pagetable.hh>
 #include <cpu_node.hh>
-#include "setupdata.hh"
 
 
 namespace {
@@ -281,12 +281,12 @@ cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
 /// page_heap_dealloc() で開放する。
 void* page_heap_alloc(tmp_alloc* heap, uptr bytes)
 {
-	bytes += sizeof (cpuword);
+	bytes += sizeof (cpu_word);
 
 	const arch::page::TYPE page_type = arch::page::type_of_size(bytes);
 	const uptr page_sz = size_of_type(page_type);
 
-	cpuword* p = static_cast<cpuword*>(
+	cpu_word* p = static_cast<cpu_word*>(
 	    heap->alloc(SLOTM_ANY, page_sz, page_sz, false));
 
 	if (!p)
@@ -300,7 +300,7 @@ void* page_heap_alloc(tmp_alloc* heap, uptr bytes)
 /// @brief page_heap_alloc() で確保したメモリを開放する。
 cause::type page_heap_dealloc(void* p)
 {
-	cpuword* page = static_cast<cpuword*>(p);
+	cpu_word* page = static_cast<cpu_word*>(p);
 	page -= 1;
 
 	const arch::page::TYPE page_type =
@@ -326,21 +326,6 @@ void* allocate_tmp_alloc(tmp_alloc* heap)
 		log()("!!! No enough memory.")();
 
 	return arch::map_phys_adr(p, tmp_alloc_pagesz);
-}
-
-bool setup_gv_page(void* page, uptr bytes)
-{
-	gv_page* gv_page_obj = new (page) gv_page;
-
-	log()("gv_page size: ").u(sizeof *gv_page_obj)();
-	if (bytes < sizeof (gv_page)) {
-		log()("!!! No enough bytes for gv_page. "
-		    "page size=").u(bytes)(
-		    ", sizeof gv_page=").u(sizeof (gv_page))();
-		return false;
-	}
-
-	return gv_page_obj->init();
 }
 
 /// @return mpspec の情報からCPUの数を数えて返す。
@@ -567,11 +552,11 @@ cpu_node* create_cpu_node(page_pool* pp)
 
 void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
 {
-	page_pool** const pps = global_vars::gv.page_pool_objs;
+	page_pool** const pps = global_vars::core.page_pool_objs;
 
-	cpu_node* cn = global_vars::gv.cpu_node_objs[cpu_node_id];
+	cpu_node* cn = global_vars::core.cpu_node_objs[cpu_node_id];
 
-	const int n = global_vars::gv.page_pool_cnt;
+	const int n = global_vars::core.page_pool_cnt;
 	cn->set_page_pool_cnt(n);
 
 	int pp_id = cpu_node_id;
@@ -584,13 +569,13 @@ void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
 
 cause::type create_cpu_nodes()
 {
-	const int n = global_vars::gv.cpu_node_cnt;
+	const int n = global_vars::core.cpu_node_cnt;
 	for (int i = 0; i < n; ++i) {
-		page_pool* pp = global_vars::gv.page_pool_objs[i];
+		page_pool* pp = global_vars::core.page_pool_objs[i];
 		cpu_node* cn = create_cpu_node(pp);
 		if (!cn)
 			return cause::FAIL;
-		global_vars::gv.cpu_node_objs[i] = cn;
+		global_vars::core.cpu_node_objs[i] = cn;
 
 		set_page_pool_to_cpu_node(i);
 	}
@@ -604,7 +589,7 @@ cause::type create_cpu_nodes()
 cause::type renumber_cpu_ids(const mpspec& mps)
 {
 	const int cpu_cnt = get_cpu_node_count();
-	cpu_node** const cns = global_vars::gv.cpu_node_objs;
+	cpu_node** const cns = global_vars::core.cpu_node_objs;
 
 	int left = cpu_cnt;
 
@@ -668,22 +653,22 @@ cause::type cpu_page_init()
 		return r;
 	}
 
-	global_vars::gv.cpu_node_cnt = min(count_cpus(mps), CONFIG_MAX_CPUS);
-	global_vars::gv.page_pool_cnt = global_vars::gv.cpu_node_cnt;
+	global_vars::core.cpu_node_cnt = min(count_cpus(mps), CONFIG_MAX_CPUS);
+	global_vars::core.page_pool_cnt = global_vars::core.cpu_node_cnt;
 
 	// init gvar
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i)
-		global_vars::gv.cpu_node_objs[i] = 0;
+		global_vars::core.cpu_node_objs[i] = 0;
 
 	const uptr page_pool_objs_sz =
-	    sizeof (page_pool*) * global_vars::gv.cpu_node_cnt;
-	global_vars::gv.page_pool_objs =
+	    sizeof (page_pool*) * global_vars::core.cpu_node_cnt;
+	global_vars::core.page_pool_objs =
 	    new (arch::map_phys_adr(heap.alloc(
 	        SLOTM_ANY,
 	        page_pool_objs_sz,
 	        arch::BASIC_TYPE_ALIGN,
 	        false), page_pool_objs_sz)
-	    ) page_pool*[global_vars::gv.cpu_node_cnt];
+	    ) page_pool*[global_vars::core.cpu_node_cnt];
 
 	tmp_alloc* avail_ram = new (allocate_tmp_alloc(&heap)) tmp_alloc;
 	if (!avail_ram)
@@ -701,11 +686,11 @@ cause::type cpu_page_init()
 	void* node_ram_mem = allocate_tmp_alloc(&heap);
 	void* node_heap_mem = allocate_tmp_alloc(&heap);
 
-	for (int i = 0; i < global_vars::gv.page_pool_cnt; ++i) {
+	for (int i = 0; i < global_vars::core.page_pool_cnt; ++i) {
 		// 未割り当てのメモリサイズを未割り当てのCPU数で割る
 		const uptr assign_bytes =
 		    avail_ram->total_free_bytes(1 << 0) /
-		    (global_vars::gv.cpu_node_cnt - i);
+		    (global_vars::core.cpu_node_cnt - i);
 
 		tmp_alloc* node_ram = new (node_ram_mem) tmp_alloc;
 		tmp_alloc* node_heap = new (node_heap_mem) tmp_alloc;
@@ -716,7 +701,7 @@ cause::type cpu_page_init()
 
 		void* pp_mem = node_heap->alloc(1 << 0, sizeof (page_pool), arch::BASIC_TYPE_ALIGN, false);
 		page_pool* pp = new (arch::map_phys_adr(pp_mem, sizeof (page_pool))) page_pool;
-		global_vars::gv.page_pool_objs[i] = pp;
+		global_vars::core.page_pool_objs[i] = pp;
 
 		r = load_page_pool(node_ram, node_heap, pp);
 		if (is_fail(r))
@@ -738,36 +723,6 @@ cause::type cpu_page_init()
 
 	page_heap_dealloc(node_ram_mem);
 	page_heap_dealloc(node_heap_mem);
-
-	return cause::OK;
-}
-
-/// @retval cause::NOMEM  No enough physical memory.
-/// @retval cause::OK  Succeeds.
-cause::stype page_ctl_init()
-{
-	tmp_alloc heap;
-	setup_heap(&heap);
-
-	const u64 padr_end = search_padr_end();
-
-	cause::stype r = setup_pam1(padr_end, &heap);
-	if (is_fail(r))
-		return r;
-
-	void* buf = heap.alloc(
-	    SLOTM_BOOTHEAP,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    false);
-	if (!buf) {
-		log()("bootheap is exhausted.")();
-		return cause::NOMEM;
-	}
-	buf = arch::map_phys_adr(buf, arch::page::PHYS_L1_SIZE);
-	if (setup_gv_page(buf, arch::page::PHYS_L1_SIZE) == false)
-		return cause::UNKNOWN;
-
 
 	return cause::OK;
 }

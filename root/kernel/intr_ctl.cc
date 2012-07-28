@@ -1,15 +1,28 @@
-/// @file   interrupt_control.cc
+/// @file   intr_ctl.cc
 /// @brief  interrupt.
-//
-// (C) 2010-2012 KATO Takeshi
-//
 
-#include "global_vars.hh"
-#include "interrupt_control.hh"
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2012 KATO Takeshi
+//
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <global_vars.hh>
+#include <intr_ctl.hh>
 #include <mempool.hh>
 #include <new_ops.hh>
 
-#include "log.hh"
+#include <log.hh>
 
 
 /// @brief 割り込み発生時に呼ばれる。

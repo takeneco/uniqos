@@ -4,27 +4,18 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
-#include "arch.hh"
-#include "bootinfo.hh"
+#include <bootinfo.hh>
 #include <cpu_node.hh>
-#include "global_vars.hh"
-#include "interrupt_control.hh"
-#include "irq_ctl.hh"
+#include <global_vars.hh>
+#include <intr_ctl.hh>
+#include <irq_ctl.hh>
 #include "kerninit.hh"
-#include "log.hh"
-#include "memory_allocate.hh"
-#include "mempool_ctl.hh"
-#include "native_ops.hh"
-
-#include "setupdata.hh"
-#include "boot_access.hh"
-#include "event_queue.hh"
+#include <log.hh>
+#include <mempool_ctl.hh>
 #include <new_ops.hh>
-#include "vga.hh"
+#include <vga.hh>
 
-#include "memcell.hh"
-
-#include "mempool.hh"
+#include <native_ops.hh>
 
 
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
@@ -34,12 +25,12 @@ thread* tb;
 void testA(void* p)
 {
 	cpu_node* proc = get_cpu_node();
-	thread_ctl& tc = proc->get_thread_ctl();
+	thread_queue& tc = proc->get_thread_ctl();
 	for (u32 i=0;;++i) {
 		log()("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
 		if (i==0){
-			tc.ready_thread(tb);
-			proc->sleep_current_thread();
+			//tc.ready_thread(tb);
+			//proc->sleep_current_thread();
 		}
 	}
 }
@@ -47,12 +38,12 @@ void testA(void* p)
 void testB(void* p)
 {
 	cpu_node* proc = get_cpu_node();
-	thread_ctl& tc = proc->get_thread_ctl();
+	thread_queue& tc = proc->get_thread_ctl();
 	for (u32 i=0;;++i) {
 		log()("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
 		if (i==0){
-			tc.ready_thread(ta);
-			proc->sleep_current_thread();
+			//tc.ready_thread(ta);
+			//proc->sleep_current_thread();
 		}
 	}
 }
@@ -61,15 +52,13 @@ void test(void*);
 bool test_init();
 void cpu_test();
 file* create_serial();
-file* attach_console(int w, int h, u64 vram_adr);
 void drive();
 void lapic_dump();
 void serial_dump(void*);
-cause::stype slab_init();
 bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
-class gv_page;
+void kern_service(void* param);
 
 
 void disable_intr_from_8259A()
@@ -113,7 +102,7 @@ void apentry()
 text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
-	global_vars::gv.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
+	global_vars::arch.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
 
 	vga_dev.init(80, 25, (void*)0xb8000);
 	log_init(0, &vga_dev);
@@ -123,7 +112,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	global_vars::gv.bootinfo =
+	global_vars::arch.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
 	r = mempool_init();
@@ -139,27 +128,38 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	r = cpu_setup();
 	if (is_fail(r))
 		return r;
-log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
-	thread_ctl& tc = get_cpu_node()->get_thread_ctl();
+	r = intr_setup();
+	if (is_fail(r))
+		return r;
 
-	tc.set_event_thread(tc.get_running_thread());
+	r = irq_setup();
+	if (is_fail(r))
+		return r;
+
+	// TODO: replace
+	arch::apic_init();
+
+	thread_queue& tc = get_cpu_node()->get_thread_ctl();
+/*	thread* event_thread;
+	r = tc.create_thread(&cpu_node::message_loop_entry,
+			get_cpu_node(), &event_thread);
+	//r = tc.create_thread(&kern_service, 0, &event_thread);
+	if (is_fail(r))
+		return r;
+
+	tc.wakeup(event_thread);
+	tc.set_event_thread(event_thread);
+*/
+	r = get_cpu_node()->start_message_loop();
+	if (is_fail(r))
+		return r;
 
 	native::sti();
 
-	r = global_vars::gv.irq_ctl_obj->init();
-	if (r != cause::OK)
-		return r;
-
-	r = global_vars::gv.intr_ctl_obj->init();
-	if (r != cause::OK)
-		return r;
-
-	arch::apic_init();
-
 	file* serial = create_serial();
 	log_init(0, serial);
-	serial->sync = false;
+	serial->sync = true;
 
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
@@ -167,6 +167,8 @@ log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 	if (bootlog) {
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
+
+log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
 	hpet_init();
 	log()("clock=").u(get_clock())();
@@ -234,10 +236,5 @@ log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 */
 	serial->sync = true;
 	return 0;
-}
-
-extern "C" void kern_service()
-{
-	drive();
 }
 

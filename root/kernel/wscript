@@ -6,7 +6,6 @@
 
 kern_sources = [
     'cpu_node.cc',
-    'drive.cc',
     'file.cc',
     'intr_ctl.cc',
     'kern_log.cc',
@@ -15,11 +14,11 @@ kern_sources = [
     'mempool_ctl.cc',
     'page.cc',
     'page_pool.cc',
-    'slab_allocate.cc',
+    #'slab_allocate.cc',
     'spinlock.cc',
     'string.cc',
     'thread.cc',
-    'thread_ctl.cc',
+    'thread_queue.cc',
 ]
 
 kern_defines = []

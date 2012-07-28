@@ -9,11 +9,9 @@
 #include <mempool.hh>
 
 
-cause::stype mempool_init();
-
 class mempool_ctl
 {
-	friend cause::stype mempool_init();
+	friend cause::type mempool_init();
 
 	mempool_ctl(mempool* _mempool_mp, mempool* _node_mp, mempool* _own_mp);
 	cause::type init();

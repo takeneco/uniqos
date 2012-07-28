@@ -1,4 +1,4 @@
-/// @file  page_ctl.cc
+/// @file  page_ctl.hh
 //
 // (C) 2010-2011 KATO Takeshi
 //

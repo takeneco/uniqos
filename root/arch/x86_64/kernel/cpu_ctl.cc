@@ -1,14 +1,14 @@
 /// @file   cpu_ctl.cc
 
-//  Uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2010-2012 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -52,6 +52,10 @@ cause::type cpu_ctl::setup()
 		return r;
 
 	r = setup_gdt();
+	if (is_fail(r))
+		return r;
+
+	r = global_vars::arch.cpu_ctl_common_obj->setup_idt();
 	if (is_fail(r))
 		return r;
 
@@ -147,6 +151,16 @@ cause::type cpu_ctl_common::init()
 	return cause::OK;
 }
 
+cause::type cpu_ctl_common::setup_idt()
+{
+	native::idt_ptr64 idtptr;
+	idtptr.set(sizeof (idte) * 256, idt.get());
+
+	native::lidt(&idtptr);
+
+	return cause::OK;
+}
+
 
 cause::type cpu_common_init()
 {
@@ -156,7 +170,7 @@ cause::type cpu_common_init()
 	if (!obj)
 		return cause::NOMEM;
 
-	cause::stype r = obj->init();
+	cause::type r = obj->init();
 	if (is_fail(r))
 		return r;
 
@@ -180,9 +194,9 @@ void intr_disable()
 	native::sti();
 }
 
-void halt()
+void intr_wait()
 {
-	native::hlt();
+	asm volatile ("sti;hlt;cli" : : : "memory");
 }
 
 }  // namespace arch

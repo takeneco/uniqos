@@ -1,16 +1,16 @@
 /// @file   cpu_idte.cc
 /// @brief  interrupt entry.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #include "kerninit.hh"
 #include "cpu_idte.hh"
 #include "global_vars.hh"
-#include "interrupt_control.hh"
+#include <intr_ctl.hh>
 #include "log.hh"
 #include "native_ops.hh"
-#include <processor.hh>
+#include <cpu_node.hh>
 
 
 /// interrupt vector map
@@ -253,10 +253,8 @@ void intr_0x8f();
 
 }
 
-void intr_init(idte* idt)
+cause::type intr_init(idte* idt)
 {
-	//idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
-
 	struct idt_params {
 		void (*handler)();
 		uint seg;
@@ -352,7 +350,8 @@ void intr_init(idte* idt)
 		idt[i].disable();
 	}
 
-	intr_update(idt);
+	//intr_update(idt);
+	return cause::OK;
 }
 
 #define UNKNOWN_EXCEPTION(vec) \
@@ -381,8 +380,8 @@ UNKNOWN_EXCEPTION(0x0c)
 
 extern "C" void on_exception_0x0d()
 {
-	reg_stack_witherr* stk = (reg_stack_witherr*)global_vars::
-	    gv.logical_cpu_obj_array[0].tss.get_ist(arch::cpu_ctl::IST_TRAP);
+	reg_stack_witherr* stk = (reg_stack_witherr*)get_cpu_node()->
+	    tss.get_ist(arch::cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 
@@ -434,8 +433,8 @@ extern "C" void on_exception_0x0d()
 
 extern "C" void on_exception_0x0e()
 {
-	reg_stack_witherr* stk = (reg_stack_witherr*)global_vars::
-	    gv.logical_cpu_obj_array[0].tss.get_ist(arch::cpu_ctl::IST_TRAP);
+	reg_stack_witherr* stk = (reg_stack_witherr*)get_cpu_node()->
+	    tss.get_ist(arch::cpu_ctl::IST_TRAP);
 	stk -= 1;
 	log(1)("stk:")(stk)();
 

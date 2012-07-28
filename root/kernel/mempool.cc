@@ -19,10 +19,10 @@
 
 #include <mempool_ctl.hh>
 
-#include <log.hh>
-#include <page.hh>
-#include <placement_new.hh>
 #include <cpu_node.hh>
+#include <log.hh>
+#include <new_ops.hh>
+#include <page.hh>
 
 
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
@@ -41,7 +41,7 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 		mempool_nodes[i] = 0;
 }
 
-cause::stype mempool::destroy()
+cause::type mempool::destroy()
 {
 	for (;;) {
 		memobj* obj = free_objs.remove_head();
@@ -217,7 +217,7 @@ u32 mempool::normalize_obj_size(u32 objsize)
 {
 	u32 r = max<u32>(objsize, sizeof (page));
 
-	r = up_align<u32>(r, sizeof (cpuword));
+	r = up_align<u32>(r, sizeof (cpu_word));
 
 	return r;
 }
@@ -273,7 +273,8 @@ mempool::page* mempool::new_page(int cpuid)
 	if (page_pool) {
 		pg = new (page_pool->alloc()) page;
 		if (UNLIKELY(!pg)) {
-			arch::page::free(page_type, padr);
+			page_dealloc(page_type, padr);
+			//arch::page::free(page_type, padr);
 			return 0;
 		}
 
@@ -298,7 +299,7 @@ void mempool::delete_page(page* pg)
 		page_pool->dealloc(pg);
 		page_dealloc(page_type, adr);
 	} else {
-		const cause::stype r = page_dealloc(
+		const cause::type r = page_dealloc(
 		    page_type, arch::unmap_phys_adr(pg, page_size));
 		if (is_fail(r)) {
 			log()(__func__)("() failed page free:").u(r)

@@ -4,16 +4,15 @@
 // (C) 2011-2012 KATO Takeshi
 //
 
-#include "chain.hh"
 #include "event.hh"
 #include "file.hh"
 #include "global_vars.hh"
-#include "interrupt_control.hh"
+#include <intr_ctl.hh>
 #include <irq_ctl.hh>
 #include <mempool.hh>
 #include "native_ops.hh"
-#include "placement_new.hh"
-#include <processor.hh>
+#include <new_ops.hh>
+#include <cpu_node.hh>
 
 
 namespace {
@@ -161,7 +160,7 @@ cause::stype serial_ctrl::configure()
 	static interrupt_handler ih;
 	ih.param = this;
 	ih.handler = intr_handler;
-	global_vars::gv.intr_ctl_obj->add_handler(vec, &ih);
+	global_vars::core.intr_ctl_obj->add_handler(vec, &ih);
 
 	write_event.handler = on_write_event_;
 	write_event.param = this;
@@ -198,7 +197,9 @@ cause::stype serial_ctrl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
-	buf_mp = mempool_create_shared(buf_entry::SIZE);
+	cause::type r = mempool_create_shared(buf_entry::SIZE, &buf_mp);
+	if (is_fail(r))
+		return r;
 
 	return cause::OK;
 }
@@ -214,27 +215,24 @@ bool serial_ctrl::is_txfifo_empty() const
 /// @param[out] bytes  write bytes.
 //
 /// 途中で失敗した場合は *bytes に出力したバイト数が返される。
-cause::stype serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
 
-	processor* proc = get_current_cpu();
-	proc->preempt_disable();
+	cause::type r;
+	{
+		preempt_disable_section _pds;
 
-	cause::stype r = write_buf(iov_itr, bytes);
+		r = write_buf(iov_itr, bytes);
 
-	proc->preempt_enable();
-
-	if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
-		post_write_event();
-
-	thread_ctl& tc =
-	    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-
-	tc.ready_event_thread();
+		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
+			post_write_event();
+	}
 
 	if (sync) {
-		tc.sleep_running_thread();
+		get_cpu_node()->get_thread_ctl().sleep();
+		//thread_queue& tc = get_cpu_node()->get_thread_ctl();
+		//tc.sleep_running_thread();
 	}
 
 	return r;
@@ -268,8 +266,7 @@ cause::stype serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
 	*bytes = total;
 
 	if (sync) {
-		thread_ctl& tc =
-		    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
+		thread_queue& tc = get_cpu_node()->get_thread_ctl();
 		buf->set_bufsize(next_write);
 		buf->set_client(tc.get_running_thread());
 	}
@@ -303,9 +300,8 @@ void serial_ctrl::post_write_event()
 
 	write_posted = true;
 
-	processor* cpu = arch::get_current_cpu();
+	cpu_node* cpu = get_cpu_node();
 	cpu->post_soft_event(&write_event);
-	cpu->get_thread_ctl().ready_event_thread();
 }
 
 void serial_ctrl::on_intr_event()
@@ -356,10 +352,10 @@ void serial_ctrl::post_intr_event()
 
 	intr_posted = true;
 
-	processor* cpu = arch::get_current_cpu();
+	cpu_node* cpu = get_cpu_node();
 	cpu->post_intr_event(&intr_event);
 	//cpu->get_thread_ctl().ready_event_thread_in_intr();
-	cpu->get_thread_ctl().switch_messenger_thread_after_intr();
+	cpu->switch_messenger_after_intr();
 }
 
 /// 割り込み発生時に呼ばれる。
@@ -398,12 +394,12 @@ void serial_ctrl::transmit()
 
 			thread* client = buf->get_client();
 			if (client) {
-				thread_ctl& tc = global_vars::
-				  gv.logical_cpu_obj_array[0].get_thread_ctl();
-				tc.ready_thread(client);
+				thread_queue& tc =
+				    get_cpu_node()->get_thread_ctl();
+				tc.ready(client);
 			}
 
-			buf_mp->free(buf_queue.remove_tail());
+			buf_mp->dealloc(buf_queue.remove_tail());
 			buf = buf_queue.tail();
 			buf_is_last = buf == buf_queue.head();
 			next_read = 0;
