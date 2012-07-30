@@ -4,7 +4,7 @@
 // (C) 2011-2012 KATO Takeshi
 //
 
-#include "event.hh"
+#include <message.hh>
 #include "file.hh"
 #include "global_vars.hh"
 #include <intr_ctl.hh>
@@ -90,8 +90,8 @@ class serial_ctrl : public file
 	bool output_fifo_empty;
 	int tx_fifo_queued;
 
-	event_item write_event;
-	event_item intr_event;
+	message_item write_msg;
+	message_item intr_msg;
 	bool write_posted;
 	volatile bool intr_posted;
 	volatile bool intr_pending;
@@ -122,13 +122,13 @@ private:
 	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
 	cause::stype write_buf(iovec_iterator& iov_itr, uptr* bytes);
 
-	void on_write_event();
-	static void on_write_event_(void* param);
-	void post_write_event();
+	void on_write_message();
+	static void on_write_message_(void* param);
+	void post_write_message();
 
-	void on_intr_event();
-	static void on_intr_event_(void* param);
-	void post_intr_event();
+	void on_intr_message();
+	static void on_intr_message_(void* param);
+	void post_intr_message();
 	static void intr_handler(void* param);
 
 	void transmit();
@@ -162,12 +162,12 @@ cause::stype serial_ctrl::configure()
 	ih.handler = intr_handler;
 	global_vars::core.intr_ctl_obj->add_handler(vec, &ih);
 
-	write_event.handler = on_write_event_;
-	write_event.param = this;
+	write_msg.handler = on_write_message_;
+	write_msg.param = this;
 	write_posted = false;
 
-	intr_event.handler = on_intr_event_;
-	intr_event.param = this;
+	intr_msg.handler = on_intr_message_;
+	intr_msg.param = this;
 	intr_posted = false;
 
 	// 通信スピード設定開始
@@ -226,7 +226,7 @@ cause::type serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		r = write_buf(iov_itr, bytes);
 
 		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
-			post_write_event();
+			post_write_message();
 	}
 
 	if (sync) {
@@ -280,19 +280,19 @@ cause::stype serial_ctrl::op_write(
 	return static_cast<serial_ctrl*>(self)->write(iov, iov_cnt, bytes);
 }
 
-void serial_ctrl::on_write_event()
+void serial_ctrl::on_write_message()
 {
 	transmit();
 }
 
-void serial_ctrl::on_write_event_(void* param)
+void serial_ctrl::on_write_message_(void* param)
 {
 	serial_ctrl* serial = static_cast<serial_ctrl*>(param);
 	serial->write_posted = false;
-	serial->on_write_event();
+	serial->on_write_message();
 }
 
-void serial_ctrl::post_write_event()
+void serial_ctrl::post_write_message()
 {
 	if (write_posted) {
 		return;
@@ -301,10 +301,10 @@ void serial_ctrl::post_write_event()
 	write_posted = true;
 
 	cpu_node* cpu = get_cpu_node();
-	cpu->post_soft_event(&write_event);
+	cpu->post_soft_message(&write_msg);
 }
 
-void serial_ctrl::on_intr_event()
+void serial_ctrl::on_intr_message()
 {
 	intr_pending = false;
 
@@ -335,14 +335,14 @@ void serial_ctrl::on_intr_event()
 	}
 }
 
-void serial_ctrl::on_intr_event_(void* param)
+void serial_ctrl::on_intr_message_(void* param)
 {
 	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(param);
 	serial->intr_posted = false;
-	serial->on_intr_event();
+	serial->on_intr_message();
 }
 
-void serial_ctrl::post_intr_event()
+void serial_ctrl::post_intr_message()
 {
 	intr_pending = true;
 
@@ -353,15 +353,15 @@ void serial_ctrl::post_intr_event()
 	intr_posted = true;
 
 	cpu_node* cpu = get_cpu_node();
-	cpu->post_intr_event(&intr_event);
-	//cpu->get_thread_ctl().ready_event_thread_in_intr();
+	cpu->post_intr_message(&intr_msg);
+	//cpu->get_thread_ctl().ready_message_thread_in_intr();
 	cpu->switch_messenger_after_intr();
 }
 
 /// 割り込み発生時に呼ばれる。
 void serial_ctrl::intr_handler(void* param)
 {
-	static_cast<serial_ctrl*>(param)->post_intr_event();
+	static_cast<serial_ctrl*>(param)->post_intr_message();
 }
 
 /// デバイスのFIFOのサイズだけ送信する。

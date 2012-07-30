@@ -10,7 +10,7 @@
 #include <basic.hh>
 #include <config.h>
 #include <cpu_ctl.hh>
-#include <event_queue.hh>
+#include <message_queue.hh>
 #include <thread_queue.hh>
 
 
@@ -34,16 +34,16 @@ public:
 	void ready_messenger_np();
 	void switch_messenger_after_intr();
 
-	bool run_all_intr_event();
+	bool run_all_intr_message();
 
 	u8   inc_preempt_disable() { return ++preempt_disable_cnt; }
 	u8   dec_preempt_disable() { return --preempt_disable_cnt; }
 
-	void post_intr_event(event_item* ev);
-	void post_soft_event(event_item* ev);
+	void post_intr_message(message_item* ev);
+	void post_soft_message(message_item* ev);
 
 	thread_queue& get_thread_ctl() { return thread_q; }
-	event_queue& get_soft_evq() { return soft_evq; }
+	message_queue& get_soft_msgq() { return soft_msgq; }
 
 	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
 	cause::type page_dealloc(arch::page::TYPE page_type, uptr padr);
@@ -51,8 +51,8 @@ public:
 private:
 	static void preempt_wait();
 
-	bool probe_intr_event();
-	event_item* get_next_intr_event();
+	bool probe_intr_message();
+	message_item* get_next_intr_message();
 
 	bool run_message();
 	void message_loop();
@@ -71,9 +71,9 @@ private:
 	/// 外部割込みによって発生したイベントを溜める。
 	/// intr_evq を操作するときは CPU が割り込み禁止状態になっていなければ
 	/// ならない。
-	event_queue intr_evq;
+	message_queue intr_msgq;
 
-	event_queue soft_evq;
+	message_queue soft_msgq;
 
 	cpu_id     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];

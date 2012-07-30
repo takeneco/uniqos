@@ -107,17 +107,17 @@ void cpu_node::switch_messenger_after_intr()
 /// @retval true  何らかのメッセージを処理した。
 /// @retval false 処理するメッセージがなかった。
 /// @note  preempt_disable の状態で呼び出す必要がある。
-bool cpu_node::run_all_intr_event()
+bool cpu_node::run_all_intr_message()
 {
-	if (!probe_intr_event())
+	if (!probe_intr_message())
 		return false;
 
 	do {
-		event_item* ev = get_next_intr_event();
+		message_item* ev = get_next_intr_message();
 
 		ev->handler(ev->param);
 
-	} while (probe_intr_event());
+	} while (probe_intr_message());
 
 	return true;
 }
@@ -130,17 +130,17 @@ void cpu_node::preempt_wait()
 /// @brief 外部割込みからのイベントを登録する。
 //
 /// 外部割込み中は CPU が割り込み禁止状態なので割り込み可否の制御はしない。
-void cpu_node::post_intr_event(event_item* ev)
+void cpu_node::post_intr_message(message_item* ev)
 {
-	intr_evq.push(ev);
+	intr_msgq.push(ev);
 	thread_q.ready_np(message_thread);
 }
 
-void cpu_node::post_soft_event(event_item* ev)
+void cpu_node::post_soft_message(message_item* ev)
 {
 	preempt_enable();
 
-	soft_evq.push(ev);
+	soft_msgq.push(ev);
 	thread_q.ready_np(message_thread);
 
 	preempt_disable();
@@ -171,15 +171,15 @@ cause::type cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
 }
 
 /// @retval true 外部割込みによって登録されたイベントがある。
-bool cpu_node::probe_intr_event()
+bool cpu_node::probe_intr_message()
 {
-	return intr_evq.probe();
+	return intr_msgq.probe();
 }
 
 /// @brief 外部割込みで登録されたイベントを返す。
-event_item* cpu_node::get_next_intr_event()
+message_item* cpu_node::get_next_intr_message()
 {
-	return intr_evq.pop();
+	return intr_msgq.pop();
 }
 
 /// @brief  メッセージを１つだけ処理する。
@@ -188,14 +188,12 @@ event_item* cpu_node::get_next_intr_event()
 /// @note  preempt_disable の状態で呼び出す必要がある。
 bool cpu_node::run_message()
 {
-	event_queue& evq = get_soft_evq();
-
-	if (!evq.probe())
+	if (!soft_msgq.probe())
 		return false;
 
-	event_item* event = evq.pop();
+	message_item* msg = soft_msgq.pop();
 
-	event->handler(event->param);
+	msg->handler(msg->param);
 
 	return true;
 }
@@ -206,7 +204,7 @@ void cpu_node::message_loop()
 		arch::intr_enable();
 		arch::intr_disable();
 
-		if (run_all_intr_event())
+		if (run_all_intr_message())
 			continue;
 
 		if (run_message())
