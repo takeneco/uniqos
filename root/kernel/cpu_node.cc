@@ -113,9 +113,9 @@ bool cpu_node::run_all_intr_message()
 		return false;
 
 	do {
-		message_item* ev = get_next_intr_message();
+		message* msg = get_next_intr_message();
 
-		ev->handler(ev->param);
+		msg->handler(msg);
 
 	} while (probe_intr_message());
 
@@ -130,13 +130,13 @@ void cpu_node::preempt_wait()
 /// @brief 外部割込みからのイベントを登録する。
 //
 /// 外部割込み中は CPU が割り込み禁止状態なので割り込み可否の制御はしない。
-void cpu_node::post_intr_message(message_item* ev)
+void cpu_node::post_intr_message(message* ev)
 {
 	intr_msgq.push(ev);
 	thread_q.ready_np(message_thread);
 }
 
-void cpu_node::post_soft_message(message_item* ev)
+void cpu_node::post_soft_message(message* ev)
 {
 	preempt_enable();
 
@@ -177,7 +177,7 @@ bool cpu_node::probe_intr_message()
 }
 
 /// @brief 外部割込みで登録されたイベントを返す。
-message_item* cpu_node::get_next_intr_message()
+message* cpu_node::get_next_intr_message()
 {
 	return intr_msgq.pop();
 }
@@ -191,9 +191,9 @@ bool cpu_node::run_message()
 	if (!soft_msgq.probe())
 		return false;
 
-	message_item* msg = soft_msgq.pop();
+	message* msg = soft_msgq.pop();
 
-	msg->handler(msg->param);
+	msg->handler(msg);
 
 	return true;
 }

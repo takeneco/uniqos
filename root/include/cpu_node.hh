@@ -39,8 +39,8 @@ public:
 	u8   inc_preempt_disable() { return ++preempt_disable_cnt; }
 	u8   dec_preempt_disable() { return --preempt_disable_cnt; }
 
-	void post_intr_message(message_item* ev);
-	void post_soft_message(message_item* ev);
+	void post_intr_message(message* ev);
+	void post_soft_message(message* ev);
 
 	thread_queue& get_thread_ctl() { return thread_q; }
 	message_queue& get_soft_msgq() { return soft_msgq; }
@@ -52,7 +52,7 @@ private:
 	static void preempt_wait();
 
 	bool probe_intr_message();
-	message_item* get_next_intr_message();
+	message* get_next_intr_message();
 
 	bool run_message();
 	void message_loop();

@@ -11,14 +11,14 @@
 
 class message_queue
 {
-	bochain<message_item, &message_item::chain_hook> message_chain;
+	bochain<message, &message::chain_hook> msg_chain;
 
 public:
-	void push(message_item* e) { message_chain.insert_tail(e); }
-	message_item* pop() { return message_chain.remove_head(); }
+	void push(message* e) { msg_chain.insert_tail(e); }
+	message* pop() { return msg_chain.remove_head(); }
 
 	bool probe() {
-		return message_chain.head() != 0;
+		return msg_chain.head() != 0;
 	}
 };
 

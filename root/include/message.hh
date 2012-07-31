@@ -10,18 +10,25 @@
 #include <chain.hh>
 
 
-class message_item
+class message
 {
-	chain_node<message_item> chain_node_;
+	chain_node<message> chain_node_;
 public:
-	chain_node<message_item>& chain_hook() { return chain_node_; }
+	chain_node<message>& chain_hook() { return chain_node_; }
 
-	typedef void (*message_handler)(void* param);
-	message_handler handler;
-	void* param;
+	typedef void (*handler_type)(message* msg);
+	handler_type handler;
 };
 
-void post_message(message_item* event);
+template<class T>
+class message_with : public message
+{
+public:
+	T data;
+};
+
+
+void post_message(message* event);
 
 
 #endif  // include guard

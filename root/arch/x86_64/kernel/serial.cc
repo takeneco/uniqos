@@ -90,8 +90,9 @@ class serial_ctrl : public file
 	bool output_fifo_empty;
 	int tx_fifo_queued;
 
-	message_item write_msg;
-	message_item intr_msg;
+	typedef message_with<serial_ctrl*> serial_msg;
+	serial_msg write_msg;
+	serial_msg intr_msg;
 	bool write_posted;
 	volatile bool intr_posted;
 	volatile bool intr_pending;
@@ -123,11 +124,11 @@ private:
 	cause::stype write_buf(iovec_iterator& iov_itr, uptr* bytes);
 
 	void on_write_message();
-	static void on_write_message_(void* param);
+	static void on_write_message_(message* msg);
 	void post_write_message();
 
 	void on_intr_message();
-	static void on_intr_message_(void* param);
+	static void on_intr_message_(message* msg);
 	void post_intr_message();
 	static void intr_handler(void* param);
 
@@ -163,11 +164,11 @@ cause::stype serial_ctrl::configure()
 	global_vars::core.intr_ctl_obj->add_handler(vec, &ih);
 
 	write_msg.handler = on_write_message_;
-	write_msg.param = this;
+	write_msg.data = this;
 	write_posted = false;
 
 	intr_msg.handler = on_intr_message_;
-	intr_msg.param = this;
+	intr_msg.data = this;
 	intr_posted = false;
 
 	// 通信スピード設定開始
@@ -285,9 +286,11 @@ void serial_ctrl::on_write_message()
 	transmit();
 }
 
-void serial_ctrl::on_write_message_(void* param)
+void serial_ctrl::on_write_message_(message* msg)
 {
-	serial_ctrl* serial = static_cast<serial_ctrl*>(param);
+	serial_msg* _msg = static_cast<serial_msg*>(msg);
+	serial_ctrl* serial = _msg->data;
+
 	serial->write_posted = false;
 	serial->on_write_message();
 }
@@ -335,9 +338,11 @@ void serial_ctrl::on_intr_message()
 	}
 }
 
-void serial_ctrl::on_intr_message_(void* param)
+void serial_ctrl::on_intr_message_(message* msg)
 {
-	serial_ctrl* serial = reinterpret_cast<serial_ctrl*>(param);
+	serial_msg* _msg = static_cast<serial_msg*>(msg);
+	serial_ctrl* serial = _msg->data;
+
 	serial->intr_posted = false;
 	serial->on_intr_message();
 }
