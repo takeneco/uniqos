@@ -7,13 +7,12 @@
 #define ARCH_X86_64_KERNEL_KERNINIT_HH_
 
 #include <basic.hh>
+#include <setup.hh>
 
 
 cause::type cpu_page_init();
-cause::type mempool_init();
 cause::type cpu_common_init();
 cause::type cpu_setup();
-cause::type intr_setup();
 cause::type irq_setup();
 
 namespace arch {
