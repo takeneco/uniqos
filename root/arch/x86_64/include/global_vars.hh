@@ -17,6 +17,7 @@ class irq_ctl;
 class page_pool;
 class mempool_ctl;
 class intr_ctl;
+class timer_ctl;
 class cpu_node;
 
 
@@ -43,6 +44,8 @@ struct _core
 	mempool_ctl*       mempool_ctl_obj;
 
 	intr_ctl*          intr_ctl_obj;
+
+	timer_ctl*         timer_ctl_obj;
 
 	/// カーネルが認識している CPU の数
 	/// @note システムに搭載されている CPU の数ではない

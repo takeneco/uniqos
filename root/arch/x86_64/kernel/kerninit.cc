@@ -168,6 +168,14 @@ extern "C" int kern_init(u64 bootinfo_adr)
 		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
 	}
 
+	r = timer_setup();
+	if (is_fail(r))
+		return r;
+
+	r = timer_setup_cpu();
+	if (is_fail(r))
+		return r;
+
 log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
 	hpet_init();

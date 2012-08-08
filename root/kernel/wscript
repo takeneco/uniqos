@@ -19,6 +19,7 @@ kern_sources = [
     'string.cc',
     'thread.cc',
     'thread_queue.cc',
+    'timer_ctl.cc',
 ]
 
 kern_defines = []
