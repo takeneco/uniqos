@@ -1,7 +1,7 @@
 /// @file  mempool_ctl.cc
 /// @brief Memory pool controller.
 
-//  Uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2011-2012 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
@@ -186,11 +186,18 @@ void mempool_ctl::dump(log_target& lt)
 
 cause::type mempool_ctl::init_shared()
 {
-	const uptr sizes[] = {
-		0x1000, 0x2000, 0x3000, 0x4000, 0x200000,
-	};
+	uptr sizes[sizeof (cpu_word) * arch::BITS_PER_BYTE * 2];
+	int sizes_ent = 0;
 
-	for (uptr i = 0; i < num_of_array(sizes); ++i) {
+	for (uptr size = sizeof (cpu_word) * 4;
+	          size <= 0x100000;
+	          size *= 2)
+	{
+		sizes[sizes_ent++] = size;
+		sizes[sizes_ent++] = size + size / 2;
+	}
+
+	for (uptr i = 0; i < sizes_ent; ++i) {
 		mempool* mp;
 		const cause::type r = create_shared(sizes[i], &mp);
 		if (is_fail(r))
