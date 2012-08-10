@@ -1,10 +1,10 @@
-/// @file   log.cc
+/// @file   log_target.cc
 /// @brief  log destination.
 //
-// (C) 2009-2011 KATO Takeshi
+// (C) 2009-2012 KATO Takeshi
 //
 
-#include "log.hh"
+#include <log_target.hh>
 
 #include <string.hh>
 
@@ -82,7 +82,7 @@ void log_target::_wr_str(const char* s)
 		s = nullstr;
 	}
 
-	write(s, str_len(s));
+	write(s, str_length(s));
 }
 
 void log_target::_wr_u(umax n, u8 base, int bits)
@@ -136,33 +136,29 @@ void log_target::_wr_p(const void* p)
 /// @param func  function name. null available.
 void log_target::_wr_src(const char* path, int line, const char* func)
 {
-	iovec iov[7];
+	iovec iov[5];
 
 	iov[0].base = const_cast<char*>(path);
-	iov[0].bytes = str_len(path);
+	iov[0].bytes = str_length(path);
 
-	const char brace1 = '(';
-	iov[1].base = const_cast<char*>(&brace1);
+	const char sep1 = ':';
+	iov[1].base = const_cast<char*>(&sep1);
 	iov[1].bytes = 1;
 
 	char line_buf[10];
 	iov[2].bytes = u_to_str(line, 10, 0, line_buf);
 	iov[2].base = line_buf;
 
-	const char brace2 = ')';
-	iov[3].base = const_cast<char*>(&brace2);
+	const char sep2 = ':';
+	iov[3].base = const_cast<char*>(&sep2);
 	iov[3].bytes = 1;
 
-	const char sep = ':';
 	int iov_count;
 	if (func) {
 		iov[4].base = const_cast<char*>(func);
-		iov[4].bytes = str_len(func);
+		iov[4].bytes = str_length(func);
 
-		iov[5].base = const_cast<char*>(&sep);
-		iov[5].bytes = 1;
-
-		iov_count = 6;
+		iov_count = 5;
 	} else {
 		iov_count = 4;
 	}
