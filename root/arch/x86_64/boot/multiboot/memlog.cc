@@ -2,8 +2,8 @@
 /// @brief  On memory log.
 /// @detail カーネルへログを渡するためにメモリ上にログを書く。
 
-//  Uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -30,18 +30,18 @@ enum {
 
 file::operations memlog_ops;
 
-} // namespace
+}  // namespace
 
-cause::stype memlog_file::setup()
+cause::type memlog_file::setup()
 {
-	memlog_ops.seek  = op_seek;
-	memlog_ops.read  = op_read;
-	memlog_ops.write = op_write;
+	memlog_ops.seek  = file::call_on_seek<memlog_file>;
+	memlog_ops.read  = file::call_on_read<memlog_file>;
+	memlog_ops.write = file::call_on_write<memlog_file>;
 
 	return cause::OK;
 }
 
-cause::stype memlog_file::open()
+cause::type memlog_file::open()
 {
 	void* p = get_alloc()->alloc(HEAPSLOTM, MAX_SIZE, 1, true);
 
@@ -56,17 +56,12 @@ cause::stype memlog_file::open()
 	return cause::OK;
 }
 
-cause::stype memlog_file::close()
+cause::type memlog_file::close()
 {
 	return cause::OK;
 }
 
-cause::stype memlog_file::op_seek(file* x, s64 offset, int whence)
-{
-	return static_cast<memlog_file*>(x)->seek(offset, whence);
-}
-
-cause::stype memlog_file::seek(s64 offset, int whence)
+cause::type memlog_file::on_seek(s64 offset, int whence)
 {
 	s64 base;
 	switch (whence) {
@@ -92,12 +87,7 @@ cause::stype memlog_file::seek(s64 offset, int whence)
 	return cause::OK;
 }
 
-cause::stype memlog_file::op_read(file* x, iovec* iov, int iov_cnt, uptr* bytes)
-{
-	return static_cast<memlog_file*>(x)->read(iov, iov_cnt, bytes);
-}
-
-cause::stype memlog_file::read(iovec* iov, int iov_cnt, uptr* bytes)
+cause::type memlog_file::on_read(iovec* iov, int iov_cnt, uptr* bytes)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;
@@ -118,13 +108,7 @@ cause::stype memlog_file::read(iovec* iov, int iov_cnt, uptr* bytes)
 	return cause::OK;
 }
 
-cause::stype memlog_file::op_write(
-    file* x, const iovec* iov, int iov_cnt, uptr* bytes)
-{
-	return static_cast<memlog_file*>(x)->write(iov, iov_cnt, bytes);
-}
-
-cause::stype memlog_file::write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type memlog_file::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;

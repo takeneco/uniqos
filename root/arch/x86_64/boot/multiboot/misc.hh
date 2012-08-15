@@ -1,12 +1,11 @@
 /// @file   misc.hh
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
-#include <basic.hh>
 #include <cheap_alloc.hh>
 #include <log_target.hh>
 
@@ -33,8 +32,8 @@ enum MEM_SLOT_MASK {
 void  init_alloc();
 allocator* get_alloc();
 
-cause::stype pre_load(u32 magic, const u32* tag);
-cause::stype post_load(u32* tag);
+cause::type pre_load(u32 magic, const u32* tag);
+cause::type post_load(u32* tag);
 
 extern struct load_info_
 {
@@ -59,29 +58,28 @@ public:
 void log_set(uint i, file* target);
 
 
+// memlog_file
+
 class memlog_file : public file
 {
 	DISALLOW_COPY_AND_ASSIGN(memlog_file);
 
+	friend class file;
+
 public:
-	static cause::stype setup();
+	static cause::type setup();
 
 	memlog_file() {}
-	cause::stype open();
-	cause::stype close();
+
+	cause::type open();
+	cause::type close();
 
 private:
-	static cause::stype op_seek(
-	    file* x, s64 offset, int whence);
-	cause::stype seek(s64 offset, int whence);
+	cause::type on_seek(s64 offset, int whence);
 
-	static cause::stype op_read(
-	    file* x, iovec* iov, int iov_cnt, uptr* bytes);
-	cause::stype read(iovec* iov, int iov_cnt, uptr* bytes);
+	cause::type on_read(iovec* iov, int iov_cnt, uptr* bytes);
 
-	static cause::stype op_write(
-	    file* x, const iovec* iov, int iov_cnt, uptr* bytes);
-	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
+	cause::type on_write(const iovec* iov, int iov_cnt, uptr* bytes);
 
 private:
 	u8* buf;
@@ -93,3 +91,4 @@ extern memlog_file memlog;
 
 
 #endif  // include guard
+

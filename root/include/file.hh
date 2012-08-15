@@ -1,13 +1,13 @@
 /// @file   include/file.hh
 /// @brief  file class declaration.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #ifndef INCLUDE_FILE_HH_
 #define INCLUDE_FILE_HH_
 
-#include "basic_types.hh"
+#include <basic.hh>
 
 
 struct iovec
@@ -55,41 +55,53 @@ public:
 
 class file
 {
+	DISALLOW_COPY_AND_ASSIGN(file);
+
 public:
 	struct operations
 	{
-		typedef cause::stype (*seek_fn)(
+		typedef cause::type (*seek_op)(
 		    file* x, s64 offset, int whence);
-		seek_fn seek;
+		seek_op seek;
 
-		typedef cause::stype (*read_fn)(
+		typedef cause::type (*read_op)(
 		    file* x, iovec* iov, int iov_cnt, uptr* bytes);
-		read_fn read;
+		read_op read;
 
-		typedef cause::stype (*write_fn)(
+		typedef cause::type (*write_op)(
 		    file* x, const iovec* iov, int iov_cnt, uptr* bytes);
-		write_fn write;
+		write_op write;
 	};
+
+	template<class T> static cause::type call_on_seek(
+	    file* x, s64 offset, int whence) {
+		return static_cast<T*>(x)->on_seek(offset, whence);
+	}
+	template<class T> static cause::type call_on_read(
+	    file* x, iovec* iov, int iov_cnt, uptr* bytes) {
+		return static_cast<T*>(x)->on_read(iov, iov_cnt, bytes);
+	}
+	template<class T> static cause::type call_on_write(
+	    file* x, const iovec* iov, int iov_cnt, uptr* bytes) {
+		return static_cast<T*>(x)->on_write(iov, iov_cnt, bytes);
+	}
 
 	enum seekdir { BEG = 0, CUR, END, };
 
 public:
-	cause::stype call_seek(s64 offset, int whence) {
+	cause::type seek(s64 offset, int whence) {
 		return ops->seek(this, offset, whence);
 	}
-	cause::stype call_read(iovec* iov, int iov_cnt, uptr* bytes) {
+	cause::type read(iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->read(this, iov, iov_cnt, bytes);
 	}
-	cause::stype call_write(const iovec* iov, int iov_cnt, uptr* bytes) {
+	cause::type write(const iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->write(this, iov, iov_cnt, bytes);
 	}
 
 protected:
 	file() {}
-
-private:
-	file(const file&);
-	void operator = (const file&);
+	file(const operations* _ops) : ops(_ops) {}
 
 public:
 	const operations* ops;

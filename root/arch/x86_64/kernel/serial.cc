@@ -1,16 +1,29 @@
 /// @file  serial.cc
 /// @brief serial port.
-//
-// (C) 2011-2012 KATO Takeshi
-//
 
-#include <message.hh>
-#include "file.hh"
-#include "global_vars.hh"
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
+//
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#include <file.hh>
+#include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
 #include <mempool.hh>
-#include "native_ops.hh"
+#include <message.hh>
+#include <native_ops.hh>
 #include <new_ops.hh>
 #include <cpu_node.hh>
 
@@ -74,6 +87,10 @@ public:
 
 class serial_ctrl : public file
 {
+	DISALLOW_COPY_AND_ASSIGN(serial_ctrl);
+
+	friend class file;
+
 	const u16 base_port;
 	const u16 irq_num;
 
@@ -103,7 +120,7 @@ public:
 
 public:
 	serial_ctrl(u16 base_port_, u16 irq_num_);
-	cause::stype configure();
+	cause::type configure();
 
 private:
 	bool buf_is_empty() const {
@@ -120,8 +137,8 @@ private:
 		return buf;
 	}
 	bool is_txfifo_empty() const;
-	cause::stype write(const iovec* iov, int iov_cnt, uptr* bytes);
-	cause::stype write_buf(iovec_iterator& iov_itr, uptr* bytes);
+	cause::type on_write(const iovec* iov, int iov_cnt, uptr* bytes);
+	cause::type write_buf(iovec_iterator& iov_itr, uptr* bytes);
 
 	void on_write_message();
 	static void on_write_message_(message* msg);
@@ -135,8 +152,6 @@ private:
 	void transmit();
 
 public:
-	static cause::stype op_write(
-	    file* self, const iovec* iov, int iov_cnt, uptr* bytes);
 	void dump();
 };
 
@@ -153,7 +168,7 @@ serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	ops = &serial_ops;
 }
 
-cause::stype serial_ctrl::configure()
+cause::type serial_ctrl::configure()
 {
 	u32 vec;
 	arch::irq_interrupt_map(4, &vec);
@@ -198,7 +213,7 @@ cause::stype serial_ctrl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
-	cause::type r = mempool_create_shared(buf_entry::SIZE, &buf_mp);
+	cause::type r = mempool_acquire_shared(buf_entry::SIZE, &buf_mp);
 	if (is_fail(r))
 		return r;
 
@@ -216,7 +231,7 @@ bool serial_ctrl::is_txfifo_empty() const
 /// @param[out] bytes  write bytes.
 //
 /// 途中で失敗した場合は *bytes に出力したバイト数が返される。
-cause::type serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type serial_ctrl::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
 
@@ -239,7 +254,7 @@ cause::type serial_ctrl::write(const iovec* iov, int iov_cnt, uptr* bytes)
 	return r;
 }
 
-cause::stype serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
+cause::type serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
 {
 	buf_entry* buf = buf_queue.head();
 	if (buf == 0) {
@@ -273,12 +288,6 @@ cause::stype serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
 	}
 
 	return cause::OK;
-}
-
-cause::stype serial_ctrl::op_write(
-    file* self, const iovec* iov, int iov_cnt, uptr* bytes)
-{
-	return static_cast<serial_ctrl*>(self)->write(iov, iov_cnt, bytes);
 }
 
 void serial_ctrl::on_write_message()
@@ -422,7 +431,7 @@ uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
 file* create_serial()
 {
 	///////
-	serial_ctrl::serial_ops.write = serial_ctrl::op_write;
+	serial_ctrl::serial_ops.write = file::call_on_write<serial_ctrl>;
 	///////
 
 	//void* mem = memory::alloc(sizeof (serial_ctrl));

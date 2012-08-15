@@ -1,7 +1,7 @@
 /// @file   postload.cc
 
-//  uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
 //
 //  uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -93,12 +93,12 @@ uptr store_log(uptr bootinfo_left, u8* bootinfo)
 	if (bootinfo_left < size)
 		return size;
 
-	memlog.call_seek(0, file::BEG);
+	memlog.seek(0, file::BEG);
 	iovec iov;
 	iov.base = tag_log->log;
 	iov.bytes = bootinfo_left - size;
 	uptr read_bytes;
-	cause::stype r = memlog.call_read(&iov, 1, &read_bytes);
+	cause::type r = memlog.read(&iov, 1, &read_bytes);
 	if (is_fail(r))
 		return 0;
 
@@ -177,7 +177,7 @@ bool stack_test()
 }  // namespace
 
 
-cause::stype post_load(u32* mb_info)
+cause::type post_load(u32* mb_info)
 {
 	if (!stack_test())
 		return cause::FAIL;
