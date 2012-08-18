@@ -7,6 +7,9 @@
 #include <string.hh>
 #include <string.h>
 
+#include <arch.hh>
+#include <ctype.hh>
+
 
 int mem_compare(uptr bytes, const void* mem1, const void* mem2)
 {
@@ -101,6 +104,143 @@ void str_concat(uptr max, const char* src, char* dest)
 			break;
 	}
 }
+
+umax str_to_u(const char* src, const char** end, u8 base)
+{
+	umax result = 0;
+
+	if (base == 0)
+		base = 10;
+
+	for (;;) {
+		uint x;
+		if (ctype::is_digit(*src))
+			x = *src - '0';
+		else if (ctype::is_lower(*src))
+			x = *src - 'a' + 10;
+		else if (ctype::is_upper(*src))
+			x = *src - 'A' + 10;
+		else
+			break;
+
+		if (x > base)
+			break;
+
+		result = result * base + x;
+
+		++src;
+	}
+
+	if (end)
+		*end = src;
+
+	return result;
+}
+
+void str_to_upper(int length, char* str)
+{
+	for (int i = 0; i < length && str[i]; ++i) {
+		if (ctype::is_lower(str[i]))
+			str[i] += 'A' - 'a';
+	}
+}
+
+namespace {
+
+static const char base_chars[] = "0123456789abcdef";
+
+}  // namespace
+
+/// @retval output bytes.
+int u_to_hexstr(
+    umax n,                    /// [in] number.
+    char s[sizeof (umax) * 2]) /// [out] output buffer. NOT nul terminate.
+{
+	int m = 0;
+	for (int shift = sizeof n * arch::BITS_PER_BYTE - 4;
+	     shift >= 0;
+	     shift -= 4)
+	{
+		const int x = static_cast<u8>(n >> shift) & 0x0f;
+		if (x == 0 && m == 0)
+			continue;
+		s[m++] = base_chars[x];
+	}
+
+	if (m == 0) {
+		s[0] = '0';
+		m = 1;
+	}
+
+	return m;
+}
+
+/// @retval  output bytes.
+int u_to_octstr(
+    umax n,                              /// [in] number.
+    char s[(sizeof (umax) * 8 + 2) / 3]) /// [out] output buffer.
+                                         ///       NOT nul terminate.
+{
+	int m = 0;
+	for (int shift = sizeof n * arch::BITS_PER_BYTE - 3;
+	     shift >= 0;
+	     shift -= 3)
+	{
+		const int x = static_cast<u8>(n >> shift) & 0x07;
+		if (x == 0 && m == 0)
+			continue;
+		s[m++] = base_chars[x];
+	}
+
+	if (m == 0) {
+		s[0] = '0';
+		m = 1;
+	}
+
+	return m;
+}
+
+/// @retval  output bytes.
+int u_to_binstr(
+    umax n,               /// [in] number.
+    char s[sizeof n * 8]) /// [out] output buffer. NOT nul terminate.
+{
+	int m = 0;
+	for (int shift = sizeof n * arch::BITS_PER_BYTE - 1;
+	     shift >= 0;
+	     shift -= 1)
+	{
+		const int x = static_cast<u8>(n >> shift) & 0x01;
+		if (x == 0 && m == 0)
+			continue;
+		s[m++] = base_chars[x];
+	}
+
+	if (m == 0) {
+		s[0] = '0';
+		m = 1;
+	}
+
+	return m;
+}
+
+/// @retval  output bytes.
+int u_to_decstr(
+    umax n,               /// [in] number.
+    char s[sizeof n * 3]) /// [out] output buffer. NOT nul terminate.
+{
+	int end = 0;
+	for (umax _n = n; _n > 9; _n /= 10)
+		++end;
+
+	for (int i = 0; i <= end; ++i) {
+		s[end - i] = base_chars[n % 10];
+		n /= 10;
+	}
+
+	return end + 1;
+}
+
 
 extern "C" {
 
