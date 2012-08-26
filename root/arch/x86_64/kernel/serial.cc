@@ -136,6 +136,7 @@ private:
 		next_write = 0;
 		return buf;
 	}
+	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
 	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
@@ -220,6 +221,16 @@ cause::type serial_ctrl::configure()
 	return cause::OK;
 }
 
+buf_entry* serial_ctrl::get_next_buf()
+{
+	buf_entry* buf = buf_queue.head();
+
+	if (buf == 0 || next_write >= buf->get_bufsize())
+		buf = buf_append();
+
+	return buf;
+}
+
 bool serial_ctrl::is_txfifo_empty() const
 {
 	const u8 line_status = native::inb(base_port + LINE_STATUS);
@@ -254,38 +265,43 @@ cause::type serial_ctrl::on_write(offset* off, int iov_cnt, const iovec* iov)
 
 cause::type serial_ctrl::write_buf(offset* off, iovec_iterator& iov_itr)
 {
-	buf_entry* buf = buf_queue.head();
-	if (buf == 0) {
-		buf = buf_append();
-		if (buf == 0)
-			return cause::NOMEM;
-	}
-
+	buf_entry* buf = 0;
 	uptr total = 0;
+	cause::type result = cause::OK;
 
 	for (;;) {
 		const u8* c = iov_itr.next_u8();
 		if (!c)
 			break;
 
-		if (next_write >= buf->get_bufsize()) {
-			buf = buf_append();
-			if (buf == 0)
-				return cause::NOMEM;
+		if (*c == '\n') {
+			buf = get_next_buf();
+			if (!buf) {
+				result = cause::NOMEM;
+				break;
+			}
+			buf->write(next_write++, '\r');
 		}
+
+		buf = get_next_buf();
+		if (!buf) {
+			result = cause::NOMEM;
+			break;
+		}
+
 		buf->write(next_write++, *c);
 		++total;
 	}
 
 	*off += total;
 
-	if (sync) {
+	if (sync && buf) {
 		thread_queue& tc = get_cpu_node()->get_thread_ctl();
 		buf->set_bufsize(next_write);
 		buf->set_client(tc.get_running_thread());
 	}
 
-	return cause::OK;
+	return result;
 }
 
 void serial_ctrl::on_write_message()
