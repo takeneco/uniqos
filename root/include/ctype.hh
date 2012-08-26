@@ -25,11 +25,12 @@ enum {
 
 extern const u8 _masktbl[];
 
-inline int is_alpha(u8 c) { return _masktbl[c] & (_u|_l);       }
-inline int is_digit(u8 c) { return _masktbl[c] & (_d);          }
-inline int is_print(u8 c) { return _masktbl[c] & (_u|_l|_d|_s); }
-inline int is_space(u8 c) { return _masktbl[c] & (_s);          }
 inline int is_upper(u8 c) { return _masktbl[c] & (_u);          }
+inline int is_lower(u8 c) { return _masktbl[c] & (_l);          }
+inline int is_digit(u8 c) { return _masktbl[c] & (_d);          }
+inline int is_space(u8 c) { return _masktbl[c] & (_s);          }
+inline int is_alpha(u8 c) { return _masktbl[c] & (_u|_l);       }
+inline int is_print(u8 c) { return _masktbl[c] & (_u|_l|_d|_s); }
 inline int is_xdigit(u8 c) { return _masktbl[c] & (_h);         }
 
 }  // namespace ctype

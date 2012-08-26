@@ -58,6 +58,7 @@ class file
 	DISALLOW_COPY_AND_ASSIGN(file);
 
 public:
+	typedef s64 offset;
 	struct operations
 	{
 		typedef cause::type (*seek_op)(
@@ -69,7 +70,7 @@ public:
 		read_op read;
 
 		typedef cause::type (*write_op)(
-		    file* x, const iovec* iov, int iov_cnt, uptr* bytes);
+		    file* x, offset* off, int iov_cnt, const iovec* iov);
 		write_op write;
 	};
 
@@ -82,8 +83,8 @@ public:
 		return static_cast<T*>(x)->on_read(iov, iov_cnt, bytes);
 	}
 	template<class T> static cause::type call_on_write(
-	    file* x, const iovec* iov, int iov_cnt, uptr* bytes) {
-		return static_cast<T*>(x)->on_write(iov, iov_cnt, bytes);
+	    file* x, offset* off, int iov_cnt, const iovec* iov) {
+		return static_cast<T*>(x)->on_write(off, iov_cnt, iov);
 	}
 
 	enum seekdir { BEG = 0, CUR, END, };
@@ -95,8 +96,8 @@ public:
 	cause::type read(iovec* iov, int iov_cnt, uptr* bytes) {
 		return ops->read(this, iov, iov_cnt, bytes);
 	}
-	cause::type write(const iovec* iov, int iov_cnt, uptr* bytes) {
-		return ops->write(this, iov, iov_cnt, bytes);
+	cause::type write(offset* off, int iov_cnt, const iovec* iov) {
+		return ops->write(this, off, iov_cnt, iov);
 	}
 
 protected:

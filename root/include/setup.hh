@@ -10,6 +10,7 @@
 
 
 cause::type mempool_init();
+cause::type mem_file_setup();
 cause::type intr_setup();
 cause::type timer_setup();
 cause::type timer_setup_cpu();

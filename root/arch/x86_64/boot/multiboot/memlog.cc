@@ -34,9 +34,9 @@ file::operations memlog_ops;
 
 cause::type memlog_file::setup()
 {
-	memlog_ops.seek  = file::call_on_seek<memlog_file>;
-	memlog_ops.read  = file::call_on_read<memlog_file>;
-	memlog_ops.write = file::call_on_write<memlog_file>;
+	memlog_ops.seek  = call_on_seek<memlog_file>;
+	memlog_ops.read  = call_on_read<memlog_file>;
+	memlog_ops.write = call_on_write<memlog_file>;
 
 	return cause::OK;
 }
@@ -108,7 +108,7 @@ cause::type memlog_file::on_read(iovec* iov, int iov_cnt, uptr* bytes)
 	return cause::OK;
 }
 
-cause::type memlog_file::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type memlog_file::on_write(offset* off, int iov_cnt, const iovec* iov)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;
@@ -124,7 +124,7 @@ cause::type memlog_file::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
 		++total;
 	}
 
-	*bytes = total;
+	*off += total;
 
 	size = max(current, size);
 

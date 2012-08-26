@@ -70,7 +70,7 @@ def build(x):
 	    features  = 'asm c cxx',
 	    target    = kern_target,
 	    source    = kern_source,
-	    use       = ['kernel_libs', 'kernel_objs', 'KERNEL'],
+	    use       = ['kernel_libs', 'kernel_objs', 'acpi_objs', 'acpica_objs', 'KERNEL'],
 	    linkflags = kern_linkflags)
 
 	x(  target   = 'kernel.bin.lzma',

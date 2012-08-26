@@ -42,6 +42,12 @@ private:
 # define UNLIKELY(x) x
 #endif  // __GNUC__
 
+#ifdef ARCH_BE
+# define ARCH_IS_BE_LE(BE_CODE, LE_CODE)  (BE_CODE)
+#else   // ARCH_BE
+# define ARCH_IS_BE_LE(BE_CODE, LE_CODE)  (LE_CODE)
+#endif  // ARCH_BE
+
 template<class xint> bool test_overlap(
     xint a1, xint a2, xint b1, xint b2, xint* r1, xint* r2)
 {

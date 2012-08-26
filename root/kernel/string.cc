@@ -1,8 +1,21 @@
 /// @file   kernel/string.cc
 /// @brief  Memory ops.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2012 KATO Takeshi
 //
-// (C) 2010-2012 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <string.hh>
 #include <string.h>
@@ -105,7 +118,7 @@ void str_concat(uptr max, const char* src, char* dest)
 	}
 }
 
-umax str_to_u(const char* src, const char** end, u8 base)
+umax str_to_u(u8 base, const char* src, const char** end)
 {
 	umax result = 0;
 
@@ -173,6 +186,14 @@ int u_to_hexstr(
 	}
 
 	return m;
+}
+
+void u8_to_hexstr(
+    u8 n,
+    char s[2])
+{
+	s[0] = base_chars[(n >> 4) & 0xf];
+	s[1] = base_chars[n & 0xf];
 }
 
 /// @retval  output bytes.

@@ -74,12 +74,9 @@ public:
 	cause::type open();
 	cause::type close();
 
-private:
 	cause::type on_seek(s64 offset, int whence);
-
 	cause::type on_read(iovec* iov, int iov_cnt, uptr* bytes);
-
-	cause::type on_write(const iovec* iov, int iov_cnt, uptr* bytes);
+	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
 
 private:
 	u8* buf;

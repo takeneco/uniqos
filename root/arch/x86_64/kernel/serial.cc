@@ -137,8 +137,8 @@ private:
 		return buf;
 	}
 	bool is_txfifo_empty() const;
-	cause::type on_write(const iovec* iov, int iov_cnt, uptr* bytes);
-	cause::type write_buf(iovec_iterator& iov_itr, uptr* bytes);
+	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void on_write_message();
 	static void on_write_message_(message* msg);
@@ -229,9 +229,7 @@ bool serial_ctrl::is_txfifo_empty() const
 
 /// @brief  Write to buffer.
 /// @param[out] bytes  write bytes.
-//
-/// 途中で失敗した場合は *bytes に出力したバイト数が返される。
-cause::type serial_ctrl::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type serial_ctrl::on_write(offset* off, int iov_cnt, const iovec* iov)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
 
@@ -239,7 +237,7 @@ cause::type serial_ctrl::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
 	{
 		preempt_disable_section _pds;
 
-		r = write_buf(iov_itr, bytes);
+		r = write_buf(off, iov_itr);
 
 		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
 			post_write_message();
@@ -254,7 +252,7 @@ cause::type serial_ctrl::on_write(const iovec* iov, int iov_cnt, uptr* bytes)
 	return r;
 }
 
-cause::type serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
+cause::type serial_ctrl::write_buf(offset* off, iovec_iterator& iov_itr)
 {
 	buf_entry* buf = buf_queue.head();
 	if (buf == 0) {
@@ -279,7 +277,7 @@ cause::type serial_ctrl::write_buf(iovec_iterator& iov_itr, uptr* bytes)
 		++total;
 	}
 
-	*bytes = total;
+	*off += total;
 
 	if (sync) {
 		thread_queue& tc = get_cpu_node()->get_thread_ctl();

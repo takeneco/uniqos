@@ -1,15 +1,15 @@
 /// @file   text_vga.cc
 /// @brief  text mode VGA output i/f.
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
-#include "vga.hh"
+#include <vga.hh>
 
 
 void text_vga::init(u32 _width, u32 _height, void* _vram)
 {
-	fops.write = op_write;
+	fops.write = call_on_write<text_vga>;
 	ops = &fops;
 
 	width = _width;
@@ -19,13 +19,7 @@ void text_vga::init(u32 _width, u32 _height, void* _vram)
 	xpos = ypos = 0;
 }
 
-cause::stype text_vga::op_write(
-    file* x, const iovec* iov, int iov_cnt, uptr* bytes)
-{
-	return static_cast<text_vga*>(x)->write(iov, iov_cnt, bytes);
-}
-
-cause::stype text_vga::write(const iovec* iov, int iov_cnt, uptr* bytes)
+cause::type text_vga::on_write(offset* off, int iov_cnt, const iovec* iov)
 {
 	uptr total = 0;
 
@@ -48,7 +42,7 @@ cause::stype text_vga::write(const iovec* iov, int iov_cnt, uptr* bytes)
 		putc(*c);
 	}
 
-	*bytes = total;
+	*off += total;
 
 	return cause::OK;
 }
