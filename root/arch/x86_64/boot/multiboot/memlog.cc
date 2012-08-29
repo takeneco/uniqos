@@ -35,7 +35,7 @@ file::operations memlog_ops;
 cause::type memlog_file::setup()
 {
 	memlog_ops.seek  = call_on_seek<memlog_file>;
-	memlog_ops.read  = call_on_read<memlog_file>;
+	memlog_ops.read  = call_on_file_read<memlog_file>;
 	memlog_ops.write = call_on_write<memlog_file>;
 
 	return cause::OK;
@@ -87,13 +87,13 @@ cause::type memlog_file::on_seek(s64 offset, int whence)
 	return cause::OK;
 }
 
-cause::type memlog_file::on_read(iovec* iov, int iov_cnt, uptr* bytes)
+cause::type memlog_file::on_file_read(offset* off, int iov_cnt, iovec* iov)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;
 
 	uptr total = 0;
-	iovec_iterator itr(iov, iov_cnt);
+	iovec_iterator itr(iov_cnt, iov);
 	while (current < size) {
 		u8* c = itr.next_u8();
 		if (!c)
@@ -103,7 +103,7 @@ cause::type memlog_file::on_read(iovec* iov, int iov_cnt, uptr* bytes)
 		++total;
 	}
 
-	*bytes = total;
+	*off += total;
 
 	return cause::OK;
 }

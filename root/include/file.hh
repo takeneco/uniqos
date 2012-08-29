@@ -22,7 +22,7 @@ class iovec_iterator
 	uint         iov_cnt;
 
 	// Current address is iov[iov_index].address[base_offset]
-	uptr         iov_index;
+	uint         iov_index;
 	uptr         base_offset;
 
 	void normalize();
@@ -31,6 +31,11 @@ public:
 	iovec_iterator() :
 	    iov(0), iov_cnt(0) {
 		reset();
+	}
+	iovec_iterator(uint _iov_cnt, const iovec* _iov) :
+	    iov(_iov), iov_cnt(_iov_cnt) {
+		reset();
+		normalize();
 	}
 	iovec_iterator(const iovec* iov, ucpu num) :
 	    iov(iov), iov_cnt(num) {
@@ -66,7 +71,7 @@ public:
 		seek_op seek;
 
 		typedef cause::type (*read_op)(
-		    file* x, iovec* iov, int iov_cnt, uptr* bytes);
+		    file* x, offset* off, int iov_cnt, iovec* iov);
 		read_op read;
 
 		typedef cause::type (*write_op)(
@@ -78,9 +83,9 @@ public:
 	    file* x, s64 offset, int whence) {
 		return static_cast<T*>(x)->on_seek(offset, whence);
 	}
-	template<class T> static cause::type call_on_read(
-	    file* x, iovec* iov, int iov_cnt, uptr* bytes) {
-		return static_cast<T*>(x)->on_read(iov, iov_cnt, bytes);
+	template<class T> static cause::type call_on_file_read(
+	    file* x, offset* off, int iov_cnt, iovec* iov) {
+		return static_cast<T*>(x)->on_file_read(off, iov_cnt, iov);
 	}
 	template<class T> static cause::type call_on_write(
 	    file* x, offset* off, int iov_cnt, const iovec* iov) {
@@ -93,8 +98,8 @@ public:
 	cause::type seek(s64 offset, int whence) {
 		return ops->seek(this, offset, whence);
 	}
-	cause::type read(iovec* iov, int iov_cnt, uptr* bytes) {
-		return ops->read(this, iov, iov_cnt, bytes);
+	cause::type read(offset* off, int iov_cnt, iovec* iov) {
+		return ops->read(this, off, iov_cnt, iov);
 	}
 	cause::type write(offset* off, int iov_cnt, const iovec* iov) {
 		return ops->write(this, off, iov_cnt, iov);
