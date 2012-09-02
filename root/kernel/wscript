@@ -1,15 +1,18 @@
 # architecture independent kernel codes.
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 
 kern_sources = [
     'cpu_node.cc',
+    'ctype.cc',
     'file.cc',
+    'output_buffer.cc',
     'intr_ctl.cc',
     'kern_log.cc',
     'log_target.cc',
+    'mem_file.cc',
     'mempool.cc',
     'mempool_ctl.cc',
     'page.cc',
@@ -25,36 +28,30 @@ kern_sources = [
 kern_defines = []
 
 
-setup_sources = [
+mb_sources = [
+    'ctype.cc',      # necessary to link with string.cc in g++.
+    'file.cc',
     'log_target.cc',
+    'output_buffer.cc',
     'string.cc',
 ]
-
-setup_defines = []
 
 
 def build(x):
 	kern_defines.extend(x.env.common_defines)
-	setup_defines.extend(x.env.common_defines)
 
 	x.objects(
 	    target   = 'kernel_objs',
 	    source   = kern_sources,
 	    defines  = kern_defines,
-	    use      = 'KERNEL'
+	    use      = 'KERNEL',
 	)
 
 	if x.env.boot_multiboot:
 		x.objects(
 		    target   = 'mb_libs',
-		    source   = ['file.cc', 'log_target.cc', 'string.cc'],
+		    source   = mb_sources,
 		    use      = 'MB',
 		)
 
-	x.objects(
-	    target   = 'setup_objs',
-	    source   = setup_sources,
-	    defines  = setup_defines,
-	    use      = 'SETUP'
-	)
 

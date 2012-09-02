@@ -1,12 +1,25 @@
-// @file   kernel/file.cc
-// @brief  file class implements.
-//
-// (C) 2010-2011 KATO Takeshi
-//
+/// @file   kernel/file.cc
+/// @brief  file class implements.
 
-#include "file.hh"
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2012 KATO Takeshi
+//
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include "string.hh"
+#include <file.hh>
+
+#include <string.hh>
 
 
 void iovec_iterator::normalize()
@@ -92,5 +105,50 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 	}
 
 	return total;
+}
+
+// file
+
+/// seek可能な範囲を [0, upper_limit] と仮定して seek 相当の結果を返す。
+cause::type file::usual_seek(
+    offset upper_limit,
+    seek_whence whence,
+    offset rel_off,
+    offset* abs_off)
+{
+	offset abs;
+
+	switch (whence) {
+	case BEG:
+		abs = 0;
+		break;
+	case ADD:
+		abs = *abs_off;
+		break;
+	case END:
+		abs = upper_limit;
+		break;
+	default:
+		return cause::BADARG;
+	}
+
+	if (rel_off >= 0) {
+		if (static_cast<uoffset>(abs + rel_off) <= OFFSET_MAX) {
+			offset tmp = abs + rel_off;
+			if (tmp > upper_limit)
+				return cause::OUTOFRANGE;
+		} else // overflow
+			return cause::OUTOFRANGE;
+	} else {
+		offset tmp = abs + rel_off;
+		if (tmp >= 0)
+			abs = tmp;
+		else  // underflow
+			return cause::OUTOFRANGE;
+	}
+
+	*abs_off = abs;
+
+	return cause::OK;
 }
 

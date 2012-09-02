@@ -1,4 +1,5 @@
 /// @file   postload.cc
+/// @brief  カーネルへ渡すパラメータを作成する。
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2011-2012 KATO Takeshi
@@ -93,12 +94,11 @@ uptr store_log(uptr bootinfo_left, u8* bootinfo)
 	if (bootinfo_left < size)
 		return size;
 
-	memlog.seek(0, file::BEG);
 	iovec iov;
 	iov.base = tag_log->log;
 	iov.bytes = bootinfo_left - size;
-	uptr read_bytes;
-	cause::type r = memlog.read(&iov, 1, &read_bytes);
+	file::offset read_bytes = 0;
+	cause::type r = memlog.read(&read_bytes, 1, &iov);
 	if (is_fail(r))
 		return 0;
 

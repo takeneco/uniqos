@@ -26,7 +26,7 @@ public:
 	text_vga() {}
 	void init(u32 _width, u32 _height, void* _vram);
 
-	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_file_write(offset* off, int iov_cnt, const iovec* iov);
 
 private:
 	void putc(u8 c);

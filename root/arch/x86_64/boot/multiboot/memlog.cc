@@ -34,9 +34,9 @@ file::operations memlog_ops;
 
 cause::type memlog_file::setup()
 {
-	memlog_ops.seek  = call_on_seek<memlog_file>;
+	memlog_ops.seek  = call_on_file_seek<memlog_file>;
 	memlog_ops.read  = call_on_file_read<memlog_file>;
-	memlog_ops.write = call_on_write<memlog_file>;
+	memlog_ops.write = call_on_file_write<memlog_file>;
 
 	return cause::OK;
 }
@@ -61,30 +61,10 @@ cause::type memlog_file::close()
 	return cause::OK;
 }
 
-cause::type memlog_file::on_seek(s64 offset, int whence)
+cause::type memlog_file::on_file_seek(
+    seek_whence whence, offset rel_off, offset* abs_off)
 {
-	s64 base;
-	switch (whence) {
-	case file::BEG:
-		base = 0;
-		break;
-	case file::CUR:
-		base = current;
-		break;
-	case file::END:
-		base = MAX_SIZE - 1;
-		break;
-	default:
-		return cause::INVALID_PARAMS;
-	}
-
-	const s64 new_cur = base + offset;
-	if (new_cur < 0 || MAX_SIZE <= new_cur)
-		return cause::INVALID_PARAMS;
-
-	current = new_cur;
-
-	return cause::OK;
+	return file::usual_seek(MAX_SIZE - 1, whence, rel_off, abs_off);
 }
 
 cause::type memlog_file::on_file_read(offset* off, int iov_cnt, iovec* iov)
@@ -108,7 +88,8 @@ cause::type memlog_file::on_file_read(offset* off, int iov_cnt, iovec* iov)
 	return cause::OK;
 }
 
-cause::type memlog_file::on_write(offset* off, int iov_cnt, const iovec* iov)
+cause::type memlog_file::on_file_write(
+    offset* off, int iov_cnt, const iovec* iov)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;

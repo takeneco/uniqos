@@ -74,9 +74,12 @@ public:
 	cause::type open();
 	cause::type close();
 
-	cause::type on_seek(s64 offset, int whence);
-	cause::type on_file_read(offset* off, int iov_cnt, iovec* iov);
-	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_file_seek(
+	    seek_whence whence, offset rel_off, offset* abs_off);
+	cause::type on_file_read(
+	    offset* off, int iov_cnt, iovec* iov);
+	cause::type on_file_write(
+	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
 	u8* buf;

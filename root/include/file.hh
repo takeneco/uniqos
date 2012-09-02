@@ -12,8 +12,8 @@
 
 struct iovec
 {
-	void* base;
 	uptr  bytes;
+	void* base;
 };
 
 class iovec_iterator
@@ -57,17 +57,26 @@ public:
 
 
 // @brief  file like interface base class.
-
+// TODO:io_node
 class file
 {
 	DISALLOW_COPY_AND_ASSIGN(file);
 
 public:
+	enum seek_whence { BEG = 0, ADD, END, };
+
 	typedef s64 offset;
+	typedef u64 uoffset;
+	enum {
+		OFFSET_MAX = U64(0x7fffffffffffffff),
+		OFFSET_MIN = S64(-0x8000000000000000),
+	};
+
 	struct operations
 	{
 		typedef cause::type (*seek_op)(
-		    file* x, s64 offset, int whence);
+		    file* x, seek_whence whence,
+		    offset rel_off, offset* abs_off);
 		seek_op seek;
 
 		typedef cause::type (*read_op)(
@@ -79,24 +88,25 @@ public:
 		write_op write;
 	};
 
-	template<class T> static cause::type call_on_seek(
-	    file* x, s64 offset, int whence) {
-		return static_cast<T*>(x)->on_seek(offset, whence);
+	template<class T> static cause::type call_on_file_seek(
+	    file* x, seek_whence whence, offset rel_off, offset* abs_off) {
+		return static_cast<T*>(x)->
+		    on_file_seek(whence, rel_off, abs_off);
 	}
 	template<class T> static cause::type call_on_file_read(
 	    file* x, offset* off, int iov_cnt, iovec* iov) {
-		return static_cast<T*>(x)->on_file_read(off, iov_cnt, iov);
+		return static_cast<T*>(x)->
+		    on_file_read(off, iov_cnt, iov);
 	}
-	template<class T> static cause::type call_on_write(
+	template<class T> static cause::type call_on_file_write(
 	    file* x, offset* off, int iov_cnt, const iovec* iov) {
-		return static_cast<T*>(x)->on_write(off, iov_cnt, iov);
+		return static_cast<T*>(x)->
+		    on_file_write(off, iov_cnt, iov);
 	}
-
-	enum seekdir { BEG = 0, CUR, END, };
 
 public:
-	cause::type seek(s64 offset, int whence) {
-		return ops->seek(this, offset, whence);
+	cause::type seek(seek_whence whence, offset rel_off, offset* abs_off) {
+		return ops->seek(this, whence, rel_off, abs_off);
 	}
 	cause::type read(offset* off, int iov_cnt, iovec* iov) {
 		return ops->read(this, off, iov_cnt, iov);
@@ -108,6 +118,10 @@ public:
 protected:
 	file() {}
 	file(const operations* _ops) : ops(_ops) {}
+
+	cause::type usual_seek(
+	    offset upper_limit, seek_whence whence,
+	    offset rel_off, offset* abs_off);
 
 public:
 	const operations* ops;

@@ -29,10 +29,13 @@ typedef harf_sptr_ harf_sptr;
 typedef harf_uptr_ harf_uptr;
 
 typedef unsigned int uint;
+typedef unsigned int sint;
 
 #define U32(n)  suffix_u32(n)
 #define U64(n)  suffix_u64(n)
+#define S64(n)  suffix_s64(n)
 #define UPTR(n) suffix_uptr(n)
+#define SPTR(n) suffix_sptr(n)
 
 
 inline u16 swap16_(u16 x) {
@@ -266,6 +269,11 @@ namespace cause
 
 		/// メモリが不足している。
 		NOMEM = 2,
+		/// 引数が不正。
+		BADARG = 3,
+		/// 範囲外。
+		OUTOFRANGE =4,
+
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,
 		NOT_FOUND,

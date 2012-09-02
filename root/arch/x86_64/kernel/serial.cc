@@ -138,7 +138,7 @@ private:
 	}
 	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
-	cause::type on_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_file_write(offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void on_write_message();
@@ -240,7 +240,8 @@ bool serial_ctrl::is_txfifo_empty() const
 
 /// @brief  Write to buffer.
 /// @param[out] bytes  write bytes.
-cause::type serial_ctrl::on_write(offset* off, int iov_cnt, const iovec* iov)
+cause::type serial_ctrl::on_file_write(
+    offset* off, int iov_cnt, const iovec* iov)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
 
@@ -445,7 +446,7 @@ uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
 file* create_serial()
 {
 	///////
-	serial_ctrl::serial_ops.write = file::call_on_write<serial_ctrl>;
+	serial_ctrl::serial_ops.write = file::call_on_file_write<serial_ctrl>;
 	///////
 
 	//void* mem = memory::alloc(sizeof (serial_ctrl));
