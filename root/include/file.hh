@@ -1,11 +1,11 @@
-/// @file   include/file.hh
-/// @brief  file class declaration.
+/// @file   include/io_node.hh
+/// @brief  io_node class declaration.
 //
 // (C) 2010-2012 KATO Takeshi
 //
 
-#ifndef INCLUDE_FILE_HH_
-#define INCLUDE_FILE_HH_
+#ifndef INCLUDE_IO_NODE_HH_
+#define INCLUDE_IO_NODE_HH_
 
 #include <basic.hh>
 
@@ -57,10 +57,9 @@ public:
 
 
 // @brief  file like interface base class.
-// TODO:io_node
-class file
+class io_node
 {
-	DISALLOW_COPY_AND_ASSIGN(file);
+	DISALLOW_COPY_AND_ASSIGN(io_node);
 
 public:
 	enum seek_whence { BEG = 0, ADD, END, };
@@ -75,33 +74,33 @@ public:
 	struct operations
 	{
 		typedef cause::type (*seek_op)(
-		    file* x, seek_whence whence,
+		    io_node* x, seek_whence whence,
 		    offset rel_off, offset* abs_off);
 		seek_op seek;
 
 		typedef cause::type (*read_op)(
-		    file* x, offset* off, int iov_cnt, iovec* iov);
+		    io_node* x, offset* off, int iov_cnt, iovec* iov);
 		read_op read;
 
 		typedef cause::type (*write_op)(
-		    file* x, offset* off, int iov_cnt, const iovec* iov);
+		    io_node* x, offset* off, int iov_cnt, const iovec* iov);
 		write_op write;
 	};
 
-	template<class T> static cause::type call_on_file_seek(
-	    file* x, seek_whence whence, offset rel_off, offset* abs_off) {
+	template<class T> static cause::type call_on_io_node_seek(
+	    io_node* x, seek_whence whence, offset rel_off, offset* abs_off) {
 		return static_cast<T*>(x)->
-		    on_file_seek(whence, rel_off, abs_off);
+		    on_io_node_seek(whence, rel_off, abs_off);
 	}
-	template<class T> static cause::type call_on_file_read(
-	    file* x, offset* off, int iov_cnt, iovec* iov) {
+	template<class T> static cause::type call_on_io_node_read(
+	    io_node* x, offset* off, int iov_cnt, iovec* iov) {
 		return static_cast<T*>(x)->
-		    on_file_read(off, iov_cnt, iov);
+		    on_io_node_read(off, iov_cnt, iov);
 	}
-	template<class T> static cause::type call_on_file_write(
-	    file* x, offset* off, int iov_cnt, const iovec* iov) {
+	template<class T> static cause::type call_on_io_node_write(
+	    io_node* x, offset* off, int iov_cnt, const iovec* iov) {
 		return static_cast<T*>(x)->
-		    on_file_write(off, iov_cnt, iov);
+		    on_io_node_write(off, iov_cnt, iov);
 	}
 
 public:
@@ -116,8 +115,8 @@ public:
 	}
 
 protected:
-	file() {}
-	file(const operations* _ops) : ops(_ops) {}
+	io_node() {}
+	io_node(const operations* _ops) : ops(_ops) {}
 
 	cause::type usual_seek(
 	    offset upper_limit, seek_whence whence,

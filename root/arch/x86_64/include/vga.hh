@@ -8,12 +8,12 @@
 #define ARCH_X86_64_INCLUDE_VGA_HH_
 
 #include <basic.hh>
-#include <file.hh>
+#include <io_node.hh>
 
 
-class text_vga : public file
+class text_vga : public io_node
 {
-	file::operations fops;
+	io_node::operations fops;
 
 	u32 width;
 	u32 height;
@@ -26,7 +26,8 @@ public:
 	text_vga() {}
 	void init(u32 _width, u32 _height, void* _vram);
 
-	cause::type on_file_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_io_node_write(
+	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
 	void putc(u8 c);

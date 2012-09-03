@@ -97,7 +97,7 @@ uptr store_log(uptr bootinfo_left, u8* bootinfo)
 	iovec iov;
 	iov.base = tag_log->log;
 	iov.bytes = bootinfo_left - size;
-	file::offset read_bytes = 0;
+	io_node::offset read_bytes = 0;
 	cause::type r = memlog.read(&read_bytes, 1, &iov);
 	if (is_fail(r))
 		return 0;

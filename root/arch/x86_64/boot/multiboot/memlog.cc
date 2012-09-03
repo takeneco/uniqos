@@ -28,15 +28,15 @@ enum {
 	HEAPSLOTM = SLOTM_BOOTHEAP | SLOTM_NORMAL,
 };
 
-file::operations memlog_ops;
+io_node::operations memlog_ops;
 
 }  // namespace
 
 cause::type memlog_file::setup()
 {
-	memlog_ops.seek  = call_on_file_seek<memlog_file>;
-	memlog_ops.read  = call_on_file_read<memlog_file>;
-	memlog_ops.write = call_on_file_write<memlog_file>;
+	memlog_ops.seek  = call_on_io_node_seek<memlog_file>;
+	memlog_ops.read  = call_on_io_node_read<memlog_file>;
+	memlog_ops.write = call_on_io_node_write<memlog_file>;
 
 	return cause::OK;
 }
@@ -51,7 +51,7 @@ cause::type memlog_file::open()
 
 	size = current = 0;
 
-	file::ops = &memlog_ops;
+	io_node::ops = &memlog_ops;
 
 	return cause::OK;
 }
@@ -61,13 +61,13 @@ cause::type memlog_file::close()
 	return cause::OK;
 }
 
-cause::type memlog_file::on_file_seek(
+cause::type memlog_file::on_io_node_seek(
     seek_whence whence, offset rel_off, offset* abs_off)
 {
-	return file::usual_seek(MAX_SIZE - 1, whence, rel_off, abs_off);
+	return io_node::usual_seek(MAX_SIZE - 1, whence, rel_off, abs_off);
 }
 
-cause::type memlog_file::on_file_read(offset* off, int iov_cnt, iovec* iov)
+cause::type memlog_file::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;
@@ -88,7 +88,7 @@ cause::type memlog_file::on_file_read(offset* off, int iov_cnt, iovec* iov)
 	return cause::OK;
 }
 
-cause::type memlog_file::on_file_write(
+cause::type memlog_file::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	if (!buf)

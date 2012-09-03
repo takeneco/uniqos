@@ -17,7 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <file.hh>
+#include <io_node.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
@@ -85,11 +85,11 @@ public:
 };
 
 
-class serial_ctrl : public file
+class serial_ctrl : public io_node
 {
 	DISALLOW_COPY_AND_ASSIGN(serial_ctrl);
 
-	friend class file;
+	friend class io_node;
 
 	const u16 base_port;
 	const u16 irq_num;
@@ -116,7 +116,7 @@ class serial_ctrl : public file
 
 public:
 	/// @todo: do not use global var.
-	static file::operations serial_ops;
+	static io_node::operations serial_ops;
 
 public:
 	serial_ctrl(u16 base_port_, u16 irq_num_);
@@ -138,7 +138,7 @@ private:
 	}
 	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
-	cause::type on_file_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_io_node_write(offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void on_write_message();
@@ -156,7 +156,7 @@ public:
 	void dump();
 };
 
-file::operations serial_ctrl::serial_ops;
+io_node::operations serial_ctrl::serial_ops;
 
 serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	base_port(base_port_),
@@ -240,7 +240,7 @@ bool serial_ctrl::is_txfifo_empty() const
 
 /// @brief  Write to buffer.
 /// @param[out] bytes  write bytes.
-cause::type serial_ctrl::on_file_write(
+cause::type serial_ctrl::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
@@ -443,10 +443,10 @@ void serial_ctrl::transmit()
 namespace {
 uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
 }
-file* create_serial()
+io_node* create_serial()
 {
 	///////
-	serial_ctrl::serial_ops.write = file::call_on_file_write<serial_ctrl>;
+	serial_ctrl::serial_ops.write = io_node::call_on_io_node_write<serial_ctrl>;
 	///////
 
 	//void* mem = memory::alloc(sizeof (serial_ctrl));

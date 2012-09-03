@@ -1,5 +1,5 @@
-/// @file   kernel/file.cc
-/// @brief  file class implements.
+/// @file   kernel/io_node.cc
+/// @brief  io_node class implements.
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2010-2012 KATO Takeshi
@@ -17,7 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <file.hh>
+#include <io_node.hh>
 
 #include <string.hh>
 
@@ -107,10 +107,10 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 	return total;
 }
 
-// file
+// io_node
 
 /// seek可能な範囲を [0, upper_limit] と仮定して seek 相当の結果を返す。
-cause::type file::usual_seek(
+cause::type io_node::usual_seek(
     offset upper_limit,
     seek_whence whence,
     offset rel_off,

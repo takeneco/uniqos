@@ -22,7 +22,7 @@
 
 void text_vga::init(u32 _width, u32 _height, void* _vram)
 {
-	fops.write = call_on_file_write<text_vga>;
+	fops.write = call_on_io_node_write<text_vga>;
 	ops = &fops;
 
 	width = _width;
@@ -32,7 +32,8 @@ void text_vga::init(u32 _width, u32 _height, void* _vram)
 	xpos = ypos = 0;
 }
 
-cause::type text_vga::on_file_write(offset* off, int iov_cnt, const iovec* iov)
+cause::type text_vga::on_io_node_write(
+    offset* off, int iov_cnt, const iovec* iov)
 {
 	uptr total = 0;
 

@@ -55,16 +55,16 @@ public:
 	~log();
 };
 
-void log_set(uint i, file* target);
+void log_set(uint i, io_node* target);
 
 
 // memlog_file
 
-class memlog_file : public file
+class memlog_file : public io_node
 {
 	DISALLOW_COPY_AND_ASSIGN(memlog_file);
 
-	friend class file;
+	friend class io_node;
 
 public:
 	static cause::type setup();
@@ -74,11 +74,11 @@ public:
 	cause::type open();
 	cause::type close();
 
-	cause::type on_file_seek(
+	cause::type on_io_node_seek(
 	    seek_whence whence, offset rel_off, offset* abs_off);
-	cause::type on_file_read(
+	cause::type on_io_node_read(
 	    offset* off, int iov_cnt, iovec* iov);
-	cause::type on_file_write(
+	cause::type on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
