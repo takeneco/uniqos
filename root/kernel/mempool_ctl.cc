@@ -68,15 +68,9 @@ cause::type mempool_ctl::init()
 
 cause::type mempool_ctl::shared_mempool(u32 objsize, mempool** mp)
 {
-	objsize = mempool::normalize_obj_size(objsize);
-
 	mempool* _mp = find_shared(objsize);
-
-	if (!_mp) {
-		cause::type r = create_shared(objsize, &_mp);
-		if (is_fail(r))
-			return r;
-	}
+	if (!_mp)
+		return cause::FAIL;
 
 	_mp->inc_shared_count();
 
@@ -167,13 +161,13 @@ void mempool_ctl::shared_dealloc(void* mem)
 	heap* h = reinterpret_cast<heap*>(memadr - sizeof (mempool*));
 	mempool* mp = h->mp;
 
-	mp->dealloc(mem);
+	mp->dealloc(h);
 
 	if (mp->get_shared_count() == 0 && mp->get_alloc_count() == 0) 
 		mp->destroy();
 }
 
-void mempool_ctl::dump(log_target& lt)
+void mempool_ctl::dump(output_buffer& lt)
 {
 	lt("obj_size      alloc_count       page_count    freeobj_count")();
 	for (mempool* mp = shared_chain.head();
@@ -197,7 +191,7 @@ cause::type mempool_ctl::init_shared()
 		sizes[sizes_ent++] = size + size / 2;
 	}
 
-	for (uptr i = 0; i < sizes_ent; ++i) {
+	for (int i = 0; i < sizes_ent; ++i) {
 		mempool* mp;
 		const cause::type r = create_shared(sizes[i], &mp);
 		if (is_fail(r))
@@ -216,7 +210,7 @@ mempool* mempool_ctl::find_shared(u32 objsize)
 	     mp;
 	     mp = shared_chain.next(mp))
 	{
-		if (mp->get_obj_size() == objsize)
+		if (mp->get_obj_size() >= objsize)
 			return mp;
 	}
 
@@ -392,7 +386,7 @@ cause::type mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 	return cause::OK;
 }
 
-extern "C" cause::type mempool_create_shared(u32 objsize, mempool** mp)
+extern "C" cause::type mempool_acquire_shared(u32 objsize, mempool** mp)
 {
 	return global_vars::core.mempool_ctl_obj->shared_mempool(objsize, mp);
 }
