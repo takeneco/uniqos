@@ -20,60 +20,6 @@
 
 namespace {
 
-struct reg_stack
-{
-	u64 rax;
-	u64 rcx;
-	u64 rdx;
-	u64 rsi;
-	u64 rdi;
-	u64 r8;
-	u64 r9;
-	u64 r10;
-	u64 r11;
-
-	u64 rbx;
-	u64 rbp;
-	u64 r12;
-	u64 r13;
-	u64 r14;
-	u64 r15;
-
-	u64 rip;
-	u64 cs;
-	u64 rf;
-	u64 rsp;
-	u64 ss;
-};
-
-struct reg_stack_witherr
-{
-	u64 rax;
-	u64 rcx;
-	u64 rdx;
-	u64 rsi;
-	u64 rdi;
-	u64 r8;
-	u64 r9;
-	u64 r10;
-	u64 r11;
-
-	u64 rbx;
-	u64 rbp;
-	u64 r12;
-	u64 r13;
-	u64 r14;
-	u64 r15;
-
-	u64 error_code;
-	u64 rip;
-	u64 cs;
-	u64 rf;
-	u64 rsp;
-	u64 ss;
-};
-
-
 void intr_update(idte* idt)
 {
 	//idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
@@ -83,54 +29,42 @@ void intr_update(idte* idt)
 	native::lidt(&idtptr);
 }
 
-void unknown_exception(int n)
-{
-	log(1).str("Unknown exception 0x").u((u8)n, 16).str(" interrupted.").
-		endl();
-
-	for (;;)
-		native::hlt();
-}
-
 }  // namespace
 
 extern "C" {
 
-void exception_intr_0x00();
-void exception_intr_0x01();
-void exception_intr_0x02();
-void exception_intr_0x03();
-void exception_intr_0x04();
-void exception_intr_0x05();
-void exception_intr_0x06();
-void exception_intr_0x07();
-void exception_intr_0x08();
-void exception_intr_0x09();
-void exception_intr_0x0a();
-void exception_intr_0x0b();
-void exception_intr_0x0c();
-void exception_intr_0x0d();
-void exception_intr_0x0e();
-void exception_intr_0x0f();
-void exception_intr_0x10();
-void exception_intr_0x11();
-void exception_intr_0x12();
-void exception_intr_0x13();
-void exception_intr_0x14();
-void exception_intr_0x15();
-void exception_intr_0x16();
-void exception_intr_0x17();
-void exception_intr_0x18();
-void exception_intr_0x19();
-void exception_intr_0x1a();
-void exception_intr_0x1b();
-void exception_intr_0x1c();
-void exception_intr_0x1d();
-void exception_intr_0x1e();
-void exception_intr_0x1f();
-void interrupt_20_handler();
-void interrupt_0x5e_handler();
-void interrupt_0x5f_handler();
+void except_0x00();
+void except_0x01();
+void except_0x02();
+void except_0x03();
+void except_0x04();
+void except_0x05();
+void except_0x06();
+void except_0x07();
+void except_0x08();
+void except_0x09();
+void except_0x0a();
+void except_0x0b();
+void except_0x0c();
+void except_0x0d();
+void except_0x0e();
+void except_0x0f();
+void except_0x10();
+void except_0x11();
+void except_0x12();
+void except_0x13();
+void except_0x14();
+void except_0x15();
+void except_0x16();
+void except_0x17();
+void except_0x18();
+void except_0x19();
+void except_0x1a();
+void except_0x1b();
+void except_0x1c();
+void except_0x1d();
+void except_0x1e();
+void except_0x1f();
 
 void intr_0x20();
 void intr_0x21();
@@ -261,42 +195,39 @@ cause::type intr_init(idte* idt)
 		uint ist;
 		uint dpl;
 		u64 flags;
-	} const exception_idt[] = {
-		{ exception_intr_0x00, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x01, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x02, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x03, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x04, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x05, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x06, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x07, 1, 0, 0, idte::TRAP },
-		//{ exception_intr_0x08, 1, 1, 0, idte::TRAP },
-		{ exception_intr_0x08, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x09, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0a, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0b, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0c, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0d, 1, 2, 0, idte::TRAP },
-		//{ exception_intr_0x0d, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0e, 1, 2, 0, idte::TRAP },
-		//{ exception_intr_0x0e, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x0f, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x10, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x11, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x12, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x13, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x14, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x15, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x16, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x17, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x18, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x19, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1a, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1b, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1c, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1d, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1e, 1, 0, 0, idte::TRAP },
-		{ exception_intr_0x1f, 1, 0, 0, idte::TRAP },
+	} static const exception_idt[] = {
+		{ except_0x00, 1, 1, 0, idte::TRAP },
+		{ except_0x01, 1, 1, 0, idte::TRAP },
+		{ except_0x02, 1, 1, 0, idte::TRAP },
+		{ except_0x03, 1, 1, 0, idte::TRAP },
+		{ except_0x04, 1, 1, 0, idte::TRAP },
+		{ except_0x05, 1, 1, 0, idte::TRAP },
+		{ except_0x06, 1, 1, 0, idte::TRAP },
+		{ except_0x07, 1, 1, 0, idte::TRAP },
+		{ except_0x08, 1, 1, 0, idte::TRAP },
+		{ except_0x09, 1, 1, 0, idte::TRAP },
+		{ except_0x0a, 1, 1, 0, idte::TRAP },
+		{ except_0x0b, 1, 1, 0, idte::TRAP },
+		{ except_0x0c, 1, 1, 0, idte::TRAP },
+		{ except_0x0d, 1, 1, 0, idte::TRAP },
+		{ except_0x0e, 1, 1, 0, idte::TRAP },
+		{ except_0x0f, 1, 1, 0, idte::TRAP },
+		{ except_0x10, 1, 1, 0, idte::TRAP },
+		{ except_0x11, 1, 1, 0, idte::TRAP },
+		{ except_0x12, 1, 1, 0, idte::TRAP },
+		{ except_0x13, 1, 1, 0, idte::TRAP },
+		{ except_0x14, 1, 1, 0, idte::TRAP },
+		{ except_0x15, 1, 1, 0, idte::TRAP },
+		{ except_0x16, 1, 1, 0, idte::TRAP },
+		{ except_0x17, 1, 1, 0, idte::TRAP },
+		{ except_0x18, 1, 1, 0, idte::TRAP },
+		{ except_0x19, 1, 1, 0, idte::TRAP },
+		{ except_0x1a, 1, 1, 0, idte::TRAP },
+		{ except_0x1b, 1, 1, 0, idte::TRAP },
+		{ except_0x1c, 1, 1, 0, idte::TRAP },
+		{ except_0x1d, 1, 1, 0, idte::TRAP },
+		{ except_0x1e, 1, 1, 0, idte::TRAP },
+		{ except_0x1f, 1, 1, 0, idte::TRAP },
 	};
 
 	for (int i = 0; i <= 31; ++i) {
@@ -304,7 +235,7 @@ cause::type intr_init(idte* idt)
 		idt[i].set(e.handler, 8 * e.seg, e.ist, e.dpl, e.flags);
 	}
 
-	void (* const idt_handler[])() = {
+	static void (* const idt_handler[])() = {
 		intr_0x20, intr_0x21, intr_0x22, intr_0x23,
 		intr_0x24, intr_0x25, intr_0x26, intr_0x27,
 		intr_0x28, intr_0x29, intr_0x2a, intr_0x2b,
@@ -354,132 +285,135 @@ cause::type intr_init(idte* idt)
 	return cause::OK;
 }
 
-#define UNKNOWN_EXCEPTION(vec) \
-	extern "C" void on_exception_##vec() { unknown_exception(vec); }
-
-UNKNOWN_EXCEPTION(0x00)
-UNKNOWN_EXCEPTION(0x01)
-UNKNOWN_EXCEPTION(0x02)
-UNKNOWN_EXCEPTION(0x03)
-UNKNOWN_EXCEPTION(0x04)
-UNKNOWN_EXCEPTION(0x05)
-UNKNOWN_EXCEPTION(0x06)
-UNKNOWN_EXCEPTION(0x07)
-
-extern "C" void on_exception_0x08()
+void except_dump(int vec, const char* msg)
 {
-	log(1)(__FILE__, __LINE__, __func__)();
+	cpu_node* cn = get_cpu_node();
+	arch::regset* rs = cn->running_thread_regset;
+
+	log(1)(msg)(" v=").u(vec)()
+	    ("rax:").x(rs->rax, 16)
+	    (", rcx:").x(rs->rcx, 16)
+	    (", rdx:").x(rs->rdx, 16)()
+	    ("rbx:").x(rs->rbx, 16)
+	    (", rbp:").x(rs->rbp, 16)
+	    (", rsi:").x(rs->rsi, 16)()
+	    ("rdi:").x(rs->rdi, 16)
+	    (", r8 :").x(rs->r8, 16)
+	    (", r9 :").x(rs->r9, 16)()
+	    ("r10:").x(rs->r10, 16)
+	    (", r11:").x(rs->r11, 16)
+	    (", r12:").x(rs->r12, 16)()
+	    ("r13:").x(rs->r13, 16)
+	    (", r14:").x(rs->r14, 16)
+	    (", r15:").x(rs->r15, 16)()
+	    ("cs:").x(rs->cs, 4)
+	    (", rip:").x(rs->rip, 16)()
+	    ("ss:").x(rs->ss, 4)
+	    (", rsp:").x(rs->rsp, 16)()
+	    ("ds:").x(rs->ds, 4)
+	    (", es:").x(rs->es, 4)
+	    (", fs:").x(rs->fs, 4)
+	    (", gs:").x(rs->gs, 4)
+	    (", rf:").x(rs->rf, 8)();
+
 	for (;;)
 		native::hlt();
 }
 
-UNKNOWN_EXCEPTION(0x09)
-UNKNOWN_EXCEPTION(0x0a)
-UNKNOWN_EXCEPTION(0x0b)
-UNKNOWN_EXCEPTION(0x0c)
-
-extern "C" void on_exception_0x0d()
-{
-	reg_stack_witherr* stk = (reg_stack_witherr*)get_cpu_node()->
-	    tss.get_ist(arch::cpu_ctl::IST_TRAP);
-	stk -= 1;
-	log(1)("stk:")(stk)();
-
-	log(1)
-	("rax:").u(stk->rax, 16)
-	(", rbx:").u(stk->rbx, 16)
-	(", rcx:").u(stk->rcx, 16)()
-	("rdx:").u(stk->rdx, 16)
-	(", rbp:").u(stk->rbp, 16)
-	(", rsi:").u(stk->rsi, 16)()
-	("rdi:").u(stk->rdi, 16)
-	(", r8 :").u(stk->r8, 16)
-	(", r9 :").u(stk->r9, 16)()
-	("r10:").u(stk->r10, 16)
-	(", r11:").u(stk->r11, 16)
-	(", r12:").u(stk->r12, 16)()
-	("r13:").u(stk->r13, 16)
-	(", r14:").u(stk->r14, 16)
-	(", r15:").u(stk->r15, 16)()
-	("rip:").u(stk->rip, 16)
-	(", cs :").u(stk->cs, 16)()
-	("rsp:").u(stk->rsp, 16)
-	(", ss :").u(stk->ss, 16)()
-	("rf :").u(stk->rf, 16)
-	(", err:").u(stk->error_code, 16)();
-
-	u64* stack=(u64*)0xffffffffffffc000;
-	stack--;
-/*
-	log()("ss =").u(*stack--, 16)();
-	log()("rsp=").u(*stack--, 16)();
-	log()("rf =").u(*stack--, 16)();
-	log()("cs =").u(*stack--, 16)();
-	log()("rip=").u(*stack--, 16)();
-	log()("err=").u(*stack--, 16)();
-	log()("r11=").u(*stack--, 16)();
-	log()("r10=").u(*stack--, 16)();
-	log()("r9 =").u(*stack--, 16)();
-	log()("r8 =").u(*stack--, 16)();
-	log()("rdi=").u(*stack--, 16)();
-	log()("rsi=").u(*stack--, 16)();
-	log()("rdx=").u(*stack--, 16)();
-	log()("rcx=").u(*stack--, 16)();
-	log()("rax=").u(*stack--, 16)();
-*/
-
-	unknown_exception(0x0d);
+extern "C" void on_except_0x00() {
+	except_dump(0x00, "Divide Error Exception (#DE)");
 }
-
-extern "C" void on_exception_0x0e()
-{
-	reg_stack_witherr* stk = (reg_stack_witherr*)get_cpu_node()->
-	    tss.get_ist(arch::cpu_ctl::IST_TRAP);
-	stk -= 1;
-	log(1)("stk:")(stk)();
-
-	log(1)
-	("rax:").u(stk->rax, 16)
-	(", rbx:").u(stk->rbx, 16)
-	(", rcx:").u(stk->rcx, 16)()
-	("rdx:").u(stk->rdx, 16)
-	(", rbp:").u(stk->rbp, 16)
-	(", rsi:").u(stk->rsi, 16)()
-	("rdi:").u(stk->rdi, 16)
-	(", r8 :").u(stk->r8, 16)
-	(", r9 :").u(stk->r9, 16)()
-	("r10:").u(stk->r10, 16)
-	(", r11:").u(stk->r11, 16)
-	(", r12:").u(stk->r12, 16)()
-	("r13:").u(stk->r13, 16)
-	(", r14:").u(stk->r14, 16)
-	(", r15:").u(stk->r15, 16)()
-	("rip:").u(stk->rip, 16)
-	(", cs :").u(stk->cs, 16)()
-	("rsp:").u(stk->rsp, 16)
-	(", ss :").u(stk->ss, 16)()
-	("rf :").u(stk->rf, 16)
-	(", err:").u(stk->error_code, 16)();
-
-
-	unknown_exception(0x0e);
+extern "C" void on_except_0x01() {
+	except_dump(0x01, "Debug Exception (#DB)");
 }
-
-UNKNOWN_EXCEPTION(0x0f)
-UNKNOWN_EXCEPTION(0x10)
-UNKNOWN_EXCEPTION(0x11)
-UNKNOWN_EXCEPTION(0x12)
-UNKNOWN_EXCEPTION(0x13)
-UNKNOWN_EXCEPTION(0x14)
-UNKNOWN_EXCEPTION(0x15)
-UNKNOWN_EXCEPTION(0x16)
-UNKNOWN_EXCEPTION(0x17)
-UNKNOWN_EXCEPTION(0x18)
-UNKNOWN_EXCEPTION(0x19)
-UNKNOWN_EXCEPTION(0x1a)
-UNKNOWN_EXCEPTION(0x1b)
-UNKNOWN_EXCEPTION(0x1c)
-UNKNOWN_EXCEPTION(0x1d)
-UNKNOWN_EXCEPTION(0x1e)
-UNKNOWN_EXCEPTION(0x1f)
+extern "C" void on_except_0x02() {
+	except_dump(0x02, "NMI Interrupt");
+}
+extern "C" void on_except_0x03() {
+	except_dump(0x03, "Breakpoint Exception (#BP)");
+}
+extern "C" void on_except_0x04() {
+	except_dump(0x04, "Overflow Exception (#OF)");
+}
+extern "C" void on_except_0x05() {
+	except_dump(0x05, "BOUND Range Exceeded Exception (#BR)");
+}
+extern "C" void on_except_0x06() {
+	except_dump(0x06, "Invalid Opcode Exception (#UD)");
+}
+extern "C" void on_except_0x07() {
+	except_dump(0x07, "Device Not Available Exception (#NM)");
+}
+extern "C" void on_except_0x08() {
+	except_dump(0x08, "Double Fault Exception (#TS)");
+}
+extern "C" void on_except_0x09() {
+	except_dump(0x09, "Coprocessor Segment Overrun");
+}
+extern "C" void on_except_0x0a() {
+	except_dump(0x0a, "Invalid TSS Exception (#TS)");
+}
+extern "C" void on_except_0x0b() {
+	except_dump(0x0b, "Segment Not Present (#NP)");
+}
+extern "C" void on_except_0x0c() {
+	except_dump(0x0c, "Stack Fault Exception (#SS)");
+}
+extern "C" void on_except_0x0d() {
+	except_dump(0x0d, "General Protection Exception (#GP)");
+}
+extern "C" void on_except_0x0e() {
+	except_dump(0x0e, "Page-Fault Exception (#PF)");
+}
+extern "C" void on_except_0x0f() {
+	except_dump(0x0f, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x10() {
+	except_dump(0x10, "x87 FPU Floating-Point Error (#MF)");
+}
+extern "C" void on_except_0x11() {
+	except_dump(0x11, "Alignment Check Exception (#AC)");
+}
+extern "C" void on_except_0x12() {
+	except_dump(0x12, "Machine-Check Exception (#MC)");
+}
+extern "C" void on_except_0x13() {
+	except_dump(0x13, "SIMD Floating-Point Exception (#XM)");
+}
+extern "C" void on_except_0x14() {
+	except_dump(0x14, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x15() {
+	except_dump(0x15, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x16() {
+	except_dump(0x16, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x17() {
+	except_dump(0x17, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x18() {
+	except_dump(0x18, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x19() {
+	except_dump(0x19, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1a() {
+	except_dump(0x1a, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1b() {
+	except_dump(0x1b, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1c() {
+	except_dump(0x1c, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1d() {
+	except_dump(0x1d, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1e() {
+	except_dump(0x1e, "!!!UNKNOWN INTERRUPT");
+}
+extern "C" void on_except_0x1f() {
+	except_dump(0x1f, "!!!UNKNOWN INTERRUPT");
+}
 

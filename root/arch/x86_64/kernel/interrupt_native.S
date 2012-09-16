@@ -7,102 +7,11 @@
 
 .section .text
 
-save_regs2:
-	movq %rax, 0x08(%rsp)
-	movq %rcx, 0x10(%rsp)
-	movq %rdx, 0x18(%rsp)
-	movq %rsi, 0x20(%rsp)
-	movq %rdi, 0x28(%rsp)
-	movq %r8,  0x30(%rsp)
-	movq %r9,  0x38(%rsp)
-	movq %r10, 0x40(%rsp)
-	movq %r11, 0x48(%rsp)
-
-	movq %rbx, 0x50(%rsp)
-	movq %rbp, 0x58(%rsp)
-	movq %r12, 0x60(%rsp)
-	movq %r13, 0x68(%rsp)
-	movq %r14, 0x70(%rsp)
-	movq %r15, 0x78(%rsp)
-	ret
-
-load_regs2:
-	movq 0x08(%rsp), %rax
-	movq 0x10(%rsp), %rcx
-	movq 0x18(%rsp), %rdx
-	movq 0x20(%rsp), %rsi
-	movq 0x28(%rsp), %rdi
-	movq 0x30(%rsp), %r8
-	movq 0x38(%rsp), %r9
-	movq 0x40(%rsp), %r10
-	movq 0x48(%rsp), %r11
-
-	movq 0x50(%rsp), %rbx
-	movq 0x58(%rsp), %rbp
-	movq 0x60(%rsp), %r12
-	movq 0x68(%rsp), %r13
-	movq 0x70(%rsp), %r14
-	movq 0x78(%rsp), %r15
-	ret
 
 #define ENTRY_START(symbol) .globl symbol; symbol:
-#define ENTRY_END(symbol) .size symbol, .-symbol
-
-.macro exception_handler handler, func
-	ENTRY_START(\handler)
-	subq  $8 * 15, %rsp
-	call  save_regs2
-	call  \func
-	call  load_regs2
-	addq  $8 * 15 + 8, %rsp
-	iretq
-	ENTRY_END(\handler)
-.endm
-
-exception_handler exception_intr_0x00, on_exception_0x00
-exception_handler exception_intr_0x01, on_exception_0x01
-exception_handler exception_intr_0x02, on_exception_0x02
-exception_handler exception_intr_0x03, on_exception_0x03
-exception_handler exception_intr_0x04, on_exception_0x04
-exception_handler exception_intr_0x05, on_exception_0x05
-exception_handler exception_intr_0x06, on_exception_0x06
-exception_handler exception_intr_0x07, on_exception_0x07
-exception_handler exception_intr_0x08, on_exception_0x08
-exception_handler exception_intr_0x09, on_exception_0x09
-exception_handler exception_intr_0x0a, on_exception_0x0a
-exception_handler exception_intr_0x0b, on_exception_0x0b
-exception_handler exception_intr_0x0c, on_exception_0x0c
-exception_handler exception_intr_0x0d, on_exception_0x0d
-exception_handler exception_intr_0x0e, on_exception_0x0e
-exception_handler exception_intr_0x0f, on_exception_0x0f
-exception_handler exception_intr_0x10, on_exception_0x10
-exception_handler exception_intr_0x11, on_exception_0x11
-exception_handler exception_intr_0x12, on_exception_0x12
-exception_handler exception_intr_0x13, on_exception_0x13
-exception_handler exception_intr_0x14, on_exception_0x14
-exception_handler exception_intr_0x15, on_exception_0x15
-exception_handler exception_intr_0x16, on_exception_0x16
-exception_handler exception_intr_0x17, on_exception_0x17
-exception_handler exception_intr_0x18, on_exception_0x18
-exception_handler exception_intr_0x19, on_exception_0x19
-exception_handler exception_intr_0x1a, on_exception_0x1a
-exception_handler exception_intr_0x1b, on_exception_0x1b
-exception_handler exception_intr_0x1c, on_exception_0x1c
-exception_handler exception_intr_0x1d, on_exception_0x1d
-exception_handler exception_intr_0x1e, on_exception_0x1e
-exception_handler exception_intr_0x1f, on_exception_0x1f
-
-.macro intr_handler2 handler, vec
-	ENTRY_START(\handler)
-	subq $8 * 15, %rsp
-	call save_regs2
-	movl $\vec, %edi
-	call on_interrupt
-	call load_regs2
-	addq $8 * 15, %rsp
-	iretq
-	ENTRY_END(\handler)
-.endm
+#define ENTRY_END(symbol)   .size symbol, .-symbol
+#define LOCAL_START(symbol) symbol:
+#define LOCAL_END(symbol)   .size symbol, .-symbol
 
 
 // Context switch
@@ -119,6 +28,18 @@ exception_handler exception_intr_0x1f, on_exception_0x1f
 // load regs:
 //   all
 ENTRY_START(switch_regset)
+	// 省略可
+	movq  %rax,     (%rsi)
+	movq  %rcx, 8* 1(%rsi)
+	movq  %rdx, 8* 2(%rsi)
+	movq  %rsi, 8* 5(%rsi)
+	movq  %rdi, 8* 6(%rsi)
+	movq  %r8,  8* 7(%rsi)
+	movq  %r9,  8* 8(%rsi)
+	movq  %r10, 8* 9(%rsi)
+	movq  %r11, 9*10(%rsi)
+	// ここまで省略可
+
 	// save regs
 	popq  %rax                // load %rip (return address)
 	pushf
@@ -162,7 +83,7 @@ ENTRY_END(switch_regset)
 //   8*6(%rsp)  saved %ss
 //   8*7(%rsp)  ptr to ptr to regset
 //   8*8(%rsp)  ptr to cpu_ctl::thread
-save_regs_on_intr:
+LOCAL_START(save_regs_on_intr)
 	movq  %rdi, -8(%rsp)
 	movq  8*7(%rsp), %rdi
 	movq  (%rdi), %rdi        // load regset
@@ -202,6 +123,7 @@ save_regs_on_intr:
 	movw  %cx,  8*19+2(%rdi)  // save %fs
 	movw  %dx,  8*19+4(%rdi)  // save %gs
 	ret
+LOCAL_END(save_regs_on_intr)
 
 
 // Load regs and jump to new thread
@@ -215,7 +137,7 @@ save_regs_on_intr:
 //   8*5(%rsp)  old data
 //   8*6(%rsp)  ptr to ptr to new regset
 //   8*7(%rsp)  ptr to new cpu_ctl::thread
-load_regs_on_intr:
+LOCAL_START(load_regs_on_intr)
 	movq  8*6(%rsp), %rdi
 	movq  (%rdi), %rdi        // load regset
 
@@ -248,11 +170,57 @@ load_regs:
 	leaq  8*15(%rdi), %rsp
         movq  8*-9(%rsp), %rdi    // load %rdi
 	iretq
+LOCAL_END(load_regs_on_intr)
+
+
+// Exception handler
+
+
+.macro exception_handler handler, func
+	ENTRY_START(\handler)
+	call  save_regs_on_intr
+	call  \func
+	jmp   load_regs_on_intr
+	ENTRY_END(\handler)
+.endm
+
+exception_handler except_0x00, on_except_0x00
+exception_handler except_0x01, on_except_0x01
+exception_handler except_0x02, on_except_0x02
+exception_handler except_0x03, on_except_0x03
+exception_handler except_0x04, on_except_0x04
+exception_handler except_0x05, on_except_0x05
+exception_handler except_0x06, on_except_0x06
+exception_handler except_0x07, on_except_0x07
+exception_handler except_0x08, on_except_0x08
+exception_handler except_0x09, on_except_0x09
+exception_handler except_0x0a, on_except_0x0a
+exception_handler except_0x0b, on_except_0x0b
+exception_handler except_0x0c, on_except_0x0c
+exception_handler except_0x0d, on_except_0x0d
+exception_handler except_0x0e, on_except_0x0e
+exception_handler except_0x0f, on_except_0x0f
+exception_handler except_0x10, on_except_0x10
+exception_handler except_0x11, on_except_0x11
+exception_handler except_0x12, on_except_0x12
+exception_handler except_0x13, on_except_0x13
+exception_handler except_0x14, on_except_0x14
+exception_handler except_0x15, on_except_0x15
+exception_handler except_0x16, on_except_0x16
+exception_handler except_0x17, on_except_0x17
+exception_handler except_0x18, on_except_0x18
+exception_handler except_0x19, on_except_0x19
+exception_handler except_0x1a, on_except_0x1a
+exception_handler except_0x1b, on_except_0x1b
+exception_handler except_0x1c, on_except_0x1c
+exception_handler except_0x1d, on_except_0x1d
+exception_handler except_0x1e, on_except_0x1e
+exception_handler except_0x1f, on_except_0x1f
 
 
 // Interrupt handler
 //
-// stack layout :
+// input stack layout :
 //      (%rsp)  saved %rip
 //   8*1(%rsp)  saved %cs
 //   8*2(%rsp)  saved %rf
@@ -388,14 +356,4 @@ intr_handler intr_0x8c, 0x8c
 intr_handler intr_0x8d, 0x8d
 intr_handler intr_0x8e, 0x8e
 intr_handler intr_0x8f, 0x8f
-
-intr_handler interrupt_0x5e_handler, 0x5e
-//ENTRY_START(interrupt_0x5e_handler)
-//	interrupt_method 0x5e
-//ENTRY_END(interrupt_0x5e_handler)
-
-intr_handler interrupt_0x5f_handler, 0x5f
-//ENTRY_START(interrupt_0x5f_handler)
-//	interrupt_method 0x5f
-//ENTRY_END(interrupt_0x5f_handler)
 

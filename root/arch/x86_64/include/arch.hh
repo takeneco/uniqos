@@ -18,7 +18,7 @@ typedef u64 _cpu_word;
 typedef u8 intr_id;
 
 enum {
-	BITS_PER_BYTE = 8,
+	BITS_IN_BYTE = 8,
 
 	// alignment
 	BASIC_TYPE_ALIGN = 8,
