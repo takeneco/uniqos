@@ -9,6 +9,7 @@
 #include <basic.hh>
 #include <chain.hh>
 #include <regset.hh>
+#include <spinlock.hh>
 
 
 class cpu_node;
@@ -40,8 +41,8 @@ private:
 		SLEEPING,
 	} state;
 
-	bool sleep_cancel_cmd;
-	bool anti_sleep_flag;
+	bool      anti_sleep;
+	spin_lock anti_sleep_lock;
 };
 
 

@@ -25,7 +25,6 @@
 #include <cpu_node.hh>
 
 #include <log.hh>
-#include <native_ops.hh>
 
 
 namespace {
@@ -44,11 +43,12 @@ thread_queue::thread_queue(cpu_node* _owner) :
 
 cause::type thread_queue::init()
 {
-	cause::type r = mempool_create_shared(sizeof (thread), &thread_mempool);
+	cause::type r = mempool_acquire_shared(sizeof (thread),
+	                                       &thread_mempool);
 	if (is_fail(r))
 		return r;
 
-	r = mempool_create_shared(STACK_SIZE, &stack_mempool);
+	r = mempool_acquire_shared(STACK_SIZE, &stack_mempool);
 	if (is_fail(r))
 		return r;
 
@@ -76,22 +76,14 @@ cause::type thread_queue::create_thread(
 	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
 
 	t->state = thread::SLEEPING;
+
+	thread_state_lock.wlock();
+
 	sleeping_queue.insert_tail(t);
 
+	thread_state_lock.unlock();
+
 	*newthread = t;
-
-	return cause::OK;
-}
-
-cause::type thread_queue::wakeup(thread* t)
-{
-	if (t->state == thread::READY)
-		return cause::OK;
-
-	sleeping_queue.remove(t);
-	ready_queue.insert_tail(t);
-
-	t->state = thread::READY;
 
 	return cause::OK;
 }
@@ -101,18 +93,24 @@ extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
 /// @brief  呼び出し元スレッドは READY のままでスレッドを切り替える。
 /// @retval true スレッド切り替えの後、実行順が戻ってきた。
 /// @retval false 切り替えるスレッドがなかった。
-/// @note preempt_enable / intr_enable の状態で呼び出す必要がある。
+/// @note preempt_enable / intr_disable の状態で呼び出す必要がある。
 bool thread_queue::force_switch_thread()
 {
 	thread* prev_thr = running_thread;
+	thread* next_thr;
 
-	thread* next_thr = ready_queue.remove_head();
-	if (!next_thr)
-		return false;
+	{
+		spin_wlock_section swl_sec(thread_state_lock, true);
 
-	ready_queue.insert_tail(running_thread);
+		next_thr = ready_queue.remove_head();
+		if (!next_thr)
+			return false;
 
-	running_thread = next_thr;
+		ready_queue.insert_tail(running_thread);
+
+		running_thread = next_thr;
+		owner_cpu->set_running_thread(next_thr);
+	}
 
 	switch_regset(next_thr->ref_regset(), prev_thr->ref_regset());
 
@@ -123,23 +121,35 @@ bool thread_queue::force_switch_thread()
 void thread_queue::sleep()
 {
 	thread* prev_run = running_thread;
+	thread* next_run;
 
 	arch::intr_disable();
 
-	if (prev_run->anti_sleep_flag == true) {
-		prev_run->anti_sleep_flag = false;
-		arch::intr_enable();
-		return;
+	{
+		spin_wlock_section _tsl_sec(thread_state_lock, true);
+
+		{
+			spin_lock_section _asl_sec(prev_run->anti_sleep_lock,
+			                           true);
+
+			if (prev_run->anti_sleep == true) {
+				prev_run->anti_sleep = false;
+				arch::intr_enable();
+				return;
+			}
+
+			prev_run->state = thread::SLEEPING;
+			sleeping_queue.insert_tail(prev_run);
+		}
+
+		next_run = ready_queue.remove_head();
+		// message_thread が常に READY なので、
+		// next_run は 0 にならない。
+
+		running_thread = next_run;
+		owner_cpu->set_running_thread(next_run);
 	}
 
-	prev_run->state = thread::SLEEPING;
-	sleeping_queue.insert_tail(prev_run);
-
-	thread* next_run = ready_queue.remove_head();
-	// message_thread は常に READY なので、next_run は 0 にならない。
-
-	running_thread = next_run;
-	owner_cpu->set_running_thread(next_run);
 	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
 
 	arch::intr_enable();
@@ -159,6 +169,8 @@ void thread_queue::ready_np(thread* t)
 
 void thread_queue::switch_thread_after_intr(thread* t)
 {
+	spin_wlock_section _tsl_sec(thread_state_lock, true);
+
 	ready_queue.insert_tail(running_thread);
 
 	ready_queue.remove(t);
@@ -169,12 +181,15 @@ void thread_queue::switch_thread_after_intr(thread* t)
 
 void thread_queue::_ready(thread* t)
 {
+	spin_wlock_section _tsl_sec(thread_state_lock, true);
+	spin_lock_section _sl_sec(t->anti_sleep_lock, true);
+
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);
 		ready_queue.insert_tail(t);
 		t->state = thread::READY;
 	} else {
-		t->sleep_cancel_cmd = true;
+		t->anti_sleep = true;
 	}
 }
 

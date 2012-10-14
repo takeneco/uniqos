@@ -6,7 +6,6 @@
 #ifndef INCLUDE_THREAD_QUEUE_HH_
 #define INCLUDE_THREAD_QUEUE_HH_
 
-#include <regset.hh>
 #include <thread.hh>
 
 
@@ -31,8 +30,6 @@ public:
 		                     newthread);
 	}
 
-	cause::type wakeup(thread* t);
-
 	bool force_switch_thread();
 
 	void sleep();
@@ -50,6 +47,8 @@ private:
 	cpu_node* const owner_cpu;
 
 	thread* running_thread;
+
+	spin_rwlock thread_state_lock;
 
 	typedef bibochain<thread, &thread::chain_node> thread_chain;
 	thread_chain ready_queue;

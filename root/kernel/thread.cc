@@ -29,9 +29,8 @@ thread::thread(
 ) :
 	owner(_owner),
 	rs(text, param, stack, stack_size),
-	anti_sleep_flag(false)
+	anti_sleep(false)
 {
-	sleep_cancel_cmd = false;
 }
 
 void thread::ready()
