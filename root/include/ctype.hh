@@ -33,6 +33,9 @@ inline int is_alpha(u8 c) { return _masktbl[c] & (_u|_l);          }
 inline int is_print(u8 c) { return _masktbl[c] & (_u|_l|_d|_s|_p); }
 inline int is_xdigit(u8 c) { return _masktbl[c] & (_h);            }
 
+inline u8 to_upper(u8 c) { return is_lower(c) ? c + ('A' - 'a') : c; }
+inline u8 to_lower(u8 c) { return is_upper(c) ? c + ('a' - 'A') : c; }
+
 }  // namespace ctype
 
 

@@ -55,5 +55,8 @@ int isspace(int c)  { return ctype::is_space(c);  }
 int isupper(int c)  { return ctype::is_upper(c);  }
 int isxdigit(int c) { return ctype::is_xdigit(c); }
 
+int toupper(int c)  { return ctype::to_upper(c);  }
+int tolower(int c)  { return ctype::to_lower(c);  }
+
 }  // extern "C"
 
