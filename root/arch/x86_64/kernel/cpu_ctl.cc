@@ -72,7 +72,7 @@ cause::type cpu_ctl::setup_tss()
 	tss.iomap_base = sizeof tss;
 
 	mempool* ist_mp;
-	cause::type r = mempool_create_shared(IST_BYTES, &ist_mp);
+	cause::type r = mempool_acquire_shared(IST_BYTES, &ist_mp);
 	if (is_fail(r))
 		return r;
 
@@ -140,7 +140,7 @@ cpu_ctl_common::cpu_ctl_common()
 
 cause::type cpu_ctl_common::init()
 {
-	cause::stype r = mps.load();
+	cause::type r = mps.load();
 	if (is_fail(r))
 		return r;
 
@@ -186,12 +186,12 @@ namespace arch {
 
 void intr_enable()
 {
-	native::cli();
+	native::sti();
 }
 
 void intr_disable()
 {
-	native::sti();
+	native::cli();
 }
 
 void intr_wait()
