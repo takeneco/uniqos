@@ -26,6 +26,7 @@
 #include <native_ops.hh>
 #include <new_ops.hh>
 #include <cpu_node.hh>
+#include <spinlock.hh>
 
 
 namespace {
@@ -110,6 +111,9 @@ class serial_ctrl : public io_node
 	typedef message_with<serial_ctrl*> serial_msg;
 	serial_msg write_msg;
 	serial_msg intr_msg;
+
+	spin_lock write_msg_lock;
+
 	bool write_posted;
 	volatile bool intr_posted;
 	volatile bool intr_pending;
@@ -138,7 +142,8 @@ private:
 	}
 	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
-	cause::type on_io_node_write(offset* off, int iov_cnt, const iovec* iov);
+	cause::type on_io_node_write(
+	    offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void on_write_message();
@@ -257,8 +262,6 @@ cause::type serial_ctrl::on_io_node_write(
 
 	if (sync) {
 		get_cpu_node()->get_thread_ctl().sleep();
-		//thread_queue& tc = get_cpu_node()->get_thread_ctl();
-		//tc.sleep_running_thread();
 	}
 
 	return r;
@@ -321,11 +324,14 @@ void serial_ctrl::on_write_message_(message* msg)
 
 void serial_ctrl::post_write_message()
 {
-	if (write_posted) {
-		return;
-	}
+	{
+		spin_lock_section _wml_sec(write_msg_lock, true);
 
-	write_posted = true;
+		if (write_posted)
+			return;
+
+		write_posted = true;
+	}
 
 	cpu_node* cpu = get_cpu_node();
 	cpu->post_soft_message(&write_msg);
@@ -383,7 +389,7 @@ void serial_ctrl::post_intr_message()
 
 	cpu_node* cpu = get_cpu_node();
 	cpu->post_intr_message(&intr_msg);
-	//cpu->get_thread_ctl().ready_message_thread_in_intr();
+
 	cpu->switch_messenger_after_intr();
 }
 
