@@ -19,6 +19,8 @@
 
 #include <spinlock.hh>
 
+#include <cpu_node.hh>
+
 
 // spin_lock
 
@@ -31,6 +33,16 @@ void spin_lock::lock()
 			break;
 
 		preempt_enable();
+
+		arch::cpu_relax();
+	}
+}
+
+void spin_lock::lock_np()
+{
+	for (;;) {
+		if (_try_lock())
+			break;
 
 		arch::cpu_relax();
 	}
@@ -53,6 +65,11 @@ void spin_lock::unlock()
 	atom.store(UNLOCKED);
 
 	preempt_enable();
+}
+
+void spin_lock::unlock_np()
+{
+	atom.store(UNLOCKED);
 }
 
 
@@ -96,6 +113,16 @@ void spin_rwlock::rlock()
 	}
 }
 
+void spin_rwlock::rlock_np()
+{
+	for (;;) {
+		if (arch::spin_rwlock_ops::try_rlock())
+			break;
+
+		arch::cpu_relax();
+	}
+}
+
 void spin_rwlock::wlock()
 {
 	for (;;) {
@@ -110,10 +137,25 @@ void spin_rwlock::wlock()
 	}
 }
 
+void spin_rwlock::wlock_np()
+{
+	for (;;) {
+		if (arch::spin_rwlock_ops::try_wlock())
+			break;
+
+		arch::cpu_relax();
+	}
+}
+
 void spin_rwlock::unlock()
 {
 	spin_rwlock_ops::unlock();
 
 	preempt_enable();
+}
+
+void spin_rwlock::unlock_np()
+{
+	spin_rwlock_ops::unlock();
 }
 
