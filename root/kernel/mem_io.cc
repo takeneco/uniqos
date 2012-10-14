@@ -18,12 +18,14 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <mem_io.hh>
-
 #include <setup.hh>
 
 
 //TODO
 io_node::operations mem_io_node_ops;
+io_node::operations ringed_mem_io_node_ops;
+
+// mem_io
 
 mem_io::mem_io(uptr bytes, void* _contents) :
 	io_node(&mem_io_node_ops),
@@ -74,8 +76,83 @@ cause::type mem_io::setup()
 	return cause::OK;
 }
 
+
+// ringed_mem_io
+
+ringed_mem_io::ringed_mem_io(uptr bytes, void* _contents) :
+	io_node(&ringed_mem_io_node_ops),
+	contents(static_cast<u8*>(_contents)),
+	capacity_bytes(bytes)
+{
+}
+
+cause::type ringed_mem_io::on_io_node_read(
+    offset* off, int iov_cnt, iovec* iov)
+{
+	iovec_iterator iov_i(iov_cnt, iov);
+
+	while (!iov_i.is_end()) {
+		const uptr noff = offset_normalize(*off);
+
+		uptr read_bytes =
+		    iov_i.write(capacity_bytes - noff, &contents[noff]);
+
+		*off += read_bytes;
+	}
+
+	return cause::OK;
+}
+
+cause::type ringed_mem_io::on_io_node_write(
+    offset* off, int iov_cnt, const iovec* iov)
+{
+	iovec_iterator iov_i(iov_cnt, iov);
+
+	while (!iov_i.is_end()) {
+		const uptr noff = offset_normalize(*off);
+
+		uptr write_bytes =
+		    iov_i.read(capacity_bytes - noff, &contents[noff]);
+
+		*off += write_bytes;
+	}
+
+	contents[offset_normalize(*off)] = 0xff;
+
+	return cause::OK;
+}
+
+io_node::offset ringed_mem_io::offset_normalize(offset off)
+{
+	off %= capacity_bytes;
+
+	if (off < 0)
+		off += capacity_bytes;
+
+	return off;
+}
+
+cause::type ringed_mem_io::setup()
+{
+	ringed_mem_io_node_ops.seek = nofunc_on_io_node_seek;
+	ringed_mem_io_node_ops.read = call_on_io_node_read<ringed_mem_io>;
+	ringed_mem_io_node_ops.write  = call_on_io_node_write<ringed_mem_io>;
+
+	return cause::OK;
+}
+
+
+/// @brief  setup mem_io and ringed_mem_io.
 cause::type mem_io_setup()
 {
-	return mem_io::setup();
+	cause::type r = mem_io::setup();
+	if (is_fail(r))
+		return r;
+
+	r = ringed_mem_io::setup();
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
 }
 
