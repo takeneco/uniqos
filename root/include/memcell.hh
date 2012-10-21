@@ -12,7 +12,7 @@
 #include <chain.hh>
 #include <new_ops.hh>
 
-#include <log_target.hh>
+#include <output_buffer.hh>
 
 
 /////////////////////////////////////////////////////////////////////
@@ -181,7 +181,7 @@ private:
 	bool import_uplevel_page();
 
 public:
-	void dump(uptr total_mem, log_target& lt)
+	void dump(uptr total_mem, output_buffer& lt)
 	{
 		lt("---- cell internal start ----")()
 		("page_size_bits = ").u(page_size_bits)()
@@ -454,7 +454,7 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 	return true;
 }
 
-inline void memcell_test(log_target& lt)
+inline void memcell_test(output_buffer& lt)
 {
 	lt("---- memcell test start")();
 

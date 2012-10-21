@@ -21,11 +21,11 @@
 #define INCLUDE_CHEAP_ALLOC_HH_
 
 #include <chain.hh>
-#include <log_target.hh>
+#include <output_buffer.hh>
 
 
 /// @brief  簡単なメモリ管理の実装
-/// @tparam BUF_COUNT 内部バッファのエントリ数。
+/// @tparam BUF_COUNT 作業メモリのエントリ数。
 //
 /// 使い方
 /// -# 最初に add_free() で割り当て可能な空きメモリを追加する。
@@ -126,13 +126,13 @@ private:
 	bool   _free(void* p, adr_slot* slot);
 
 public:
-	void _debug_dump(adr_slot& slot, log_target& log) {
+	void _debug_dump(adr_slot& slot, output_buffer& log) {
 	 for(range*r=slot.free_ranges.head();r;r=slot.free_ranges.next(r))
 	  log("free:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
 	 for(range*r=slot.alloc_ranges.head();r;r=slot.alloc_ranges.next(r))
 	  log("alloc:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
 	}
-	void debug_dump(log_target& lt) {
+	void debug_dump(output_buffer& lt) {
 		for (unsigned i = 0; i < SLOT_COUNT; ++i) {
 			lt("slot[").u(i)("]:")();
 			_debug_dump(slots[i], lt);

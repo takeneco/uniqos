@@ -7,8 +7,8 @@
 #define ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
 
 #include <arch.hh>
-#include "log_target.hh"
-#include "memcell.hh"
+#include <output_buffer.hh>
+#include <memcell.hh>
 
 
 namespace arch {
@@ -17,7 +17,7 @@ namespace arch {
 class page_ctl
 {
 public:
-	void dump(log_target& lg);
+	void dump(output_buffer& ob);
 
 private:
 	mem_cell_base<u64> page_base[page::LEVEL_COUNT];
@@ -49,8 +49,8 @@ public:
 	bool load_free_range(u64 adr, u64 bytes);
 	void build();
 
-	cause::stype alloc(arch::page::TYPE pt, uptr* padr);
-	cause::stype free(arch::page::TYPE pt, uptr padr);
+	cause::type alloc(arch::page::TYPE pt, uptr* padr);
+	cause::type free(arch::page::TYPE pt, uptr padr);
 };
 
 }  // namespace arch

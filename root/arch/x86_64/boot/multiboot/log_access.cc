@@ -34,11 +34,12 @@ void log_set(uint i, io_node* target)
 }
 
 log::log(int i)
-:    log_target(log_tgt[i])
+:    output_buffer(log_tgt[i], 0)
 {
 }
 
 log::~log()
 {
+	flush();
 }
 

@@ -12,7 +12,7 @@
 #include <config.h>
 
 
-class log_target;
+class output_buffer;
 class mempool_ctl;
 
 /// @brief 同じサイズのメモリブロックの割り当てを管理する。
@@ -33,7 +33,7 @@ public:
 	mempool(u32 _obj_size,
 	        arch::page::TYPE ptype = arch::page::INVALID,
 	        mempool* _page_pool = 0);
-	cause::stype destroy();
+	cause::type destroy();
 
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
@@ -49,7 +49,7 @@ public:
 	sptr dec_shared_count() { return --shared_count; }
 	sptr get_shared_count() const { return shared_count; }
 
-	void dump(log_target& lt);
+	void dump(output_buffer& ob);
 
 	bichain_node<mempool>& chain_hook() { return _chain_node; }
 
@@ -87,7 +87,7 @@ private:
 		memobj* alloc();
 		bool free(const mempool& pool, memobj* obj);
 
-		void dump(log_target& lt);
+		void dump(output_buffer& lt);
 
 		bichain_node<page>& bichain_hook() { return _chain_node; }
 
@@ -169,8 +169,8 @@ private:
 	node* mempool_nodes[CONFIG_MAX_CPUS];
 };
 
-extern "C" cause::type mempool_create_shared(u32 objsize, mempool** mp);
-extern "C" void mempool_release_shared(mempool* mp);
+extern "C" cause::type mempool_acquire_shared(u32 objsize, mempool** mp);
+extern "C" void        mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 

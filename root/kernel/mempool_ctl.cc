@@ -167,20 +167,20 @@ void mempool_ctl::shared_dealloc(void* mem)
 		mp->destroy();
 }
 
-void mempool_ctl::dump(output_buffer& lt)
+void mempool_ctl::dump(output_buffer& ob)
 {
-	lt("obj_size      alloc_count       page_count    freeobj_count")();
+	ob("obj_size      alloc_count       page_count    freeobj_count")();
 	for (mempool* mp = shared_chain.head();
 	     mp;
 	     mp = shared_chain.next(mp))
 	{
-		mp->dump(lt);
+		mp->dump(ob);
 	}
 }
 
 cause::type mempool_ctl::init_shared()
 {
-	uptr sizes[sizeof (cpu_word) * arch::BITS_PER_BYTE * 2];
+	uptr sizes[sizeof (cpu_word) * arch::BITS_IN_BYTE * 2];
 	int sizes_ent = 0;
 
 	for (uptr size = sizeof (cpu_word) * 4;

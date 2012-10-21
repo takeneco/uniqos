@@ -12,7 +12,7 @@ kern_sources = [
     'intr_ctl.cc',
     'kern_log.cc',
     'log_target.cc',
-    'mem_file.cc',
+    'mem_io.cc',
     'mempool.cc',
     'mempool_ctl.cc',
     'page.cc',

@@ -7,7 +7,7 @@
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
 #include <cheap_alloc.hh>
-#include <log_target.hh>
+#include <output_buffer.hh>
 
 
 typedef cheap_alloc<256> allocator;
@@ -46,7 +46,7 @@ extern struct load_info_
 
 // log
 
-class log : public log_target
+class log : public output_buffer
 {
 	DISALLOW_COPY_AND_ASSIGN(log);
 

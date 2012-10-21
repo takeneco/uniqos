@@ -131,29 +131,29 @@ void page_ctl::build()
 	page_base[4].build_free_chain();
 }
 
-cause::stype page_ctl::alloc(arch::page::TYPE page_type, uptr* padr)
+cause::type page_ctl::alloc(arch::page::TYPE page_type, uptr* padr)
 {
 	return page_base[page_type].reserve_1page(padr);
 }
 
-cause::stype page_ctl::free(arch::page::TYPE page_type, uptr padr)
+cause::type page_ctl::free(arch::page::TYPE page_type, uptr padr)
 {
 	return page_base[page_type].free_1page(padr);
 }
 
-void page_ctl::dump(log_target& lt)
+void page_ctl::dump(output_buffer& ob)
 {
 	for (int i = 0; i < 5; ++i) {
-		page_base[i].dump(pmem_end, lt);
+		page_base[i].dump(pmem_end, ob);
 	}
 
-	lt("lev      free_pages      alloc_pages")();
+	ob("lev      free_pages      alloc_pages")();
 
 	for (int i = 0; i < 5; ++i) {
-		lt("L").u(i + 1);
-		lt(" ").u(page_base[i].get_free_pages(), 16);
-		lt(" ").u(page_base[i].get_alloc_pages(), 16);
-		lt.endl();
+		ob("L").u(i + 1);
+		ob(" ").u(page_base[i].get_free_pages(), 16);
+		ob(" ").u(page_base[i].get_alloc_pages(), 16);
+		ob.endl();
 	}
 }
 

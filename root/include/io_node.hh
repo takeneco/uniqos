@@ -73,6 +73,8 @@ public:
 
 	struct operations
 	{
+		void init();
+
 		typedef cause::type (*seek_op)(
 		    io_node* x, seek_whence whence,
 		    offset rel_off, offset* abs_off);
@@ -87,20 +89,37 @@ public:
 		write_op write;
 	};
 
+	// seek
 	template<class T> static cause::type call_on_io_node_seek(
 	    io_node* x, seek_whence whence, offset rel_off, offset* abs_off) {
 		return static_cast<T*>(x)->
 		    on_io_node_seek(whence, rel_off, abs_off);
 	}
+	static cause::type nofunc_io_node_seek(
+	    io_node*, seek_whence, offset, offset*) {
+		return cause::NOFUNC;
+	}
+
+	// read
 	template<class T> static cause::type call_on_io_node_read(
 	    io_node* x, offset* off, int iov_cnt, iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_read(off, iov_cnt, iov);
 	}
+	static cause::type nofunc_io_node_read(
+	    io_node*, offset*, int, iovec*) {
+		return cause::NOFUNC;
+	}
+
+	// write
 	template<class T> static cause::type call_on_io_node_write(
 	    io_node* x, offset* off, int iov_cnt, const iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_write(off, iov_cnt, iov);
+	}
+	static cause::type nofunc_io_node_write(
+	    io_node*, offset*, int, const iovec*) {
+		return cause::NOFUNC;
 	}
 
 public:

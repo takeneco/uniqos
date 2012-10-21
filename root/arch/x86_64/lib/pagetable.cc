@@ -1,12 +1,12 @@
 /// @file   pagetable.cc
 /// @brief  Page table.
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
-#include "pagetable.hh"
+#include <pagetable.hh>
 
-#include "log.hh"
+#include <log.hh>
 
 
 namespace arch {
@@ -33,13 +33,13 @@ void pte_init(pte* table)
 }
 
 
-inline void indents(log_target& x, int n)
+inline void indents(output_buffer& x, int n)
 {
 	for (int i = 0; i < n; ++i)
 		x("  ");
 }
 
-void dump_pte(log_target& x, pte* table, int depth)
+void dump_pte(output_buffer& x, pte* table, int depth)
 {
 	table = (pte*)arch::map_phys_adr((uptr)table, arch::page::PHYS_L1_SIZE);
 

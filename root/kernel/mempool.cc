@@ -24,7 +24,6 @@
 #include <new_ops.hh>
 #include <page.hh>
 
-
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 :   obj_size(normalize_obj_size(_obj_size)),
     page_type(ptype == arch::page::INVALID ? auto_page_type(obj_size) : ptype),
@@ -112,22 +111,22 @@ void mempool::collect_free_pages()
 	}
 }
 
-void mempool::dump(log_target& lt)
+void mempool::dump(output_buffer& ob)
 {
-	lt.u(obj_size, 16)(" ").
+	ob.u(obj_size, 16)(" ").
 	   u(alloc_count, 16)(" ").
 	   u(page_count, 16)(" ").
 	   u(freeobj_count, 16)();
 
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
 		node* nd = mempool_nodes[i];
-		log()("nd[").u(i)("]=")(nd)();
+		ob("nd[").u(i)("]=")(nd)();
 	}
 
-	lt("---- free_pages ----")();
+	ob("---- free_pages ----")();
 
 	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
-		pg->dump(lt);
+		pg->dump(ob);
 	}
 }
 
@@ -215,6 +214,7 @@ arch::page::TYPE mempool::auto_page_type(u32 objsize)
 
 u32 mempool::normalize_obj_size(u32 objsize)
 {
+	//TODO: sizeof (memobj)
 	u32 r = max<u32>(objsize, sizeof (page));
 
 	r = up_align<u32>(r, sizeof (cpu_word));
@@ -384,7 +384,7 @@ bool mempool::page::free(const mempool& pool, memobj* obj)
 	return true;
 }
 
-void mempool::page::dump(log_target& lt)
+void mempool::page::dump(output_buffer& lt)
 {
 	lt("memory:")(memory)(", alloc_count:").u(alloc_count)();
 

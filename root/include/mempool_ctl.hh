@@ -38,7 +38,7 @@ public:
 	void* shared_alloc(u32 bytes);
 	void shared_dealloc(void* mem);
 
-	void dump(log_target& lt);
+	void dump(output_buffer& ob);
 
 private:
 	cause::type init_shared();
@@ -51,7 +51,7 @@ private:
 	    arch::page::TYPE* page_type,
 	    PAGE_STYLE* page_style);
 
-	static cause::stype create_mempool_ctl(mempool_ctl** mpctl);
+	static cause::type create_mempool_ctl(mempool_ctl** mpctl);
 
 private:
 	/// offpage mempool のページ源。
