@@ -170,7 +170,7 @@ int u_to_hexstr(
     char s[sizeof (umax) * 2]) /// [out] output buffer. NOT nul terminate.
 {
 	int m = 0;
-	for (int shift = sizeof n * arch::BITS_PER_BYTE - 4;
+	for (int shift = sizeof n * arch::BITS_IN_BYTE - 4;
 	     shift >= 0;
 	     shift -= 4)
 	{
@@ -203,7 +203,7 @@ int u_to_octstr(
                                          ///       NOT nul terminate.
 {
 	int m = 0;
-	for (int shift = sizeof n * arch::BITS_PER_BYTE - 3;
+	for (int shift = sizeof n * arch::BITS_IN_BYTE - 3;
 	     shift >= 0;
 	     shift -= 3)
 	{
@@ -227,7 +227,7 @@ int u_to_binstr(
     char s[sizeof n * 8]) /// [out] output buffer. NOT nul terminate.
 {
 	int m = 0;
-	for (int shift = sizeof n * arch::BITS_PER_BYTE - 1;
+	for (int shift = sizeof n * arch::BITS_IN_BYTE - 1;
 	     shift >= 0;
 	     shift -= 1)
 	{
@@ -270,19 +270,19 @@ int memcmp(const void *s1, const void *s2, unsigned long n)
 	return mem_compare(n, s1, s2);
 }
 
-void* memcpy(void* dest, const void *src, unsigned long n)
+void *memcpy(void *dest, const void *src, unsigned long n)
 {
 	mem_copy(n, src, dest);
 	return dest;
 }
 
-void* memset(void* dest, int c, unsigned long n)
+void *memset(void *dest, int c, unsigned long n)
 {
 	mem_fill(n, c, dest);
 	return dest;
 }
 
-unsigned long strlen(const char* s)
+unsigned long strlen(const char *s)
 {
 	return str_length(s);
 }
@@ -292,16 +292,27 @@ int strcmp(const char *str1, const char *str2)
 	return str_compare(0xffffffff, str1, str2);
 }
 
-char* strcat(char* dest, const char* src)
+char *strcpy(char *dest, const char *src)
+{
+	str_copy(0xffffffff, src, dest);
+	return dest;
+}
+
+char *strncpy(char *dest, const char *src, unsigned long n)
+{
+	str_copy(n, src, dest);
+	return dest;
+}
+
+char *strcat(char *dest, const char *src)
 {
 	str_concat(0xffffffff, src, dest);
 	return dest;
 }
 
-char* strcpy(char* dest, const char* src)
+unsigned long strtoul(const char* nptr, const char** endptr, int base)
 {
-	str_copy(0xffffffff, src, dest);
-	return dest;
+	return str_to_u(base, nptr, endptr);
 }
 
 }  // extern "C"

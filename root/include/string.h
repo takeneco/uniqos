@@ -19,6 +19,7 @@ void *memset(void *dest, int c, unsigned long n);
 unsigned long strlen(const char* s);
 int strcmp(const char *str1, const char *str2);
 char *strcpy(char *dest, const char *src);
+char *strncpy(char* dest, const char* src, unsigned long n);
 char *strcat(char *dest, const char *src);
 
 
