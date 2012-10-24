@@ -69,6 +69,7 @@ cause::type mem_io::on_io_node_write(
 
 cause::type mem_io::setup()
 {
+	mem_io_node_ops.init();
 	mem_io_node_ops.seek = call_on_io_node_seek<mem_io>;
 	mem_io_node_ops.read = call_on_io_node_read<mem_io>;
 	mem_io_node_ops.write  = call_on_io_node_write<mem_io>;
@@ -134,7 +135,7 @@ io_node::offset ringed_mem_io::offset_normalize(offset off)
 
 cause::type ringed_mem_io::setup()
 {
-	ringed_mem_io_node_ops.seek = nofunc_on_io_node_seek;
+	ringed_mem_io_node_ops.init();
 	ringed_mem_io_node_ops.read = call_on_io_node_read<ringed_mem_io>;
 	ringed_mem_io_node_ops.write  = call_on_io_node_write<ringed_mem_io>;
 

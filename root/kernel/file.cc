@@ -107,6 +107,16 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 	return total;
 }
 
+// io_node::operations
+
+void io_node::operations::init()
+{
+	seek = io_node::nofunc_io_node_seek;
+	read = io_node::nofunc_io_node_read;
+	write = io_node::nofunc_io_node_write;
+}
+
+
 // io_node
 
 /// seek可能な範囲を [0, upper_limit] と仮定して seek 相当の結果を返す。
