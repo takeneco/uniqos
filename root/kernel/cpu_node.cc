@@ -81,9 +81,7 @@ cause::type cpu_node::start_message_loop()
 	if (is_fail(r))
 		return r;
 
-	r = thread_q.wakeup(message_thread);
-	if (is_fail(r))
-		return r;
+	thread_q.ready(message_thread);
 
 	return cause::OK;
 }
@@ -200,6 +198,8 @@ bool cpu_node::run_message()
 
 void cpu_node::message_loop()
 {
+	preempt_disable();
+
 	for (;;) {
 		arch::intr_enable();
 		arch::intr_disable();
@@ -210,7 +210,16 @@ void cpu_node::message_loop()
 		if (run_message())
 			continue;
 
-		if (thread_q.force_switch_thread())
+
+		// preempt_enable / intr_disable の状態を作る
+		dec_preempt_disable();
+
+		bool r = thread_q.force_switch_thread();
+
+		// preempt_disable / intr_disable の状態に戻す
+		inc_preempt_disable();
+
+		if (r)
 			continue;
 
 		arch::intr_wait();
