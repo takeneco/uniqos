@@ -86,9 +86,14 @@ public:
 };
 
 
-class serial_ctrl : public io_node
+/// @par 割込みの流れ
+///  - 割込みが発生すると on_intr() が呼ばれる
+///  - on_intr() は intr_msg を登録する。
+///  - intr_msg から on_intr_msg() が呼ばれる。
+///  - on_intr_msg() が割込みを判別する。
+class serial_ctl : public io_node
 {
-	DISALLOW_COPY_AND_ASSIGN(serial_ctrl);
+	DISALLOW_COPY_AND_ASSIGN(serial_ctl);
 
 	friend class io_node;
 
@@ -108,7 +113,10 @@ class serial_ctrl : public io_node
 	bool output_fifo_empty;
 	int tx_fifo_queued;
 
-	typedef message_with<serial_ctrl*> serial_msg;
+	typedef intr_handler_with<serial_ctl*> serial_intr_hdr;
+	serial_intr_hdr intr_hdr;
+
+	typedef message_with<serial_ctl*> serial_msg;
 	serial_msg write_msg;
 	serial_msg intr_msg;
 
@@ -123,7 +131,7 @@ public:
 	static io_node::operations serial_ops;
 
 public:
-	serial_ctrl(u16 base_port_, u16 irq_num_);
+	serial_ctl(u16 _base_port, u16 _irq_num);
 	cause::type configure();
 
 private:
@@ -146,14 +154,14 @@ private:
 	    offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
-	void on_write_message();
-	static void on_write_message_(message* msg);
-	void post_write_message();
+	void post_write_msg();
+	void on_write_msg();
+	static void _on_write_msg(message* msg);
 
-	void on_intr_message();
-	static void on_intr_message_(message* msg);
-	void post_intr_message();
-	static void intr_handler(void* param);
+	void post_intr_msg();
+	void on_intr_msg();
+	static void _on_intr_msg(message* msg);
+	static void on_intr(intr_handler* h);
 
 	void transmit();
 
@@ -161,11 +169,11 @@ public:
 	void dump();
 };
 
-io_node::operations serial_ctrl::serial_ops;
+io_node::operations serial_ctl::serial_ops;
 
-serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
-	base_port(base_port_),
-	irq_num(irq_num_),
+serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
+	base_port(_base_port),
+	irq_num(_irq_num),
 	next_read(0),
 	output_fifo_empty(true),
 	tx_fifo_queued(0),
@@ -174,31 +182,30 @@ serial_ctrl::serial_ctrl(u16 base_port_, u16 irq_num_) :
 	ops = &serial_ops;
 }
 
-cause::type serial_ctrl::configure()
+cause::type serial_ctl::configure()
 {
 	u32 vec;
 	arch::irq_interrupt_map(4, &vec);
 
-	static interrupt_handler ih;
-	ih.param = this;
-	ih.handler = intr_handler;
-	global_vars::core.intr_ctl_obj->add_handler(vec, &ih);
+	intr_hdr.data = this;
+	intr_hdr.handler = on_intr;
+	global_vars::core.intr_ctl_obj->install_handler(vec, &intr_hdr);
 
-	write_msg.handler = on_write_message_;
+	write_msg.handler = _on_write_msg;
 	write_msg.data = this;
 	write_posted = false;
 
-	intr_msg.handler = on_intr_message_;
+	intr_msg.handler = _on_intr_msg;
 	intr_msg.data = this;
 	intr_posted = false;
 
 	// 通信スピード設定開始
 	native::outb(0x80, base_port + LINE_CTRL);
-/*
+
 	// 通信スピードの指定 600[bps]
 	native::outb(0xc0, base_port + BAUDRATE_LSB);
 	native::outb(0x00, base_port + BAUDRATE_MSB);
-*/
+
 	// fastest
 	native::outb(0x01, base_port + BAUDRATE_LSB);
 	native::outb(0x00, base_port + BAUDRATE_MSB);
@@ -226,7 +233,7 @@ cause::type serial_ctrl::configure()
 	return cause::OK;
 }
 
-buf_entry* serial_ctrl::get_next_buf()
+buf_entry* serial_ctl::get_next_buf()
 {
 	buf_entry* buf = buf_queue.head();
 
@@ -236,7 +243,7 @@ buf_entry* serial_ctrl::get_next_buf()
 	return buf;
 }
 
-bool serial_ctrl::is_txfifo_empty() const
+bool serial_ctl::is_txfifo_empty() const
 {
 	const u8 line_status = native::inb(base_port + LINE_STATUS);
 
@@ -245,7 +252,7 @@ bool serial_ctrl::is_txfifo_empty() const
 
 /// @brief  Write to buffer.
 /// @param[out] bytes  write bytes.
-cause::type serial_ctrl::on_io_node_write(
+cause::type serial_ctl::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	iovec_iterator iov_itr(iov, iov_cnt);
@@ -257,7 +264,7 @@ cause::type serial_ctrl::on_io_node_write(
 		r = write_buf(off, iov_itr);
 
 		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
-			post_write_message();
+			post_write_msg();
 	}
 
 	if (sync) {
@@ -267,7 +274,7 @@ cause::type serial_ctrl::on_io_node_write(
 	return r;
 }
 
-cause::type serial_ctrl::write_buf(offset* off, iovec_iterator& iov_itr)
+cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 {
 	buf_entry* buf = 0;
 	uptr total = 0;
@@ -308,21 +315,7 @@ cause::type serial_ctrl::write_buf(offset* off, iovec_iterator& iov_itr)
 	return result;
 }
 
-void serial_ctrl::on_write_message()
-{
-	transmit();
-}
-
-void serial_ctrl::on_write_message_(message* msg)
-{
-	serial_msg* _msg = static_cast<serial_msg*>(msg);
-	serial_ctrl* serial = _msg->data;
-
-	serial->write_posted = false;
-	serial->on_write_message();
-}
-
-void serial_ctrl::post_write_message()
+void serial_ctl::post_write_msg()
 {
 	{
 		spin_lock_section _wml_sec(write_msg_lock, true);
@@ -337,7 +330,37 @@ void serial_ctrl::post_write_message()
 	cpu->post_soft_message(&write_msg);
 }
 
-void serial_ctrl::on_intr_message()
+void serial_ctl::on_write_msg()
+{
+	transmit();
+}
+
+void serial_ctl::_on_write_msg(message* msg)
+{
+	serial_msg* _msg = static_cast<serial_msg*>(msg);
+	serial_ctl* serial = _msg->data;
+
+	serial->write_posted = false;
+	serial->on_write_msg();
+}
+
+void serial_ctl::post_intr_msg()
+{
+	intr_pending = true;
+
+	// TODO: exclusive
+	if (intr_posted)
+		return;
+
+	intr_posted = true;
+
+	cpu_node* cpu = get_cpu_node();
+	cpu->post_intr_message(&intr_msg);
+
+	cpu->switch_messenger_after_intr();
+}
+
+void serial_ctl::on_intr_msg()
 {
 	intr_pending = false;
 
@@ -368,42 +391,26 @@ void serial_ctrl::on_intr_message()
 	}
 }
 
-void serial_ctrl::on_intr_message_(message* msg)
+void serial_ctl::_on_intr_msg(message* msg)
 {
 	serial_msg* _msg = static_cast<serial_msg*>(msg);
-	serial_ctrl* serial = _msg->data;
+	serial_ctl* serial = _msg->data;
 
 	serial->intr_posted = false;
-	serial->on_intr_message();
-}
-
-void serial_ctrl::post_intr_message()
-{
-	intr_pending = true;
-
-	// TODO: exclusive
-	if (intr_posted)
-		return;
-
-	intr_posted = true;
-
-	cpu_node* cpu = get_cpu_node();
-	cpu->post_intr_message(&intr_msg);
-
-	cpu->switch_messenger_after_intr();
+	serial->on_intr_msg();
 }
 
 /// 割り込み発生時に呼ばれる。
-void serial_ctrl::intr_handler(void* param)
+void serial_ctl::on_intr(intr_handler* h)
 {
-	static_cast<serial_ctrl*>(param)->post_intr_message();
+	static_cast<serial_intr_hdr*>(h)->data->post_intr_msg();
 }
 
 /// デバイスのFIFOのサイズだけ送信する。
 /// デバイスのFIFOが空になったら呼ばれる。
 //
 /// TODO: exclusive
-void serial_ctrl::transmit()
+void serial_ctl::transmit()
 {
 	if (buf_is_empty()) {
 		output_fifo_empty = true;
@@ -447,17 +454,17 @@ void serial_ctrl::transmit()
 }
 
 namespace {
-uptr tmp[(sizeof (serial_ctrl) + sizeof (uptr) - 1) / sizeof (uptr)];
+uptr tmp[(sizeof (serial_ctl) + sizeof (uptr) - 1) / sizeof (uptr)];
 }
 io_node* create_serial()
 {
 	///////
-	serial_ctrl::serial_ops.write = io_node::call_on_io_node_write<serial_ctrl>;
+	serial_ctl::serial_ops.write = io_node::call_on_io_node_write<serial_ctl>;
 	///////
 
-	//void* mem = memory::alloc(sizeof (serial_ctrl));
+	//void* mem = memory::alloc(sizeof (serial_ctl));
 	void* mem = tmp;
-	serial_ctrl* serial = new (mem) serial_ctrl(0x03f8, 4);
+	serial_ctl* serial = new (mem) serial_ctl(0x03f8, 4);
 
 	serial->configure();
 

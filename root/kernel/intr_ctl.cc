@@ -39,7 +39,7 @@ cause::type intr_ctl::init()
 }
 
 cause::type
-intr_ctl::add_handler(arch::intr_id vec, interrupt_handler* h)
+intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 {
 	if (vec > arch::INTR_UPPER)
 		return cause::INVALID_PARAMS;
@@ -64,11 +64,9 @@ void intr_ctl::call_interrupt(u32 vector)
 {
 	intr_task& it = handler_table[vector];
 	intr_handler_chain& ihc = it.handler_chain;
-	for (interrupt_handler* ih = ihc.head();
-	     ih;
-	     ih = ihc.next(ih))
+	for (intr_handler* ih = ihc.head(); ih; ih = ihc.next(ih))
 	{
-		ih->handler(ih->param);
+		ih->handler(ih);
 	}
 
 	if (it.post_handler)

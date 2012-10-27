@@ -1,13 +1,25 @@
 /// @file  apic.cc
 /// @brief Control APIC.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2012 KATO Takeshi
 //
-// (C) 2010-2012 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
-#include "kerninit.hh"
 #include <log.hh>
 #include <native_ops.hh>
 
@@ -65,8 +77,8 @@ inline void write_reg(u32 val, LAPIC_REG offset) {
 	native::mem_write32(val, LOCAL_APIC_REG_BASE + offset);
 }
 
-interrupt_handler timer_ih;
-void timer_handler(void*)
+intr_handler timer_ih;
+void timer_handler(intr_handler*)
 {
 	write_reg(0, LOCAL_APIC_EOI);
 }
@@ -93,8 +105,7 @@ cause::type local_apic_init()
 	write_reg(arch::INTR_APIC_TIMER, LOCAL_APIC_LVT_TIMER);
 
 	timer_ih.handler = timer_handler;
-	timer_ih.param = 0;
-	global_vars::core.intr_ctl_obj->add_handler(
+	global_vars::core.intr_ctl_obj->install_handler(
 		arch::INTR_APIC_TIMER, &timer_ih);
 
 	return cause::OK;
