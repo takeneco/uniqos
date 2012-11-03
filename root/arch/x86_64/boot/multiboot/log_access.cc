@@ -19,22 +19,26 @@
 
 #include "misc.hh"
 
+#include <log_target.hh>
+
 
 namespace {
 
 enum { LOG_MODES = 2 };
-io_node* log_tgt[LOG_MODES];
+log_target log_tgt[LOG_MODES];
 
 }  // namespace
 
 void log_set(uint i, io_node* target)
 {
+	log_target::setup();
+
 	if (i < LOG_MODES)
-		log_tgt[i] = target;
+		log_tgt[i].install(target, 0);
 }
 
 log::log(int i)
-:    output_buffer(log_tgt[i], 0)
+:    output_buffer(&log_tgt[i], 0)
 {
 }
 

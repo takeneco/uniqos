@@ -1,24 +1,22 @@
-# build multiboot image
+# wscript for the multiboot image.
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 source = [
-	'cheap_alloc_use.cc',
-	'entry.S',
-	'log_access.cc',
-	'load.cc',
-	'global.cc',
-	'memlog.cc',
-	'postload.cc',
-	'preload.cc',
+    'cheap_alloc_use.cc',
+    'entry.S',
+    'log_access.cc',
+    'load.cc',
+    'global.cc',
+    'memlog.cc',
+    'postload.cc',
+    'preload.cc',
 ]
 
 def configure(x):
 	x.find_program('objcopy', var='OBJCOPY')
 	x.env.append_value('CXXFLAGS_MB', '-m32')
-	x.env.append_value('DEFINES_MB', 'ARCH_IA32')
-	pass
 
 def build(x):
 	target = x.path.find_or_declare('us')
@@ -28,6 +26,8 @@ def build(x):
 	ls_opt = '-Wl,-T' + linker_script.abspath()
 
 	x.add_manual_dependency(target, linker_script)
+
+	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
 
 	env = x.env.derive()
 	env.append_value('ASFLAGS', '-m32')
@@ -41,16 +41,12 @@ def build(x):
 	)
 	source.append(kobj)
 
-	defines = []
-	if x.env.debug_boot: defines.append('DEBUG_BOOT')
-
 	mapfile = x.path.find_or_declare('multiboot.map')
 	map_opt = '-Wl,-Map,' + mapfile.abspath()
 
 	x.program(
 	    target = target,
 	    source = source,
-	    defines = defines,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
 	    linkflags = ['-m32', '-nostartfiles', '-static', ls_opt, map_opt],
 	    env = env,

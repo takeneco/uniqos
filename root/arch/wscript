@@ -1,9 +1,13 @@
+#
+# (C) 2012 KATO Takeshi
+#
 
 def options(x):
 	x.recurse('x86_64')
 
 def configure(x):
-	x.recurse(x.env.arch_name)
+	x.recurse(x.env.CONFIG_ARCH)
 
 def build(x):
-	x.recurse(x.env.arch_name)
+	x.recurse(x.env.CONFIG_ARCH)
+

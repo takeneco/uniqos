@@ -34,6 +34,8 @@ io_node::operations memlog_ops;
 
 cause::type memlog_file::setup()
 {
+	memlog_ops.init();
+
 	memlog_ops.seek  = call_on_io_node_seek<memlog_file>;
 	memlog_ops.read  = call_on_io_node_read<memlog_file>;
 	memlog_ops.write = call_on_io_node_write<memlog_file>;
@@ -49,7 +51,7 @@ cause::type memlog_file::open()
 	if (!buf)
 		return cause::NOMEM;
 
-	size = current = 0;
+	size = 0;
 
 	io_node::ops = &memlog_ops;
 
@@ -72,18 +74,17 @@ cause::type memlog_file::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 	if (!buf)
 		return cause::INVALID_OBJECT;
 
-	uptr total = 0;
+	offset _off = *off;
 	iovec_iterator itr(iov_cnt, iov);
-	while (current < size) {
+	while (_off < size) {
 		u8* c = itr.next_u8();
 		if (!c)
 			break;
 
-		*c = buf[current++];
-		++total;
+		*c = buf[_off++];
 	}
 
-	*off += total;
+	*off = _off;
 
 	return cause::OK;
 }
@@ -94,20 +95,19 @@ cause::type memlog_file::on_io_node_write(
 	if (!buf)
 		return cause::INVALID_OBJECT;
 
-	uptr total = 0;
+	offset _off = *off;
 	iovec_iterator itr(iov, iov_cnt);
-	while (current < MAX_SIZE) {
+	while (_off < MAX_SIZE) {
 		const u8* c = itr.next_u8();
 		if (!c)
 			break;
 
-		buf[current++] = *c;
-		++total;
+		buf[_off++] = *c;
 	}
 
-	*off += total;
+	*off = _off;
 
-	size = max(current, size);
+	size = max(_off, size);
 
 	return itr.is_end() ? cause::OK : cause::FAIL;
 }

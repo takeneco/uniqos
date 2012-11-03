@@ -83,8 +83,7 @@ public:
 
 private:
 	u8* buf;
-	s64 current;
-	s64 size;
+	offset size;
 };
 
 extern memlog_file memlog;

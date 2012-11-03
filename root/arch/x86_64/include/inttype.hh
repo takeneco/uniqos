@@ -4,11 +4,13 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_BASEINT_HH_
-#define ARCH_X86_64_INCLUDE_BASEINT_HH_
+#ifndef ARCH_X86_64_INCLUDE_INTTYPE_HH_
+#define ARCH_X86_64_INCLUDE_INTTYPE_HH_
 
 
-#if defined ARCH_W32 || defined ARCH_IA32
+#if defined ARCH_W32 || ARCH_ADR_BITS == 32
+
+// The protect mode.
 
 typedef   signed char      s8_;
 typedef unsigned char      u8_;
@@ -40,7 +42,9 @@ const sptr_ SPTR_MAX = 0x7fffffff;
 #  define suffix_sptr(n)  suffix_s32(n)
 #  define suffix_uptr(n)  suffix_u32(n)
 
-#else  // defined ARCH_W32 || defined ARCH_IA32
+#else  // defined ARCH_W32 || ARCH_ADR_BITS == 32
+
+// The long mode.
 
 typedef   signed char      s8_;
 typedef unsigned char      u8_;
@@ -72,6 +76,7 @@ const sptr_ SPTR_MAX = 0x7fffffffffffffffUL;
 #  define suffix_sptr(n)  suffix_s64(n)
 #  define suffix_uptr(n)  suffix_u64(n)
 
-#endif  // defined ARCH_W32 || defined ARCH_IA32
+#endif  // defined ARCH_W32 || ARCH_ADR_BITS == 32
 
 #endif  // include guard
+

@@ -155,13 +155,13 @@ private:
 	uptr append(uptr bytes, const void* data);
 
 private:
-	struct {
+	struct info_struct {
 		io_node*        destination;
 		io_node::offset dest_offset;
 		u8              buf_offset;
 	} info;
 
-	u8 buffer[128 - sizeof info];
+	u8 buffer[128 - sizeof(info_struct)];
 };
 
 

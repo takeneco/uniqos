@@ -1,10 +1,10 @@
 /// @file   load.cc
 /// @brief  ELF kernel loader.
 
-//  uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2012 KATO Takeshi
 //
-//  uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
@@ -20,6 +20,7 @@
 #include "misc.hh"
 
 #include <bootinfo.hh>
+#include <config.h>
 #include <elf.hh>
 #include <pagetable.hh>
 #include <string.hh>
@@ -33,11 +34,11 @@ namespace {
 class page_table_alloc
 {
 public:
-	static cause::stype alloc(uptr* padr);
-	static cause::stype free(uptr padr);
+	static cause::type alloc(uptr* padr);
+	static cause::type free(uptr padr);
 };
 
-inline cause::stype page_table_alloc::alloc(uptr* padr)
+inline cause::type page_table_alloc::alloc(uptr* padr)
 {
 	void* p = get_alloc()->alloc(
 	    SLOTM_BOOTHEAP,
@@ -50,7 +51,7 @@ inline cause::stype page_table_alloc::alloc(uptr* padr)
 	return p ? cause::OK : cause::NOMEM;
 }
 
-inline cause::stype page_table_alloc::free(uptr padr)
+inline cause::type page_table_alloc::free(uptr padr)
 {
 	bool b = get_alloc()->dealloc(
 	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
@@ -72,7 +73,7 @@ typedef arch::page_table<page_table_alloc, phys_to_virt> boot_page_table;
 /// phys_vadr が page_vadr へマッピングされる前提で、phys_vadr へ
 /// オブジェクトをコピーする。
 /// コピー元は page_vadr から計算する。
-cause::stype load_segm_page(
+cause::type load_segm_page(
     const Elf64_Phdr* phe,
     u64               page_vadr,  ///< マップ先ページアドレス
     uptr              page_size,  ///< マップ先ページサイズ
@@ -117,7 +118,7 @@ cause::stype load_segm_page(
 	return cause::OK;
 }
 
-cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
+cause::type load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 {
 	allocator* alloc = get_alloc();
 
@@ -132,7 +133,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 	for (u64 page_adr = start_page; ; page_adr += arch::page::PHYS_L2_SIZE)
 	{
-		cause::stype r;
+		cause::type r;
 
 		uptr phys_adr;
 		void* p = alloc->alloc(
@@ -167,7 +168,7 @@ cause::stype load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 extern "C" u32 load(u32 magic, u32* tag)
 {
-	cause::stype r = pre_load(magic, tag);
+	cause::type r = pre_load(magic, tag);
 	if (r != cause::OK)
 		return r;
 
@@ -175,31 +176,23 @@ extern "C" u32 load(u32 magic, u32* tag)
 
 	const Elf64_Ehdr* elf = reinterpret_cast<const Elf64_Ehdr*>(kernel);
 
-#ifdef DEBUG_BOOT
-	log()("kernel binary debug information:")();
-	log()("e_ident : ").
-	     u((u8)elf->e_ident[0], 16)(" ").
-	     u((u8)elf->e_ident[1], 16)(" ").
-	     u((u8)elf->e_ident[2], 16)(" ").
-	     u((u8)elf->e_ident[3], 16)(" ").
-	     u((u8)elf->e_ident[4], 16)(" ").
-	     u((u8)elf->e_ident[5], 16)(" ").
-	     u((u8)elf->e_ident[6], 16)(" ").
-	     u((u8)elf->e_ident[7], 16)(" ")();
-	log()("e_type : ").u((u16)elf->e_type, 16)
+#if CONFIG_DEBUG_BOOT >= 1
+	log()("kernel ELF header:")()
+	     ("e_ident : ").x(8, elf->e_ident, 1, 16)
+	     (", e_type : ").x((u16)elf->e_type)
 	     (", e_machine : ").u(elf->e_machine)
-	     (", e_version : ").u(elf->e_version)();
-	log()("e_entry : ").u((u64)elf->e_entry, 16)();
-	log()("e_phoff : ").u((u64)elf->e_phoff, 16)
-	     (", e_ehsize : ").u(elf->e_ehsize)();
-	log()("e_shoff : ").u(elf->e_shoff)
-	     ("e_flags : ").u(elf->e_flags)();
-	log()("e_phentsize : ").u(elf->e_phentsize)
-	     (", e_phnum : ").u(elf->e_phnum)();
-	log()("e_shentsize : ").u(elf->e_shentsize)
-	     (", e_shnum : ").u(elf->e_shnum)();
-	log()("e_shstrndx : ").u(elf->e_shstrndx)();
-#endif  // DEBUG_BOOT
+	     (", e_version : ").u(elf->e_version)()
+	     ("e_entry : ").x((u64)elf->e_entry)
+	     (", e_phoff : ").x((u64)elf->e_phoff)
+	     (", e_ehsize : ").u(elf->e_ehsize)()
+	     ("e_shoff : ").x(elf->e_shoff)
+	     (", e_flags : ").u(elf->e_flags)()
+	     ("e_phentsize : ").u(elf->e_phentsize)
+	     (", e_phnum : ").u(elf->e_phnum)()
+	     ("e_shentsize : ").u(elf->e_shentsize)
+	     (", e_shnum : ").u(elf->e_shnum)()
+	     ("e_shstrndx : ").u(elf->e_shstrndx)();
+#endif  // CONFIG_DEBUG_BOOT >= 1
 
 	boot_page_table pg_tbl(0, 0);
 
@@ -207,21 +200,21 @@ extern "C" u32 load(u32 magic, u32* tag)
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		const Elf64_Phdr* phe = reinterpret_cast<const Elf64_Phdr*>(ph);
 		if (phe->p_type == PT_LOAD) {
-			cause::stype r = load_segm(phe, &pg_tbl);
+			cause::type r = load_segm(phe, &pg_tbl);
 			if (is_fail(r))
 				return r;
 		}
-#ifdef DEBUG_BOOT
-		log()("program header[").u(i)("]:")();
-		log()(" p_type : ").u((u32)phe->p_type, 16)
-		     (", p_flags : ").u((u32)phe->p_flags, 16)();
-		log()(" p_offset : ").u((u64)phe->p_offset, 16)
-		     (", p_align : ").u((u64)phe->p_align)();
-		log()(" p_vaddr : ").u((u64)phe->p_vaddr, 16)
-		     (", p_paddr : ").u((u64)phe->p_paddr, 16)();
-		log()(" p_filesz : ").u((u64)phe->p_filesz, 16)
-		     (", p_memsz : ").u((u64)phe->p_memsz, 16)();
-#endif  // DEBUG_BOOT
+#if CONFIG_DEBUG_BOOT >= 1
+		log()("program header[").u(i)("]:")()
+		     (" p_type : ").x((u32)phe->p_type)
+		     (", p_flags : ").x((u32)phe->p_flags)()
+		     (" p_offset : ").x((u64)phe->p_offset)
+		     (", p_align : ").u((u64)phe->p_align)()
+		     (" p_vaddr : ").x((u64)phe->p_vaddr)
+		     (", p_paddr : ").x((u64)phe->p_paddr)()
+		     (" p_filesz : ").x((u64)phe->p_filesz)
+		     (", p_memsz : ").x((u64)phe->p_memsz)();
+#endif  // CONFIG_DEBUG_BOOT
 		ph += elf->e_phentsize;
 	}
 
@@ -247,7 +240,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 /*	// sharing stack with .bss section
 	// stack
 	uptr stack_padr;
-	cause::stype r = arch::page::alloc(arch::page::PHYS_L2, &stack_padr);
+	cause::type r = arch::page::alloc(arch::page::PHYS_L2, &stack_padr);
 	if (r != cause::OK)
 		return r;
 	pg_tbl.set_page(0 - arch::page::PHYS_L2_SIZE, stack_padr,

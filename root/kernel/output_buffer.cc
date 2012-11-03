@@ -560,7 +560,7 @@ void fmt_hex(output_buffer* x, std::va_list va, const field_spec& spec)
 	output_buffer_hexf(x, val, spec.width, spec.precision, spec.flags);
 }
 
-}
+}  // namespace
 
 void output_buffer_format(
     output_buffer* x,
@@ -664,7 +664,7 @@ void output_buffer::_vec(int iov_cnt, const iovec* iov)
 void output_buffer::_1vec(uptr bytes, const void* data)
 {
 	const uptr buf_left = sizeof buffer - info.buf_offset;
-	if (buf_left > bytes) {
+	if (buf_left >= bytes) {
 		// data が buffer に収まる場合は write() せずに
 		// buffer に格納する。
 		mem_copy(bytes, data, &buffer[info.buf_offset]);
@@ -679,7 +679,7 @@ void output_buffer::_1vec(uptr bytes, const void* data)
 		iov[1].bytes = bytes;
 
 		const io_node::offset before_offset = info.dest_offset;
-		info.destination->write(&info.dest_offset, 1, iov);
+		info.destination->write(&info.dest_offset, 2, iov);
 
 		const uptr write_bytes = info.dest_offset - before_offset;
 		if (write_bytes != info.buf_offset + bytes)
@@ -758,7 +758,8 @@ cause::type output_buffer::_flush()
 
 uptr output_buffer::append(uptr bytes, const void* data)
 {
-	const uptr len = min(sizeof buffer - info.buf_offset, bytes);
+	const uptr len =
+	    min(static_cast<uptr>(sizeof buffer - info.buf_offset), bytes);
 
 	mem_copy(len, data, &buffer[info.buf_offset]);
 
