@@ -1,5 +1,5 @@
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 VERSION = '0.0.1.0'
@@ -8,21 +8,9 @@ APPNAME = 'uniqos'
 top = '.'
 out = 'build'
 
-arch_name = 'x86_64'
-
 import os.path
 
 def configure_x86_64(x):
-	x.env.arch_name = arch_name
-
-	x.recurse('arch')
-
-	x.env.CFLAGS = [
-	    '-pipe', '-Wall', '-Wextra',
-	]
-	x.env.CXXFLAGS = [
-	    '-pipe', '-Wall', '-Wextra',
-	]
 
 	x.env.DEFINES_SETUP = [
 	    'ARCH_LE',
@@ -34,6 +22,7 @@ def configure_x86_64(x):
 	x.env.CXXFLAGS_SETUP = [
 	    '-fno-exceptions', '-fno-rtti',
 	    '-mno-sse',
+	    '-mno-mmx',
 	    '-fomit-frame-pointer',
 	    '-Os',
 	]
@@ -43,6 +32,7 @@ def configure_x86_64(x):
 	]
 	x.env.CFLAGS_KERNEL = [
 	    '-mno-sse',
+	    '-mno-mmx',
 	    '-fomit-frame-pointer', '-O2',
 	]
 	x.env.CXXFLAGS_KERNEL = [
@@ -52,41 +42,45 @@ def configure_x86_64(x):
 	    '-O2',
 	]
 
-	conf = x
-	if conf.options.compiler == 'clang':
-		conf.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
-		conf.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
-		conf.env.append_value('LINKFLAGS_KERNEL', '-native')
-		conf.find_program('clang', var='CC')
-		conf.find_program('clang++', var='CXX')
-		conf.find_program('clang', var='AS')
-		conf.env.append_value('ASFLAGS', '-c')
-		conf.env.LINK_PASS = ''
+	if x.options.compiler == 'clang':
+		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('LINKFLAGS_KERNEL', '-lgcc')
+		x.env.append_value('CFLAGS_MB', '-mno-sse')
+		x.env.append_value('CXXFLAGS_MB', '-mno-sse')
+		x.env.append_value('LINKFLAGS_MB', '-mno-sse')
+		x.find_program('clang', var='CC')
+		x.find_program('clang++', var='CXX')
+		x.find_program('clang', var='AS')
+		x.env.append_value('ASFLAGS', '-c')
+		# '.code16' was not supported by clang yet
+		x.env.append_value('ASFLAGS', '-no-integrated-as')
+		x.env.LINK_PASS = ''
 
-	elif conf.options.compiler == 'llvm':
-		conf.env.CFLAGS_KERNEL.append('-emit-llvm')
-		conf.env.CXXFLAGS_KERNEL.append('-emit-llvm')
-		#conf.env.CFLAGS_KERNEL.append('-code-model=large')
-		#conf.env.CXXFLAGS_KERNEL.append('-code-model=large')
-		conf.find_program('llvm-gcc', var='CC')
-		conf.find_program('llvm-g++', var='CXX')
-		conf.find_program('llvm-ld', var='LINK_CC')
-		conf.env.LINK_CXX = conf.env.LINK_CC
-		conf.env.LINKFLAGS = ['-code-model=large', '-native']
-		conf.env.LINK_PASS = '-Xlinker='
+	elif x.options.compiler == 'llvm':
+		x.env.CFLAGS_KERNEL.append('-emit-llvm')
+		x.env.CXXFLAGS_KERNEL.append('-emit-llvm')
+		#x.env.CFLAGS_KERNEL.append('-code-model=large')
+		#x.env.CXXFLAGS_KERNEL.append('-code-model=large')
+		x.find_program('llvm-gcc', var='CC')
+		x.find_program('llvm-g++', var='CXX')
+		x.find_program('llvm-ld', var='LINK_CC')
+		x.env.LINK_CXX = x.env.LINK_CC
+		x.env.LINKFLAGS = ['-code-model=large', '-native']
+		x.env.LINK_PASS = '-Xlinker='
 
-	elif conf.options.compiler == 'gnu':
-		conf.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
-		conf.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
-		conf.env.append_value('LINKFLAGS_MB', '-lgcc')
-		conf.find_program('gcc', var='CC')
-		conf.find_program('g++', var='CXX')
-		conf.find_program('gcc', var='AS')
-		conf.env.append_value('ASFLAGS','-c')
-		conf.env.LINK_PASS = ''
+	elif x.options.compiler == 'gnu':
+		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('LINKFLAGS_MB', '-lgcc')
+		x.find_program('gcc', var='CC')
+		x.find_program('g++', var='CXX')
+		x.find_program('gcc', var='AS')
+		x.env.append_value('ASFLAGS','-c')
+		x.env.LINK_PASS = ''
 
 	else:
-		conf.fatal('unknown compiler : ' + conf.options.compiler)
+		x.fatal('unknown compiler : ' + x.options.compiler)
 
 def options(x):
 	x.load('compiler_c')
@@ -99,24 +93,23 @@ def options(x):
 	    action  = 'store',
 	    help    = 'compiler family (clang, llvm, gnu)')
 
-	debug_opt = x.add_option_group('debug options')
-	debug_opt.add_option('--debug',
-	    dest    = 'debug_all',
-	    default = False,
-	    action  = 'store_true',
-	    help    = 'enable all debug options')
-
 	x.recurse('arch')
 
-def def_config(x, config, name, default_val):
+def def_config(x, config, name, default_val, quote=True):
 	if name in config:
-		x.define('CONFIG_'+name, config[name])
+		x.define('CONFIG_'+name, config[name], quote=quote)
+		x.env['CONFIG_'+name] = config[name]
 	elif default_val != None:
-		x.define('CONFIG_'+name, default_val)
+		x.define('CONFIG_'+name, default_val, quote=quote)
+		x.env['CONFIG_'+name] = default_val
+
+def env_config(x, config, name, default_val):
+	if name in config:
+		x.env[name] = config[name]
+	elif default_val != None:
+		x.env[name] = default_val
 
 def configure(x):
-	x.env.debug_all = x.options.debug_all
-
 	configure_x86_64(x)
 
 	x.load('compiler_c')
@@ -127,17 +120,41 @@ def configure(x):
 	if os.path.isfile('config'):
 		execfile('config', config)
 
+	env_config(x, config, 'CFLAGS', ['-pipe', '-Wall', '-Wextra']);
+	env_config(x, config, 'CXXFLAGS', ['-pipe', '-Wall', '-Wextra']);
+
+	def_config(x, config, 'ARCH', 'x86_64')
+	def_config(x, config, 'ARCHID', 'ARCH_'+x.env.CONFIG_ARCH, quote=False)
+
 	def_config(x, config, 'DEBUG', 0)
+	def_config(x, config, 'DEBUG_VALIDATE', 0)
+	def_config(x, config, 'DEBUG_VERBOSE', 0)
+
+	# 0:disable / 1:enable boot phase debugging.
+	def_config(x, config, 'DEBUG_BOOT', 0)
+
+	# max cpu count.
 	def_config(x, config, 'MAX_CPUS', 1)
+
+	# 0:nopreemption kernel / 1:preemption kernel
 	def_config(x, config, 'PREEMPT', 1)
+
+	# 0:disable / 1:enable ACPI.
+	def_config(x, config, 'ACPI', 1)
 
 	x.write_config_header('include/config.h')
 
+	x.recurse('arch')
+	x.recurse('external')
+
 
 def build(x):
+	x.env.append_value('DEFINES', 'IT_IS_UNIQUE')
 	x.env.append_value('INCLUDES', '#include')
-	x.env.append_value('INCLUDES', '#arch/'+arch_name+'/include')
+	x.env.append_value('INCLUDES', '#arch/'+x.env.CONFIG_ARCH+'/include')
 
+	x.recurse('drivers')
+	x.recurse('external')
 	x.recurse('kernel')
 	x.recurse('arch')
 
