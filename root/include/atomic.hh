@@ -107,28 +107,28 @@ inline void atomic_add(s64 add_val, volatile s64* atom) {
 
 // atomic_sub
 inline void atomic_sub(u8 sub_val, volatile u8* atom) {
-	atomic8_add(sub_val, atom);
+	atomic8_sub(sub_val, atom);
 }
 inline void atomic_sub(u16 sub_val, volatile u16* atom) {
-	atomic16_add(sub_val, atom);
+	atomic16_sub(sub_val, atom);
 }
 inline void atomic_sub(u32 sub_val, volatile u32* atom) {
-	atomic32_add(sub_val, atom);
+	atomic32_sub(sub_val, atom);
 }
 inline void atomic_sub(u64 sub_val, volatile u64* atom) {
-	atomic64_add(sub_val, atom);
+	atomic64_sub(sub_val, atom);
 }
 inline void atomic_sub(s8 sub_val, volatile s8* atom) {
-	atomic8_add(sub_val, reinterpret_cast<volatile u8*>(atom));
+	atomic8_sub(sub_val, reinterpret_cast<volatile u8*>(atom));
 }
 inline void atomic_sub(s16 sub_val, volatile s16* atom) {
-	atomic16_add(sub_val, reinterpret_cast<volatile u16*>(atom));
+	atomic16_sub(sub_val, reinterpret_cast<volatile u16*>(atom));
 }
 inline void atomic_sub(s32 sub_val, volatile s32* atom) {
-	atomic32_add(sub_val, reinterpret_cast<volatile u32*>(atom));
+	atomic32_sub(sub_val, reinterpret_cast<volatile u32*>(atom));
 }
 inline void atomic_sub(s64 sub_val, volatile s64* atom) {
-	atomic64_add(sub_val, reinterpret_cast<volatile u64*>(atom));
+	atomic64_sub(sub_val, reinterpret_cast<volatile u64*>(atom));
 }
 
 }  // namespace arch

@@ -7,6 +7,7 @@
 #define INCLUDE_LOG_TARGET_HH_
 
 #include <io_node.hh>
+#include <spinlock.hh>
 
 
 class log_target : public io_node
@@ -20,8 +21,9 @@ public:
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
-	io_node* target_node;
-	offset target_off;
+	io_node*   target_node;
+	offset     target_off;
+	spin_lock  write_lock;
 };
 
 

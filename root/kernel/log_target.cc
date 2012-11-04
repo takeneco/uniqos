@@ -29,6 +29,8 @@ void log_target::install(io_node* target, offset off)
 cause::type log_target::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
+	spin_lock_section sec(write_lock);
+
 	offset pre_target_off = target_off;
 
 	cause::type r = target_node->write(&target_off, iov_cnt, iov);
