@@ -12,11 +12,12 @@
 class log : public output_buffer
 {
 public:
-	log(u32 type=0);
+	log(u32 target=0);
 	~log();
 };
 
-void log_init(int type, io_node* target);
+void log_install(int target, io_node* node);
 
 
 #endif  // include guard
+

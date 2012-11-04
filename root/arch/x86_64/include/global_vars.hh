@@ -4,8 +4,8 @@
 // (C) 2012 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
-#define ARCH_X86_64_INCLUDE_GLOBAL_VARS_HH_
+#ifndef INCLUDE_GLOBAL_VARS_HH_
+#define INCLUDE_GLOBAL_VARS_HH_
 
 #include <arch.hh> // cpu_id
 #include <config.h>
@@ -18,6 +18,7 @@ class page_pool;
 class mempool_ctl;
 class intr_ctl;
 class timer_ctl;
+class log_target;
 class cpu_node;
 
 
@@ -36,8 +37,14 @@ extern _arch arch;
 
 struct _core
 {
+	/// メモリに書き出すログのバッファ
+	void*              memlog_buffer;
+
 	/// page_pool_objs のエントリ数
 	int                page_pool_cnt;
+
+	/// log_target_objs のエントリ数
+	int                log_target_cnt;
 
 	page_pool**        page_pool_objs;
 
@@ -46,6 +53,8 @@ struct _core
 	intr_ctl*          intr_ctl_obj;
 
 	timer_ctl*         timer_ctl_obj;
+
+	log_target*        log_target_objs;
 
 	/// カーネルが認識している CPU の数
 	/// @note システムに搭載されている CPU の数ではない
