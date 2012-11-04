@@ -7,17 +7,16 @@
 kern_sources = [
     'cpu_node.cc',
     'ctype.cc',
-    'file.cc',
-    'output_buffer.cc',
     'intr_ctl.cc',
+    'io_node.cc',
     'kern_log.cc',
     'log_target.cc',
     'mem_io.cc',
     'mempool.cc',
     'mempool_ctl.cc',
+    'output_buffer.cc',
     'page.cc',
     'page_pool.cc',
-    #'slab_allocate.cc',
     'spinlock.cc',
     'string.cc',
     'thread.cc',
@@ -25,12 +24,10 @@ kern_sources = [
     'timer_ctl.cc',
 ]
 
-kern_defines = []
-
 
 mb_sources = [
     'ctype.cc',      # necessary to link with string.cc in g++.
-    'file.cc',
+    'io_node.cc',
     'log_target.cc',
     'output_buffer.cc',
     'string.cc',
@@ -38,12 +35,9 @@ mb_sources = [
 
 
 def build(x):
-	kern_defines.extend(x.env.common_defines)
-
 	x.objects(
 	    target   = 'kernel_objs',
 	    source   = kern_sources,
-	    defines  = kern_defines,
 	    use      = 'KERNEL',
 	)
 
