@@ -62,6 +62,10 @@ void mem_copy(uptr bytes, const void* src, void* dest)
 		d[i] = s[i];
 }
 
+/// @def ARCH_PROVIDES_MEM_FILL
+/// arch 専用の mem_fill() を使用する場合に定義する。
+#ifndef ARCH_PROVIDES_MEM_FILL
+
 void mem_fill(uptr bytes, u8 c, void* dest)
 {
 	u8* d = static_cast<u8*>(dest);
@@ -69,6 +73,8 @@ void mem_fill(uptr bytes, u8 c, void* dest)
 	for (uptr i = 0; i < bytes; i++)
 		d[i] = c;
 }
+
+#endif  // ARCH_PROVIDES_MEM_FILL
 
 int str_length(const char* str)
 {

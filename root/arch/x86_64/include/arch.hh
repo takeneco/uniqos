@@ -10,6 +10,10 @@
 #include <basic.hh>
 
 
+#if ARCH_ADR_BITS == 64
+#	define ARCH_PROVIDES_MEM_FILL
+#endif  // ARCH_ADR_BITS == 64
+
 namespace arch {
 
 typedef u32 _cpu_id;
