@@ -18,6 +18,7 @@ kern_sources = [
     'page.cc',
     'page_pool.cc',
     'spinlock.cc',
+    'spinrwlock.cc',
     'string.cc',
     'thread.cc',
     'thread_queue.cc',
@@ -30,6 +31,7 @@ mb_sources = [
     'io_node.cc',
     'log_target.cc',
     'output_buffer.cc',
+    'spinlock.cc',
     'string.cc',
 ]
 

@@ -29,6 +29,13 @@ def configure(x):
 	x.recurse('kernel')
 
 def build(x):
+	x.env.append_value('DEFINES_KERNEL', 'ARCH_LE')
+	x.env.append_value('CFLAGS_KERNEL', [
+	    '-mno-sse', '-fomit-frame-pointer', '-O2'])
+	x.env.append_value('CXXFLAGS_KERNEL', [
+	    '-fno-exceptions', '-fno-rtti',
+	    '-mno-sse', '-fomit-frame-pointer', '-O2'])
+
 	x.recurse('lib')
 	x.recurse('kernel')
 	x.recurse('boot')

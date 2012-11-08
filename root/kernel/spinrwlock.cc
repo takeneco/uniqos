@@ -1,5 +1,5 @@
-/// @file  spinlock.cc
-/// @brief Spinlock.
+/// @file  spinrwlock.cc
+/// @brief spin_rwlock definition.
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2012 KATO Takeshi
@@ -21,74 +21,90 @@
 
 #include <cpu_node.hh>
 
-#include <native_ops.hh>
 
+// spin_rwlock
 
-namespace {
-
-inline void local_preempt_disable()
+bool spin_rwlock::try_rlock()
 {
-#ifdef KERNEL
 	preempt_disable();
-#endif
-}
 
-inline void local_preempt_enable()
-{
-#ifdef KERNEL
+	if (spin_rwlock_ops::try_rlock())
+		return true;
+
 	preempt_enable();
-#endif
+
+	return false;
 }
 
-}  // namespace
+bool spin_rwlock::try_wlock()
+{
+	preempt_disable();
 
-// spin_lock
+	if (spin_rwlock_ops::try_wlock())
+		return true;
 
-void spin_lock::lock()
+	preempt_enable();
+
+	return false;
+}
+
+void spin_rwlock::rlock()
 {
 	for (;;) {
-		local_preempt_disable();
+		preempt_disable();
 
-		if (_try_lock())
+		if (arch::spin_rwlock_ops::try_rlock())
 			break;
 
-		local_preempt_enable();
+		preempt_enable();
 
 		arch::cpu_relax();
 	}
 }
 
-void spin_lock::lock_np()
+void spin_rwlock::rlock_np()
 {
 	for (;;) {
-		if (_try_lock())
+		if (arch::spin_rwlock_ops::try_rlock())
 			break;
 
 		arch::cpu_relax();
 	}
 }
 
-bool spin_lock::try_lock()
+void spin_rwlock::wlock()
 {
-	local_preempt_disable();
+	for (;;) {
+		preempt_disable();
 
-	const bool r = _try_lock();
+		if (arch::spin_rwlock_ops::try_wlock())
+			break;
 
-	if (!r)
-		local_preempt_enable();
+		preempt_enable();
 
-	return r;
+		arch::cpu_relax();
+	}
 }
 
-void spin_lock::unlock()
+void spin_rwlock::wlock_np()
 {
-	atom.store(UNLOCKED);
+	for (;;) {
+		if (arch::spin_rwlock_ops::try_wlock())
+			break;
 
-	local_preempt_enable();
+		arch::cpu_relax();
+	}
 }
 
-void spin_lock::unlock_np()
+void spin_rwlock::unlock()
 {
-	atom.store(UNLOCKED);
+	spin_rwlock_ops::unlock();
+
+	preempt_enable();
+}
+
+void spin_rwlock::unlock_np()
+{
+	spin_rwlock_ops::unlock();
 }
 

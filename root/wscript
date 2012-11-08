@@ -27,21 +27,6 @@ def configure_x86_64(x):
 	    '-Os',
 	]
 
-	x.env.DEFINES_KERNEL = [
-	    'ARCH_LE',
-	]
-	x.env.CFLAGS_KERNEL = [
-	    '-mno-sse',
-	    '-mno-mmx',
-	    '-fomit-frame-pointer', '-O2',
-	]
-	x.env.CXXFLAGS_KERNEL = [
-	    '-fno-exceptions', '-fno-rtti',
-	    '-mno-sse',
-#	    '-fomit-frame-pointer',
-	    '-O2',
-	]
-
 	if x.options.compiler == 'clang':
 		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
 		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
@@ -133,6 +118,8 @@ def configure(x):
 	# 0:disable / 1:enable boot phase debugging.
 	def_config(x, config, 'DEBUG_BOOT', 0)
 
+	def_config(x, config, 'DEBUG_ACPI_VERBOSE', 0)
+
 	# max cpu count.
 	def_config(x, config, 'MAX_CPUS', 1)
 
@@ -150,6 +137,7 @@ def configure(x):
 
 def build(x):
 	x.env.append_value('DEFINES', 'IT_IS_UNIQUE')
+	x.env.append_value('DEFINES_KERNEL', 'KERNEL')
 	x.env.append_value('INCLUDES', '#include')
 	x.env.append_value('INCLUDES', '#arch/'+x.env.CONFIG_ARCH+'/include')
 
