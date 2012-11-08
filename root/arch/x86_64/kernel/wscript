@@ -1,7 +1,7 @@
 # @file   wscript
 # @brief  x86_64固有カーネルコード
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 
@@ -24,6 +24,7 @@ kern_source = [
     'page_ctl_init.cc',
     'serial.cc',
     'serialh.S',
+    'string.cc',
     'bootinfo.cc',
     'spinlock_ops.cc',
     'start.S',
@@ -41,6 +42,8 @@ def configure(x):
 	x.find_program('lzma', var='LZMA')
 
 def build(x):
+	x.env.append_value('DEFINES_KERNEL', 'ARCH_ADR_BITS=64')
+
 	kern_target = x.path.find_or_declare('kernel.bin')
 
 	linker_script = x.path.find_node('kernel.lds')

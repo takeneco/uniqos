@@ -4,6 +4,7 @@
 // (C) 2010-2012 KATO Takeshi
 //
 
+#include <acpi_ctl.hh>
 #include <bootinfo.hh>
 #include <cpu_node.hh>
 #include <global_vars.hh>
@@ -11,11 +12,11 @@
 #include <irq_ctl.hh>
 #include "kerninit.hh"
 #include <log.hh>
+#include <mem_io.hh>
 #include <mempool_ctl.hh>
+#include <native_ops.hh>
 #include <new_ops.hh>
 #include <vga.hh>
-
-#include <native_ops.hh>
 
 
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
@@ -51,7 +52,7 @@ void testB(void* p)
 void test(void*);
 bool test_init();
 void cpu_test();
-file* create_serial();
+io_node* create_serial();
 void drive();
 void lapic_dump();
 void serial_dump(void*);
@@ -104,10 +105,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 {
 	global_vars::arch.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
 
-	vga_dev.init(80, 25, (void*)0xb8000);
-	log_init(0, &vga_dev);
-	log_init(1, &vga_dev);
-
 	cause::type r = cpu_page_init();
 	if (is_fail(r))
 		return r;
@@ -119,6 +116,22 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
+	r = log_init();
+	if (is_fail(r))
+		return r;
+
+	vga_dev.init(80, 25, (void*)0xb8000);
+	log_install(0, &vga_dev);
+	log_install(1, &vga_dev);
+
+	r = mem_io_setup();
+	if (is_fail(r))
+		return r;
+/*
+	r = acpi_init();
+	if (is_fail(r))
+		return r;
+*/
 	disable_intr_from_8259A();
 
 	r = cpu_common_init();
@@ -155,18 +168,35 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
+	void* memlog_buffer = mem_alloc(8192);
+	if (memlog_buffer) {
+		io_node* memio =
+		    new (mem_alloc(sizeof (ringed_mem_io)))
+		    ringed_mem_io(8192, memlog_buffer);
+
+		log_install(2, memio);
+
+		global_vars::core.memlog_buffer = memlog_buffer;
+	}
+
 	native::sti();
 
-	file* serial = create_serial();
-	log_init(0, serial);
+	io_node* serial = create_serial();
+	log_install(0, serial);
 	serial->sync = true;
 
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
 	    (get_bootinfo(bootinfo::TYPE_LOG));
 	if (bootlog) {
-		log().write(bootlog->log, bootlog->size - sizeof *bootlog);
+		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
 	}
+
+	/////
+	r = acpi_init();
+	if (is_fail(r))
+		return r;
+	/////
 
 	r = timer_setup();
 	if (is_fail(r))
@@ -204,7 +234,7 @@ log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 	app->pml4 = native::get_cr3();
 	app->entry_point = (u64)apentry;
 	mempool* stackmp;
-	r = mempool_create_shared(0x2000, &stackmp);
+	r = mempool_acquire_shared(0x2000, &stackmp);
 	if (is_fail(r))
 		return r;
 	u8* apstack = (u8*)stackmp->alloc();

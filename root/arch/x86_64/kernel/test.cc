@@ -38,7 +38,7 @@ public:
 	u32 operator () () { return get(); }
 	u32 operator () (u32 top) { return get() % top; }
 
-	void dump(log_target& dump) {
+	void dump(output_buffer& dump) {
 		dump.c('[').u(seed1, 16)
 		    .c(',').u(seed2, 16)
 		    .c(',').u(seed3, 16).c(']');
@@ -106,7 +106,7 @@ void mempool_test()
 	++test_number;
 
 	mempool* mp;
-	cause::type r = mempool_create_shared(100, &mp);
+	cause::type r = mempool_acquire_shared(100, &mp);
 
 	const int N = 15;
 	chain<data, &data::chain_hook> ch[N];
