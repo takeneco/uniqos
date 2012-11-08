@@ -1,0 +1,8 @@
+#
+# (C) 2012 KATO Takeshi
+#
+
+
+def build(x):
+	x.recurse('acpi')
+

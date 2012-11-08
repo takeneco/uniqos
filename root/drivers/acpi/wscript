@@ -1,0 +1,22 @@
+#
+# (C) 2012 KATO Takeshi
+#
+
+acpi_includes = [
+    '#external/acpica/source/include',
+]
+
+acpi_sources = (
+    'acpi_ctl.cc',
+    'acpi_os.cc',
+)
+
+def build(x):
+	if True:
+		x.objects(
+		    target  = 'acpi_objs',
+		    includes= acpi_includes,
+		    source  = acpi_sources,
+		    use     = 'KERNEL',
+		)
+

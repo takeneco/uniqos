@@ -1,0 +1,12 @@
+#
+# (C) 2012 KATO Takeshi
+#
+
+def configure(x):
+	if x.env.CONFIG_ARCH in ('x86_64',):
+		x.recurse('acpica')
+
+def build(x):
+	if x.env.CONFIG_ARCH in ('x86_64',):
+		x.recurse('acpica')
+
