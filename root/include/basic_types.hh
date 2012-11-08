@@ -246,16 +246,6 @@ template <> inline int int_size_bits<u32>() { return 5; }
 template <> inline int int_size_bits<u64>() { return 6; }
 
 
-// NULL
-const class {
-public:
-	template<class T> operator T*() const { return 0; }
-	template<class T, class U> operator T U::*() const { return 0; }
-private:
-	void operator&() const;
-} null = {};
-
-
 /*-------------------------------------------------------------------
  * エラーコード
  *-------------------------------------------------------------------*/
@@ -280,8 +270,7 @@ namespace cause
 		INVALID_PARAMS,
 		INVALID_OPERATION,
 		INVALID_OBJECT,
-		NO_IMPLEMENTS,
-		NI = NO_IMPLEMENTS,
+		NOFUNC,
 		UNKNOWN = 1000,
 	};
 
@@ -289,8 +278,8 @@ namespace cause
 	typedef u32 ftype;
 	inline bool IsOk(ftype x) { return x == OK; }
 	inline bool IsFail(ftype x) { return x != OK; }
-	inline bool is_ok(stype x) { return x == OK; }
-	inline bool is_fail(stype x) { return x != OK; }
+	inline bool is_ok(type x) { return x == OK; }
+	inline bool is_fail(type x) { return x != OK; }
 }
 
 struct adr_range
@@ -358,3 +347,4 @@ namespace log
 
 
 #endif  // include guard
+

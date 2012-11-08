@@ -18,7 +18,7 @@ class int_bitset
 
 public:
 	enum {
-		BITS = arch::BITS_PER_BYTE * sizeof (TYPE),
+		BITS = arch::BITS_IN_BYTE * sizeof (TYPE),
 	};
 
 	// Cast to TYPE
