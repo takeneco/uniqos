@@ -255,6 +255,7 @@ bool serial_ctl::is_txfifo_empty() const
 cause::type serial_ctl::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
+	const offset before_off = *off;
 	iovec_iterator iov_itr(iov, iov_cnt);
 
 	cause::type r;
@@ -267,7 +268,7 @@ cause::type serial_ctl::on_io_node_write(
 			post_write_msg();
 	}
 
-	if (sync) {
+	if (sync && *off != before_off) {
 		get_cpu_node()->get_thread_ctl().sleep();
 	}
 
