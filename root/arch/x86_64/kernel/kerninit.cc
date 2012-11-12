@@ -156,16 +156,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	arch::apic_init();
 
 	thread_queue& tc = get_cpu_node()->get_thread_ctl();
-/*	thread* event_thread;
-	r = tc.create_thread(&cpu_node::message_loop_entry,
-			get_cpu_node(), &event_thread);
-	//r = tc.create_thread(&kern_service, 0, &event_thread);
-	if (is_fail(r))
-		return r;
-
-	tc.wakeup(event_thread);
-	tc.set_event_thread(event_thread);
-*/
 	r = get_cpu_node()->start_message_loop();
 	if (is_fail(r))
 		return r;
@@ -195,7 +185,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	}
 
 	ACPI_TABLE_DESC atd[16];
-	r = acpi_table_init(16, atd);
+	r = acpi_table_init(sizeof atd, atd);
 	if (is_fail(r))
 		return r;
 
@@ -212,8 +202,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	r = timer_setup_cpu();
 	if (is_fail(r))
 		return r;
-
-log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
 	/*
 	hpet_init();
