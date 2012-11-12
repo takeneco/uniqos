@@ -109,6 +109,8 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
+	preempt_disable();
+
 	global_vars::arch.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
@@ -179,7 +181,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 		global_vars::core.memlog_buffer = memlog_buffer;
 	}
 
-	native::sti();
+	preempt_enable();
 
 	io_node* serial = create_serial();
 	log_install(0, serial);
@@ -191,6 +193,11 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (bootlog) {
 		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
 	}
+
+	ACPI_TABLE_DESC atd[16];
+	r = acpi_table_init(16, atd);
+	if (is_fail(r))
+		return r;
 
 	/////
 	r = acpi_init();
@@ -208,6 +215,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 
 log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 
+	/*
 	hpet_init();
 	log()("clock=").u(get_clock())();
 	log()("clock=").u(get_clock())();
@@ -255,15 +263,20 @@ log()(__FILE__,__LINE__,__func__)();for (;;) native::hlt();
 			break;
 	}
 	log(1)("loop count:").u(i)();
+	*/
 
 //	cpu_test();
 //	serial_dump(serial);
 	log()("test_init() : ").u(test_init())();
-	//test();
 
 	thread* t;
 	tc.create_thread(test, 0, &t);
-	tc.ready_thread(t);
+	tc.ready(t);
+
+	tc.create_thread(test, 0, &t);
+	tc.ready(t);
+
+	tc.sleep();
 /*
 	tc.create_thread(testA, 0, &t);
 	ta = t;
