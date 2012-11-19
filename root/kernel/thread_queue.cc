@@ -81,7 +81,7 @@ cause::type thread_queue::create_thread(
 
 	sleeping_queue.insert_tail(t);
 
-	thread_state_lock.unlock();
+	thread_state_lock.un_wlock();
 
 	*newthread = t;
 
