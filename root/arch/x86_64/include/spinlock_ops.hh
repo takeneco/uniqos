@@ -29,6 +29,7 @@ protected:
 
 #else  // CONFIG_MAX_CPU
 # error "Too big CONFIG_MAX_CPU."
+
 #endif  // CONFIG_MAX_CPU
 
 	volatile atom_type atom;
@@ -39,7 +40,8 @@ protected:
 	bool can_wlock() { return atom == 0; }
 	bool try_rlock();
 	bool try_wlock();
-	void unlock() { atom = 0; }
+	void un_rlock();
+	void un_wlock();
 };
 
 inline void cpu_relax() {

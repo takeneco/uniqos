@@ -69,7 +69,7 @@ namespace arch {
 bool spin_rwlock_ops::try_rlock()
 {
 	if (UNLIKELY(atomic_xadd(1, &atom) < 0)) {
-		atomic_sub(-1, &atom);
+		atomic_sub(1, &atom);
 		return false;
 	}
 
@@ -79,11 +79,21 @@ bool spin_rwlock_ops::try_rlock()
 bool spin_rwlock_ops::try_wlock()
 {
 	if (UNLIKELY(atomic_xadd(WLOCK, &atom) != 0)) {
-		atomic_add(-WLOCK, &atom);
+		atomic_sub(WLOCK, &atom);
 		return false;
 	}
 
 	return true;
+}
+
+void spin_rwlock_ops::un_rlock()
+{
+	atomic_sub(1, &atom);
+}
+
+void spin_rwlock_ops::un_wlock()
+{
+	atomic_sub(WLOCK, &atom);
 }
 
 }  // namespace arch

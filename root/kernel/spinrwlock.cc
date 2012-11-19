@@ -96,15 +96,27 @@ void spin_rwlock::wlock_np()
 	}
 }
 
-void spin_rwlock::unlock()
+void spin_rwlock::un_rlock()
 {
-	spin_rwlock_ops::unlock();
+	spin_rwlock_ops::un_rlock();
 
 	preempt_enable();
 }
 
-void spin_rwlock::unlock_np()
+void spin_rwlock::un_rlock_np()
 {
-	spin_rwlock_ops::unlock();
+	spin_rwlock_ops::un_rlock();
+}
+
+void spin_rwlock::un_wlock()
+{
+	spin_rwlock_ops::un_wlock();
+
+	preempt_enable();
+}
+
+void spin_rwlock::un_wlock_np()
+{
+	spin_rwlock_ops::un_wlock();
 }
 

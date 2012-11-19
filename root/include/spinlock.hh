@@ -86,8 +86,10 @@ public:
 	void wlock();
 	void wlock_np();
 
-	void unlock();
-	void unlock_np();
+	void un_rlock();
+	void un_rlock_np();
+	void un_wlock();
+	void un_wlock_np();
 };
 
 
@@ -107,9 +109,9 @@ public:
 	}
 	~spin_rlock_section() {
 		if (_no_preempt)
-			_lock.unlock_np();
+			_lock.un_rlock_np();
 		else
-			_lock.unlock();
+			_lock.un_rlock();
 	}
 
 private:
@@ -134,9 +136,9 @@ public:
 	}
 	~spin_wlock_section() {
 		if (_no_preempt)
-			_lock.unlock_np();
+			_lock.un_wlock_np();
 		else
-			_lock.unlock();
+			_lock.un_wlock();
 	}
 
 private:
