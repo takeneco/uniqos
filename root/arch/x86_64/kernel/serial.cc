@@ -120,6 +120,7 @@ class serial_ctl : public io_node
 	serial_msg write_msg;
 	serial_msg intr_msg;
 
+	spin_lock write_queue_lock;
 	spin_lock write_msg_lock;
 
 	bool write_posted;
@@ -144,7 +145,9 @@ private:
 		buf_entry* buf = new (buf_mp->alloc()) buf_entry;
 		if (buf == 0)
 			return 0;
+		write_queue_lock.lock();
 		buf_queue.insert_head(buf);
+		write_queue_lock.unlock();
 		next_write = 0;
 		return buf;
 	}
@@ -229,6 +232,8 @@ cause::type serial_ctl::configure()
 	cause::type r = mempool_acquire_shared(buf_entry::SIZE, &buf_mp);
 	if (is_fail(r))
 		return r;
+
+	sync = false;
 
 	return cause::OK;
 }
@@ -442,7 +447,10 @@ void serial_ctl::transmit()
 				tc.ready(client);
 			}
 
-			buf_mp->dealloc(buf_queue.remove_tail());
+			buf_entry* tmp = buf_queue.remove_tail();
+			write_queue_lock.lock();
+			buf_mp->dealloc(tmp);
+			write_queue_lock.unlock();
 			buf = buf_queue.tail();
 			buf_is_last = buf == buf_queue.head();
 			next_read = 0;
