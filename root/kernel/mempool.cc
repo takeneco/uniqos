@@ -45,23 +45,23 @@ cause::type mempool::destroy()
 	for (;;) {
 		memobj* obj = free_objs.remove_head();
 		back_to_page(obj);
-		--freeobj_count;
+		freeobj_count.sub(1);
 	}
 
-	if (alloc_count != 0 ||
-	    page_count != 0 ||
-	    freeobj_count != 0 ||
-	    shared_count != 0 ||
+	if (alloc_count.load() != 0 ||
+	    page_count.load() != 0 ||
+	    freeobj_count.load() != 0 ||
+	    shared_count.load() != 0 ||
 	    free_objs.head() != 0 ||
 	    free_pages.head() != 0 ||
 	    full_pages.head() != 0)
 	{
 		log()("FAULT:")
 		(__FILE__, __LINE__, __func__)("Bad operation.")()
-		("| alloc_count: ").u(alloc_count)
-		(", page_count: ").u(page_count)()
-		("| freeobj_count: ").u(freeobj_count)
-		(", shared_count: ").u(shared_count)()
+		("| alloc_count: ").u(alloc_count.load())
+		(", page_count: ").u(page_count.load())()
+		("| freeobj_count: ").u(freeobj_count.load())
+		(", shared_count: ").u(shared_count.load())()
 		("| free_objs.head(): ")(free_objs.head())()
 		("| free_pages.head(): ")(free_pages.head())()
 		("| full_pages.head(): ")(full_pages.head())();
@@ -103,20 +103,20 @@ void mempool::collect_free_pages()
 {
 	const sptr SAVE_FREEOBJS = 64;
 
-	const sptr n = freeobj_count - SAVE_FREEOBJS;
+	const sptr n = freeobj_count.load() - SAVE_FREEOBJS;
 	for (sptr i = 0; i < n; ++i) {
 		memobj* obj = free_objs.remove_head();
 		back_to_page(obj);
-		--freeobj_count;
+		freeobj_count.sub(1);
 	}
 }
 
 void mempool::dump(output_buffer& ob)
 {
 	ob.u(obj_size, 16)(" ").
-	   u(alloc_count, 16)(" ").
-	   u(page_count, 16)(" ").
-	   u(freeobj_count, 16)();
+	   u(alloc_count.load(), 16)(" ").
+	   u(page_count.load(), 16)(" ").
+	   u(freeobj_count.load(), 16)();
 
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
 		node* nd = mempool_nodes[i];
@@ -224,6 +224,8 @@ u32 mempool::normalize_obj_size(u32 objsize)
 
 void* mempool::_alloc(cpu_id cpuid)
 {
+	preempt_disable_section _pds;
+
 	node* nd = mempool_nodes[cpuid];
 
 	void* r = nd->alloc();
@@ -238,7 +240,7 @@ void* mempool::_alloc(cpu_id cpuid)
 	}
 
 	if (r)
-		++alloc_count;
+		alloc_count.add(1);
 
 	return r;
 }
@@ -249,7 +251,7 @@ void mempool::_dealloc(void* ptr)
 
 	mempool_nodes[cpuid]->dealloc(ptr);
 
-	--alloc_count;
+	alloc_count.sub(1);
 }
 
 void mempool::attach(page* pg)
@@ -274,7 +276,6 @@ mempool::page* mempool::new_page(int cpuid)
 		pg = new (page_pool->alloc()) page;
 		if (UNLIKELY(!pg)) {
 			page_dealloc(page_type, padr);
-			//arch::page::free(page_type, padr);
 			return 0;
 		}
 
@@ -284,7 +285,7 @@ mempool::page* mempool::new_page(int cpuid)
 		pg->init_onpage(*this);
 	}
 
-	++page_count;
+	page_count.add(1);
 
 	return pg;
 }
@@ -307,7 +308,7 @@ void mempool::delete_page(page* pg)
 		}
 	}
 
-	--page_count;
+	page_count.sub(1);
 }
 
 void mempool::back_to_page(memobj* obj)
@@ -403,5 +404,20 @@ void mempool::page::init(const mempool& pool)
 		void* obj = &memory[objsize * i];
 		free_chain.insert_head(new (obj) memobj);
 	}
+}
+
+void* operator new (uptr size, mempool* mp)
+{
+#if CONFIG_DEBUG_VALIDATE >= 1
+	if (size > mp->get_obj_size()) {
+		log()(SRCPOS)
+		    ("new object size is over the mempool object size.")
+		    ("\nnew object size:").u(size)
+		    (", mempool object size:").u(mp->get_obj_size())();
+		return 0;
+	}
+#endif  // CONFIG_DEBUG_VALIDATE
+
+	return mp->alloc();
 }
 

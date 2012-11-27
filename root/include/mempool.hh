@@ -10,6 +10,7 @@
 #include <arch.hh>
 #include <chain.hh>
 #include <config.h>
+#include <atomic.hh>
 
 
 class output_buffer;
@@ -38,16 +39,16 @@ public:
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
 	uptr get_total_obj_size() const { return total_obj_size; }
-	sptr get_alloc_count() const { return alloc_count; }
+	sptr get_alloc_count() const { return alloc_count.load(); }
 
 	void* alloc();
 	void* alloc(cpu_id cpuid);
 	void dealloc(void* ptr);
 	void collect_free_pages();
 
-	sptr inc_shared_count() { return ++shared_count; }
-	sptr dec_shared_count() { return --shared_count; }
-	sptr get_shared_count() const { return shared_count; }
+	void inc_shared_count() { shared_count.add(1); }
+	void dec_shared_count() { shared_count.sub(1); }
+	sptr get_shared_count() const { return shared_count.load(); }
 
 	void dump(output_buffer& ob);
 
@@ -150,12 +151,12 @@ private:
 	const arch::page::TYPE page_type;
 	const uptr             page_size;
 	const u32              page_objs;  ///< ページの中にあるオブジェクト数
-	const uptr             total_obj_size;
+	const uptr             total_obj_size;  ///< obj_size * page_objs
 
-	sptr             alloc_count;
-	sptr             page_count;
-	sptr             freeobj_count;
-	sptr             shared_count;
+	atomic<sptr>           alloc_count;
+	atomic<sptr>           page_count;
+	atomic<sptr>           freeobj_count;
+	atomic<sptr>           shared_count;
 
 	obj_chain free_objs;
 
@@ -174,7 +175,7 @@ extern "C" void        mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 
-inline void* operator new (uptr, mempool* mp) { return mp->alloc(); }
+inline void* operator new (uptr, mempool* mp);
 
 
 #endif  // include guard
