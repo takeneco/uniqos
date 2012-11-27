@@ -7,6 +7,8 @@
 #ifndef INCLUDE_ACUNIQ_H_
 #define INCLUDE_ACUNIQ_H_
 
+#include <config.h>
+
 
 /// @def CONFIG_DEBUG_ACPI_VERBOSE
 /// 0 なら何も出力しない
