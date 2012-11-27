@@ -15,6 +15,8 @@ class log_target : public io_node
 public:
 	static cause::type setup();
 
+	log_target();
+
 	void install(io_node* target, offset off = 0);
 
 	cause::type on_io_node_write(
