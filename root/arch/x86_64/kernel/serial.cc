@@ -270,7 +270,8 @@ cause::type serial_ctl::on_io_node_write(
 		r = write_buf(off, iov_itr);
 
 		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
-			post_write_msg();
+			//post_write_msg();
+			transmit();
 	}
 
 	if (sync && *off != before_off) {
