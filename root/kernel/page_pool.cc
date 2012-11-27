@@ -21,9 +21,9 @@ page_pool::page_pool()
 /// @brief  管理対象物理メモリの範囲を指定する。
 void page_pool::set_range(uptr low_adr, uptr high_adr)
 {
-	const uptr align = arch::page::bits_of_level(arch::page::HIGHEST);
+	const uptr align_bits = arch::page::bits_of_level(arch::page::HIGHEST);
 
-	adr_offset = down_align(low_adr, align);
+	adr_offset = down_align(low_adr, uptr(1) << align_bits);
 	pool_bytes = high_adr - adr_offset + 1;
 }
 
@@ -39,7 +39,7 @@ uptr page_pool::calc_workarea_bytes()
 /// @return true を返す。
 bool page_pool::init(uptr buf_bytes, void* buf)
 {
-	page_base[arch::page::HIGHEST].set_buf(buf, buf_bytes);
+	page_base[arch::page::HIGHEST].set_buf(buf, pool_bytes);
 
 	return true;
 }
@@ -58,7 +58,7 @@ void page_pool::build()
 	page_base[arch::page::HIGHEST].build_free_chain();
 }
 
-cause::stype page_pool::alloc(arch::page::TYPE page_type, uptr* padr)
+cause::type page_pool::alloc(arch::page::TYPE page_type, uptr* padr)
 {
 	uptr _padr;
 	const cause::type r = page_base[page_type].reserve_1page(&_padr);
@@ -67,7 +67,7 @@ cause::stype page_pool::alloc(arch::page::TYPE page_type, uptr* padr)
 	return r;
 }
 
-cause::stype page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
+cause::type page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
 {
 	padr -= adr_offset;
 
