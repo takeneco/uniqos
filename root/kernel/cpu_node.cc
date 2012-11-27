@@ -30,7 +30,7 @@
 /// cpu_node の初期化方法
 ///
 /// (1) コンストラクタを呼び出す。
-///     割り込み制御が可能になる。
+///     割り込み制御(preempt_disable/enable)が可能になる。
 /// (2) set_page_pool_cnt() と set_page_pool() で page_pool を設定する。
 ///     ページ割り当てが可能になる。mempool によるメモリ割り当ても可能。
 /// (3) 各CPU から setup() を呼び出す。
@@ -136,12 +136,12 @@ void cpu_node::post_intr_message(message* ev)
 
 void cpu_node::post_soft_message(message* ev)
 {
-	preempt_enable();
+	preempt_disable();
 
 	soft_msgq.push(ev);
 	thread_q.ready_np(message_thread);
 
-	preempt_disable();
+	preempt_enable();
 }
 
 cause::type cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
