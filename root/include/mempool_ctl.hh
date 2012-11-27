@@ -7,6 +7,7 @@
 #define INCLUDE_MEMPOOL_CTL_HH_
 
 #include <mempool.hh>
+#include <spinlock.hh>
 
 
 class mempool_ctl
@@ -58,6 +59,7 @@ private:
 	mempool* offpage_mp;
 
 	mempool_chain shared_chain;
+	mempool_chain exclusived_chain;
 
 	/// mempool の生成に使う。
 	mempool* const mempool_mp;
@@ -67,6 +69,8 @@ private:
 
 	/// mempool_ctl の生成のために使われた mempool
 	mempool* const own_mp;
+
+	spin_rwlock exclusived_chain_lock;
 };
 
 

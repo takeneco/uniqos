@@ -81,22 +81,24 @@ cause::type mempool_ctl::shared_mempool(u32 objsize, mempool** mp)
 
 void mempool_ctl::release_shared_mempool(mempool* mp)
 {
-	if (mp->dec_shared_count() == 0 && mp->get_alloc_count() == 0) 
+	mp->dec_shared_count();
+
+	if (mp->get_shared_count() == 0 && mp->get_alloc_count() == 0) 
 		mp->destroy();
 }
 
 /// @brief  用途限定の mempool を生成する。
+//
+/// pate_type に INVALID を指定すると objsize に合わせて自動で選択する。
 cause::type mempool_ctl::exclusived_mempool(
     u32 objsize,                ///< [in] オブジェクトサイズ。
     arch::page::TYPE page_type, ///< [in] ページタイプを指定する。
-                                ///<      INVALID を指定すると適当
-                                ///<      選択される。
     PAGE_STYLE page_style,      ///< [in] ONPAGE/OFFPAGE/ENTRUST を指定する。
     mempool** new_mp)           ///< [out] 生成された mempool が返される。
 {
 	cause::type r = decide_params(&objsize, &page_type, &page_style);
 	if (is_fail(r))
-		return cause::FAIL;
+		return r;
 
 	mempool* opp = page_style == ONPAGE ? 0 : offpage_mp;
 
@@ -113,6 +115,20 @@ cause::type mempool_ctl::exclusived_mempool(
 
 		(*new_mp)->set_node(i, nd);
 	}
+
+	exclusived_chain_lock.wlock();
+
+	mempool* mp;
+	for (mp = exclusived_chain.front(); mp; mp = shared_chain.next(mp)) {
+		if (objsize < mp->get_obj_size()) {
+			exclusived_chain.insert_before(mp, *new_mp);
+			break;
+		}
+	}
+	if (!mp)
+		exclusived_chain.insert_tail(*new_mp);
+
+	exclusived_chain_lock.un_wlock();
 
 	return cause::OK;
 }
@@ -272,6 +288,9 @@ cause::type mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 ///                          が選択される。
 /// @param[in,out] page_style ONPAGE / OFFPAGE / ENTRUST を指定する。
 ///                           ENTRUST を指定すると適当に選択する。
+/// @retval cause::OK      成功した。
+/// @retval cause::BADARG  パラメータを決定できなかった。
+///                        objsize が大きすぎるとパラメータを決定できない。
 cause::type mempool_ctl::decide_params(
     u32*              objsize,
     arch::page::TYPE* page_type,
@@ -286,7 +305,7 @@ cause::type mempool_ctl::decide_params(
 		if (*page_type == arch::page::INVALID) {
 			*page_type = arch::page::type_of_size(*objsize);
 			if (*page_type == arch::page::INVALID)
-				return cause::FAIL;
+				return cause::BADARG;
 		}
 	}
 
@@ -308,10 +327,10 @@ cause::type mempool_ctl::decide_params(
 	if (*page_style == ONPAGE) {
 		const uptr page_size = size_of_type(*page_type);
 		if ((*objsize + sizeof (mempool::page)) > page_size)
-			return cause::FAIL;
+			return cause::BADARG;
 	} else {
 		if (*objsize > size_of_type(*page_type))
-			return cause::FAIL;
+			return cause::BADARG;
 	}
 
 	return cause::OK;
