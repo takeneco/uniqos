@@ -84,7 +84,8 @@ public:
 	//
 	/// data を width バイト単位に ' ' で区切って表示する。
 	/// １行あたり width バイト単位を columns 回表示して改行する。
-	/// width に負数を指定すると、CPUのバイトオータで表示する。
+	/// width に負数を指定すると、CPUのバイトオータではなく、生のバイト
+	/// 列として表示する。
 	/// info にNUL終端文字列を指定すると info を含むヘッダを表示する。
 	output_buffer& x(
 	    uptr bytes,           ///< [in] byte size of output data.

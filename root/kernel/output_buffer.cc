@@ -20,6 +20,7 @@
 #include <output_buffer.hh>
 
 #include <arch.hh>
+#include <bitops.hh>
 #include <string.hh>
 
 
@@ -334,44 +335,50 @@ void output_buffer_hexv(
 	const u8*       base = static_cast<const u8*>(data);
 	const u8* const end = base + bytes;
 
+	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
+
 	bool cpu_byte_order;
 	if (width < 0) {
 		width = -width;
-		cpu_byte_order = true;
+		cpu_byte_order = false;
 	} else {
 		if (width == 0)
-			width = sizeof (umax);
-		cpu_byte_order = false;
+			width = sizeof (ucpu);
+		cpu_byte_order = true;
 	}
 
 	if (info) {
-		(*x).c('*').str(info).c(' ').
-		     p(data).c(' ').
-		     u(bytes).str("bytes ").
+		(*x).c('[').str(info).c(',').
+		     p(data).c(',').
+		     u(bytes).str("bytes,").
 		     u(width).c('*').u(columns).
-		     str(cpu_byte_order ? "CPU" : "RAW").str(" order HEX\n");
+		     str(cpu_byte_order ? ",CPU" : ",RAW").str(" order,HEX]\n");
 	}
 
 	int col = 0;
+	uptr off = 0;
 	for (;;) {
-		if (end - base < width)
-			width = end - base;
+		if (bytes - off < static_cast<uptr>(width))
+			width = bytes - off;
+
+		if (col == 0)
+			(*x).x(off, index_width).c('|');
 
 		for (int i = 0; i < width; ++i) {
 			const u8* p;
 			if (cpu_byte_order) {
-				p = ARCH_IS_BE_LE(&base[i],
-				                  &base[width - i - 1]);
+				p = ARCH_IS_BE_LE(&base[off + i],
+				                  &base[off + width - i - 1]);
 			} else {
-				p = &base[i];
+				p = &base[off + i];
 			}
 			char buf[2];
 			u8_to_hexstr(*p, buf);
 			x->_1vec(2, buf);
 		}
 
-		base += width;
-		if (base == end)
+		off += width;
+		if (off == bytes)
 			break;
 
 		const char* p;
