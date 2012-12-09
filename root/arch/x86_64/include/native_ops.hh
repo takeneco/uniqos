@@ -133,6 +133,12 @@ inline u64 get_cr4_64() {
 inline void set_cr4(u64 cr4) {
 	asm volatile ("movq %0, %%cr4" : : "r" (cr4));
 }
+inline u64 get_ef_64() {
+	u64 ef;
+	asm volatile ("pushfq\n"
+	              "popq %0" : "=r" (ef) : : "memory");
+	return ef;
+}
 
 // セグメントレジスタの値を返す。
 // デバッグ用。

@@ -11,6 +11,67 @@ namespace {
 void acpi_walk();
 }  // namespace
 
+/// @brief AcpiInitializeTables() を呼び出す。
+/// @param[in] size   size of buffer.
+/// @param[in] buffer InitialTableArray として使うバッファ。
+///                   1ページを渡しておくと後で開放しやすい。
+//
+/// この関数の実行後は、OS の準備ができていなくても CPU の数を
+/// 数えたりすることができるようになる。
+cause::type acpi_table_init(uptr size, void* buffer)
+{
+	ACPI_STATUS as = AcpiInitializeTables(
+	    static_cast<ACPI_TABLE_DESC*>(buffer),
+	    size / sizeof (ACPI_TABLE_DESC),
+	    TRUE);
+	if (ACPI_FAILURE(as))
+		return cause::FAIL;
+
+///////////////////
+	log()("acpi_buffer:")(buffer)();
+
+	ACPI_TABLE_HEADER* ath;
+	as = AcpiGetTable("APIC", 0, &ath);
+	if (ACPI_FAILURE(as))
+		return cause::FAIL;
+
+	log()("ACPI Table:\n")
+		(" Signature:")
+		.c(ath->Signature[0])
+		.c(ath->Signature[1])
+		.c(ath->Signature[2])
+		.c(ath->Signature[3])()
+		(" Length:").u(ath->Length)()
+		(" Revision:").u(ath->Revision)()
+		(" Checksum:").x(ath->Checksum)()
+		(" OemId:")
+		.c(ath->OemId[0])
+		.c(ath->OemId[1])
+		.c(ath->OemId[2])
+		.c(ath->OemId[3])
+		.c(ath->OemId[4])
+		.c(ath->OemId[5])()
+		(" OemTableId:")
+		.c(ath->OemTableId[0])
+		.c(ath->OemTableId[1])
+		.c(ath->OemTableId[2])
+		.c(ath->OemTableId[3])
+		.c(ath->OemTableId[4])
+		.c(ath->OemTableId[5])
+		.c(ath->OemTableId[6])
+		.c(ath->OemTableId[7])()
+		(" OemRevision:").x(ath->OemRevision)()
+		(" AslCompilerId:")
+		.c(ath->AslCompilerId[0])
+		.c(ath->AslCompilerId[1])
+		.c(ath->AslCompilerId[2])
+		.c(ath->AslCompilerId[3])()
+		(" AslCompilerRevision:").u(ath->AslCompilerRevision)();
+
+///////////////////
+	return cause::OK;
+}
+
 cause::type acpi_init()
 {
 	ACPI_STATUS as = AcpiInitializeSubsystem();
@@ -18,27 +79,32 @@ cause::type acpi_init()
 		return cause::FAIL;
 	}
 
-	as = AcpiInitializeTables(0, 16, FALSE);
+	//as = AcpiInitializeTables(0, 16, FALSE);
+	as = AcpiReallocateRootTable();
 	if (ACPI_FAILURE(as)) {
+		log()(SRCPOS)();
 		return cause::FAIL;
 	}
 
 	as = AcpiLoadTables();
 	if (ACPI_FAILURE(as)) {
+		log()(SRCPOS)();
 		return cause::FAIL;
 	}
 
 	as = AcpiEnableSubsystem(ACPI_FULL_INITIALIZATION);
 	if (ACPI_FAILURE(as)) {
+		log()(SRCPOS)();
 		return cause::FAIL;
 	}
 
 	as = AcpiInitializeObjects(ACPI_FULL_INITIALIZATION);
 	if (ACPI_FAILURE(as)) {
+		log()(SRCPOS)();
 		return cause::FAIL;
 	}
 
-	acpi_walk();
+	//acpi_walk();
 
 	return cause::OK;
 }

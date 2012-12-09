@@ -13,6 +13,7 @@ extern "C" {
 #include <basic.hh>
 
 
+cause::type acpi_table_init(uptr size, void* buffer);
 cause::type acpi_init();
 
 namespace acpi {

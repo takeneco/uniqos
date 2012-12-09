@@ -16,21 +16,6 @@
 #define DISALLOW_COPY_AND_ASSIGN(T)  T(const T&);void operator=(const T&)
 
 
-/// Disable default copy constructor and operator=.
-/// class example : uncopyable
-/// {
-/// };
-class uncopyable
-{
-protected:
-	uncopyable() {}
-	~uncopyable() {}
-private:
-	uncopyable(const uncopyable&);
-	void operator=(const uncopyable&);
-};
-
-
 #define num_of_array(array) (sizeof array / sizeof array[0])
 
 
@@ -38,8 +23,8 @@ private:
 # define LIKELY(x)   __builtin_expect(!!(x), 1)
 # define UNLIKELY(x) __builtin_expect(x, 0)
 #else  // !__GNUC__
-# define LIKELY(x)   x
-# define UNLIKELY(x) x
+# define LIKELY(x)   (x)
+# define UNLIKELY(x) (x)
 #endif  // __GNUC__
 
 #ifdef ARCH_BE
@@ -62,4 +47,5 @@ template<class xint> bool test_overlap(
 }
 
 
-#endif  // include guards
+#endif  // include guard
+

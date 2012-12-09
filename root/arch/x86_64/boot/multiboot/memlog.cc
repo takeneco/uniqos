@@ -1,6 +1,6 @@
 /// @file   memlog.cc
 /// @brief  On memory log.
-/// @detail カーネルへログを渡するためにメモリ上にログを書く。
+/// @details カーネルへログを渡するためにメモリ上にログを書く。
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2011-2012 KATO Takeshi
