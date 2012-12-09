@@ -7,7 +7,7 @@
 #ifndef INT_BITSET_HH_
 #define INT_BITSET_HH_
 
-#include "arch.hh"
+#include <arch.hh>
 #include <bitops.hh>
 
 
@@ -42,10 +42,10 @@ public:
 	bool is_false_all() { return field == b(0); }
 
 	int search_true() const {
-		return arch::find_first_setbit(field);
+		return find_first_setbit(field);
 	}
 	int search_false() const {
-		return arch::find_first_setbit(~field);
+		return find_first_setbit(~field);
 	}
 };
 
