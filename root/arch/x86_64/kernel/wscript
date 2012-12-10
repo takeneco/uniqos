@@ -1,4 +1,3 @@
-# @file   wscript
 # @brief  x86_64固有カーネルコード
 #
 # (C) 2011-2012 KATO Takeshi
@@ -19,7 +18,6 @@ kern_source = [
     'ioapic.cc',
     'irq_ctl.cc',
     'kerninit.cc',
-#   'kernel_memory.cc',
     'page_ctl.cc',
     'page_ctl_init.cc',
     'serial.cc',
@@ -69,11 +67,13 @@ def build(x):
 	    source = ap_target)
 	kern_source.append(ap_obj)
 
+	kernel_link_use = ['kernel_libs', 'kernel_objs', 'KERNEL']
+	kernel_link_use.extend(x.env['KERNEL_LINK_USE'])
 	x.program(
 	    features  = 'asm c cxx',
 	    target    = kern_target,
 	    source    = kern_source,
-	    use       = ['kernel_libs', 'kernel_objs', 'acpi_objs', 'acpica_objs', 'KERNEL'],
+	    use       = kernel_link_use,
 	    linkflags = kern_linkflags)
 
 	x(  target   = 'kernel.bin.lzma',

@@ -3,6 +3,9 @@
 #
 
 
+def configure(x):
+	x.recurse('acpi')
+
 def build(x):
 	x.recurse('acpi')
 

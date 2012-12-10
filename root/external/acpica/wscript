@@ -119,10 +119,12 @@ acpica_sources = (
 )
 
 def configure(x):
-	x.env.append_value('INCLUDES', '#external/acpica/source/include')
+	if x.env['CONFIG_ACPI']:
+		x.env.append_value('INCLUDES',
+		                   '#external/acpica/source/include')
 
 def build(x):
-	if True:
+	if x.env['CONFIG_ACPI']:
 		x.objects(
 		    target  = 'acpica_objs',
 		    source  = acpica_sources,
