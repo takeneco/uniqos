@@ -22,7 +22,6 @@
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_size[];
 thread* ta;
-thread* tb;
 void testA(void* p)
 {
 	cpu_node* proc = get_cpu_node();
@@ -36,30 +35,15 @@ void testA(void* p)
 	}
 }
 
-void testB(void* p)
-{
-	cpu_node* proc = get_cpu_node();
-	thread_queue& tc = proc->get_thread_ctl();
-	for (u32 i=0;;++i) {
-		log()("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n");
-		if (i==0){
-			//tc.ready_thread(ta);
-			//proc->sleep_current_thread();
-		}
-	}
-}
-
 void test(void*);
 bool test_init();
 void cpu_test();
 io_node* create_serial();
-void drive();
 void lapic_dump();
 void serial_dump(void*);
 bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
-void kern_service(void* param);
 
 
 void disable_intr_from_8259A()
@@ -104,6 +88,7 @@ text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
 	global_vars::arch.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
+	global_vars::core.log_target_objs = 0;
 
 	cause::type r = cpu_page_init();
 	if (is_fail(r))
@@ -129,11 +114,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	r = mem_io_setup();
 	if (is_fail(r))
 		return r;
-/*
-	r = acpi_init();
-	if (is_fail(r))
-		return r;
-*/
+
 	disable_intr_from_8259A();
 
 	r = cpu_common_init();
@@ -170,12 +151,13 @@ extern "C" int kern_init(u64 bootinfo_adr)
 
 		global_vars::core.memlog_buffer = memlog_buffer;
 	}
+log(1)("memlog:")(memlog_buffer);
 
 	preempt_enable();
 
 	io_node* serial = create_serial();
 	log_install(0, serial);
-	serial->sync = true;
+log(1)("  serial:")(serial)();
 
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
@@ -184,16 +166,9 @@ extern "C" int kern_init(u64 bootinfo_adr)
 		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
 	}
 
-	ACPI_TABLE_DESC atd[16];
-	r = acpi_table_init(sizeof atd, atd);
-	if (is_fail(r))
-		return r;
-
-	/////
 	r = acpi_init();
 	if (is_fail(r))
 		return r;
-	/////
 
 	r = timer_setup();
 	if (is_fail(r))
@@ -268,9 +243,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 /*
 	tc.create_thread(testA, 0, &t);
 	ta = t;
-	tc.ready_thread(t);
-	tc.create_thread(testB, 0, &t);
-	tb = t;
 	tc.ready_thread(t);
 */
 	serial->sync = true;

@@ -22,9 +22,11 @@
 
 #include <page_ctl.hh>
 
+#include <acpi_ctl.hh>
 #include <arch.hh>
 #include <bootinfo.hh>
 #include <cheap_alloc.hh>
+#include <config.h>
 #include <global_vars.hh>
 #include <log.hh>
 #include <mpspec.hh>
@@ -272,6 +274,30 @@ cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
 	}
 
 	return cause::OK;
+}
+
+/// @brief ACPI のインタフェースで CPU を数える。
+cause::type count_cpus_by_acpi(tmp_alloc* heap, cpu_id* cpucnt)
+{
+#if CONFIG_ACPI
+	void* acpi_buffer = heap->alloc(SLOTM_ANY,
+	                                arch::page::L1_SIZE,  // size
+	                                arch::page::L1_SIZE,  // align
+	                                true);                // forget
+	if (!acpi_buffer)
+		return cause::NOMEM;
+
+	cause::type r = acpi_table_init(
+	    arch::page::L1_SIZE,
+	    arch::map_phys_adr(acpi_buffer, arch::page::L1_SIZE));
+	if (is_fail(r))
+		return r;
+
+#else  // CONFIG_ACPI
+	return cause::FAIL;
+
+#endif  // CONFIG_ACPI
+	return cause::FAIL;
 }
 
 /// @brief ヒープから 1 ページ分のメモリを確保する。
@@ -644,6 +670,9 @@ cause::type cpu_page_init()
 	r = setup_pam2(padr_end, &heap);
 	if (is_fail(r))
 		return r;
+
+	cpu_id cpucnt;
+	r = count_cpus_by_acpi(&heap, &cpucnt);
 
 	// PAM1 が利用可能になれば mpspec をロード可能になる。
 	mpspec mps;

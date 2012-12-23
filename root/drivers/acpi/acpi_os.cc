@@ -850,12 +850,14 @@ AcpiOsPrintf (
     const char              *Format,
     ...)
 {
-	va_list va;
-	va_start(va, Format);
+	if (global_vars::core.log_target_objs) {
+		va_list va;
+		va_start(va, Format);
 
-	log().format(Format, va);
+		log().format(Format, va);
 
-	va_end(va);
+		va_end(va);
+	}
 }
 
 
@@ -864,7 +866,8 @@ AcpiOsVprintf (
     const char              *Format,
     va_list                 Args)
 {
-	log().format(Format, Args);
+	if (global_vars::core.log_target_objs)
+		log().format(Format, Args);
 }
 
 

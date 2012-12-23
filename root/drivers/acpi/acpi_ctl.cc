@@ -20,6 +20,9 @@ void acpi_walk();
 /// 数えたりすることができるようになる。
 cause::type acpi_table_init(uptr size, void* buffer)
 {
+	AcpiDbgLevel = 0;
+	AcpiDbgLayer = 0;
+
 	ACPI_STATUS as = AcpiInitializeTables(
 	    static_cast<ACPI_TABLE_DESC*>(buffer),
 	    size / sizeof (ACPI_TABLE_DESC),
@@ -28,6 +31,7 @@ cause::type acpi_table_init(uptr size, void* buffer)
 		return cause::FAIL;
 
 ///////////////////
+/*
 	log()("acpi_buffer:")(buffer)();
 
 	ACPI_TABLE_HEADER* ath;
@@ -67,7 +71,7 @@ cause::type acpi_table_init(uptr size, void* buffer)
 		.c(ath->AslCompilerId[2])
 		.c(ath->AslCompilerId[3])()
 		(" AslCompilerRevision:").u(ath->AslCompilerRevision)();
-
+*/
 ///////////////////
 	return cause::OK;
 }
