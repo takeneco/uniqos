@@ -47,7 +47,10 @@ def configure(x):
 	def_config(x, cf, 'PREEMPT', 1)
 
 	# 0:disable / 1:enable ACPI.
-	def_config(x, cf, 'ACPI', 1)
+	def_config(x, cf, 'ACPI', 0)
+
+	# 0:disable / 1:enable HPET.
+	def_config(x, cf, 'HPET', 0)
 
 	x.write_config_header('../include/config.h')
 
