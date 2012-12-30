@@ -1,7 +1,7 @@
 /// @file  memcell.cc
 /// @brief Physical memory management.
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2012 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMCELL_HH_
@@ -20,23 +20,25 @@
 ///
 /// 複数のページをまとめて cell とし、メモリ全体を cell の配列として管理する。
 /// ページサイズごとにレベルを分けて管理する。
-/// cell のサイズは、その上位レベルの page のサイズになる。
+/// cell のサイズは、その上位レベルのページのサイズになる。
 ///
 /// たとえば 4KB, 256KB, 2MB のページサイズで管理するときは、
-/// level[0] page_size = 4KB,   cell_size = 256KB
-/// level[1] page_size = 256KB, cell_size = 2MB
-/// level[2] page_size = 2MB,   cell_size = (auto)
+/// - level[0] page_size = 4KB,   cell_size = 256KB
+/// - level[1] page_size = 256KB, cell_size = 2MB
+/// - level[2] page_size = 2MB,   cell_size = (auto)
+/// .
 /// の mem_cell_base を作る。
 ///
-/// 初期化方法
-/// (1) set_params() でパラメータを指定する。
-///     下位レベル(ページサイズが小さいレベル)から順に呼び出す必要がある。
-/// (2) 最上位レベルの calc_buf_size() で必要なバッファサイズを計算する。
-/// (3) 最上位レベルの set_buf() でバッファを割り当てる。
-/// (4) 最上位レベルの free_range() で空きメモリの範囲を指定する。
-///     連続した空きメモリは1回の free_range() で指定しないと、境界付近の
-///     空きメモリをうまく取り込めない。
-/// (5) build_free_chain() で空きメモリチェインをつなぐ。
+/// @par 初期化方法
+///
+/// - (1) set_params() でパラメータを指定する。
+///       下位レベル(ページサイズが小さいレベル)から順に呼び出す必要がある。
+/// - (2) 最上位レベルの calc_buf_size() で必要なバッファサイズを計算する。
+/// - (3) 最上位レベルの set_buf() でバッファを割り当てる。
+/// - (4) 最上位レベルの free_range() で空きメモリの範囲を指定する。
+///       連続した空きメモリは1回の free_range() で指定しないと、境界付近の
+///       空きメモリをうまく取り込めない。
+/// - (5) build_free_chain() で空きメモリチェインをつなぐ。
 ///
 template<class CELLTYPE>
 class mem_cell_base
@@ -184,27 +186,30 @@ public:
 	void dump(uptr total_mem, output_buffer& lt)
 	{
 		lt("---- cell internal start ----")()
-		("page_size_bits = ").u(page_size_bits)()
-		("cell_size_bits = ").u(cell_size_bits)()
-		("up_level   = ")(up_level)()
-		("down_level = ")(down_level)()
-		("free_pattern = ").u(free_pattern, 16)()
-		("free_pages = ").s(free_pages)();
+		("page_size_bits : ").u(page_size_bits)()
+		("cell_size_bits : ").u(cell_size_bits)()
+		("up_level     : ")(up_level)()
+		("down_level   : ")(down_level)()
+		("free_pattern : ").x(free_pattern)()
+		("free_pages   : ").s(free_pages)()
+		("calc_cell_count() : ").u(calc_cell_count(total_mem))()
+		("cell_count   : ").u(cell_count)()
+		("cell_table   : ")(cell_table)();
 
 		const uptr cells =
 		    up_div<uptr>(total_mem, U64(1) << cell_size_bits);
 		for (uptr i = 0; i < cells; ++i) {
 			if (i % 4 == 0)
 				lt("[").u(i)("]");
-			lt(" ").u(cell_table[i].table.get_raw(), 16);
+			lt(" ").x(cell_table[i].table.get_raw());
 			if (i % 4 == 3 || i == (cells - 1))
 				lt();
 		}
 
 		for (cell* c = free_chain.head(); c; c = free_chain.next(c)) {
-			lt.u(get_page_adr(c,0),16)
-			("-").u(get_page_adr(c,cell_size_bits),16)
-			(":").u(c->table.get_raw(),16)();
+			lt.x(get_page_adr(c,0))
+			("-").x(get_page_adr(c,cell_size_bits))
+			(":").x(c->table.get_raw())();
 		}
 		lt("---- cell internal end ----")();
 	}
