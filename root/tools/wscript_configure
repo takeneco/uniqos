@@ -4,6 +4,37 @@
 
 import os.path
 
+
+def load_config(x, cf):
+	env_config(x, cf, 'COMMON_CFLAGS', ['-pipe', '-Wall', '-Wextra']);
+	env_config(x, cf, 'COMMON_CXXFLAGS', ['-pipe', '-Wall', '-Wextra']);
+
+	def_config(x, cf, 'ARCH', 'x86_64')
+	def_config(x, cf, 'ARCHID', 'ARCH_'+x.env.CONFIG_ARCH, quote=False)
+
+	def_config(x, cf, 'DEBUG', 0)
+	def_config(x, cf, 'DEBUG_VALIDATE', 0)
+	def_config(x, cf, 'DEBUG_VERBOSE', 0)
+
+	# 0:disable / 1:enable boot phase debugging.
+	def_config(x, cf, 'DEBUG_BOOT', 0)
+
+	# verbose level of ACPI logging.
+	def_config(x, cf, 'DEBUG_ACPI_VERBOSE', 0)
+
+	# max cpu count.
+	def_config(x, cf, 'MAX_CPUS', 1)
+
+	# 0:nopreemption kernel / 1:preemption kernel
+	def_config(x, cf, 'PREEMPT', 1)
+
+	# 0:disable / 1:enable ACPI.
+	def_config(x, cf, 'ACPI', 0)
+
+	# 0:disable / 1:enable HPET.
+	def_config(x, cf, 'HPET', 0)
+
+
 def def_config(x, config, name, default_val, quote=True):
 	if name in config:
 		x.define('CONFIG_'+name, config[name], quote=quote)
@@ -19,38 +50,13 @@ def env_config(x, config, name, default_val):
 		x.env[name] = default_val
 
 def configure(x):
-
 	cf = dict()
+
 	config_file = x.path.find_node('../config')
 	if config_file:
 		execfile(config_file.abspath(), cf)
 
-	env_config(x, cf, 'CFLAGS', ['-pipe', '-Wall', '-Wextra']);
-	env_config(x, cf, 'CXXFLAGS', ['-pipe', '-Wall', '-Wextra']);
-
-	def_config(x, cf, 'ARCH', 'x86_64')
-	def_config(x, cf, 'ARCHID', 'ARCH_'+x.env.CONFIG_ARCH, quote=False)
-
-	def_config(x, cf, 'DEBUG', 0)
-	def_config(x, cf, 'DEBUG_VALIDATE', 0)
-	def_config(x, cf, 'DEBUG_VERBOSE', 0)
-
-	# 0:disable / 1:enable boot phase debugging.
-	def_config(x, cf, 'DEBUG_BOOT', 0)
-
-	def_config(x, cf, 'DEBUG_ACPI_VERBOSE', 0)
-
-	# max cpu count.
-	def_config(x, cf, 'MAX_CPUS', 1)
-
-	# 0:nopreemption kernel / 1:preemption kernel
-	def_config(x, cf, 'PREEMPT', 1)
-
-	# 0:disable / 1:enable ACPI.
-	def_config(x, cf, 'ACPI', 0)
-
-	# 0:disable / 1:enable HPET.
-	def_config(x, cf, 'HPET', 0)
+	load_config(x, cf)
 
 	x.write_config_header('../include/config.h')
 

@@ -39,8 +39,8 @@ kern_source = [
 def configure(x):
 	x.find_program('lzma', var='LZMA')
 
+
 def build(x):
-	x.env.append_value('DEFINES_KERNEL', 'ARCH_ADR_BITS=64')
 
 	kern_target = x.path.find_or_declare('kernel.bin')
 
