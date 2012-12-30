@@ -10,6 +10,12 @@
 #include <inttype.hh>
 
 
+#define U32(n)  suffix_u32(n)
+#define U64(n)  suffix_u64(n)
+#define S64(n)  suffix_s64(n)
+#define UPTR(n) suffix_uptr(n)
+#define SPTR(n) suffix_sptr(n)
+
 typedef s8_        s8;
 typedef u8_        u8;
 typedef s16_       s16;
@@ -25,17 +31,38 @@ typedef smax_      smax;
 typedef umax_      umax;
 typedef sptr_      sptr;
 typedef uptr_      uptr;
-typedef harf_sptr_ harf_sptr;
-typedef harf_uptr_ harf_uptr;
 
 typedef unsigned int uint;
 typedef unsigned int sint;
 
-#define U32(n)  suffix_u32(n)
-#define U64(n)  suffix_u64(n)
-#define S64(n)  suffix_s64(n)
-#define UPTR(n) suffix_uptr(n)
-#define SPTR(n) suffix_sptr(n)
+
+/// @struct harf_of
+/// @brief サイズが半分の整数型
+/// - harf_of<u16>:: : u8
+/// - harf_of<u32>:: : u16
+/// - harf_of<u64>:: : u32
+/// - harf_of<s16>:: : s8
+/// - harf_of<s32>:: : s16
+/// - harf_of<s64>:: : s32
+template<class TYPE> struct harf_of;
+template<> struct harf_of<u16> { typedef  u8 t; };
+template<> struct harf_of<u32> { typedef u16 t; };
+template<> struct harf_of<u64> { typedef u32 t; };
+template<> struct harf_of<s16> { typedef  s8 t; };
+template<> struct harf_of<s32> { typedef s16 t; };
+template<> struct harf_of<s64> { typedef s32 t; };
+
+/// @struct signed_of
+/// unsigned 型に対応する signed 型
+/// - signed_of<u8>::t  : s8
+/// - signed_of<u16>::t : s16
+/// - signed_of<u32>::t : s32
+/// - signed_of<u64>::t : s64
+template<class TYPE> struct signed_of;
+template<> struct signed_of <u8> { typedef  s8 t; };
+template<> struct signed_of<u16> { typedef s16 t; };
+template<> struct signed_of<u32> { typedef s32 t; };
+template<> struct signed_of<u64> { typedef s64 t; };
 
 
 inline u16 swap16_(u16 x) {
@@ -100,6 +127,50 @@ inline u64 combine64_(u8 x1, u8 x2, u8 x3, u8 x4,
 }
 
 #if defined ARCH_LE
+
+template<class T> T cpu_to_be(T x);
+template<> inline u16 cpu_to_be<u16>(u16 x) {
+	return swap16_(x);
+}
+template<> inline u32 cpu_to_be<u32>(u32 x) {
+	return swap32_(x);
+}
+template<> inline u64 cpu_to_be<u64>(u64 x) {
+	return swap64_(x);
+}
+
+template<class T> T be_to_cpu(T x);
+template<> inline u16 be_to_cpu<u16>(u16 x) {
+	return swap16_(x);
+}
+template<> inline u32 be_to_cpu<u32>(u32 x) {
+	return swap32_(x);
+}
+template<> inline u64 be_to_cpu<u64>(u64 x) {
+	return swap64_(x);
+}
+
+template<class T> T cpu_to_le(T x);
+template<> inline u16 cpu_to_le<u16>(u16 x) {
+	return x;
+}
+template<> inline u32 cpu_to_le<u32>(u32 x) {
+	return x;
+}
+template<> inline u64 cpu_to_le<u64>(u64 x) {
+	return x;
+}
+
+template<class T> T le_to_cpu(T x);
+template<> inline u16 le_to_cpu<u16>(u16 x) {
+	return x;
+}
+template<> inline u32 le_to_cpu<u32>(u32 x) {
+	return x;
+}
+template<> inline u64 le_to_cpu<u64>(u64 x) {
+	return x;
+}
 
 inline u16 cpu_to_be16(u16 x) {
 	return swap16_(x);
