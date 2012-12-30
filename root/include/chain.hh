@@ -1,7 +1,7 @@
 /// @file  chain.hh
 /// @brief Link list structure.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2012 KATO Takeshi
 //
 
 #ifndef CHAIN_HH_
@@ -141,6 +141,8 @@ public:
 
 	bool is_empty() const { return side.get_front() == 0; }
 
+	bool empty() const { return side.get_front() == 0; }
+
 	// 1end, 2end & bidir
 	static const DATA* prev(const DATA* p) {
 		return (const_cast<DATA*>(p)->*LINK)().prev; }
@@ -155,6 +157,9 @@ public:
 
 	// 1end, 2end & dir, bidir
 	void insert_head(DATA* p) {
+		push_front(p);
+	}
+	void push_front(DATA* p) {
 		set_prev(p, 0);
 		set_next(p, head());
 		if (head() != side.null())
@@ -165,6 +170,9 @@ public:
 	}
 	// 2end & dir, bidir
 	void insert_tail(DATA* p) {
+		push_back(p);
+	}
+	void push_back(DATA* p) {
 		set_prev(p, tail());
 		set_next(p, 0);
 		if (head() != side.null())
@@ -175,6 +183,9 @@ public:
 	}
 	// 1end, 2end & bidir
 	void insert_prev(DATA* base, DATA* p) {
+		insert_before(base, p);
+	}
+	void insert_before(DATA* base, DATA* p) {
 		set_prev(p, prev(base));
 		set_next(p, base);
 		if (prev(base))
@@ -185,6 +196,9 @@ public:
 	}
 	// 1end, 2end & dir, bidir
 	void insert_next(DATA* base, DATA* p) {
+		insert_after(base, p);
+	}
+	void insert_after(DATA* base, DATA* p) {
 		set_prev(p, base);
 		set_next(p, next(base));
 		if (next(base))
@@ -195,6 +209,9 @@ public:
 	}
 	// 1end, 2end & dir, bidir
 	DATA* remove_head() {
+		return pop_front();
+	}
+	DATA* pop_front() {
 		DATA* h = head();
 		if (h) {
 			DATA* h2 = next(h);
@@ -208,6 +225,9 @@ public:
 	}
 	// 2end & bidir
 	DATA* remove_tail() {
+		return pop_back();
+	}
+	DATA* pop_back() {
 		DATA* t = tail();
 		if (t) {
 			DATA* t2 = prev(t);
