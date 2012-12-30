@@ -12,60 +12,11 @@ import os.path
 
 def configure_x86_64(x):
 
-	x.env.DEFINES_SETUP = [
-	    'ARCH_LE',
-	]
-	x.env.CFLAGS_SETUP = [
-	    '-mno-sse',
-	    '-fomit-frame-pointer', '-Os',
-	]
-	x.env.CXXFLAGS_SETUP = [
-	    '-fno-exceptions', '-fno-rtti',
-	    '-mno-sse',
-	    '-mno-mmx',
-	    '-fomit-frame-pointer',
-	    '-Os',
-	]
-
-	if x.options.compiler == 'clang':
-		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
-		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
-		x.env.append_value('LINKFLAGS_KERNEL', '-lgcc')
-		x.env.append_value('CFLAGS_MB', '-mno-sse')
-		x.env.append_value('CXXFLAGS_MB', '-mno-sse')
-		x.env.append_value('LINKFLAGS_MB', '-mno-sse')
-		x.find_program('clang', var='CC')
-		x.find_program('clang++', var='CXX')
-		x.find_program('clang', var='AS')
-		x.env.append_value('ASFLAGS', '-c')
-		# '.code16' was not supported by clang yet
-		x.env.append_value('ASFLAGS', '-no-integrated-as')
-		x.env.LINK_PASS = ''
-
-	elif x.options.compiler == 'llvm':
+	if x.options.compiler == 'llvm':
 		x.env.CFLAGS_KERNEL.append('-emit-llvm')
 		x.env.CXXFLAGS_KERNEL.append('-emit-llvm')
-		#x.env.CFLAGS_KERNEL.append('-code-model=large')
-		#x.env.CXXFLAGS_KERNEL.append('-code-model=large')
-		x.find_program('llvm-gcc', var='CC')
-		x.find_program('llvm-g++', var='CXX')
-		x.find_program('llvm-ld', var='LINK_CC')
-		x.env.LINK_CXX = x.env.LINK_CC
 		x.env.LINKFLAGS = ['-code-model=large', '-native']
-		x.env.LINK_PASS = '-Xlinker='
 
-	elif x.options.compiler == 'gnu':
-		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
-		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
-		x.env.append_value('LINKFLAGS_MB', '-lgcc')
-		x.find_program('gcc', var='CC')
-		x.find_program('g++', var='CXX')
-		x.find_program('gcc', var='AS')
-		x.env.append_value('ASFLAGS','-c')
-		x.env.LINK_PASS = ''
-
-	else:
-		x.fatal('unknown compiler : ' + x.options.compiler)
 
 def options(x):
 	x.load('compiler_c')
@@ -80,22 +31,19 @@ def options(x):
 
 	x.recurse('arch')
 
-def def_config(x, config, name, default_val, quote=True):
-	if name in config:
-		x.define('CONFIG_'+name, config[name], quote=quote)
-		x.env['CONFIG_'+name] = config[name]
-	elif default_val != None:
-		x.define('CONFIG_'+name, default_val, quote=quote)
-		x.env['CONFIG_'+name] = default_val
-
-def env_config(x, config, name, default_val):
-	if name in config:
-		x.env[name] = config[name]
-	elif default_val != None:
-		x.env[name] = default_val
 
 def configure(x):
 	configure_x86_64(x)
+
+	if x.options.compiler == 'clang':
+		x.find_program('clang', var='AS')
+		x.find_program('clang', var='CC')
+		x.find_program('clang++', var='CXX')
+
+	elif x.options.compiler == 'gnu':
+		x.find_program('gcc', var='AS')
+		x.find_program('gcc', var='CC')
+		x.find_program('g++', var='CXX')
 
 	x.load('compiler_c')
 	x.load('compiler_cxx')

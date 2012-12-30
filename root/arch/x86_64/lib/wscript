@@ -1,9 +1,7 @@
-# @file   wscript
-# @brief  カーネル本体とsetupコードから参照されるコード
-#
+# カーネル本体とブート処理から参照されるコード。
 # コンパイルオプションが違うので別々にコンパイルする。
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 
@@ -16,10 +14,6 @@ kern_sources = [
 mb_sources = [
     'pagetable.cc',
     'text_vga.cc',
-]
-
-setup_sources = [
-    'mpspec.cc',
 ]
 
 def build(x):
@@ -36,8 +30,3 @@ def build(x):
 		    use = 'MB',
 		)
 
-	x.objects(
-	    target = 'setup_libs',
-	    source = setup_sources,
-	    use = 'SETUP',
-	)

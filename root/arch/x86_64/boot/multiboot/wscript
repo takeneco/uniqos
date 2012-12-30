@@ -18,6 +18,7 @@ def configure(x):
 	x.find_program('objcopy', var='OBJCOPY')
 	x.env.append_value('CXXFLAGS_MB', '-m32')
 
+
 def build(x):
 	target = x.path.find_or_declare('us')
 
@@ -27,6 +28,7 @@ def build(x):
 
 	x.add_manual_dependency(target, linker_script)
 
+	x.env.append_value('DEFINES_MB', 'ARCH_LE')
 	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
 
 	env = x.env.derive()

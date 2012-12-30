@@ -1,7 +1,6 @@
-# @file  wscript
-# @brief x86_64固有のコード
+# x86_64 固有のコードをビルドする
 #
-# (C) 2011 KATO Takeshi
+# (C) 2011-2012 KATO Takeshi
 #
 
 
@@ -18,6 +17,7 @@ def options(x):
 
 	x.recurse('boot')
 
+
 def configure(x):
 	x.env.boot_fd = x.options.boot_fd
 	x.env.boot_multiboot = x.options.boot_multiboot
@@ -25,8 +25,25 @@ def configure(x):
 	if x.env.boot_fd:
 		x.find_program('mcopy', var='MCOPY')
 
+	if x.options.compiler == 'clang':
+		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('CFLAGS_MB', '-mno-sse')
+		x.env.append_value('CXXFLAGS_MB', '-mno-sse')
+		#x.env.append_value('LINKFLAGS_MB', '-mno-sse')
+		x.env.append_value('ASFLAGS', '-c')
+		# '.code16' was not supported by clang yet
+		x.env.append_value('ASFLAGS', '-no-integrated-as')
+	elif x.options.compiler == 'gnu':
+		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
+		x.env.append_value('ASFLAGS','-c')
+	else:
+		x.fatal('unknown compiler : ' + x.options.compiler)
+
 	x.recurse('boot')
 	x.recurse('kernel')
+
 
 def build(x):
 	x.env.append_value('DEFINES_KERNEL', 'ARCH_LE')
