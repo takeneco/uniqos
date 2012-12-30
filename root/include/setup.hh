@@ -14,7 +14,6 @@ cause::type log_init();
 cause::type mem_io_setup();
 cause::type intr_setup();
 cause::type timer_setup();
-cause::type timer_setup_cpu();
 
 
 #endif  // include guard

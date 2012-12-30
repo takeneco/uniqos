@@ -77,6 +77,9 @@ private:
 
 	cpu_id     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];
+
+public:
+	s8 _ref_preempt_disable_cnt() const { return preempt_disable_cnt; }
 };
 
 cpu_id get_cpu_node_count();
