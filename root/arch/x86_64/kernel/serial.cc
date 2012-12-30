@@ -233,8 +233,6 @@ cause::type serial_ctl::configure()
 	if (is_fail(r))
 		return r;
 
-	sync = false;
-
 	return cause::OK;
 }
 
@@ -274,7 +272,7 @@ cause::type serial_ctl::on_io_node_write(
 			transmit();
 	}
 
-	if (sync && *off != before_off) {
+	if (false /* sync */ && *off != before_off) {
 		get_cpu_node()->get_thread_ctl().sleep();
 	}
 
@@ -313,7 +311,7 @@ cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 
 	*off += total;
 
-	if (sync && buf) {
+	if (false /* sync */ && buf) {
 		thread_queue& tc = get_cpu_node()->get_thread_ctl();
 		buf->set_bufsize(next_write);
 		buf->set_client(tc.get_running_thread());

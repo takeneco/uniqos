@@ -141,10 +141,8 @@ protected:
 	    offset upper_limit, seek_whence whence,
 	    offset rel_off, offset* abs_off);
 
-public:
+protected:
 	const operations* ops;
-
-	bool sync;
 };
 
 
