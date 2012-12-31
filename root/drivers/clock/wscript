@@ -1,0 +1,19 @@
+#
+# (C) 2012 KATO Takeshi
+#
+
+
+hpet_name = 'hpet'
+
+def configure(x):
+	if x.env['CONFIG_HPET']:
+		x.env.append_value('KERNEL_LINK_USE', hpet_name)
+
+def build(x):
+	if x.env['CONFIG_HPET']:
+		x.objects(
+		    target   = hpet_name,
+		    source   = 'hpet.cc',
+		    use      = ['KERNEL'],
+		)
+
