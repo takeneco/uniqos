@@ -18,7 +18,10 @@
 #include <new_ops.hh>
 #include <vga.hh>
 
+#include <clock_src.hh>
+#include <timer_ctl.hh>
 
+void dump_build_info(output_buffer& ob);
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_size[];
 thread* ta;
@@ -174,9 +177,9 @@ log(1)("  serial:")(serial)();
 	if (is_fail(r))
 		return r;
 
-	r = timer_setup_cpu();
-	if (is_fail(r))
-		return r;
+	tick_time tt;
+	get_jiffy_tick(&tt);
+	log()("tick=").u(tt)();
 
 	/*
 	hpet_init();
@@ -230,6 +233,12 @@ log(1)("  serial:")(serial)();
 
 //	cpu_test();
 //	serial_dump(serial);
+
+	{
+		log ob;
+		dump_build_info(ob);
+	}
+
 	log()("test_init() : ").u(test_init())();
 
 	thread* t;
@@ -245,7 +254,6 @@ log(1)("  serial:")(serial)();
 	ta = t;
 	tc.ready_thread(t);
 */
-	serial->sync = true;
 	return 0;
 }
 
