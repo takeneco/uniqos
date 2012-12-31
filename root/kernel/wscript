@@ -5,6 +5,8 @@
 
 
 kern_sources = [
+    'build_info.cc',
+    'clock_src.cc',
     'cpu_node.cc',
     'ctype.cc',
     'intr_ctl.cc',
