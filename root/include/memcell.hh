@@ -126,7 +126,7 @@ private:
 	mem_cell_base<CELLTYPE>* down_level;
 
 private:
-	cell_t calc_cell_count(uptr mem_end) const {
+	cell_t calc_cell_cnt(uptr mem_end) const {
 		const uptr cell_size = uptr(1) << cell_size_bits;
 		return (mem_end + (cell_size - 1)) / cell_size;
 	}
@@ -188,22 +188,25 @@ public:
 		lt("---- cell internal start ----")()
 		("page_size_bits : ").u(page_size_bits)()
 		("cell_size_bits : ").u(cell_size_bits)()
-		("up_level     : ")(up_level)()
-		("down_level   : ")(down_level)()
-		("free_pattern : ").x(free_pattern)()
-		("free_pages   : ").s(free_pages)()
-		("calc_cell_count() : ").u(calc_cell_count(total_mem))()
-		("cell_count   : ").u(cell_count)()
-		("cell_table   : ")(cell_table)();
+		("up_level       : ")(up_level)()
+		("down_level     : ")(down_level)()
+		("free_pattern   : ").x(free_pattern)()
+		("free_pages     : ").s(free_pages)()
+		("calc_cell_cnt  : ").u(calc_cell_cnt(total_mem))()
+		("cell_count     : ").u(cell_count)()
+		("cell_table     : ")(cell_table)();
 
 		const uptr cells =
 		    up_div<uptr>(total_mem, U64(1) << cell_size_bits);
 		for (uptr i = 0; i < cells; ++i) {
 			if (i % 4 == 0)
-				lt("[").u(i)("]");
-			lt(" ").x(cell_table[i].table.get_raw());
+				lt.u(i)('|');
+			lt.x(cell_table[i].table.get_raw(),
+			     sizeof (CELLTYPE) * 2);
 			if (i % 4 == 3 || i == (cells - 1))
 				lt();
+			else
+				lt(' ');
 		}
 
 		for (cell* c = free_chain.head(); c; c = free_chain.next(c)) {
@@ -241,7 +244,7 @@ void mem_cell_base<CELLTYPE>::set_params(
 template<class CELLTYPE>
 uptr mem_cell_base<CELLTYPE>::calc_buf_size(uptr mem_size) const
 {
-	uptr buf_size = sizeof (cell) * calc_cell_count(mem_size);
+	uptr buf_size = sizeof (cell) * calc_cell_cnt(mem_size);
 
 	if (down_level)
 		buf_size += down_level->calc_buf_size(mem_size);
@@ -253,7 +256,7 @@ uptr mem_cell_base<CELLTYPE>::calc_buf_size(uptr mem_size) const
 template<class CELLTYPE>
 void mem_cell_base<CELLTYPE>::set_buf(void* buf, uptr mem_size)
 {
-	cell_count = calc_cell_count(mem_size);
+	cell_count = calc_cell_cnt(mem_size);
 	cell_table = new (buf) cell[cell_count];
 
 	init_free_pattern();

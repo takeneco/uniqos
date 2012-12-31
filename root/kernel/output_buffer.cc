@@ -327,7 +327,7 @@ void output_buffer_hexv(
     const void* data,  ///< [in] output data.
     int width,         ///< [in] see output_buffer::x().
     int columns,       ///< [in] see output_buffer::x().
-    const char* info)  ///< [in] see output_buffer::x().
+    const char* summary) ///< [in] see output_buffer::x().
 {
 	const static char sep = ' ';
 	const static char nl = '\n';
@@ -347,8 +347,8 @@ void output_buffer_hexv(
 		cpu_byte_order = true;
 	}
 
-	if (info) {
-		(*x).c('[').str(info).c(',').
+	if (summary) {
+		(*x).c('[').str(summary).c(',').
 		     p(data).c(',').
 		     u(bytes).str("bytes,").
 		     u(width).c('*').u(columns).
@@ -390,6 +390,89 @@ void output_buffer_hexv(
 		}
 		x->_1vec(1, p);
 	}
+}
+
+/// @brief hexdump with python format.
+void output_buffer_hexv_py(
+    output_buffer* x,  ///< context.
+    uptr bytes,        ///< [in] byte size of data.
+    const void* data,  ///< [in] output data.
+    int width,         ///< [in] see output_buffer::x().
+    int columns,       ///< [in] see output_buffer::x().
+    const char* summary, ///< [in] see output_buffer::x().
+    const char* suffix)  ///< [in] suffix of variable.
+{
+	const static char sep = ',';
+	const static char nl = '\n';
+
+	const u8*       base = static_cast<const u8*>(data);
+	const u8* const end = base + bytes;
+
+	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
+
+	bool cpu_byte_order;
+	if (width < 0) {
+		width = -width;
+		cpu_byte_order = false;
+	} else {
+		if (width == 0)
+			width = sizeof (ucpu);
+		cpu_byte_order = true;
+	}
+
+	const char* suf = suffix ? suffix : "";
+
+	x->str("### PYTHON STYLE HEX DUMP START ###\n");
+
+	if (summary) {
+		(*x).str("summary")(suf)("=\"").str(summary).c('\"').
+		     str("\nadr")(suf)("=0x").x(reinterpret_cast<uptr>(data)).
+		     str("\nbytes")(suf)("=").u(bytes).
+		     str("\nwidth")(suf)(",columns")(suf)("=").
+		         u(width).c(',').u(columns).
+		     str("\ncpu_byte_order")(suf)("=").u(cpu_byte_order)();
+	}
+
+	(*x).str("data")(suf)("=[\n");
+
+	int col = 0;
+	uptr off = 0;
+	uptr line_off = off;
+	for (;;) {
+		if (bytes - off < static_cast<uptr>(width))
+			width = bytes - off;
+
+		if (col == 0)
+			line_off = off;
+
+		x->_1vec(2, "0x");
+		for (int i = 0; i < width; ++i) {
+			const u8* p;
+			if (cpu_byte_order) {
+				p = ARCH_IS_BE_LE(&base[off + i],
+				                  &base[off + width - i - 1]);
+			} else {
+				p = &base[off + i];
+			}
+			char buf[2];
+			u8_to_hexstr(*p, buf);
+			x->_1vec(2, buf);
+		}
+
+		off += width;
+		if (off == bytes)
+			break;
+
+		x->_1vec(1, &sep);
+
+		if (++col >= columns) {
+			(*x).str("#").x(line_off, index_width).c('\n');
+			col = 0;
+		}
+	}
+
+	(*x).str("]#").x(line_off, index_width).
+	     str("\n### PYTHON STYLE HEX DUMP END ###");
 }
 
 // printf semicompatible format processor definition.

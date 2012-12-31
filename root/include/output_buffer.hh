@@ -22,7 +22,10 @@ void output_buffer_adr(output_buffer* x, const void* ptr);
 void output_buffer_src(output_buffer* x,
                        const char* path, int line, const char* func);
 void output_buffer_hexv(output_buffer* x, uptr bytes, const void* data,
-                        int width, int cols, const char* info);
+                        int width, int cols, const char* summary);
+void output_buffer_hexv_py(output_buffer* x, uptr bytes, const void* data,
+                           int width, int cols, const char* summary,
+                           const char* suffix);
 void output_buffer_format(output_buffer* x, const char* format, va_list va);
 
 cause::type output_buffer_flush(output_buffer* x);
@@ -86,15 +89,29 @@ public:
 	/// １行あたり width バイト単位を columns 回表示して改行する。
 	/// width に負数を指定すると、CPUのバイトオータではなく、生のバイト
 	/// 列として表示する。
-	/// info にNUL終端文字列を指定すると info を含むヘッダを表示する。
+	/// summary にNUL終端文字列を指定すると summary を含むヘッダを表示する。
 	output_buffer& x(
 	    uptr bytes,           ///< [in] byte size of output data.
 	    const void* data,     ///< [in] output data.
 	    int width = 1,        ///< [in] width.
 	    int columns = 1,      ///< [in] columns.
-	    const char* info = 0) ///< [in] info.
+	    const char* summary = 0) ///< [in] summary.
 	{
-		output_buffer_hexv(this, bytes, data, width, columns, info);
+		output_buffer_hexv(
+		    this, bytes, data, width, columns, summary);
+		return *this;
+	}
+	/// @brief python style hex dump.
+	output_buffer& xpy(
+	    uptr bytes,           ///< [in] byte size of output data.
+	    const void* data,     ///< [in] output data.
+	    int width = 1,        ///< [in] width.
+	    int columns = 1,      ///< [in] columns.
+	    const char* summary = 0, ///< [in] summary.
+	    const char* suffix = 0)  ///< [in] suffix of variable.
+	{
+		output_buffer_hexv_py(
+		    this, bytes, data, width, columns, summary, suffix);
 		return *this;
 	}
 	template<class INT>

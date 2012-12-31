@@ -26,6 +26,15 @@ public:
 	cause::type alloc(arch::page::TYPE pt, uptr* padr);
 	cause::type dealloc(arch::page::TYPE pt, uptr padr);
 
+	void dump(output_buffer& ob) {
+		ob("--- BEGIN page_pool dump ---")();
+		ob("adr_offset : ").x(adr_offset)();
+		ob("pool_bytes : ").x(pool_bytes)();
+		for (uptr i = 0; i < num_of_array(page_base); ++i)
+			page_base[i].dump(pool_bytes, ob);
+		ob("--- END page_pool dump ---")();
+	}
+
 private:
 	mem_cell_base<uptr> page_base[arch::page::LEVEL_COUNT];
 	uptr adr_offset;
