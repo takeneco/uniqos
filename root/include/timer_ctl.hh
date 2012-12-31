@@ -7,8 +7,10 @@
 #define INCLUDE_TIMER_CTL_HH_
 
 #include <basic.hh>
+#include <clock_src.hh>
 #include <config.h>
 #include <message.hh>
+#include <spinlock.hh>
 
 
 class timer_message : public message
@@ -39,12 +41,32 @@ class timer_ctl
 public:
 	timer_ctl();
 
-	cause::type setup_cpu();
+	void set_clock_source(clock_source* cs);
+	cause::type get_jiffy_tick(tick_time* tick);
 
 private:
-	class timer_queue;
-	timer_queue* queue[CONFIG_MAX_CPUS];
+	clock_source* clk_src;
+
+// timer_message database
+public:
+
+private:
+	spin_lock lock;
+	tick_time devtick_jiffy;
+
+	enum {
+		VEC_SIZE = 256,
+		STEP_SIZE = 5,
+	};
+	typedef chain<timer_message, &timer_message::chain_hook>
+	    message_chain;
+	struct message_chain_vec {
+		message_chain v[VEC_SIZE];
+	};
+	message_chain_vec step[STEP_SIZE];
 };
+
+cause::type get_jiffy_tick(tick_time* tick);
 
 
 #endif  // include guard

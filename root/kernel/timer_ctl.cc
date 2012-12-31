@@ -19,35 +19,52 @@
 
 #include <timer_ctl.hh>
 
+#include <clock_src.hh>
 #include <global_vars.hh>
+#include <log.hh>
 #include <mempool.hh>
 #include <new_ops.hh>
 
 
-class timer_ctl::timer_queue
+cause::type hpet_setup(clock_source** clksrc);
+
+namespace {
+
+cause::type detect_clock_src(clock_source** clksrc)
 {
-	DISALLOW_COPY_AND_ASSIGN(timer_queue);
+	cause::type r;
 
-public:
-	timer_queue() {}
+#if CONFIG_HPET
+	r = hpet_setup(clksrc);
+	if (is_ok(r))
+		return r;
 
-private:
-	chain<timer_message, &timer_message::chain_hook> message_chain;
-};
+#endif  // CONFIG_HPET
 
+	log()("Clock source not found.")();
+
+	return cause::FAIL;
+}
+
+}  // namespace
+
+// time_ctl
 
 timer_ctl::timer_ctl()
 {
 }
 
-
-cause::type timer_ctl::setup_cpu()
+void timer_ctl::set_clock_source(clock_source* cs)
 {
-	cpu_id cpuid = arch::get_cpu_id();
+	clk_src = cs;
+}
 
-	queue[cpuid] = new (mem_alloc(sizeof (timer_ctl))) timer_queue;
-	if (!queue[cpuid])
-		return cause::NOMEM;
+cause::type timer_ctl::get_jiffy_tick(tick_time* tick)
+{
+	tick_time clock;
+	clk_src->get_tick(&clock);
+
+	*tick = clock;
 
 	return cause::OK;
 }
@@ -55,18 +72,24 @@ cause::type timer_ctl::setup_cpu()
 /// timer_setup_cpu() の前に１回だけ呼び出す必要がある。
 cause::type timer_setup()
 {
+	clock_source* clksrc;
+	cause::type r = detect_clock_src(&clksrc);
+	if (is_fail(r))
+		return r;
+
 	timer_ctl* tc = new (mem_alloc(sizeof (timer_ctl))) timer_ctl;
 	if (!tc)
 		return cause::NOMEM;
+
+	tc->set_clock_source(clksrc);
 
 	global_vars::core.timer_ctl_obj = tc;
 
 	return cause::OK;
 }
 
-/// 各CPUがタイマを使う前に呼び出す必要がある。
-cause::type timer_setup_cpu()
+cause::type get_jiffy_tick(tick_time* tick)
 {
-	return global_vars::core.timer_ctl_obj->setup_cpu();
+	return global_vars::core.timer_ctl_obj->get_jiffy_tick(tick);
 }
 
