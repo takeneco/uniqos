@@ -1,51 +1,72 @@
 /// @file  test.cc
-//
-// (C) 2010 KATO Takeshi
-//
 
 #include <cpu_node.hh>
-#include "global_vars.hh"
-#include "mempool.hh"
-#include "native_ops.hh"
-#include "page_ctl.hh"
-#include "log.hh"
+#include <log.hh>
+#include <mempool.hh>
+#include <native_ops.hh>
+#include <new_ops.hh>
+#include <spinlock.hh>
 
 
 void event_drive();
 
 class test_rand
 {
-	u32 seed1, seed2, seed3;
+	volatile u32 seed1, seed2, seed3;
+	spin_lock lock;
 
 	u32 get() {
 		seed3 = seed2 + 1;
 		seed2 = seed1;
 		return seed1 = seed2 + seed3;
 	}
+
 public:
-	test_rand(u32 s1=0, u32 s2=0) : seed1(s1), seed2(s2), seed3(0) {}
+	test_rand(u32 s1=0, u32 s2=0) :
+		seed1(s1),
+		seed2(s2),
+		seed3(0)
+	{}
 	void init(u32 s1=0, u32 s2=0) {
 		seed1 = s1;
 		seed2 = s2;
 		seed3 = 0;
 	}
 
-	operator u32 () { return get(); }
-	operator u64 () {
+	u32 get_u32() {
+		spin_lock_section _sls(lock);
+		return get();
+	}
+	u64 get_u64() {
+		spin_lock_section _sls(lock);
 		const u64 tmp = (u64)get() << 32;
 		return tmp | get();
 	}
-	u32 operator () () { return get(); }
-	u32 operator () (u32 top) { return get() % top; }
 
+	operator u32 () { return get_u32(); }
+	operator u64 () { return get_u64(); }
+	u32 operator () () { return get_u32(); }
+	u32 operator () (u32 top) { return get_u32() % top; }
+
+	void read_seed(u32* s1, u32* s2, u32* s3) {
+		spin_lock_section _sls(lock);
+		*s1 = seed1;
+		*s2 = seed2;
+		*s3 = seed3;
+	}
 	void dump(output_buffer& dump) {
-		dump.c('[').u(seed1, 16)
-		    .c(',').u(seed2, 16)
-		    .c(',').u(seed3, 16).c(']');
+		spin_lock_section _sls(lock);
+		dump.c('[').x(seed1).c(',').x(seed2).c(',').x(seed3).c(']');
 	}
 };
 
-test_rand rnd;
+namespace {
+
+test_rand  rnd;
+u64        test_number;
+spin_lock* test_number_lock;
+
+}  // namespace
 
 struct data {
 	chain_node<data> link;
@@ -53,77 +74,52 @@ struct data {
 
 	chain_node<data>& chain_hook() { return link; }
 };
-/*
-void memory_test()
-{
-	chain<data, &data::chain_hook> ch;
-	test_rand rnd;
 
-	for (;;) {
-		uptr total = 0;
-		uptr total_max = 0;
-		for (int i = 0; i < 100000; ++i) {
-			uptr size =
-			    rnd(0x200000 - 8 - sizeof (data)) + sizeof (data);
-
-			data* p = (data*)memory::alloc(size);
-//dump().udec(size)(':')(p)();
-			if (p) {
-				total += size;
-				p->size = size;
-				ch.insert_head(p);
-			} else {
-				if (total_max < total)
-					total_max = total;
-				p = ch.remove_head();
-				total -= p->size;
-//dump()('?')(p);
-				memory::free(p);
-//dump()('.');
-			}
-		}
-log lg;
-rnd.dump(lg);
-log().u(total_max, 16).endl();
-
-		for (;;) {
-			data* p = ch.remove_head();
-			if (p == 0)
-				break;
-			memory::free(p);
-		}
-	}
-}
-*/
 void mempool_test()
 {
+	thread_queue& tc = get_cpu_node()->get_thread_ctl();
+	thread* th = tc.get_running_thread();
+
 	log lg;
 
-	static u64 test_number = 0;
-	log().u(test_number, 16)("|seed:");
-	rnd.dump(lg);
-	log();
+	test_number_lock->lock();
+	const u64 tn = test_number;
 	++test_number;
+	test_number_lock->unlock();
 
-	mempool* mp;
-	cause::type r = mempool_acquire_shared(100, &mp);
+	lg.p(th)("|T0:").u(tn)("|seed:");
+	rnd.dump(lg);
+	lg();
+
+	mempool* mp[2];
+	cause::type r = mempool_acquire_shared(20, &mp[0]);
+	if (is_fail(r))
+		log()("!!! error r=").u(r)();
+
+	r = mempool_acquire_shared(100, &mp[1]);
+	if (is_fail(r))
+		log()("!!! error r=").u(r)();
 
 	const int N = 15;
-	chain<data, &data::chain_hook> ch[N];
+	chain<data, &data::chain_hook> ch[2][N];
 
 	int n;
-	int cnts[N] = {0};
+	int cnts[2][N] = {{0}};
 	for (n = 0; n < 0x80000; ++n) {
-		data* p = (data*)mp->alloc();
+		if (0==(n&0xff))
+			log().p(th)("|n=").x(n)();
+		int mpi = rnd(2);
+		data* p = (data*)mp[mpi]->alloc();
 		if (!p)
 			break;
 
 		for (int i = 0; i < N; ++i) {
-			data* q = ch[i].head();
-			for (; q; q = ch[i].next(q)) {
+			data* q = ch[mpi][i].head();
+			for (; q; q = ch[mpi][i].next(q)) {
 				if (p == q) {
-					log()("XXX n=").u(n,16)(" / i=").u(i)();
-					mp->dump(lg);
+					log()("!!! n=").u(n,16)(" / i=").u(i)();
+					mp[mpi]->dump(lg);
+					lg();
 					for (;;) native::hlt();
 				}
 			}
@@ -131,53 +127,55 @@ void mempool_test()
 
 		u32 idx = rnd(N);
 
-		ch[idx].insert_head(p);
-		++cnts[idx];
+		ch[mpi][idx].insert_head(p);
+		++cnts[mpi][idx];
 	}
 
-	log()("sum n=").u(n,16)();
+	for (int i = 0; i < 2; ++i) {
+		lg.p(th)("|T1:").u(tn)("|cnts[").u(i)("]:");
+		for(int j = 0; j < N; ++j)
+			lg.u(cnts[i][j])(",");
+		lg();
+	}
 
-	for (int i = 0; i < N; ++i) {
-		int cnt;
-		for (cnt = 0;; ++cnt) {
-			data* d = ch[i].remove_head();
-			if (!d)
-				break;
-			mp->dealloc(d);
+	for (int mpi = 0; mpi < 2; ++mpi) {
+		for (int i = 0; i < N; ++i) {
+			int cnt;
+			for (cnt = 0;; ++cnt) {
+				data* d = ch[mpi][i].remove_head();
+				if (!d)
+					break;
+				mp[mpi]->dealloc(d);
+
+				--cnts[mpi][i];
+			}
+
+			mp[mpi]->collect_free_pages();
 		}
-
-		mp->collect_free_pages();
 	}
 
-	log()("after collect_free_pages()")();
-}
-
-void switch_test()
-{
-	//thread_ctl& tc =
-	//    global_vars::gv.logical_cpu_obj_array[0].get_thread_ctl();
-
-	for (int i = 0;; ++i) {
-		mempool_test();
-		//log()(".");
-		//if ((i & 63) == 63)
-		//	log()();
-		//tc.sleep_running_thread();
+	for (int i = 0; i < 2; ++i) {
+		lg.p(th)("|T2:").u(tn)("|cnts[").u(i)("]:");
+		for(int j = 0; j < N; ++j)
+			lg.u(cnts[i][j])(",");
+		lg();
 	}
+
+	log().p(th)("|TEST:").u(tn)("|sum:").x(n)();
 }
 
 bool test_init()
 {
 	rnd.init(0, 0);
+	test_number = 0;
+	test_number_lock = new (mem_alloc(sizeof (spin_lock))) spin_lock;
 	return true;
 }
 
 void test(void*)
 {
-	//memory_test();
 	for (;;) {
 		mempool_test();
 	}
-	//switch_test();
 }
 
