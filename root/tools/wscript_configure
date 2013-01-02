@@ -6,8 +6,8 @@ import os.path
 
 
 def load_config(x, cf):
-	env_config(x, cf, 'COMMON_CFLAGS', ['-pipe', '-Wall', '-Wextra']);
-	env_config(x, cf, 'COMMON_CXXFLAGS', ['-pipe', '-Wall', '-Wextra']);
+	env_config(x, cf, 'COMMON_CFLAGS', ['-pipe', '-Wall', '-Wextra'])
+	env_config(x, cf, 'COMMON_CXXFLAGS', ['-pipe', '-Wall', '-Wextra'])
 
 	def_config(x, cf, 'ARCH', 'x86_64')
 	def_config(x, cf, 'ARCHID', 'ARCH_'+x.env.CONFIG_ARCH, quote=False)
@@ -34,11 +34,16 @@ def load_config(x, cf):
 	# 0:disable / 1:enable HPET.
 	def_config(x, cf, 'HPET', 0)
 
+	# other enviroment variables.
+	for key in cf.iterkeys():
+		if not key.startswith('_'):
+			x.env[key] = cf[key]
 
 def def_config(x, config, name, default_val, quote=True):
 	if name in config:
 		x.define('CONFIG_'+name, config[name], quote=quote)
 		x.env['CONFIG_'+name] = config[name]
+		del config[name]
 	elif default_val != None:
 		x.define('CONFIG_'+name, default_val, quote=quote)
 		x.env['CONFIG_'+name] = default_val
@@ -46,6 +51,7 @@ def def_config(x, config, name, default_val, quote=True):
 def env_config(x, config, name, default_val):
 	if name in config:
 		x.env[name] = config[name]
+		del config[name]
 	elif default_val != None:
 		x.env[name] = default_val
 
