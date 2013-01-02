@@ -298,6 +298,11 @@ int strcmp(const char *str1, const char *str2)
 	return str_compare(0xffffffff, str1, str2);
 }
 
+int strncmp(const char *str1, const char *str2, unsigned long n)
+{
+	return str_compare(n, str1, str2);
+}
+
 char *strcpy(char *dest, const char *src)
 {
 	str_copy(0xffffffff, src, dest);

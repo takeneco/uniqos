@@ -5,7 +5,7 @@
 
 
 kern_linkflags = [
-    '-nostartfiles',
+    '-nostdlib',
     '-static',
 ]
 

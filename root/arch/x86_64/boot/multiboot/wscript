@@ -51,7 +51,7 @@ def build(x):
 	    target = target,
 	    source = source,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
-	    linkflags = ['-m32', '-nostartfiles', '-static', ls_opt, map_opt],
+	    linkflags = ['-m32', '-nostdlib', '-static', ls_opt, map_opt],
 	    env = env,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)
