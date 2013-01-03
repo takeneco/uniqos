@@ -1,3 +1,5 @@
+/.waf-*
+/.lock-*
 /root/build
 /root/config
 tags
