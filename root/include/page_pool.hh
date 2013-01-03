@@ -16,6 +16,7 @@ class page_pool
 public:
 	page_pool();
 
+	cause::type add_range(const adr_range& add);
 	void set_range(uptr low_adr, uptr high_adr);
 	uptr calc_workarea_bytes();
 
@@ -39,6 +40,9 @@ private:
 	mem_cell_base<uptr> page_base[arch::page::LEVEL_COUNT];
 	uptr adr_offset;
 	uptr pool_bytes;
+
+	uint      page_range_cnt;  ///< page_ranges[] のエントリ数
+	adr_range page_ranges[4];  ///< page_pool が含むページのアドレス範囲
 };
 
 

@@ -1,13 +1,16 @@
 /// @file  page_pool.cc
 /// @brief Physical page pool.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #include <page_pool.hh>
 
+#include <log.hh>
 
-page_pool::page_pool()
+
+page_pool::page_pool() :
+	page_range_cnt(0)
 {
 	page_base[0].set_params(arch::page::bits_of_level(0), 0);
 
@@ -18,13 +21,35 @@ page_pool::page_pool()
 	}
 }
 
-/// @brief  管理対象物理メモリの範囲を指定する。
-void page_pool::set_range(uptr low_adr, uptr high_adr)
+/// @brief  管理対象物理メモリの範囲を追加する。
+cause::type page_pool::add_range(const adr_range& add)
 {
+	if (page_range_cnt >= num_of_array(page_ranges)) {
+		log()("!!!page_pool: too many page_ranges entry.")();
+		return cause::FAIL;
+	}
+
 	const uptr align_bits = arch::page::bits_of_level(arch::page::HIGHEST);
 
-	adr_offset = down_align(low_adr, uptr(1) << align_bits);
-	pool_bytes = high_adr - adr_offset + 1;
+	if (page_range_cnt == 0) {
+		adr_offset = down_align(add.low_adr(), UPTR(1) << align_bits);
+		pool_bytes = add.high_adr() - adr_offset + 1;
+	} else {
+		const uptr l_adr1 = adr_offset;
+		const uptr h_adr1 = adr_offset + pool_bytes - 1;
+		const uptr l_adr2 = add.low_adr();
+		const uptr h_adr2 = add.high_adr();
+
+		const uptr ladr = min(l_adr1, l_adr2);
+		const uptr hadr = max(h_adr1, h_adr2);
+
+		adr_offset = down_align(ladr, UPTR(1) << align_bits);
+		pool_bytes = hadr - adr_offset + 1;
+	}
+
+	page_ranges[page_range_cnt++].set(add);
+
+	return cause::OK;
 }
 
 /// @brief 物理メモリの管理に必要なデータエリアのサイズを返す。

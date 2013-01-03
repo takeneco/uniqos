@@ -516,24 +516,21 @@ cause::type load_page_pool(
 	tmp_alloc::enum_desc ed;
 	node_ram->enum_free(1 << 0, &ed);
 
-	uptr lower_adr = UPTR_MAX;
-	uptr higher_adr = 0;
-
 	for (;;) {
 		uptr adr, bytes;
 		if (!node_ram->enum_free_next(&ed, &adr, &bytes))
 			break;
 
-		lower_adr = min(lower_adr, adr);
-		higher_adr = max(higher_adr, adr + bytes - 1);
+		cause::type r = pp->add_range(adr_range::gen_ab(adr, bytes));
+		if (is_fail(r))
+			return r;
 	}
-
-	pp->set_range(lower_adr, higher_adr);
 
 	uptr workarea_bytes = pp->calc_workarea_bytes();
 	void* workarea_mem = node_heap->alloc(
 	    1 << 0, workarea_bytes, arch::BASIC_TYPE_ALIGN, false);
-	if (!pp->init(workarea_bytes, arch::map_phys_adr(workarea_mem, workarea_bytes)))
+	if (!pp->init(workarea_bytes,
+	              arch::map_phys_adr(workarea_mem, workarea_bytes)))
 		return cause::FAIL;
 
 	node_heap->enum_free(1 << 0, &ed);

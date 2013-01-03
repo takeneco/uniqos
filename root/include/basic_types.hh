@@ -11,10 +11,9 @@
 
 
 #define U32(n)  suffix_u32(n)
+#define S32(n)  suffix_s32(n)
 #define U64(n)  suffix_u64(n)
 #define S64(n)  suffix_s64(n)
-#define UPTR(n) suffix_uptr(n)
-#define SPTR(n) suffix_sptr(n)
 
 typedef s8_        s8;
 typedef u8_        u8;
@@ -29,11 +28,28 @@ typedef scpu_      scpu;
 typedef ucpu_      ucpu;
 typedef smax_      smax;
 typedef umax_      umax;
-typedef sptr_      sptr;
-typedef uptr_      uptr;
 
 typedef unsigned int uint;
 typedef unsigned int sint;
+
+#if 16 < ARCH_ADR_BITS && ARCH_ADR_BITS <= 32
+# define UPTR(n) suffix_u32(n)
+# define SPTR(n) suffix_s32(n)
+
+  typedef u32 uptr;
+  typedef s32 sptr;
+
+#elif 32 < ARCH_ADR_BITS && ARCH_ADR_BITS <= 64
+# define UPTR(n) suffix_u64(n)
+# define SPTR(n) suffix_s64(n)
+
+  typedef u64 uptr;
+  typedef s64 sptr;
+
+#else
+# error Unsupported ARCH_ADR_BITS value.
+
+#endif  // ARCH_ADR_BITS
 
 
 /// @struct harf_of
@@ -351,21 +367,48 @@ namespace cause
 	inline bool IsFail(ftype x) { return x != OK; }
 	inline bool is_ok(type x) { return x == OK; }
 	inline bool is_fail(type x) { return x != OK; }
+
+	template<class T>
+	struct pair
+	{
+		pair() :
+			r(FAIL),
+			value(T())
+		{}
+		pair(cause::type _r, T _value) :
+			r(_r),
+			value(_value)
+		{}
+
+		cause::type r;      ///< Result.
+		T           value;  ///< Additional result value.
+	};
 }
 
+/// @brief アドレス範囲
 struct adr_range
 {
 	uptr low;
 	uptr high;
 
 	adr_range() {}
-	adr_range(const adr_range& ar)
-	: low(ar.low), high(ar.high)
+	adr_range(const adr_range& ar) :
+		low(ar.low),
+		high(ar.high)
 	{}
 
 	uptr low_adr() const { return low; }
 	uptr high_adr() const { return high; }
 	uptr bytes() const { return high - low + 1; }
+
+	void set(const adr_range& ar) {
+		low = ar.low;
+		high = ar.high;
+	}
+	adr_range& operator = (const adr_range& ar) {
+		set(ar);
+		return *this;
+	}
 
 	void set_ab(uptr adr, uptr bytes) {
 		low = adr;
