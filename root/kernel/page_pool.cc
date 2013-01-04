@@ -94,6 +94,16 @@ cause::type page_pool::alloc(arch::page::TYPE page_type, uptr* padr)
 
 cause::type page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
 {
+	bool hit = false;
+	for (uint i = 0; i < page_range_cnt; ++i) {
+		if (page_ranges[i].test(padr)) {
+			hit = true;
+			break;
+		}
+	}
+	if (!hit)
+		return cause::OUTOFRANGE;
+
 	padr -= adr_offset;
 
 	return page_base[page_type].free_1page(padr);

@@ -159,11 +159,15 @@ cause::type cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
 {
 	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
 		const cause::type r = page_pools[i]->dealloc(page_type, padr);
-		if (is_ok(r))
+		if (is_ok(r)) {
 			return cause::OK;
+		} else if (r == cause::OUTOFRANGE) {
+			continue;
+		} else {
+			log()("!!! cpu_node::page_dealloc() failed. r=").u(r)();
+			return r;
+		}
 	}
-
-	log()("!!! cpu_node::page_dealloc() failed.")();
 
 	return cause::FAIL;
 }

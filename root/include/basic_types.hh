@@ -54,6 +54,8 @@ typedef unsigned int sint;
 
 /// @struct harf_of
 /// @brief サイズが半分の整数型
+//
+/// harf_of<uptr> のようにして使う。
 /// - harf_of<u16>:: : u8
 /// - harf_of<u32>:: : u16
 /// - harf_of<u64>:: : u32
@@ -67,6 +69,18 @@ template<> struct harf_of<u64> { typedef u32 t; };
 template<> struct harf_of<s16> { typedef  s8 t; };
 template<> struct harf_of<s32> { typedef s16 t; };
 template<> struct harf_of<s64> { typedef s32 t; };
+
+/// @struct unsigned_of
+/// signed 型に対応する unsigned 型
+/// - unsigned_of<s8>::t  : u8
+/// - unsigned_of<s16>::t : u16
+/// - unsigned_of<s32>::t : u32
+/// - unsigned_of<s64>::t : u64
+template<class TYPE> struct unsigned_of;
+template<> struct unsigned_of <s8> { typedef  u8 t; };
+template<> struct unsigned_of<s16> { typedef u16 t; };
+template<> struct unsigned_of<s32> { typedef u32 t; };
+template<> struct unsigned_of<s64> { typedef u64 t; };
 
 /// @struct signed_of
 /// unsigned 型に対応する signed 型
@@ -430,6 +444,12 @@ struct adr_range
 		r.low = low_adr;
 		r.high = high_adr;
 		return r;
+	}
+
+	/// @return adr が adr_range の範囲に含まれれば true を返す。
+	///         そうでなければ false を返す。
+	bool test(uptr adr) {
+		return low <= adr && adr <= high;
 	}
 };
 
