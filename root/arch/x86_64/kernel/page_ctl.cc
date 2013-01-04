@@ -141,10 +141,10 @@ cause::type page_ctl::free(arch::page::TYPE page_type, uptr padr)
 	return page_base[page_type].free_1page(padr);
 }
 
-void page_ctl::dump(output_buffer& ob)
+void page_ctl::dump(output_buffer& ob, uint level)
 {
 	for (int i = 0; i < 5; ++i) {
-		page_base[i].dump(pmem_end, ob);
+		page_base[i].dump(pmem_end, ob, level);
 	}
 
 	ob("lev      free_pages      alloc_pages")();

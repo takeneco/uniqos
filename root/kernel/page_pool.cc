@@ -109,3 +109,20 @@ cause::type page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
 	return page_base[page_type].free_1page(padr);
 }
 
+void page_pool::dump(output_buffer& ob, uint level)
+{
+	if (level >= 1)
+		ob("--- BEGIN page_pool dump ---")();
+
+	if (level >= 1) {
+		ob("adr_offset : ").x(adr_offset)();
+		ob("pool_bytes : ").x(pool_bytes)();
+	}
+
+	for (uptr i = 0; i < num_of_array(page_base); ++i)
+		page_base[i].dump(pool_bytes, ob, level);
+
+	if (level >= 1)
+		ob("--- END page_pool dump ---")();
+}
+

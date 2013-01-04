@@ -17,7 +17,7 @@ namespace arch {
 class page_ctl
 {
 public:
-	void dump(output_buffer& ob);
+	void dump(output_buffer& ob, uint level);
 
 private:
 	mem_cell_base<u64> page_base[page::LEVEL_COUNT];

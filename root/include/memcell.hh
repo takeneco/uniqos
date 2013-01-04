@@ -183,38 +183,49 @@ private:
 	bool import_uplevel_page();
 
 public:
-	void dump(uptr total_mem, output_buffer& lt)
+	void dump(uptr total_mem, output_buffer& lt, uint level)
 	{
-		lt("---- cell internal start ----")()
-		("page_size_bits : ").u(page_size_bits)()
-		("cell_size_bits : ").u(cell_size_bits)()
-		("up_level       : ")(up_level)()
-		("down_level     : ")(down_level)()
-		("free_pattern   : ").x(free_pattern)()
-		("free_pages     : ").s(free_pages)()
-		("calc_cell_cnt  : ").u(calc_cell_cnt(total_mem))()
-		("cell_count     : ").u(cell_count)()
-		("cell_table     : ")(cell_table)();
-
-		const uptr cells =
-		    up_div<uptr>(total_mem, U64(1) << cell_size_bits);
-		for (uptr i = 0; i < cells; ++i) {
-			if (i % 4 == 0)
-				lt.u(i)('|');
-			lt.x(cell_table[i].table.get_raw(),
-			     sizeof (CELLTYPE) * 2);
-			if (i % 4 == 3 || i == (cells - 1))
-				lt();
-			else
-				lt(' ');
+		if (level >= 1) {
+			lt("---- cell internal start ----")()
+			("page_size_bits : ").u(page_size_bits)()
+			("cell_size_bits : ").u(cell_size_bits)()
+			("up_level       : ")(up_level)()
+			("down_level     : ")(down_level)()
+			("free_pattern   : ").x(free_pattern)()
+			("free_pages     : ").s(free_pages)()
+			("calc_cell_cnt  : ").u(calc_cell_cnt(total_mem))()
+			("cell_count     : ").u(cell_count)()
+			("cell_table     : ")(cell_table)();
 		}
 
-		for (cell* c = free_chain.head(); c; c = free_chain.next(c)) {
-			lt.x(get_page_adr(c,0))
-			("-").x(get_page_adr(c,cell_size_bits))
-			(":").x(c->table.get_raw())();
+		if (level >= 2) {
+			const uptr cells =
+			    up_div<uptr>(total_mem, U64(1) << cell_size_bits);
+			for (uptr i = 0; i < cells; ++i) {
+				if (i % 4 == 0)
+					lt.u(i)('|');
+				lt.x(cell_table[i].table.get_raw(),
+				     sizeof (CELLTYPE) * 2);
+				if (i % 4 == 3 || i == (cells - 1))
+					lt();
+				else
+					lt(' ');
+			}
 		}
-		lt("---- cell internal end ----")();
+
+		if (level >= 2) {
+			for (cell* c = free_chain.head();
+			     c;
+			     c = free_chain.next(c))
+			{
+				lt.x(get_page_adr(c,0))
+				("-").x(get_page_adr(c,cell_size_bits))
+				(":").x(c->table.get_raw())();
+			}
+		}
+
+		if (level >= 1)
+			lt("---- cell internal end ----")();
 	}
 };
 
@@ -488,7 +499,7 @@ inline void memcell_test(output_buffer& lt)
 
 	for (u32 i = 0; i < 5; ++i) {
 		lt("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
-		mcb[i].dump(total_mem, lt);
+		mcb[i].dump(total_mem, lt, 5);
 		lt("-------- mcb[").u(i)("] end")();
 	}
 
@@ -503,7 +514,7 @@ inline void memcell_test(output_buffer& lt)
 
 	for (u32 i = 0; i < 5; ++i) {
 		lt("-------- mcb[").u(i)("] = ")(&mcb[i])(" start")();
-		mcb[i].dump(total_mem, lt);
+		mcb[i].dump(total_mem, lt, 5);
 		lt("-------- mcb[").u(i)("] end")();
 	}
 

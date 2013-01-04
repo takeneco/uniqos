@@ -1,10 +1,12 @@
 /// @file  test.cc
 
 #include <cpu_node.hh>
+#include <global_vars.hh>
 #include <log.hh>
 #include <mempool.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
+#include <page_pool.hh>
 #include <spinlock.hh>
 
 
@@ -87,9 +89,17 @@ void mempool_test()
 	++test_number;
 	test_number_lock->unlock();
 
+	preempt_disable();
+
 	lg.p(th)("|T0:").u(tn)("|seed:");
 	rnd.dump(lg);
 	lg();
+
+	for (int i = 0; i < global_vars::core.page_pool_cnt; ++i) {
+		global_vars::core.page_pool_objs[i]->dump(lg, 1);
+	}
+
+	preempt_enable();
 
 	mempool* mp[2];
 	cause::type r = mempool_acquire_shared(20, &mp[0]);
