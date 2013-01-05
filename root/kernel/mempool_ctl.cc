@@ -83,7 +83,7 @@ void mempool_ctl::release_shared_mempool(mempool* mp)
 {
 	mp->dec_shared_count();
 
-	if (mp->get_shared_count() == 0 && mp->get_alloc_count() == 0) 
+	if (mp->get_shared_count() == 0 && mp->get_alloc_cnt() == 0) 
 		mp->destroy();
 }
 
@@ -179,18 +179,18 @@ void mempool_ctl::shared_dealloc(void* mem)
 
 	mp->dealloc(h);
 
-	if (mp->get_shared_count() == 0 && mp->get_alloc_count() == 0) 
+	if (mp->get_shared_count() == 0 && mp->get_alloc_cnt() == 0) 
 		mp->destroy();
 }
 
 void mempool_ctl::dump(output_buffer& ob)
 {
-	ob("obj_size      alloc_count       page_count    freeobj_count")();
+	ob("    obj_size    alloc_cnt     page_cnt  freeobj_cnt")();
 	for (mempool* mp = shared_chain.head();
 	     mp;
 	     mp = shared_chain.next(mp))
 	{
-		mp->dump(ob);
+		mp->dump_table(ob);
 	}
 }
 

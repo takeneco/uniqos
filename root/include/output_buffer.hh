@@ -1,6 +1,6 @@
 /// @file  output_buffer.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_OUTPUT_BUFFER_HH_
@@ -14,10 +14,14 @@ class output_buffer;
 void output_buffer_vec(output_buffer* x, int iov_cnt, const iovec* iov);
 void output_buffer_1vec(output_buffer* x, uptr bytes, const void* data);
 void output_buffer_str(output_buffer* x, const char* str);
-void output_buffer_u(output_buffer* x, umax num);
-void output_buffer_s(output_buffer* x, smax num);
+void output_buffer_u(output_buffer* x, umax num, int width);
+void output_buffer_s(output_buffer* x, smax num, int width);
 void output_buffer_hex(output_buffer* x, umax num, int width);
+void output_buffer_hexf(output_buffer* x,
+                        umax num, int width, int prec, u8 flags);
 void output_buffer_oct(output_buffer* x, umax num, int width);
+void output_buffer_octf(output_buffer* x,
+                        umax num, int width, int prec, u8 flags);
 void output_buffer_adr(output_buffer* x, const void* ptr);
 void output_buffer_src(output_buffer* x,
                        const char* path, int line, const char* func);
@@ -60,27 +64,23 @@ public:
 		return *this;
 	}
 	template<class INT>
-	output_buffer& u(INT n, int base=10) {
-		if (base == 10) {
-			//if (n < 0)
-			//	output_buffer_s(this, n);
-			//else
-				output_buffer_u(this, static_cast<umax>(n));
-		} else if (base == 8) {
-			output_buffer_oct(this, n, sizeof n * 2);
-		} else if (base == 16) {
-			output_buffer_hex(this, n, sizeof n * 2);
-		}
+	output_buffer& u(INT n, int width = 0) {
+		output_buffer_u(this, static_cast<umax>(n), width);
 		return *this;
 	}
 	template<class INT>
-	output_buffer& s(INT n) {
-		output_buffer_s(this, static_cast<smax>(n));
+	output_buffer& s(INT n, int width = 0) {
+		output_buffer_s(this, static_cast<smax>(n), width);
 		return *this;
 	}
 	template<class INT>
-	output_buffer& x(INT n, int width=0) {
+	output_buffer& x(INT n, int width = 0) {
 		output_buffer_hex(this, static_cast<umax>(n), width);
+		return *this;
+	}
+	template<class INT>
+	output_buffer& x0(INT n, int prec = 0) {
+		output_buffer_hexf(this, static_cast<umax>(n), 0, prec, 0);
 		return *this;
 	}
 	/// @brief hex dump.
@@ -115,8 +115,13 @@ public:
 		return *this;
 	}
 	template<class INT>
-	output_buffer& o(INT n, int width=0) {
-		output_buffer_oct(this, n, width);
+	output_buffer& o(INT n, int width = 0) {
+		output_buffer_oct(this, static_cast<umax>(n), width);
+		return *this;
+	}
+	template<class INT>
+	output_buffer& o0(INT n, int prec = 0) {
+		output_buffer_octf(this, static_cast<umax>(n), 0, prec, 0);
 		return *this;
 	}
 	output_buffer& p(const void* adr) {
@@ -133,10 +138,6 @@ public:
 #define SRCPOS  __FILE__,__LINE__,__func__
 	output_buffer& src(const char* path, int line, const char* func=0) {
 		output_buffer_src(this, path, line, func);
-		return *this;
-	}
-	output_buffer& bin(uptr bytes, const void* data) {
-		x(bytes, data, 1, 16, "bin() is DUPLICATED");
 		return *this;
 	}
 

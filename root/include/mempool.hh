@@ -1,7 +1,7 @@
 /// @file   mempool.hh
 /// @brief  mempool interface.
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMPOOL_HH_
@@ -39,7 +39,7 @@ public:
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
 	uptr get_total_obj_size() const { return total_obj_size; }
-	sptr get_alloc_count() const { return alloc_count.load(); }
+	sptr get_alloc_cnt() const { return alloc_cnt.load(); }
 
 	void* alloc();
 	void* alloc(cpu_id cpuid);
@@ -50,7 +50,8 @@ public:
 	void dec_shared_count() { shared_count.sub(1); }
 	sptr get_shared_count() const { return shared_count.load(); }
 
-	void dump(output_buffer& ob);
+	void dump(output_buffer& ob, uint level);
+	void dump_table(output_buffer& ob);
 
 	bichain_node<mempool>& chain_hook() { return _chain_node; }
 
@@ -67,20 +68,20 @@ private:
 	{
 	public:
 		page() :
-		    alloc_count(0)
+		    alloc_cnt(0)
 		{}
 
 		bool is_full() const {
 			return free_chain.is_empty();
 		}
 		bool is_free() const {
-			return alloc_count == 0;
+			return alloc_cnt == 0;
 		}
 		u8* get_memory() {
 			return memory;
 		}
 		u32 count_alloc() const {
-			return alloc_count;
+			return alloc_cnt;
 		}
 
 		void init_onpage(const mempool& pool);
@@ -100,7 +101,7 @@ private:
 
 	private:
 		chain<memobj, &memobj::chain_hook> free_chain;
-		u32 alloc_count;
+		u32 alloc_cnt;
 
 		u8* memory;
 
@@ -153,9 +154,9 @@ private:
 	const u32              page_objs;  ///< ページの中にあるオブジェクト数
 	const uptr             total_obj_size;  ///< obj_size * page_objs
 
-	atomic<sptr>           alloc_count;
-	atomic<sptr>           page_count;
-	atomic<sptr>           freeobj_count;
+	atomic<sptr>           alloc_cnt;
+	atomic<sptr>           page_cnt;
+	atomic<sptr>           freeobj_cnt;
 	atomic<sptr>           shared_count;
 
 	obj_chain free_objs;
@@ -175,7 +176,7 @@ extern "C" void        mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 
-inline void* operator new (uptr, mempool* mp);
+inline void* operator new (uptr, mempool* mp) throw();
 
 
 #endif  // include guard

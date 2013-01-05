@@ -2,7 +2,7 @@
 /// @brief Memory pooler.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -24,15 +24,16 @@
 #include <new_ops.hh>
 #include <page.hh>
 
+
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 :   obj_size(normalize_obj_size(_obj_size)),
     page_type(ptype == arch::page::INVALID ? auto_page_type(obj_size) : ptype),
     page_size(arch::page::size_of_type(page_type)),
     page_objs((page_size - sizeof (page)) / obj_size),
     total_obj_size(page_objs * obj_size),
-    alloc_count(0),
-    page_count(0),
-    freeobj_count(0),
+    alloc_cnt(0),
+    page_cnt(0),
+    freeobj_cnt(0),
     shared_count(0),
     page_pool(_page_pool)
 {
@@ -45,12 +46,12 @@ cause::type mempool::destroy()
 	for (;;) {
 		memobj* obj = free_objs.remove_head();
 		back_to_page(obj);
-		freeobj_count.sub(1);
+		freeobj_cnt.sub(1);
 	}
 
-	if (alloc_count.load() != 0 ||
-	    page_count.load() != 0 ||
-	    freeobj_count.load() != 0 ||
+	if (alloc_cnt.load() != 0 ||
+	    page_cnt.load() != 0 ||
+	    freeobj_cnt.load() != 0 ||
 	    shared_count.load() != 0 ||
 	    free_objs.head() != 0 ||
 	    free_pages.head() != 0 ||
@@ -58,9 +59,9 @@ cause::type mempool::destroy()
 	{
 		log()("FAULT:")
 		(__FILE__, __LINE__, __func__)("Bad operation.")()
-		("| alloc_count: ").u(alloc_count.load())
-		(", page_count: ").u(page_count.load())()
-		("| freeobj_count: ").u(freeobj_count.load())
+		("| alloc_cnt: ").u(alloc_cnt.load())
+		(", page_cnt: ").u(page_cnt.load())()
+		("| freeobj_cnt: ").u(freeobj_cnt.load())
 		(", shared_count: ").u(shared_count.load())()
 		("| free_objs.head(): ")(free_objs.head())()
 		("| free_pages.head(): ")(free_pages.head())()
@@ -103,31 +104,52 @@ void mempool::collect_free_pages()
 {
 	const sptr SAVE_FREEOBJS = 64;
 
-	const sptr n = freeobj_count.load() - SAVE_FREEOBJS;
+	const sptr n = freeobj_cnt.load() - SAVE_FREEOBJS;
 	for (sptr i = 0; i < n; ++i) {
 		memobj* obj = free_objs.remove_head();
 		back_to_page(obj);
-		freeobj_count.sub(1);
+		freeobj_cnt.sub(1);
 	}
 }
 
-void mempool::dump(output_buffer& ob)
+void mempool::dump(output_buffer& ob, uint level)
 {
-	ob.u(obj_size, 16)(" ").
-	   u(alloc_count.load(), 16)(" ").
-	   u(page_count.load(), 16)(" ").
-	   u(freeobj_count.load(), 16)();
-
-	for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
-		node* nd = mempool_nodes[i];
-		ob("nd[").u(i)("]=")(nd)();
+	if (level >= 1) {
+		ob("obj_size    : ").u(obj_size, 12)
+		("\npage_type   : ").u(page_type, 12)
+		(" |page_size      : ").u(page_size, 12)
+		("\npage_objs   : ").u(page_objs, 12)
+		(" |total_obj_size : ").u(total_obj_size, 12)
+		("\nalloc_cnt   : ").s(alloc_cnt.load(), 12)
+		(" |page_cnt       : ").s(page_cnt.load(), 12)
+		("\nfreeobj_cnt : ").u(freeobj_cnt.load())();
 	}
 
-	ob("---- free_pages ----")();
-
-	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
-		pg->dump(ob);
+	if (level >= 2) {
+		for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
+			node* nd = mempool_nodes[i];
+			ob("nd[").u(i)("]=")(nd)();
+		}
 	}
+
+	if (level >= 3) {
+		ob("---- free_pages ----")();
+
+		for (page* pg = free_pages.head();
+		     pg;
+		     pg = free_pages.next(pg))
+		{
+			pg->dump(ob);
+		}
+	}
+}
+
+void mempool::dump_table(output_buffer& ob)
+{
+	ob.u(obj_size, 12)(' ').
+	   u(alloc_cnt.load(), 12)(' ').
+	   u(page_cnt.load(), 12)(' ').
+	   u(freeobj_cnt.load(), 12)();
 }
 
 void* mempool::node::alloc()
@@ -240,7 +262,7 @@ void* mempool::_alloc(cpu_id cpuid)
 	}
 
 	if (r)
-		alloc_count.add(1);
+		alloc_cnt.add(1);
 
 	return r;
 }
@@ -251,7 +273,7 @@ void mempool::_dealloc(void* ptr)
 
 	mempool_nodes[cpuid]->dealloc(ptr);
 
-	alloc_count.sub(1);
+	alloc_cnt.sub(1);
 }
 
 void mempool::attach(page* pg)
@@ -285,7 +307,7 @@ mempool::page* mempool::new_page(int cpuid)
 		pg->init_onpage(*this);
 	}
 
-	page_count.add(1);
+	page_cnt.add(1);
 
 	return pg;
 }
@@ -308,7 +330,7 @@ void mempool::delete_page(page* pg)
 		}
 	}
 
-	page_count.sub(1);
+	page_cnt.sub(1);
 }
 
 void mempool::back_to_page(memobj* obj)
@@ -364,7 +386,7 @@ void mempool::page::init_offpage(const mempool& pool, void* _memory)
 /// 空き memobj が無い mempool::page で alloc() を呼び出してはならない。
 mempool::memobj* mempool::page::alloc()
 {
-	++alloc_count;
+	++alloc_cnt;
 
 	return free_chain.remove_head();
 }
@@ -378,7 +400,7 @@ bool mempool::page::free(const mempool& pool, memobj* obj)
 	if (!(obj_beg <= obj && obj < obj_end))
 		return false;
 
-	--alloc_count;
+	--alloc_cnt;
 
 	free_chain.insert_head(obj);
 
@@ -387,7 +409,7 @@ bool mempool::page::free(const mempool& pool, memobj* obj)
 
 void mempool::page::dump(output_buffer& lt)
 {
-	lt("memory:")(memory)(", alloc_count:").u(alloc_count)();
+	lt("memory:")(memory)(", alloc_cnt:").u(alloc_cnt)();
 
 	lt("{");
 	for (memobj* obj = free_chain.head(); obj; obj = free_chain.next(obj)) {
@@ -406,7 +428,7 @@ void mempool::page::init(const mempool& pool)
 	}
 }
 
-void* operator new (uptr size, mempool* mp)
+void* operator new (uptr size, mempool* mp) throw()
 {
 #if CONFIG_DEBUG_VALIDATE >= 1
 	if (size > mp->get_obj_size()) {

@@ -1,7 +1,7 @@
 /// @file  memcell.cc
 /// @brief Physical memory management.
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMCELL_HH_
@@ -506,7 +506,7 @@ inline void memcell_test(output_buffer& lt)
 	uptr p[10];
 	for (u32 i = 0; i < 10; ++i) {
 		mcb[0].reserve_1page(&p[i]);
-		lt("reserve from mcb (").u(i)(") = ").u(p[i], 16)();
+		lt("reserve from mcb (").u(i)(") = ").x(p[i])();
 	}
 	for (u32 i = 0; i < 9; ++i) {
 		mcb[0].free_1page(p[i]);

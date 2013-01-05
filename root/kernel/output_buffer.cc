@@ -2,7 +2,7 @@
 /// @brief  text output utilities.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -92,11 +92,13 @@ void output_buffer_strf(
 		x->_rep(width - len, ' ');
 }
 
-void output_buffer_u(output_buffer* x, umax num)
+/// @brief 符号なし１０進出力
+void output_buffer_u(output_buffer* x, umax num, int width)
 {
 	char buf[sizeof num * 3];
 	const int len = u_to_decstr(num, buf);
 
+	x->_rep(width - len, ' ');
 	x->_1vec(len, buf);
 }
 
@@ -132,7 +134,8 @@ void output_buffer_uf(output_buffer* x, umax num, int width, int prec, u8 flags)
 		x->_rep(pads, ' ');
 }
 
-void output_buffer_s(output_buffer* x, smax num)
+/// @brief 強制符号付１０進出力
+void output_buffer_s(output_buffer* x, smax num, int width)
 {
 	char sign;
 	if (num < 0) {
@@ -150,6 +153,7 @@ void output_buffer_s(output_buffer* x, smax num)
 	iov[1].bytes = u_to_decstr(num, buf);
 	iov[1].base = buf;
 
+	x->_rep(width - (iov[1].bytes + 1), ' ');
 	x->_vec(2, iov);
 }
 
@@ -189,12 +193,13 @@ void output_buffer_sf(output_buffer* x, smax num, int width, int prec, u8 flags)
 		x->_rep(pads, ' ');
 }
 
+/// @brief 符号なし１６進出力
 void output_buffer_hex(output_buffer* x, umax num, int width)
 {
 	char buf[sizeof num * 2];
 	const int len = u_to_hexstr(num, buf);
 
-	x->_rep(width - len, '0');
+	x->_rep(width - len, ' ');
 	x->_1vec(len, buf);
 }
 
@@ -234,6 +239,7 @@ void output_buffer_hexf(
 		x->_rep(pads, ' ');
 }
 
+/// @brief 符号なし８進出力
 void output_buffer_oct(output_buffer* x, umax num, int width)
 {
 	char buf[(sizeof (umax) * 8 + 2) / 3];
