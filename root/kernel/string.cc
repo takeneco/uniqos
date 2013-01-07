@@ -2,7 +2,7 @@
 /// @brief  Memory ops.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2012 KATO Takeshi
+//  (C) 2010-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -104,7 +104,7 @@ void str_copy(uptr max, const char* src, char* dest)
 {
 	for (uptr i = 0; i < max; ++i) {
 		dest[i] = src[i];
-		if (src[i])
+		if (!src[i])
 			break;
 	}
 }
