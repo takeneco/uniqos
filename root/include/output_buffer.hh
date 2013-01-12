@@ -13,7 +13,7 @@
 class output_buffer;
 void output_buffer_vec(output_buffer* x, int iov_cnt, const iovec* iov);
 void output_buffer_1vec(output_buffer* x, uptr bytes, const void* data);
-void output_buffer_str(output_buffer* x, const char* str);
+void output_buffer_str(output_buffer* x, const char* str, int width);
 void output_buffer_u(output_buffer* x, umax num, int width);
 void output_buffer_s(output_buffer* x, smax num, int width);
 void output_buffer_hex(output_buffer* x, umax num, int width);
@@ -59,10 +59,16 @@ public:
 		output_buffer_1vec(this, 1, &chr);
 		return *this;
 	}
-	output_buffer& str(const char* str) {
-		output_buffer_str(this, str);
+
+	/// @文字列を出力する。
+	//
+	/// 少なくとも width 分の文字数を出力する。
+	/// str が width より短ければ str の後ろに空白を出力する。
+	output_buffer& str(const char* str, int width = 0) {
+		output_buffer_str(this, str, width);
 		return *this;
 	}
+
 	template<class INT>
 	output_buffer& u(INT n, int width = 0) {
 		output_buffer_u(this, static_cast<umax>(n), width);
@@ -83,6 +89,7 @@ public:
 		output_buffer_hexf(this, static_cast<umax>(n), 0, prec, 0);
 		return *this;
 	}
+
 	/// @brief hex dump.
 	//
 	/// data を width バイト単位に ' ' で区切って表示する。
@@ -101,6 +108,7 @@ public:
 		    this, bytes, data, width, columns, summary);
 		return *this;
 	}
+
 	/// @brief python style hex dump.
 	output_buffer& xpy(
 	    uptr bytes,           ///< [in] byte size of output data.

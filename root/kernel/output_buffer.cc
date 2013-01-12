@@ -1,5 +1,5 @@
 /// @file   output_buffer.cc
-/// @brief  text output utilities.
+/// @brief  Text output utilities.
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2012-2013 KATO Takeshi
@@ -50,12 +50,21 @@ void output_buffer_1vec(output_buffer* x, uptr bytes, const void* data)
 	x->_1vec(bytes, data);
 }
 
-void output_buffer_str(output_buffer* x, const char* str)
+/// @brief Output null-terminated string.
+/// @param     x     output_buffer instance.
+/// @param[in] str   出力する文字列。
+/// @param[in] width 最小限出力する幅。str が width より短い場合は
+///                  str の後を ' ' で埋める。
+void output_buffer_str(output_buffer* x, const char* str, int width)
 {
 	if (!str)
 		str = NULLSTR;
 
-	x->_1vec(str_length(str), str);
+	const int len = str_length(str);
+
+	x->_1vec(len, str);
+
+	x->_rep(width - len, ' ');
 }
 
 void output_buffer_strf(
@@ -339,7 +348,6 @@ void output_buffer_hexv(
 	const static char nl = '\n';
 
 	const u8*       base = static_cast<const u8*>(data);
-	const u8* const end = base + bytes;
 
 	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
 
@@ -409,10 +417,8 @@ void output_buffer_hexv_py(
     const char* suffix)  ///< [in] suffix of variable.
 {
 	const static char sep = ',';
-	const static char nl = '\n';
 
 	const u8*       base = static_cast<const u8*>(data);
-	const u8* const end = base + bytes;
 
 	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
 
