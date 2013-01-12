@@ -1,6 +1,6 @@
 /// @file  kern_log.cc
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 /// @todo log を生成するときに offset を読み出し、破棄するときに
@@ -51,5 +51,28 @@ log::log(u32 target) :
 log::~log()
 {
 	flush();
+}
+
+// obj_edge
+
+void obj_edge::print(output_buffer& ob, const char* type) const
+{
+	if (parent) {
+		parent->dump(ob);
+		ob(">");
+	}
+
+	ob(name);
+
+	if (type) {
+		ob("#")(type);
+	}
+}
+
+// obj_node
+
+void obj_node::dump(output_buffer& ob) const
+{
+	parent->print(ob, type);
 }
 
