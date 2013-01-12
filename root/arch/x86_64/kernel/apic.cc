@@ -2,7 +2,7 @@
 /// @brief Control APIC.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2012 KATO Takeshi
+//  (C) 2010-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -85,7 +85,7 @@ void timer_handler(intr_handler*)
 
 cause::type local_apic_init()
 {
-	log()("LAPIC version:").u(read_reg(LOCAL_APIC_VERSION), 16)();
+	log()("LAPIC version:").x(read_reg(LOCAL_APIC_VERSION))();
 
 	// Local APIC enable
 	u32 tmp = read_reg(LOCAL_APIC_SVR);

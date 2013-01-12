@@ -2,7 +2,7 @@
 /// @brief Physical page management.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -151,8 +151,8 @@ void page_ctl::dump(output_buffer& ob, uint level)
 
 	for (int i = 0; i < 5; ++i) {
 		ob("L").u(i + 1);
-		ob(" ").u(page_base[i].get_free_pages(), 16);
-		ob(" ").u(page_base[i].get_alloc_pages(), 16);
+		ob(" ").x(page_base[i].get_free_pages());
+		ob(" ").x(page_base[i].get_alloc_pages());
 		ob.endl();
 	}
 }

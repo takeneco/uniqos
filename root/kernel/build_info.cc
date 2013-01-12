@@ -4,7 +4,7 @@
 /// Python の構文で出力する。
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -54,6 +54,8 @@ void dump_clang(outbuf& ob)
 	  .str("\n__clang_minor__ = ").u(__clang_minor__)
 	  .str("\n__clang_patchlevel__ = ").u(__clang_patchlevel__)
 	  .str("\n__clang_version__ = \"")(__clang_version__)('"')();
+#else
+	ob.str("# __clang_version__ is not defined.")();
 #endif
 }
 

@@ -1,7 +1,7 @@
 /// @file   pagetable.cc
 /// @brief  Page table.
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #include <pagetable.hh>
@@ -39,7 +39,7 @@ inline void indents(output_buffer& x, int n)
 		x("  ");
 }
 
-void dump_pte(output_buffer& x, pte* table, int depth)
+void dump_pte(output_buffer& ob, pte* table, int depth)
 {
 	table = (pte*)arch::map_phys_adr((uptr)table, arch::page::PHYS_L1_SIZE);
 
@@ -50,23 +50,23 @@ void dump_pte(output_buffer& x, pte* table, int depth)
 		const pte& e = table[i];
 		if (e.get() & pte::P) {
 			if (!nl)
-				indents(x, 3 - depth);
-			x("[").u(u32(i), 16)("] : ").u(e.get(), 16);
+				indents(ob, 3 - depth);
+			ob("[").x(i)("] : ").x(e.get());
 			if (!(e.get() & pte::PS) && depth >= 0) {
-				x(); // newline
+				ob.endl();
 				nl = false;
 				pte* _table =
 				    reinterpret_cast<pte*>(
 				    static_cast<uptr>(e.get_adr()));
-				dump_pte(x, _table, depth);
+				dump_pte(ob, _table, depth);
 			} else {
-				nl ? x() : x("  ");
+				nl ? ob.endl() : ob("  ");
 				nl = !nl;
 			}
 		}
 	}
 	if (nl)
-		x();
+		ob.endl();
 }
 
 }  // namespace arch
