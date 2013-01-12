@@ -1,7 +1,7 @@
 /// @file   include/mem_io.hh
 /// @brief  mem_io class declaration.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEM_IO_HH_
@@ -9,6 +9,8 @@
 
 #include <io_node.hh>
 
+
+extern io_node::operations mem_io_node_ops;
 
 /// @brief  On memory io_node.
 class mem_io : public io_node
@@ -19,6 +21,12 @@ class mem_io : public io_node
 
 public:
 	mem_io(uptr bytes, void* _contents);
+
+	template<offset BYTES> mem_io(char (&_contents)[BYTES]) :
+		io_node(&mem_io_node_ops),
+		contents(reinterpret_cast<u8*>(_contents)),
+		capacity_bytes(BYTES)
+	{}
 
 	cause::type on_io_node_seek(
 	    seek_whence whence, offset rel_off, offset* abs_off);
