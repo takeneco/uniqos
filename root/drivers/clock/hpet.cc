@@ -166,6 +166,8 @@ cause::type hpet::setup()
 	regs->counter = 0;
 	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
 	regs->enable_legrep();
+
+	return cause::OK;
 }
 
 cause::type hpet::on_clock_source_get_tick(tick_time* tick)

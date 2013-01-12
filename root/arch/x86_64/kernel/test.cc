@@ -3,7 +3,7 @@
 #include <cpu_node.hh>
 #include <global_vars.hh>
 #include <log.hh>
-#include <mempool.hh>
+#include <mempool_ctl.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
 #include <page_pool.hh>
@@ -79,15 +79,33 @@ struct data {
 
 void mempool_test()
 {
+	obj_edge oe1("obj1");
+	obj_node on1("type1", oe1);
+	obj_edge oe2("obj2", on1);
+	obj_node on2("type2", oe2);
+	obj_edge oe3("obj3", on2);
+	obj_node on3("type2", oe3);
+
 	thread_queue& tc = get_cpu_node()->get_thread_ctl();
 	thread* th = tc.get_running_thread();
 
 	log lg;
+	on3.dump(lg);
+	lg();
 
 	test_number_lock->lock();
 	const u64 tn = test_number;
 	++test_number;
 	test_number_lock->unlock();
+
+	mempool* mp[2];
+	cause::type r = mempool_acquire_shared(20, &mp[0]);
+	if (is_fail(r))
+		log()("!!! error r=").u(r)();
+
+	r = mempool_acquire_shared(100, &mp[1]);
+	if (is_fail(r))
+		log()("!!! error r=").u(r)();
 
 	preempt_disable();
 
@@ -99,16 +117,12 @@ void mempool_test()
 		global_vars::core.page_pool_objs[i]->dump(lg, 1);
 	}
 
+	global_vars::core.mempool_ctl_obj->dump(lg);
+
+	mp[0]->dump(lg, 1);
+	mp[1]->dump(lg, 1);
+
 	preempt_enable();
-
-	mempool* mp[2];
-	cause::type r = mempool_acquire_shared(20, &mp[0]);
-	if (is_fail(r))
-		log()("!!! error r=").u(r)();
-
-	r = mempool_acquire_shared(100, &mp[1]);
-	if (is_fail(r))
-		log()("!!! error r=").u(r)();
 
 	const int N = 15;
 	chain<data, &data::chain_hook> ch[2][N];
@@ -127,8 +141,8 @@ void mempool_test()
 			data* q = ch[mpi][i].head();
 			for (; q; q = ch[mpi][i].next(q)) {
 				if (p == q) {
-					log()("!!! n=").u(n,16)(" / i=").u(i)();
-					mp[mpi]->dump(lg);
+					log()("!!! n=").x(n)(" / i=").u(i)();
+					mp[mpi]->dump(lg, 3);
 					lg();
 					for (;;) native::hlt();
 				}
@@ -170,6 +184,9 @@ void mempool_test()
 			lg.u(cnts[i][j])(",");
 		lg();
 	}
+
+	mempool_release_shared(mp[0]);
+	mempool_release_shared(mp[1]);
 
 	log().p(th)("|TEST:").u(tn)("|sum:").x(n)();
 }
