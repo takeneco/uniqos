@@ -50,6 +50,8 @@ public:
 	void dec_shared_count() { shared_count.sub(1); }
 	sptr get_shared_count() const { return shared_count.load(); }
 
+	void set_obj_name(const char* name);
+
 	void dump(output_buffer& ob, uint level);
 	void dump_table(output_buffer& ob);
 
@@ -169,6 +171,8 @@ private:
 	bichain_node<mempool> _chain_node;
 
 	node* mempool_nodes[CONFIG_MAX_CPUS];
+
+	char obj_name[32];
 };
 
 extern "C" cause::type mempool_acquire_shared(u32 objsize, mempool** mp);

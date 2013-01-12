@@ -23,6 +23,7 @@
 #include <log.hh>
 #include <new_ops.hh>
 #include <page.hh>
+#include <string.hh>
 
 
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
@@ -37,6 +38,8 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
     shared_count(0),
     page_pool(_page_pool)
 {
+	obj_name[0] = '\0';
+
 	for (cpu_id i = 0; i < CONFIG_MAX_CPUS; ++i)
 		mempool_nodes[i] = 0;
 }
@@ -112,6 +115,13 @@ void mempool::collect_free_pages()
 	}
 }
 
+void mempool::set_obj_name(const char* name)
+{
+	str_copy(sizeof obj_name - 1, name, obj_name);
+
+	obj_name[sizeof obj_name - 1] = '\0';
+}
+
 void mempool::dump(output_buffer& ob, uint level)
 {
 	if (level >= 1) {
@@ -122,7 +132,7 @@ void mempool::dump(output_buffer& ob, uint level)
 		(" |total_obj_size : ").u(total_obj_size, 12)
 		("\nalloc_cnt   : ").s(alloc_cnt.load(), 12)
 		(" |page_cnt       : ").s(page_cnt.load(), 12)
-		("\nfreeobj_cnt : ").u(freeobj_cnt.load())();
+		("\nfreeobj_cnt : ").u(freeobj_cnt.load(), 12)();
 	}
 
 	if (level >= 2) {
@@ -146,10 +156,11 @@ void mempool::dump(output_buffer& ob, uint level)
 
 void mempool::dump_table(output_buffer& ob)
 {
-	ob.u(obj_size, 12)(' ').
-	   u(alloc_cnt.load(), 12)(' ').
-	   u(page_cnt.load(), 12)(' ').
-	   u(freeobj_cnt.load(), 12)();
+	ob.str(obj_name, 14)(' ').
+	   u(obj_size, 11)(' ').
+	   u(alloc_cnt.load(), 11)(' ').
+	   u(page_cnt.load(), 11)(' ').
+	   u(freeobj_cnt.load(), 11)();
 }
 
 void* mempool::node::alloc()
@@ -237,7 +248,7 @@ arch::page::TYPE mempool::auto_page_type(u32 objsize)
 u32 mempool::normalize_obj_size(u32 objsize)
 {
 	//TODO: sizeof (memobj)
-	u32 r = max<u32>(objsize, sizeof (page));
+	u32 r = max<u32>(objsize, sizeof (memobj));
 
 	r = up_align<u32>(r, sizeof (cpu_word));
 

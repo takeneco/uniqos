@@ -1,7 +1,7 @@
 /// @file  kerninit.cc
 /// @brief Call kernel initialize funcs.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #include <acpi_ctl.hh>
@@ -233,6 +233,10 @@ log(1)("  serial:")(serial)();
 
 //	cpu_test();
 //	serial_dump(serial);
+
+	r = mempool_post_setup();
+	if (is_fail(r))
+		return r;
 
 	{
 		log ob;

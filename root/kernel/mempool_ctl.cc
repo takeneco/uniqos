@@ -2,7 +2,7 @@
 /// @brief Memory pool controller.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 #include <cpu_node.hh>
 #include <global_vars.hh>
 #include <log.hh>
+#include <mem_io.hh>
 #include <new_ops.hh>
 
 
@@ -62,6 +63,29 @@ cause::type mempool_ctl::init()
 	r = init_shared();
 	if (is_fail(r))
 		return r;
+
+	return cause::OK;
+}
+
+/// @brief shared mempool に名前をつける。
+/// @pre mem_io が使用可能であること。
+cause::type mempool_ctl::post_setup()
+{
+	for (mempool* mp = shared_chain.head();
+	     mp;
+	     mp = shared_chain.next(mp))
+	{
+		const u32 obj_size = mp->get_obj_size();
+
+		char obj_name[sizeof mp->obj_name];
+		mem_io obj_name_io(obj_name);
+
+		output_buffer(&obj_name_io, 0)
+		    ("shared-").u(obj_size)
+		    ('\0');
+
+		mp->set_obj_name(obj_name);
+	}
 
 	return cause::OK;
 }
@@ -185,7 +209,7 @@ void mempool_ctl::shared_dealloc(void* mem)
 
 void mempool_ctl::dump(output_buffer& ob)
 {
-	ob("    obj_size    alloc_cnt     page_cnt  freeobj_cnt")();
+	ob("name              obj_size   alloc_cnt    page_cnt freeobj_cnt")();
 	for (mempool* mp = shared_chain.head();
 	     mp;
 	     mp = shared_chain.next(mp))
@@ -196,20 +220,19 @@ void mempool_ctl::dump(output_buffer& ob)
 
 cause::type mempool_ctl::init_shared()
 {
-	uptr sizes[sizeof (cpu_word) * arch::BITS_IN_BYTE * 2];
-	int sizes_ent = 0;
-
 	for (uptr size = sizeof (cpu_word) * 4;
 	          size <= 0x100000;
 	          size *= 2)
 	{
-		sizes[sizes_ent++] = size;
-		sizes[sizes_ent++] = size + size / 2;
-	}
-
-	for (int i = 0; i < sizes_ent; ++i) {
 		mempool* mp;
-		const cause::type r = create_shared(sizes[i], &mp);
+
+		cause::type r = create_shared(size, &mp);
+		if (is_fail(r))
+			return r;
+
+		mp->inc_shared_count();
+
+		r = create_shared(size + size / 2, &mp);
 		if (is_fail(r))
 			return r;
 
@@ -429,5 +452,11 @@ cause::type mempool_init()
 		return r;
 
 	return cause::OK;
+}
+
+/// @pre mem_io_setup() completed.
+cause::type mempool_post_setup()
+{
+	return global_vars::core.mempool_ctl_obj->post_setup();
 }
 

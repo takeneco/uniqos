@@ -1,6 +1,6 @@
 /// @file  setup.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_SETUP_HH_
@@ -10,6 +10,7 @@
 
 
 cause::type mempool_init();
+cause::type mempool_post_setup();
 cause::type log_init();
 cause::type mem_io_setup();
 cause::type intr_setup();

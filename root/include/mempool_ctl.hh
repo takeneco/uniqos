@@ -1,6 +1,6 @@
 /// @file   mempool_ctl.hh
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMPOOL_CTL_HH_
@@ -13,9 +13,11 @@
 class mempool_ctl
 {
 	friend cause::type mempool_init();
+	friend cause::type mempool_post_setup();
 
 	mempool_ctl(mempool* _mempool_mp, mempool* _node_mp, mempool* _own_mp);
 	cause::type init();
+	cause::type post_setup();
 
 	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
 
