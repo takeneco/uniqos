@@ -1,6 +1,6 @@
 # architecture independent kernel codes.
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 
@@ -11,6 +11,7 @@ kern_sources = [
     'ctype.cc',
     'intr_ctl.cc',
     'io_node.cc',
+    'irq_src.cc',
     'kern_log.cc',
     'log_target.cc',
     'mem_io.cc',
