@@ -17,12 +17,15 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <spinlock.hh>
 #include <arch.hh>
-#include <irq_src.hh>
+#include <cpu_ctl.hh>
+#include <global_vars.hh>
 #include <mempool.hh>
+#include <mpspec.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
+#include <pic_dev.hh>
+#include <spinlock.hh>
 
 
 void lapic_eoi();
@@ -36,8 +39,8 @@ class ioapic : public pic_device
 	struct memmapped_regs;
 
 public:
-	ioapic(operations* _ops, uptr reg_padr) :
-		pic_device(_ops),
+	ioapic(class_info* _info, uptr reg_padr) :
+		pic_device(_info),
 		regs(static_cast<memmapped_regs*>(
 		    arch::map_phys_adr(reg_padr, sizeof (memmapped_regs))))
 	{}
@@ -95,16 +98,27 @@ void ioapic::write_reg(u32 sel, u32 data)
 	reg_lock.unlock();
 }
 
-}  // namespace
-
-#include <cpu_ctl.hh>
-#include <mpspec.hh>
-#include <global_vars.hh>
-#include <irq_ctl.hh>
-
-cause::type ioapic_setup()
+cause::type gen_class_info(pic_device::class_info** info)
 {
-	// search APIC
+	auto i = new
+	    (mem_alloc(sizeof (pic_device::class_info)))
+	    pic_device::class_info;
+	if (!i)
+		return cause::NOMEM;
+
+	i->ops.init();
+	i->ops.enable = pic_device::call_on_pic_device_enable<ioapic>;
+	i->ops.disable = pic_device::call_on_pic_device_disable<ioapic>;
+	i->ops.eoi = pic_device::call_on_pic_device_eoi<ioapic>;
+
+	*info = i;
+
+	return cause::OK;
+}
+
+/// @brief mpspec から I/O APIC を検出する。
+cause::type detect_by_mpspec(uptr* ioapic_map_padr)
+{
 	const mpspec* mps = global_vars::arch.cpu_ctl_common_obj->get_mpspec();
 	mpspec::ioapic_iterator itr(mps);
 
@@ -114,26 +128,47 @@ cause::type ioapic_setup()
 		return cause::NOT_FOUND;
 	}
 
-	// create pic_device::operations
-	auto ops = new
-	    (mem_alloc(sizeof (pic_device::operations)))
-	    pic_device::operations;
-	if (!ops)
-		return cause::NOMEM;
+	*ioapic_map_padr = ioapic_ent->ioapic_map_padr;
 
-	ops->init();
-	ops->enable = pic_device::call_on_pic_device_enable<ioapic>;
-	ops->disable = pic_device::call_on_pic_device_disable<ioapic>;
-	ops->eoi = pic_device::call_on_pic_device_eoi<ioapic>;
+	return cause::OK;
+}
 
-	// create ioapic
+cause::type detect_ioapic(uptr* ioapic_map_padr)
+{
+	cause::type r;
+
+	r = detect_by_mpspec(ioapic_map_padr);
+	if (is_ok(r))
+		return r;
+
+	return cause::NODEV;
+}
+
+}  // namespace
+
+#include <irq_ctl.hh>
+
+cause::type ioapic_setup()
+{
+	uptr ioapic_map_padr;
+	cause::type r = detect_ioapic(&ioapic_map_padr);
+	if (is_fail(r))
+		return r;
+
+	pic_device::class_info* info;
+	r = gen_class_info(&info);
+	if (is_fail(r))
+		return r;
+
+	// create ioapic object.
 	ioapic* x = new
 	    (mem_alloc(sizeof (ioapic)))
-	    ioapic(ops, ioapic_ent->ioapic_map_padr);
-	if (!x)
+	    ioapic(info, ioapic_map_padr);
+	if (!x) {
 		return cause::NOMEM;
+	}
 
-	cause::type r = global_vars::arch.irq_ctl_obj->set_pic(x);
+	r = global_vars::arch.irq_ctl_obj->set_pic(x);
 	if (is_fail(r))
 		return r;
 
