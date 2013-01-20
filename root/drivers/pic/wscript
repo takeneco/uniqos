@@ -1,0 +1,20 @@
+#
+# (C) 2013 KATO Takeshi
+#
+
+
+ioapic_name = 'ioapic'
+
+def configure(x):
+	#if x.env['CONFIG_IOAPIC']:
+	if True:
+		x.env.append_value('KERNEL_LINK_USE', ioapic_name)
+
+def build(x):
+	if True:
+		x.objects(
+		    target   = ioapic_name,
+		    source   = 'ioapic.cc',
+		    use      = ['KERNEL'],
+		)
+

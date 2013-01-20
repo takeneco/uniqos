@@ -1,9 +1,9 @@
 #
-# (C) 2012 KATO Takeshi
+# (C) 2012-2013 KATO Takeshi
 #
 
 
-dirs = ('acpi', 'clock')
+dirs = ('acpi', 'clock', 'pic')
 
 def configure(x):
 	x.recurse(dirs)

@@ -1,7 +1,7 @@
 /// @file   message.hh
 /// @brief  kernel internal message.
 //
-// (C) 2011 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_MESSAGE_HH_
@@ -26,9 +26,6 @@ class message_with : public message
 public:
 	T data;
 };
-
-
-void post_message(message* event);
 
 
 #endif  // include guard

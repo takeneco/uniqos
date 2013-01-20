@@ -1,5 +1,5 @@
-/// @file   irq_src.cc
-/// @brief  irq source control interface.
+/// @file   pic_dev.cc
+/// @brief  PIC(Programmable Interrupt Controller) control interface.
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2013 KATO Takeshi
@@ -20,10 +20,10 @@
 #include <irq_src.hh>
 
 
-void irq_source::operations::init()
+void pic_device::operations::init()
 {
-	enable = irq_source::nofunc_irq_source_enable;
-	disable = irq_source::nofunc_irq_source_disable;
+	enable = pic_device::nofunc_pic_device_enable;
+	disable = pic_device::nofunc_pic_device_disable;
 	eoi = 0;
 }
 
