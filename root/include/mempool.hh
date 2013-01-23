@@ -30,33 +30,6 @@ class mempool
 {
 	friend class mempool_ctl;
 
-public:
-	mempool(u32 _obj_size,
-	        arch::page::TYPE ptype = arch::page::INVALID,
-	        mempool* _page_pool = 0);
-	cause::type destroy();
-
-	u32 get_obj_size() const { return obj_size; }
-	u32 get_page_objs() const { return page_objs; }
-	uptr get_total_obj_size() const { return total_obj_size; }
-	sptr get_alloc_cnt() const { return alloc_cnt.load(); }
-
-	void* alloc();
-	void* alloc(cpu_id cpuid);
-	void dealloc(void* ptr);
-	void collect_free_pages();
-
-	void inc_shared_count() { shared_count.add(1); }
-	void dec_shared_count() { shared_count.sub(1); }
-	sptr get_shared_count() const { return shared_count.load(); }
-
-	void set_obj_name(const char* name);
-
-	void dump(output_buffer& ob, uint level);
-	void dump_table(output_buffer& ob);
-
-	bichain_node<mempool>& chain_hook() { return _chain_node; }
-
 private:
 	class memobj
 	{
@@ -70,7 +43,7 @@ private:
 	{
 	public:
 		page() :
-		    alloc_cnt(0)
+			alloc_cnt(0)
 		{}
 
 		bool is_full() const {
@@ -111,6 +84,34 @@ private:
 	};
 	typedef bichain<page, &page::bichain_hook> page_bichain;
 
+public:
+	mempool(u32 _obj_size,
+	        arch::page::TYPE ptype = arch::page::INVALID,
+	        mempool* _page_pool = 0);
+	cause::type destroy();
+
+	u32 get_obj_size() const { return obj_size; }
+	u32 get_page_objs() const { return page_objs; }
+	uptr get_total_obj_size() const { return total_obj_size; }
+	sptr get_alloc_cnt() const { return alloc_cnt.load(); }
+
+	void* alloc();
+	void* alloc(cpu_id cpuid);
+	void dealloc(void* ptr);
+	void collect_free_pages();
+
+	void inc_shared_count() { shared_count.add(1); }
+	void dec_shared_count() { shared_count.sub(1); }
+	sptr get_shared_count() const { return shared_count.load(); }
+
+	void set_obj_name(const char* name);
+
+	void dump(output_buffer& ob, uint level);
+	void dump_table(output_buffer& ob);
+
+	bichain_node<mempool>& chain_hook() { return _chain_node; }
+
+private:
 	class node
 	{
 		friend class mempool_ctl;
@@ -119,10 +120,11 @@ private:
 		void dealloc(void* ptr);
 
 		void supply_page(page* new_page);
+		void collect_free_pages(mempool* owner);
 
 	private:
 		void include_dirty_page(page* page);
-		void back_to_page(memobj* obj, mempool* page_deleter);
+		void back_to_page(memobj* obj, mempool* owner);
 
 	private:
 		sptr alloc_cnt;

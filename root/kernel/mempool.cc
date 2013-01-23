@@ -105,6 +105,7 @@ void mempool::dealloc(void* ptr)
 
 void mempool::collect_free_pages()
 {
+	/*
 	const sptr SAVE_FREEOBJS = 64;
 
 	const sptr n = freeobj_cnt.load() - SAVE_FREEOBJS;
@@ -113,6 +114,13 @@ void mempool::collect_free_pages()
 		back_to_page(obj);
 		freeobj_cnt.sub(1);
 	}
+	*/
+
+	preempt_disable_section _pds;
+
+	const cpu_id cpuid = arch::get_cpu_id();
+
+	mempool_nodes[cpuid]->collect_free_pages(this);
 }
 
 void mempool::set_obj_name(const char* name)
@@ -201,6 +209,18 @@ void mempool::node::supply_page(page* new_page)
 	free_pages.insert_head(new_page);
 }
 
+void mempool::node::collect_free_pages(mempool* owner)
+{
+	const sptr SAVE_FREEOBJS = 64;
+
+	const sptr n = freeobj_cnt - SAVE_FREEOBJS;
+	for (sptr i = 0; i < n; ++i) {
+		memobj* obj = free_objs.remove_head();
+		back_to_page(obj, owner);
+		freeobj_cnt -= 1;
+	}
+}
+
 void mempool::node::include_dirty_page(page* page)
 {
 	if (page->is_full())
@@ -233,7 +253,7 @@ void mempool::node::back_to_page(memobj* obj, mempool* owner)
 		}
 	}
 
-	log()("!!!FAULT:")(__func__)("() no matched page: obj:")(obj)();
+	log()("!!!!")(SRCPOS)("() no matched page: obj:")(obj)();
 }
 
 arch::page::TYPE mempool::auto_page_type(u32 objsize)
@@ -270,6 +290,11 @@ void* mempool::_alloc(cpu_id cpuid)
 		nd->supply_page(pg);
 
 		r = nd->alloc();
+
+#if CONFIG_DEBUG_VALIDATE
+		if (!r)
+			log()(SRCPOS)(" ?? ABNORMAL PATH");
+#endif  // CONFIG_DEBUG_VALIDATE
 	}
 
 	if (r)
@@ -336,7 +361,7 @@ void mempool::delete_page(page* pg)
 		const cause::type r = page_dealloc(
 		    page_type, arch::unmap_phys_adr(pg, page_size));
 		if (is_fail(r)) {
-			log()(__func__)("() failed page free:").u(r)
+			log()(SRCPOS)("() failed page free:").u(r)
 			     (" page:")(pg)();
 		}
 	}
@@ -439,12 +464,13 @@ void mempool::page::init(const mempool& pool)
 	}
 }
 
+
 void* operator new (uptr size, mempool* mp) throw()
 {
 #if CONFIG_DEBUG_VALIDATE >= 1
 	if (size > mp->get_obj_size()) {
 		log()(SRCPOS)
-		    ("new object size is over the mempool object size.")
+		    ("!!!!new object size is over the mempool object size.")
 		    ("\nnew object size:").u(size)
 		    (", mempool object size:").u(mp->get_obj_size())();
 		return 0;
