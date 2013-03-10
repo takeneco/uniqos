@@ -25,8 +25,14 @@ def load_config(x, cf):
 	# 0:nopreemption kernel / 1:preemption kernel
 	def_config(x, cf, 'PREEMPT', 1)
 
+	# tick frequency
+	def_config(x, cf, 'TICK_HZ', 1000000000)
+
 	# 0:disable / 1:enable ACPI.
 	def_config(x, cf, 'ACPI', 0)
+
+	# 0:disable / 1:enable APIC.
+	def_config(x, cf, 'APIC', None)
 
 	# 0:disable / 1:enable HPET.
 	def_config(x, cf, 'HPET', 0)
