@@ -1,14 +1,19 @@
 /// @file  hpet.cc
-/// @brief HPET timer.
+/// @brief HPET timer driver.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #include <arch.hh>
 #include <clock_src.hh>
 #include <config.h>
+#include <cpu_node.hh>
+#include <global_vars.hh>
+#include <intr_ctl.hh>
+#include <irq_ctl.hh>
 #include <log.hh>
 #include <mempool.hh>
+#include <message.hh>
 #include "mpspec.hh"
 #include <native_ops.hh>
 #include <new_ops.hh>
@@ -19,6 +24,12 @@
 
 
 namespace {
+
+enum
+{
+	DEFAULT_HPET_VEC_0 = 0x5c,
+	DEFAULT_HPET_VEC_1 = 0x5d,
+};
 
 enum timer_index
 {
@@ -92,7 +103,8 @@ struct hpet_regs
 	/// set time on nonperiodicmode
 	/// @param  usecs  specify micro secs.
 	u64 set_oneshot_time(timer_index i, u64 usecs) {
-		const u64 time = counter + usecs_to_cnt(usecs);
+		//const u64 time = counter + usecs_to_cnt(usecs);
+		const u64 time = usecs;
 		timer[i].comparator = time;
 		return time;
 	}
@@ -111,14 +123,21 @@ public:
 #endif  // CONFIG_ACPI
 
 	cause::type setup();
+	void handler1();
 
 private:
+	cause::type setup_ops();
+	cause::type setup_intr();
+
 	cause::type on_clock_source_get_tick(tick_time* tick);
+	cause::type on_clock_source_SetTimer(tick_time clock, message* msg);
 
 private:
 	hpet_regs* const regs;
 
 	u16  minimum_clock_tick_in_periodic;
+
+	message* msg1;
 };
 
 #if CONFIG_ACPI
@@ -152,6 +171,79 @@ cause::type hpet_detect_acpi(hpet** dev)
 
 cause::type hpet::setup()
 {
+	cause::type r = setup_ops();
+	if (is_fail(r))
+		return r;
+
+	r = setup_intr();
+	if (is_fail(r))
+		return r;
+
+	regs->disable();
+	regs->counter = 0;
+	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
+	regs->enable_legrep();
+
+	regs->set_nonperiodic_timer(TIMER_1, 0);
+
+	return cause::OK;
+}
+
+namespace {
+
+void _msg(message*)
+{
+	log()("X");
+}
+
+message msg;
+void _handler(intr_handler* h)
+{
+	msg.handler = _msg;
+
+	cpu_node* cpu = get_cpu_node();
+	cpu->post_intr_message(&msg);
+
+	cpu->switch_messenger_after_intr();
+}
+
+void _handler1(intr_handler* h)
+{
+	auto hh = static_cast<intr_handler_with<hpet*>*>(h);
+	hh->data->handler1();
+}
+
+}
+
+void hpet::handler1()
+{
+	cpu_node* cpu = get_cpu_node();
+	cpu->post_intr_message(msg1);
+
+	cpu->switch_messenger_after_intr();
+}
+
+cause::type hpet::setup_intr()
+{
+	auto h = new (mem_alloc(sizeof (intr_handler_with<hpet*>)))
+	    intr_handler_with<hpet*>(_handler, this);
+	u32 vec;
+	arch::irq_interrupt_map(2, &vec);
+
+	global_vars::core.intr_ctl_obj->install_handler(vec, h);
+
+
+	h = new (mem_alloc(sizeof (intr_handler_with<hpet*>)))
+	    intr_handler_with<hpet*>(_handler1, this);
+	arch::irq_interrupt_map(8, &vec);
+
+	global_vars::core.intr_ctl_obj->install_handler(vec, h);
+
+	return cause::OK;
+}
+
+cause::type hpet::setup_ops()
+{
 	operations* _ops = new (mem_alloc(sizeof (operations))) operations;
 	if (!_ops)
 		return cause::NOMEM;
@@ -160,12 +252,9 @@ cause::type hpet::setup()
 
 	_ops->get_tick = clock_source::call_on_clock_source_get_tick<hpet>;
 
-	clock_source::ops = _ops;
+	_ops->SetTimer = clock_source::call_on_clock_source_SetTimer<hpet>;
 
-	regs->disable();
-	regs->counter = 0;
-	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
-	regs->enable_legrep();
+	clock_source::ops = _ops;
 
 	return cause::OK;
 }
@@ -175,6 +264,16 @@ cause::type hpet::on_clock_source_get_tick(tick_time* tick)
 	*tick = regs->counter;
 
 	return cause::OK;
+}
+
+cause::type hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
+{
+	msg1 = msg;
+	regs->set_oneshot_time(TIMER_1, clock);
+
+	return cause::OK;
+
+	// TODO:clock を過ぎていたら何か返す。
 }
 
 cause::type hpet_detect(hpet** dev)
