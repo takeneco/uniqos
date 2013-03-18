@@ -1,7 +1,7 @@
 /// @file  chain.hh
 /// @brief Link list structure.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef CHAIN_HH_
@@ -48,7 +48,12 @@ class chain_side_
 	DATA* front;
 
 public:
-	chain_side_() : front(0) {}
+	chain_side_() :
+		front(0)
+	{}
+	chain_side_(const chain_side_<DATA>& side) :
+		front(side.front)
+	{}
 
 	void set_front(DATA* p) { front = p; }
 	void set_back(DATA*) { /* nothing */ }
@@ -64,7 +69,14 @@ class dechain_side_ : public chain_side_<DATA>
 	DATA* back;
 
 public:
-	dechain_side_() : chain_side_<DATA>(), back(0) {}
+	dechain_side_() :
+		chain_side_<DATA>(),
+		back(0)
+	{}
+	dechain_side_(dechain_side_<DATA>& side) :
+		chain_side_<DATA>(side),
+		back(side.back)
+	{}
 
 	void set_back(DATA* p) { back = p; }
 	const DATA* get_back() const { return back; }
@@ -119,7 +131,12 @@ public:
 		}
 	};
 
-	chain_impl_() : side() {}
+	chain_impl_() :
+		side()
+	{}
+	chain_impl_(chain_impl_<DATA, LINK_TYPE, SIDE, LINK>& from) :
+		side(from.side)
+	{}
 
 	// 1end 2end & dir, bidir
 	const DATA* head() const { return side.get_front(); }
@@ -142,6 +159,11 @@ public:
 	bool is_empty() const { return side.get_front() == 0; }
 
 	bool empty() const { return side.get_front() == 0; }
+
+	void copy(chain_impl_<DATA, LINK_TYPE, SIDE, LINK> from) {
+		side.set_front(from.get_front());
+		side.set_back(from.get_back());
+	}
 
 	// 1end, 2end & bidir
 	static const DATA* prev(const DATA* p) {
