@@ -1,7 +1,7 @@
 /// @file  basic_defs.hh
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -75,28 +75,28 @@ template<class TYPE>
 class cycle_scalar
 {
 	typedef cycle_scalar<TYPE> own_t;
-	typedef signed_of<TYPE> STYPE;
+	typedef typename signed_of<TYPE>::t STYPE;
 
 public:
 	cycle_scalar() {}
 	cycle_scalar(const own_t& x) : val(x.val) {}
-	cycle_scalar(TYPE x) : val(x) {}
+	explicit cycle_scalar(TYPE x) : val(x) {}
 
 	/// less than
 	bool is_lt(const own_t& x) const {
-		return static_cast<STYPE>(val) - static_cast<STYPE>(x) < 0;
+		return static_cast<STYPE>(val) - static_cast<STYPE>(x.val) < 0;
 	}
 	/// less equal
 	bool is_le(const own_t& x) const {
-		return static_cast<STYPE>(val) - static_cast<STYPE>(x) <= 0;
+		return static_cast<STYPE>(val) - static_cast<STYPE>(x.val) <= 0;
 	}
 	/// greater than
 	bool is_gt(const own_t& x) const {
-		return static_cast<STYPE>(val) - static_cast<STYPE>(x) > 0;
+		return static_cast<STYPE>(val) - static_cast<STYPE>(x.val) > 0;
 	}
 	/// greater equal
 	bool is_ge(const own_t& x) const {
-		return static_cast<STYPE>(val) - static_cast<STYPE>(x) >= 0;
+		return static_cast<STYPE>(val) - static_cast<STYPE>(x.val) >= 0;
 	}
 
 	own_t& operator = (const own_t& x) {
@@ -106,6 +106,12 @@ public:
 	own_t& operator = (TYPE x) {
 		val = x;
 		return *this;
+	}
+	own_t operator + (const own_t& x) {
+		return own_t(val + x.val);
+	}
+	own_t operator + (TYPE x) {
+		return own_t(val + x);
 	}
 	bool operator < (const own_t& x) const {
 		return is_lt(x);

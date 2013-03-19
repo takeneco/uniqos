@@ -1,7 +1,7 @@
 /// @file  basic_types.hh
 /// @brief 共通で使う型・関数など。
 //
-// (C) 2008-2012 KATO Takeshi
+// (C) 2008-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_BASIC_TYPES_HH_
@@ -364,6 +364,8 @@ namespace cause
 		BADARG = 3,
 		/// 範囲外。
 		OUTOFRANGE =4,
+		/// デバイスが無い。
+		NODEV = 10,
 
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,
@@ -374,6 +376,7 @@ namespace cause
 		NOFUNC,
 		UNKNOWN = 1000,
 	};
+	typedef type t;
 
 	typedef type stype;
 	typedef u32 ftype;
@@ -389,14 +392,21 @@ namespace cause
 			r(FAIL),
 			value(T())
 		{}
-		pair(cause::type _r, T _value) :
+		pair(type _r, T _value) :
 			r(_r),
 			value(_value)
 		{}
 
-		cause::type r;      ///< Result.
-		T           value;  ///< Additional result value.
+		type r;      ///< Result.
+		T    value;  ///< Additional result value.
 	};
+
+	template<class T> inline bool is_ok(pair<T> x) {
+		return is_ok(x.r);
+	}
+	template<class T> inline bool is_fail(pair<T> x) {
+		return is_fail(x.r);
+	}
 }
 
 /// @brief アドレス範囲
