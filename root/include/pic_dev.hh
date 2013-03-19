@@ -35,7 +35,12 @@ public:
 		eoi_op eoi;
 	};
 
-	pic_device(operations* _ops) : ops(_ops) {}
+	struct class_info
+	{
+		operations ops;
+	};
+
+	pic_device(class_info* _info) : info(_info) {}
 
 	// enable
 	template<class T> static cause::type call_on_pic_device_enable(
@@ -67,7 +72,7 @@ public:
 	}
 
 private:
-	operations* ops;
+	class_info* info;
 };
 
 
