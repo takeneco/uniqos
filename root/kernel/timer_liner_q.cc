@@ -1,4 +1,5 @@
-/// @file   timer_lner_q.cc
+/// @file   timer_liner_q.cc
+/// @brief  タイマメッセージ用の線形キュー
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2013 KATO Takeshi
@@ -34,8 +35,8 @@ cause::type timer_liner_queue::setup()
 
 	ops.init();
 
-	ops.Insert =
-	    timer_queue::call_on_timer_queue_Insert<timer_liner_queue>;
+	ops.Set =
+	    timer_queue::call_on_timer_queue_Set<timer_liner_queue>;
 	ops.NextClock =
 	    timer_queue::call_on_timer_queue_NextClock<timer_liner_queue>;
 	ops.Post =
@@ -53,25 +54,23 @@ timer_liner_queue::timer_liner_queue()
 /// @retval false メッセージがキューの先頭以外の場所に入った。
 //
 /// 戻り値が true の場合は、タイマの再設定が必要。
-bool timer_liner_queue::on_timer_queue_Insert(timer_message* new_msg)
+bool timer_liner_queue::on_timer_queue_Set(timer_message* new_msg)
 {
-	const tick_time clk = new_msg->expires_clock;
+	const tick_time new_msg_clk = new_msg->expires_clock;
 
 	auto msg = msg_chain.front();
-
-	if (!msg || clk < msg->expires_clock) {
-		msg_chain.push_front(new_msg);
-		return true;
-	}
-	for (;;) {
-		auto msg2 = msg_chain.next(msg);
-		if (!msg2 || clk < msg2->expires_clock)
+	for (; msg; msg = msg_chain.next(msg)) {
+		if (new_msg_clk < msg->expires_clock)
 			break;
-		msg = msg2;
 	}
 
-	msg_chain.insert_next(msg, new_msg);
-	return false;
+	if (msg) {
+		msg_chain.insert_before(msg, new_msg);
+	} else {
+		msg_chain.push_back(new_msg);
+	}
+
+	return msg_chain.front() == new_msg;
 }
 
 cause::pair<tick_time> timer_liner_queue::on_timer_queue_NextClock()
@@ -82,7 +81,7 @@ cause::pair<tick_time> timer_liner_queue::on_timer_queue_NextClock()
 		return cause::pair<tick_time>(
 		    cause::OK, next_msg->expires_clock);
 	} else {
-		return cause::pair<tick_time>(cause::FAIL, 0);
+		return cause::pair<tick_time>(cause::FAIL, tick_time(0));
 	}
 }
 
@@ -90,9 +89,17 @@ cause::type timer_liner_queue::on_timer_queue_Post(tick_time clock)
 {
 	cpu_node* cpu = get_cpu_node();
 
-	for (auto msg = msg_chain.front(); msg; msg = msg_chain.next(msg)) {
-		if (msg->expires_clock < clock)
+	auto msg = msg_chain.front();
+
+	while (msg) {
+		auto next = msg_chain.next(msg);
+
+		if (msg->expires_clock < clock) {
+			msg_chain.remove(msg);
 			cpu->post_soft_message(msg);
+		}
+
+		msg = next;
 	}
 
 	return cause::OK;

@@ -1,4 +1,5 @@
-/// @file  timer_liner_q.hh
+/// @file   timer_liner_q.hh
+/// @brief  タイマメッセージ用の線形キュー
 //
 // (C) 2013 KATO Takeshi
 //
@@ -16,14 +17,14 @@ public:
 
 	timer_liner_queue();
 
-	bool on_timer_queue_Insert(timer_message* new_msg);
+	bool on_timer_queue_Set(timer_message* new_msg);
 
 	cause::pair<tick_time> on_timer_queue_NextClock();
 
 	cause::type on_timer_queue_Post(tick_time clock);
 
 private:
-	typedef bochain<timer_message, &timer_message::chain_hook>
+	typedef bibochain<timer_message, &timer_message::chain_hook>
 	    message_chain;
 
 	message_chain msg_chain;

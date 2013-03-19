@@ -1,6 +1,6 @@
 /// @file  clock_src.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_CLOCK_SRC_HH_
@@ -9,7 +9,9 @@
 #include <basic.hh>
 
 
-typedef cycle_scalar<u64> tick_time;
+class message;
+typedef u64 tick_int;
+typedef cycle_scalar<tick_int> tick_time;
 
 class clock_source
 {
@@ -20,19 +22,49 @@ protected:
 	{
 		void init();
 
-		typedef cause::type (*get_tick_op)(
-		    clock_source* x, tick_time* tick);
-		get_tick_op get_tick;
+		typedef cause::pair<tick_time> (*UpdateClockOP)(
+		    clock_source* x);
+		UpdateClockOP UpdateClock;
+
+		typedef cause::type (*SetTimerOP)(
+		    clock_source* x, tick_time clock, message* msg);
+		SetTimerOP SetTimer;
+
+		typedef cause::pair<u64> (*ClockToNanosecOP)(
+		    clock_source* x, u64 clock);
+		ClockToNanosecOP ClockToNanosec;
+
+		typedef cause::pair<u64> (*NanosecToClockOP)(
+		    clock_source* x, u64 nanosec);
+		NanosecToClockOP NanosecToClock;
 	};
 
-	template<class T> static cause::type call_on_clock_source_get_tick(
-	    clock_source* x, tick_time* tick) {
+	template<class T> static cause::pair<tick_time>
+	call_on_clock_source_UpdateClock(
+	    clock_source* x) {
 		return static_cast<T*>(x)->
-		    on_clock_source_get_tick(tick);
+		    on_clock_source_UpdateClock();
 	}
-	static cause::type nofunc_clock_source_get_tick(
-	    clock_source*, tick_time*) {
-		return cause::NOFUNC;
+
+	template<class T> static cause::type
+	call_on_clock_source_SetTimer(
+	    clock_source* x, tick_time clock, message* msg) {
+		return static_cast<T*>(x)->
+		    on_clock_source_SetTimer(clock, msg);
+	}
+
+	template<class T> static cause::pair<u64>
+	call_on_clock_source_ClockToNanosec(
+	    clock_source* x, u64 clock) {
+		return static_cast<T*>(x)->
+		    on_clock_source_ClockToNanosec(clock);
+	}
+
+	template<class T> static cause::pair<u64>
+	call_on_clock_source_NanosecToClock(
+	    clock_source* x, u64 tick) {
+		return static_cast<T*>(x)->
+		    on_clock_source_NanosecToClock(tick);
 	}
 
 protected:
@@ -40,12 +72,26 @@ protected:
 	clock_source(const operations* _ops) : ops(_ops) {}
 
 public:
-	cause::type get_tick(tick_time* tick) {
-		return ops->get_tick(this, tick);
+	tick_time get_latest_clock() const {
+		return LatestClock;
+	}
+	cause::pair<tick_time> update_clock() {
+		return ops->UpdateClock(this);
+	}
+	cause::type set_timer(tick_time clock, message* msg) {
+		return ops->SetTimer(this, clock, msg);
+	}
+	cause::pair<u64> clock_to_nanosec(u64 clock) {
+		return ops->ClockToNanosec(this, clock);
+	}
+	cause::pair<u64> nanosec_to_clock(u64 nanosec) {
+		return ops->NanosecToClock(this, nanosec);
 	}
 
 protected:
 	const operations* ops;
+
+	tick_time LatestClock;
 };
 
 
