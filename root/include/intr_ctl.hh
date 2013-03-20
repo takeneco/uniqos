@@ -33,6 +33,16 @@ template <class T>
 class intr_handler_with : public intr_handler
 {
 public:
+	intr_handler_with()
+	{}
+	explicit intr_handler_with(handler_type _handler) :
+		intr_handler(_handler)
+	{}
+	intr_handler_with(handler_type _handler, T _data) :
+		intr_handler(_handler),
+		data(_data)
+	{}
+
 	T data;
 };
 
