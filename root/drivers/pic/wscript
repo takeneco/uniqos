@@ -6,12 +6,11 @@
 ioapic_name = 'ioapic'
 
 def configure(x):
-	#if x.env['CONFIG_IOAPIC']:
-	if True:
+	if x.env['CONFIG_APIC']:
 		x.env.append_value('KERNEL_LINK_USE', ioapic_name)
 
 def build(x):
-	if True:
+	if x.env['CONFIG_APIC']:
 		x.objects(
 		    target   = ioapic_name,
 		    source   = 'ioapic.cc',
