@@ -203,13 +203,17 @@ void acpi_walk()
 	    &ReturnValue);
 
 	log()("\nAcpiGetTable: APIC")();
-	ACPI_TABLE_MADT* madt_table;
-	r = AcpiGetTable(ACPI_SIG_MADT, 0, reinterpret_cast<ACPI_TABLE_HEADER**>(&madt_table));
-	if (ACPI_FAILURE(r))
-		log()("table:fail(").u(r)(")")();
-	log()("madt_table=")(madt_table)();
-	log()("Address=").x(madt_table->Address)();
-
+	for (int i = 0; ; ++i) {
+		ACPI_TABLE_MADT* madt_table;
+		r = AcpiGetTable(ACPI_SIG_MADT, i,
+		    reinterpret_cast<ACPI_TABLE_HEADER**>(&madt_table));
+		if (ACPI_FAILURE(r)) {
+			log()("table:fail(").u(r)(")")();
+			break;
+		}
+		log()("i=").u(i)(" madt_table=")(madt_table)();
+		log()("i=").u(i)(" Address=").x(madt_table->Address)();
+	}
 
 	log()("\nAcpiGetTable: HPET")();
 	ACPI_TABLE_HPET* hpet_table;
