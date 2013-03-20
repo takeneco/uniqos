@@ -128,13 +128,17 @@ public:
 private:
 	cause::type setup_ops();
 	cause::type setup_intr();
+	u64 get_clock();
 
-	cause::type on_clock_source_get_tick(tick_time* tick);
+	cause::pair<tick_time> on_clock_source_UpdateClock();
 	cause::type on_clock_source_SetTimer(tick_time clock, message* msg);
+	cause::pair<u64> on_clock_source_ClockToNanosec(u64 clock);
+	cause::pair<u64> on_clock_source_NanosecToClock(u64 nanosec);
 
 private:
 	hpet_regs* const regs;
 
+	u64  clock_period;  ///< Frequency = 10^15 / clock_period
 	u16  minimum_clock_tick_in_periodic;
 
 	message* msg1;
@@ -179,6 +183,8 @@ cause::type hpet::setup()
 	if (is_fail(r))
 		return r;
 
+	clock_period = regs->caps_h32;
+
 	regs->disable();
 	regs->counter = 0;
 	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
@@ -217,10 +223,11 @@ void _handler1(intr_handler* h)
 
 void hpet::handler1()
 {
-	cpu_node* cpu = get_cpu_node();
-	cpu->post_intr_message(msg1);
-
-	cpu->switch_messenger_after_intr();
+	if (msg1) {
+		cpu_node* cpu = get_cpu_node();
+		cpu->post_intr_message(msg1);
+		cpu->switch_messenger_after_intr();
+	}
 }
 
 cause::type hpet::setup_intr()
@@ -250,20 +257,30 @@ cause::type hpet::setup_ops()
 
 	_ops->init();
 
-	_ops->get_tick = clock_source::call_on_clock_source_get_tick<hpet>;
-
-	_ops->SetTimer = clock_source::call_on_clock_source_SetTimer<hpet>;
+	_ops->UpdateClock =
+	    clock_source::call_on_clock_source_UpdateClock<hpet>;
+	_ops->SetTimer =
+	    clock_source::call_on_clock_source_SetTimer<hpet>;
+	_ops->ClockToNanosec =
+	    clock_source::call_on_clock_source_ClockToNanosec<hpet>;
+	_ops->NanosecToClock =
+	    clock_source::call_on_clock_source_NanosecToClock<hpet>;
 
 	clock_source::ops = _ops;
 
 	return cause::OK;
 }
 
-cause::type hpet::on_clock_source_get_tick(tick_time* tick)
+u64 hpet::get_clock()
 {
-	*tick = regs->counter;
+	return regs->counter;
+}
 
-	return cause::OK;
+cause::pair<tick_time> hpet::on_clock_source_UpdateClock()
+{
+	LatestClock = get_clock();
+
+	return cause::pair<tick_time>(cause::OK, LatestClock);
 }
 
 cause::type hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
@@ -271,9 +288,30 @@ cause::type hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
 	msg1 = msg;
 	regs->set_oneshot_time(TIMER_1, clock);
 
-	return cause::OK;
+	tick_time now(get_clock());
+	if (clock < now) {
+		// clock を過ぎている
+		msg1 = 0;
+		return cause::OUTOFRANGE;
+	}
 
-	// TODO:clock を過ぎていたら何か返す。
+	return cause::OK;
+}
+
+cause::pair<u64> hpet::on_clock_source_ClockToNanosec(u64 clock)
+{
+	const u64 nanosec =
+	    clock_period * clock / (1000000000000000 / 1000000000);
+
+	return cause::pair<u64>(cause::OK, nanosec);
+}
+
+cause::pair<u64> hpet::on_clock_source_NanosecToClock(u64 nanosec)
+{
+	const u64 clock =
+	    (1000000000000000 / 1000000000) * nanosec / (clock_period);
+
+	return cause::pair<u64>(cause::OK, clock);
 }
 
 cause::type hpet_detect(hpet** dev)
