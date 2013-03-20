@@ -1,2 +1,18 @@
-0000 - 0020  CPUが予約済み
-0021
+割込みベクタのマップ元
+======================
+
+[cols="m,m,m,",frame="topbot",options="autowidth,header"]
+|====
+|vector| irq | keyword | device
+|0x00-0x20|-|-| Reserved by CPU
+
+| 0x5e | 2 | DEFAULT_HPET_VEC_0 | HPET Timer 0
+
+| 0x5f | 8 | DEFAULT_HPET_VEC_1 | HPET Timer 1
+
+| 0x40 | 4 | | COM1
+
+| 0x41 | 3 | | COM2
+
+|====
+
