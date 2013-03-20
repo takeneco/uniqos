@@ -56,7 +56,7 @@ void _on_timer_message(message* msg)
 
 }  // namespace
 
-void timer_queue::operations::init()
+void timer_store::operations::init()
 {
 	Set = 0;
 	NextClock = 0;
@@ -78,9 +78,9 @@ void timer_ctl::set_clock_source(clock_source* cs)
 	auto r = clk_src->update_clock();
 }
 
-void timer_ctl::set_queue(timer_queue* tq)
+void timer_ctl::set_store(timer_store* tq)
 {
-	queue = tq;
+	store = tq;
 }
 
 cause::type timer_ctl::get_jiffy_tick(tick_time* tick)
@@ -127,9 +127,9 @@ void timer_ctl::on_timer_message()
 	for (;;) {
 		tick_time now_clock = clk_src->get_latest_clock(); 
 
-		queue->post(now_clock);
+		store->post(now_clock);
 
-		auto next_clock = queue->next_clock();
+		auto next_clock = store->next_clock();
 		if (is_ok(next_clock)) {
 			const cause::type r =
 			    clk_src->set_timer(next_clock.value, &timer_msg);
@@ -149,7 +149,7 @@ void timer_ctl::on_timer_message()
 /// ロックしない。
 cause::type timer_ctl::_set_timer(timer_message* msg, tick_time now_clock)
 {
-	if (queue->set(msg)) {
+	if (store->set(msg)) {
 		return clk_src->set_timer(msg->expires_clock, &timer_msg);
 	}
 
@@ -169,10 +169,10 @@ cause::type timer_setup()
 	if (is_fail(r))
 		return r;
 
-	timer_liner_queue::setup();
+	timer_liner_store::setup();
 
-	timer_queue* liner_q =
-	    new (mem_alloc(sizeof (timer_liner_queue))) timer_liner_queue;
+	timer_store* liner_q =
+	    new (mem_alloc(sizeof (timer_liner_store))) timer_liner_store;
 	if (!liner_q)
 		return cause::NOMEM;
 
@@ -181,7 +181,7 @@ cause::type timer_setup()
 		return cause::NOMEM;
 
 	tc->set_clock_source(clksrc);
-	tc->set_queue(liner_q);
+	tc->set_store(liner_q);
 
 	global_vars::core.timer_ctl_obj = tc;
 

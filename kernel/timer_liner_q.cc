@@ -24,37 +24,37 @@
 
 namespace {
 
-timer_queue::operations timer_liner_q_ops;
+timer_store::operations timer_liner_store_ops;
 
 }  // namespace
 
 
-cause::type timer_liner_queue::setup()
+cause::type timer_liner_store::setup()
 {
-	timer_queue::operations& ops = timer_liner_q_ops;
+	timer_store::operations& ops = timer_liner_store_ops;
 
 	ops.init();
 
 	ops.Set =
-	    timer_queue::call_on_timer_queue_Set<timer_liner_queue>;
+	    timer_store::call_on_timer_store_Set<timer_liner_store>;
 	ops.NextClock =
-	    timer_queue::call_on_timer_queue_NextClock<timer_liner_queue>;
+	    timer_store::call_on_timer_store_NextClock<timer_liner_store>;
 	ops.Post =
-	    timer_queue::call_on_timer_queue_Post<timer_liner_queue>;
+	    timer_store::call_on_timer_store_Post<timer_liner_store>;
 
 	return cause::OK;
 }
 
-timer_liner_queue::timer_liner_queue()
+timer_liner_store::timer_liner_store()
 {
-	ops = &timer_liner_q_ops;
+	ops = &timer_liner_store_ops;
 }
 
 /// @retval true メッセージがキューの先頭に入った。
 /// @retval false メッセージがキューの先頭以外の場所に入った。
 //
 /// 戻り値が true の場合は、タイマの再設定が必要。
-bool timer_liner_queue::on_timer_queue_Set(timer_message* new_msg)
+bool timer_liner_store::on_timer_store_Set(timer_message* new_msg)
 {
 	const tick_time new_msg_clk = new_msg->expires_clock;
 
@@ -73,7 +73,7 @@ bool timer_liner_queue::on_timer_queue_Set(timer_message* new_msg)
 	return msg_chain.front() == new_msg;
 }
 
-cause::pair<tick_time> timer_liner_queue::on_timer_queue_NextClock()
+cause::pair<tick_time> timer_liner_store::on_timer_store_NextClock()
 {
 	auto next_msg = msg_chain.front();
 
@@ -85,7 +85,7 @@ cause::pair<tick_time> timer_liner_queue::on_timer_queue_NextClock()
 	}
 }
 
-cause::type timer_liner_queue::on_timer_queue_Post(tick_time clock)
+cause::type timer_liner_store::on_timer_store_Post(tick_time clock)
 {
 	cpu_node* cpu = get_cpu_node();
 

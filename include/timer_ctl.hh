@@ -47,12 +47,12 @@ public:
 };
 
 
-class timer_queue
+class timer_store
 {
-	DISALLOW_COPY_AND_ASSIGN(timer_queue);
+	DISALLOW_COPY_AND_ASSIGN(timer_store);
 
 public:
-	timer_queue() {}
+	timer_store() {}
 
 protected:
 public: //TODO:operationsをdynamicに作ればpublicを外せる
@@ -61,31 +61,31 @@ public: //TODO:operationsをdynamicに作ればpublicを外せる
 		void init();
 
 		typedef bool (*SetOP)(
-		    timer_queue* x, timer_message* msg);
+		    timer_store* x, timer_message* msg);
 		SetOP Set;
 
 		typedef cause::pair<tick_time> (*NextClockOP)(
-		    timer_queue* x);
+		    timer_store* x);
 		NextClockOP NextClock;
 
 		typedef cause::type (*PostOP)(
-		    timer_queue* x, tick_time clock);
+		    timer_store* x, tick_time clock);
 		PostOP Post;
 	};
 
-	template<class X> static bool call_on_timer_queue_Set(
-	    timer_queue* x, timer_message* msg) {
-		return static_cast<X*>(x)->on_timer_queue_Set(msg);
+	template<class X> static bool call_on_timer_store_Set(
+	    timer_store* x, timer_message* msg) {
+		return static_cast<X*>(x)->on_timer_store_Set(msg);
 	}
 
 	template<class X> static cause::pair<tick_time>
-	call_on_timer_queue_NextClock(timer_queue* x) {
-		return static_cast<X*>(x)->on_timer_queue_NextClock();
+	call_on_timer_store_NextClock(timer_store* x) {
+		return static_cast<X*>(x)->on_timer_store_NextClock();
 	}
 
-	template<class X> static cause::type call_on_timer_queue_Post(
-	    timer_queue* x, tick_time clock) {
-		return static_cast<X*>(x)->on_timer_queue_Post(clock);
+	template<class X> static cause::type call_on_timer_store_Post(
+	    timer_store* x, tick_time clock) {
+		return static_cast<X*>(x)->on_timer_store_Post(clock);
 	}
 
 public:
@@ -113,7 +113,7 @@ public:
 	timer_ctl();
 
 	void set_clock_source(clock_source* cs);
-	void set_queue(timer_queue* tq);
+	void set_store(timer_store* tq);
 	cause::type get_jiffy_tick(tick_time* tick);
 
 private:
@@ -133,7 +133,7 @@ private:
 
 	message_with<timer_ctl*> timer_msg;
 
-	timer_queue* queue;
+	timer_store* store;
 
 public:
 	void dump(output_buffer& ob);

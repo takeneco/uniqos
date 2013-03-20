@@ -10,18 +10,18 @@
 #include <timer_ctl.hh>
 
 
-class timer_liner_queue : public timer_queue
+class timer_liner_store : public timer_store
 {
 public:
 	static cause::type setup();
 
-	timer_liner_queue();
+	timer_liner_store();
 
-	bool on_timer_queue_Set(timer_message* new_msg);
+	bool on_timer_store_Set(timer_message* new_msg);
 
-	cause::pair<tick_time> on_timer_queue_NextClock();
+	cause::pair<tick_time> on_timer_store_NextClock();
 
-	cause::type on_timer_queue_Post(tick_time clock);
+	cause::type on_timer_store_Post(tick_time clock);
 
 private:
 	typedef bibochain<timer_message, &timer_message::chain_hook>
