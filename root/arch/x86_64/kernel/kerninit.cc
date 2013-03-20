@@ -87,6 +87,16 @@ void apentry()
 	for(;;)native::hlt();
 }
 
+namespace {
+void timer_handler(message* msg)
+{
+	log()("MSG:")(msg)();
+	timer_message* tmsg = static_cast<timer_message*>(msg);
+	//tmsg->nanosec_delay = 1000000000;
+	global_vars::core.timer_ctl_obj->set_timer(tmsg);
+}
+}  // namespace
+
 text_vga vga_dev;
 extern "C" int kern_init(u64 bootinfo_adr)
 {
@@ -176,6 +186,18 @@ log(1)("  serial:")(serial)();
 	r = timer_setup();
 	if (is_fail(r))
 		return r;
+
+	const int n = 3;
+	timer_message* tmsg = new (mem_alloc(sizeof (timer_message[n]))) timer_message[n];
+
+	for (u64 i = 0; i < n; ++i) {
+		tmsg[i].nanosec_delay = (i+1) * 1000000000;
+		tmsg[i].handler = timer_handler;
+		global_vars::core.timer_ctl_obj->set_timer(&tmsg[i]);
+	}
+
+	log lg;
+	global_vars::core.timer_ctl_obj->dump(lg);
 
 	tick_time tt;
 	get_jiffy_tick(&tt);
