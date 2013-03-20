@@ -26,6 +26,7 @@ kern_sources = [
     'thread.cc',
     'thread_queue.cc',
     'timer_ctl.cc',
+    'timer_liner_q.cc',
 ]
 
 
