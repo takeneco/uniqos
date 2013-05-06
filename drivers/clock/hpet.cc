@@ -197,14 +197,24 @@ cause::type hpet::setup()
 
 namespace {
 
+u64 t;
+bool msg_posted;
 void _msg(message*)
 {
-	log()("X");
+	msg_posted=false;
+	log(2)("t=").u(t)('\n');
+	log()("t=").u(t)('\n');
+	//log()("t=").u(t)();
+	++t;
 }
 
 message msg;
-void _handler(intr_handler* h)
+void _handler0(intr_handler* h)
 {
+	if (msg_posted)
+		return;
+
+	msg_posted = true;
 	msg.handler = _msg;
 
 	cpu_node* cpu = get_cpu_node();
@@ -219,7 +229,7 @@ void _handler1(intr_handler* h)
 	hh->data->handler1();
 }
 
-}
+}  // namespace
 
 void hpet::handler1()
 {
@@ -227,13 +237,16 @@ void hpet::handler1()
 		cpu_node* cpu = get_cpu_node();
 		cpu->post_intr_message(msg1);
 		cpu->switch_messenger_after_intr();
+		msg1 = 0;
 	}
 }
 
 cause::type hpet::setup_intr()
 {
+t=0;
+msg_posted=false;
 	auto h = new (mem_alloc(sizeof (intr_handler_with<hpet*>)))
-	    intr_handler_with<hpet*>(_handler, this);
+	    intr_handler_with<hpet*>(_handler0, this);
 	u32 vec;
 	arch::irq_interrupt_map(2, &vec);
 
@@ -273,14 +286,18 @@ cause::type hpet::setup_ops()
 
 u64 hpet::get_clock()
 {
-	return regs->counter;
+	u64 r = regs->counter;
+
+	LatestClock = r;
+
+	return r;
 }
 
 cause::pair<tick_time> hpet::on_clock_source_UpdateClock()
 {
-	LatestClock = get_clock();
+	tick_time clk(get_clock());
 
-	return cause::pair<tick_time>(cause::OK, LatestClock);
+	return cause::pair<tick_time>(cause::OK, clk);
 }
 
 cause::type hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
