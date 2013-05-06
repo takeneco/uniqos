@@ -122,6 +122,7 @@ class serial_ctl : public io_node
 
 	spin_lock write_queue_lock;
 	spin_lock write_msg_lock;
+	spin_lock intr_msg_lock;
 
 	bool write_posted;
 	volatile bool intr_posted;
@@ -268,8 +269,8 @@ cause::type serial_ctl::on_io_node_write(
 		r = write_buf(off, iov_itr);
 
 		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
-			//post_write_msg();
-			transmit();
+			post_write_msg();
+			//transmit();
 	}
 
 	if (false /* sync */ && *off != before_off) {
@@ -337,6 +338,12 @@ void serial_ctl::post_write_msg()
 
 void serial_ctl::on_write_msg()
 {
+	write_msg_lock.lock_np();
+
+	write_posted = false;
+
+	write_msg_lock.unlock_np();
+
 	transmit();
 }
 
@@ -345,7 +352,6 @@ void serial_ctl::_on_write_msg(message* msg)
 	serial_msg* _msg = static_cast<serial_msg*>(msg);
 	serial_ctl* serial = _msg->data;
 
-	serial->write_posted = false;
 	serial->on_write_msg();
 }
 
@@ -353,11 +359,15 @@ void serial_ctl::post_intr_msg()
 {
 	intr_pending = true;
 
-	// TODO: exclusive
-	if (intr_posted)
-		return;
+	{
+		spin_lock_section _sls_iwl(intr_msg_lock, true);
 
-	intr_posted = true;
+		// TODO: exclusive
+		if (intr_posted)
+			return;
+
+		intr_posted = true;
+	}
 
 	cpu_node* cpu = get_cpu_node();
 	cpu->post_intr_message(&intr_msg);
@@ -367,6 +377,10 @@ void serial_ctl::post_intr_msg()
 
 void serial_ctl::on_intr_msg()
 {
+	intr_msg_lock.lock_np();
+	intr_posted = false;
+	intr_msg_lock.unlock_np();
+
 	intr_pending = false;
 
 	const u8 intr_id = native::inb(base_port + INTR_ID);
@@ -401,7 +415,6 @@ void serial_ctl::_on_intr_msg(message* msg)
 	serial_msg* _msg = static_cast<serial_msg*>(msg);
 	serial_ctl* serial = _msg->data;
 
-	serial->intr_posted = false;
 	serial->on_intr_msg();
 }
 
