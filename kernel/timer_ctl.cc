@@ -110,6 +110,7 @@ cause::type timer_ctl::set_timer(timer_message* msg)
 
 	lock.lock();
 
+	// TODO:ここでOUTOFRANGEが帰らないようにする
 	const cause::type r = _set_timer(msg, now_clk.value);
 
 	lock.unlock();
@@ -128,6 +129,8 @@ void timer_ctl::on_timer_message()
 		tick_time now_clock = clk_src->get_latest_clock(); 
 
 		store->post(now_clock);
+
+		//TODO:すでにタイマー設定済みの場合は、再設定の動作にする
 
 		auto next_clock = store->next_clock();
 		if (is_ok(next_clock)) {
@@ -150,6 +153,8 @@ void timer_ctl::on_timer_message()
 cause::type timer_ctl::_set_timer(timer_message* msg, tick_time now_clock)
 {
 	if (store->set(msg)) {
+		//TODO:すでにタイマー設定済みの場合は、再設定の動作にする
+
 		return clk_src->set_timer(msg->expires_clock, &timer_msg);
 	}
 
