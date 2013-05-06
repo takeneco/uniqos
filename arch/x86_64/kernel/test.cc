@@ -8,6 +8,7 @@
 #include <new_ops.hh>
 #include <page_pool.hh>
 #include <spinlock.hh>
+#include <timer_ctl.hh>
 
 
 void event_drive();
@@ -77,6 +78,20 @@ struct data {
 	chain_node<data>& chain_hook() { return link; }
 };
 
+typedef timer_message_with<thread*> wakeup;
+void wakeup_handler(message* msg)
+{
+	wakeup* w = (wakeup*)msg;
+
+	//w->data->ready();
+
+	thread_queue& tc = get_cpu_node()->get_thread_ctl();
+	//tc.ready_np(w->data);
+	tc.ready(w->data);
+
+	w->data = 0;
+}
+
 void mempool_test()
 {
 	obj_edge oe1("obj1");
@@ -88,6 +103,12 @@ void mempool_test()
 
 	thread_queue& tc = get_cpu_node()->get_thread_ctl();
 	thread* th = tc.get_running_thread();
+
+	wakeup wakeupme;
+	wakeupme.handler = wakeup_handler;
+	//wakeupme.data = th;
+	wakeupme.data = 0;
+	wakeupme.nanosec_delay = 1000000000;
 
 	log lg;
 	on3.dump(lg);
@@ -153,6 +174,14 @@ void mempool_test()
 
 		ch[mpi][idx].insert_head(p);
 		++cnts[mpi][idx];
+
+		if (0==(n&0xff)&&!wakeupme.data) {
+			wakeupme.handler = wakeup_handler;
+			wakeupme.data = th;
+			wakeupme.nanosec_delay = 1000000000;
+			global_vars::core.timer_ctl_obj->set_timer(&wakeupme);
+			tc.sleep();
+		}
 	}
 
 	for (int i = 0; i < 2; ++i) {
