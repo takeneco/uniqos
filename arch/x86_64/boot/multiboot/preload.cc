@@ -1,7 +1,7 @@
 /// @file   preload.cc
 
 //  uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 #include "misc.hh"
 
 #include <bootinfo.hh>
+#include <config.h>
 #include <multiboot2.h>
 #include <vga.hh>
 
@@ -147,8 +148,10 @@ cause::stype pre_load(u32 magic, const u32* tag)
 			break;
 		}
 		case MULTIBOOT_TAG_TYPE_MODULE:
-			//log()("modules tag availavle.")();
+			if (CONFIG_DEBUG_BOOT >= 1)
+				log()("modules tag availavle.")();
 			break;
+
 		case MULTIBOOT_TAG_TYPE_BASIC_MEMINFO: {
 			/*
 			const multiboot_tag_basic_meminfo* mbt_bmem =
