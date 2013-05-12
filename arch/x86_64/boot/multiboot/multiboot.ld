@@ -1,5 +1,5 @@
 /*
- * (C) 2011 KATO Takeshi
+ * (C) 2011-2013 KATO Takeshi
  */
 
 OUTPUT_FORMAT(elf32-i386)
@@ -14,7 +14,7 @@ SECTIONS {
 	. = self_baseadr + SIZEOF_HEADERS;
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
-	.data : { *(EXCLUDE_FILE(*/kernel.o) .data) }
+	.data : { *(EXCLUDE_FILE(*/kernel.o */test.o) .data) }
 	.bss : { *(.bss) }
 
 	/* C++の例外フレームらしい。
@@ -25,5 +25,10 @@ SECTIONS {
 	kernel = .;
 	.kernel : { */kernel.o(.data) }
 	kernel_size = . - kernel;
+
+	test = .;
+	.test : { */test.o(.data) }
+	test_size = . - test;
+
 	self_size = . - self_baseadr;
 }
