@@ -1,6 +1,6 @@
 /// @file  bootinfo.hh
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_BOOTINFO_HH_
@@ -15,6 +15,7 @@ namespace bootinfo {
 enum {
 	TYPE_MEMALLOC = 0x80000001,
 	TYPE_LOG,
+	TYPE_BUNDLE,
 };
 
 struct mem_alloc_entry {
