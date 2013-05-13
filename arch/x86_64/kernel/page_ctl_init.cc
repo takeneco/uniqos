@@ -1,7 +1,7 @@
 /// @file  page_ctl_init.cc
 /// @brief Page control initialize.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 /// 物理アドレスに直接マッピングされた仮想アドレスのことを
@@ -98,7 +98,7 @@ u64 search_padr_end()
 /// @brief  物理的に存在するメモリを調べて tmp_separator に積む。
 /// @retval cause::OK   成功した。
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
-cause::type load_avail(tmp_separator* heap)
+cause::t load_avail(tmp_separator* heap)
 {
 	const void* src = bootinfo::get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
 	if (src == 0)
@@ -125,7 +125,7 @@ cause::type load_avail(tmp_separator* heap)
 /// @brief  前フェーズから使用中のメモリを tmp_alloc から外す。
 /// @retval cause::OK   成功した。
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
-cause::type load_allocated(tmp_alloc* heap)
+cause::t load_allocated(tmp_alloc* heap)
 {
 	const void* src = bootinfo::get_bootinfo(bootinfo::TYPE_MEMALLOC);
 	if (src == 0)
@@ -144,7 +144,7 @@ cause::type load_allocated(tmp_alloc* heap)
 }
 
 /// @brief ヒープを作る。
-cause::type setup_heap(tmp_alloc* heap)
+cause::t setup_heap(tmp_alloc* heap)
 {
 	tmp_separator sep(heap);
 
@@ -155,7 +155,7 @@ cause::type setup_heap(tmp_alloc* heap)
 		    setup_heap_slots[i].slot_tail);
 	}
 
-	cause::type r = load_avail(&sep);
+	cause::t r = load_avail(&sep);
 	if (is_fail(r)) {
 		log()("!!! Available memory detection failed.")();
 		return r;
@@ -179,11 +179,11 @@ public:
 	page_table_tmpalloc(tmp_alloc* _alloc, tmp_alloc::slot_mask _slotm)
 	    : tmpalloc(_alloc), slotm(_slotm)
 	{}
-	cause::type alloc(u64* padr);
-	cause::type free(u64 padr);
+	cause::t alloc(u64* padr);
+	cause::t free(u64 padr);
 };
 
-cause::type page_table_tmpalloc::alloc(u64* padr)
+cause::t page_table_tmpalloc::alloc(u64* padr)
 {
 	void* p = tmpalloc->alloc(
 	    slotm,
@@ -196,15 +196,19 @@ cause::type page_table_tmpalloc::alloc(u64* padr)
 	return p != 0 ? cause::OK : cause::NOMEM;
 }
 
-cause::type page_table_tmpalloc::free(u64 padr)
+cause::t page_table_tmpalloc::free(u64 padr)
 {
 	void* p = reinterpret_cast<void*>(padr);
 
 	return tmpalloc->dealloc(SLOTM_ANY, p) ? cause::OK : cause::FAIL;
 }
 
-inline u64 phys_to_virt_1(u64 padr) { return padr; }
-inline u64 phys_to_virt_2(u64 padr) { return arch::PHYS_MAP_ADR + padr; }
+inline void* phys_to_virt_1(u64 padr) {
+	return reinterpret_cast<void*>(padr);
+}
+inline void* phys_to_virt_2(u64 padr) {
+	return reinterpret_cast<void*>(arch::PHYS_MAP_ADR + padr);
+}
 
 /// @brief  Setup physical mapping address 1st phase.
 /// @param[in] padr_end  Maximum address.
@@ -214,7 +218,7 @@ inline u64 phys_to_virt_2(u64 padr) { return arch::PHYS_MAP_ADR + padr; }
 //
 /// BOOTHEAP だけを使い、padr_end が 6GiB 以上の場合でも
 /// 最大 6GiB まで作成する。
-cause::type setup_pam1(u64 padr_end, tmp_alloc* heap)
+cause::t setup_pam1(u64 padr_end, tmp_alloc* heap)
 {
 	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1>
 	    page_table_1;
@@ -229,7 +233,7 @@ cause::type setup_pam1(u64 padr_end, tmp_alloc* heap)
 
 	for (uptr padr = 0; padr < padr_end; padr += arch::page::PHYS_L2_SIZE)
 	{
-		const cause::type r = pg_tbl.set_page(
+		const cause::t r = pg_tbl.set_page(
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
@@ -247,7 +251,7 @@ cause::type setup_pam1(u64 padr_end, tmp_alloc* heap)
 /// @param[in] heap      Memory allocator.
 /// @retval true  Succeeds.
 /// @retval false Failed.
-cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
+cause::t setup_pam2(u64 padr_end, tmp_alloc* heap)
 {
 	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_2>
 	    page_table_2;
@@ -263,7 +267,7 @@ cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
 	     padr < padr_end;
 	     padr += arch::page::PHYS_L2_SIZE)
 	{
-		const cause::type r = pg_tbl.set_page(
+		const cause::t r = pg_tbl.set_page(
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
@@ -277,7 +281,7 @@ cause::type setup_pam2(u64 padr_end, tmp_alloc* heap)
 }
 
 /// @brief ACPI のインタフェースで CPU を数える。
-cause::type count_cpus_by_acpi(tmp_alloc* heap, cpu_id* cpucnt)
+cause::t count_cpus_by_acpi(tmp_alloc* heap, cpu_id* cpucnt)
 {
 #if CONFIG_ACPI
 	void* acpi_buffer = heap->alloc(SLOTM_ANY,
@@ -287,7 +291,7 @@ cause::type count_cpus_by_acpi(tmp_alloc* heap, cpu_id* cpucnt)
 	if (!acpi_buffer)
 		return cause::NOMEM;
 
-	cause::type r = acpi_table_init(
+	cause::t r = acpi_table_init(
 	    arch::page::L1_SIZE,
 	    arch::map_phys_adr(acpi_buffer, arch::page::L1_SIZE));
 	if (is_fail(r))
@@ -324,7 +328,7 @@ void* page_heap_alloc(tmp_alloc* heap, uptr bytes)
 }
 
 /// @brief page_heap_alloc() で確保したメモリを開放する。
-cause::type page_heap_dealloc(void* p)
+cause::t page_heap_dealloc(void* p)
 {
 	cpu_word* page = static_cast<cpu_word*>(p);
 	page -= 1;
@@ -448,7 +452,7 @@ bool assign_ram(uptr assign_bytes, tmp_alloc* avail_ram, tmp_alloc* node_ram)
 	return true;
 }
 
-cause::type _proj_free_mem(
+cause::t _proj_free_mem(
     uptr free_adr,               ///< [in] 空きメモリのアドレス
     uptr free_bytes,             ///< [in] 空きメモリのサイズ
     const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
@@ -485,7 +489,7 @@ cause::type _proj_free_mem(
 //
 /// @retval cause::OK    成功した。
 /// @retval cause::FAIL  node_heap のエントリがあふれた。
-cause::type proj_free_mem(
+cause::t proj_free_mem(
     const tmp_alloc* heap,       ///< [in] 空きメモリ情報
     const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
           tmp_alloc* node_heap)  ///< [in,out] メモリ割当先ノードのヒープ
@@ -499,7 +503,7 @@ cause::type proj_free_mem(
 		if (!end)
 			break;
 
-		const cause::type r =
+		const cause::t r =
 		    _proj_free_mem(adr, bytes, node_ram, node_heap);
 		if (is_fail(r))
 			return r;
@@ -508,7 +512,7 @@ cause::type proj_free_mem(
 	return cause::OK;
 }
 
-cause::type load_page_pool(
+cause::t load_page_pool(
     const tmp_alloc* node_ram,
     tmp_alloc* node_heap,
     page_pool* pp)
@@ -521,7 +525,7 @@ cause::type load_page_pool(
 		if (!node_ram->enum_free_next(&ed, &adr, &bytes))
 			break;
 
-		cause::type r = pp->add_range(adr_range::gen_ab(adr, bytes));
+		cause::t r = pp->add_range(adr_range::gen_ab(adr, bytes));
 		if (is_fail(r))
 			return r;
 	}
@@ -560,7 +564,7 @@ cpu_node* create_cpu_node(page_pool* pp)
 	}
 
 	uptr page_adr;
-	cause::type r = pp->alloc(arch::page::PHYS_L1, &page_adr);
+	cause::t r = pp->alloc(arch::page::PHYS_L1, &page_adr);
 	if (is_fail(r)) {
 		log()("!!! No enough memory.")();
 		return 0;
@@ -590,7 +594,7 @@ void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
 	}
 }
 
-cause::type create_cpu_nodes()
+cause::t create_cpu_nodes()
 {
 	const int n = global_vars::core.cpu_node_cnt;
 	for (int i = 0; i < n; ++i) {
@@ -609,7 +613,7 @@ cause::type create_cpu_nodes()
 /// @brief  Local APIC ID を振りなおす。
 //
 /// Local APIC ID が 0 から始まる連番になるようにする。
-cause::type renumber_cpu_ids(const mpspec& mps)
+cause::t renumber_cpu_ids(const mpspec& mps)
 {
 	const int cpu_cnt = get_cpu_node_count();
 	cpu_node** const cns = global_vars::core.cpu_node_objs;
@@ -653,14 +657,14 @@ cause::type renumber_cpu_ids(const mpspec& mps)
 }  // namespace
 
 
-cause::type cpu_page_init()
+cause::t cpu_page_init()
 {
 	tmp_alloc heap;
 	setup_heap(&heap);
 
 	const u64 padr_end = search_padr_end();
 
-	cause::type r = setup_pam1(padr_end, &heap);
+	cause::t r = setup_pam1(padr_end, &heap);
 	if (is_fail(r))
 		return r;
 

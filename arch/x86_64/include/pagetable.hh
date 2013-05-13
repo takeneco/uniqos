@@ -1,14 +1,14 @@
 /// @file   pagetable.hh
 /// @brief  64bit paging table ops.
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include "basic_types.hh"
-#include "arch.hh"
+#include <basic_types.hh>
+#include <arch.hh>
 
 
 class log_target;
@@ -133,21 +133,21 @@ void pte_init(pte* table);
 /// @brief Page table creater.
 /// @tparam page_alloc Memory allocator class, must having
 ///                    following public function.
-///  - cause::stype page_alloc::alloc(u64* padr)
-///  - cause::stype page_alloc::free(u64 padr)
+///  - cause::t page_alloc::alloc(u64* padr)
+///  - cause::t page_alloc::free(u64 padr)
 /// @tparam p2v        physical to virtual convert function.
-template <class page_alloc, u64 (*p2v)(u64 padr)>
+template <class page_alloc, void* (*p2v)(u64 padr)>
 class page_table : public page_table_base
 {
 	page_alloc* alloc;
 public:
 	page_table(pte* top, page_alloc* _alloc);
 
-	cause::stype set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
+	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
 };
 
 /// @param[in] top  exist page table. null available.
-template <class page_alloc, u64 (*p2v)(u64 padr)>
+template <class page_alloc, void* (*p2v)(u64 padr)>
 page_table<page_alloc, p2v>::page_table(pte* top, page_alloc* _alloc)
     : page_table_base(top), alloc(_alloc)
 {
@@ -158,19 +158,19 @@ page_table<page_alloc, p2v>::page_table(pte* top, page_alloc* _alloc)
 /// @param[in] padr  physical page address.
 /// @param[in] pt    page type. one of PHYS_L*.
 /// @param[in] flags page flags.
-template <class page_alloc, u64 (*p2v)(u64 padr)>
-cause::stype page_table<page_alloc, p2v>::set_page(
+template <class page_alloc, void* (*p2v)(u64 padr)>
+cause::t page_table<page_alloc, p2v>::set_page(
     u64 vadr, u64 padr, page::TYPE pt, u64 flags)
 {
 	const int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	if (UNLIKELY(!top)) {
 		uptr page_adr;
-		const cause::stype r = alloc->alloc(&page_adr);
+		const cause::t r = alloc->alloc(&page_adr);
 		if (r != cause::OK)
 			return r;
 
-		top = reinterpret_cast<pte*>(p2v(page_adr));
+		top = static_cast<pte*>(p2v(page_adr));
 		pte_init(top);
 	}
 
@@ -182,15 +182,15 @@ cause::stype page_table<page_alloc, p2v>::set_page(
 
 		if (table[index].test_flags(pte::P) == 0) {
 			uptr p;
-			const cause::stype r = alloc->alloc(&p);
+			const cause::t r = alloc->alloc(&p);
 			if (r != cause::OK)
 				return r;
 
-			pte_init(reinterpret_cast<pte*>(p2v(p)));
+			pte_init(static_cast<pte*>(p2v(p)));
 			table[index].set(p, pte::P | pte::RW);
 		}
 
-		table = reinterpret_cast<pte*>(p2v(table[index].get_adr()));
+		table = static_cast<pte*>(p2v(table[index].get_adr()));
 	}
 
 	if (pt != page::PHYS_L1)

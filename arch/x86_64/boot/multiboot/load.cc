@@ -2,7 +2,7 @@
 /// @brief  ELF kernel loader.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -34,11 +34,11 @@ namespace {
 class page_table_alloc
 {
 public:
-	static cause::type alloc(uptr* padr);
-	static cause::type free(uptr padr);
+	static cause::t alloc(uptr* padr);
+	static cause::t free(uptr padr);
 };
 
-inline cause::type page_table_alloc::alloc(uptr* padr)
+inline cause::t page_table_alloc::alloc(uptr* padr)
 {
 	void* p = get_alloc()->alloc(
 	    SLOTM_BOOTHEAP,
@@ -51,7 +51,7 @@ inline cause::type page_table_alloc::alloc(uptr* padr)
 	return p ? cause::OK : cause::NOMEM;
 }
 
-inline cause::type page_table_alloc::free(uptr padr)
+inline cause::t page_table_alloc::free(uptr padr)
 {
 	bool b = get_alloc()->dealloc(
 	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
@@ -59,7 +59,9 @@ inline cause::type page_table_alloc::free(uptr padr)
 	return b ? cause::OK : cause::FAIL;
 }
 
-inline u64 phys_to_virt(u64 padr) { return padr; }
+inline void* phys_to_virt(u64 padr) {
+	return reinterpret_cast<void*>(padr);
+}
 
 typedef arch::page_table<page_table_alloc, phys_to_virt> boot_page_table;
 
@@ -73,7 +75,7 @@ typedef arch::page_table<page_table_alloc, phys_to_virt> boot_page_table;
 /// phys_vadr が page_vadr へマッピングされる前提で、phys_vadr へ
 /// オブジェクトをコピーする。
 /// コピー元は page_vadr から計算する。
-cause::type load_segm_page(
+cause::t load_segm_page(
     const Elf64_Phdr* phe,
     u64               page_vadr,  ///< マップ先ページアドレス
     uptr              page_size,  ///< マップ先ページサイズ
@@ -118,7 +120,7 @@ cause::type load_segm_page(
 	return cause::OK;
 }
 
-cause::type load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
+cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 {
 	allocator* alloc = get_alloc();
 
@@ -133,7 +135,7 @@ cause::type load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 	for (u64 page_adr = start_page; ; page_adr += arch::page::PHYS_L2_SIZE)
 	{
-		cause::type r;
+		cause::t r;
 
 		uptr phys_adr;
 		void* p = alloc->alloc(
@@ -168,7 +170,7 @@ cause::type load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 extern "C" u32 load(u32 magic, u32* tag)
 {
-	cause::type r = pre_load(magic, tag);
+	cause::t r = pre_load(magic, tag);
 	if (r != cause::OK)
 		return r;
 
@@ -200,7 +202,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		const Elf64_Phdr* phe = reinterpret_cast<const Elf64_Phdr*>(ph);
 		if (phe->p_type == PT_LOAD) {
-			cause::type r = load_segm(phe, &pg_tbl);
+			cause::t r = load_segm(phe, &pg_tbl);
 			if (is_fail(r))
 				return r;
 		}
