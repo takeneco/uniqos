@@ -105,26 +105,29 @@ void dump_pte(log_target& x, pte* table, int level);
 
 class page_table_base
 {
-protected:
-	pte* top;
-
-	static const int PAGETYPE_TO_LEVELINDEX[];
-	static const int PTE_INDEX_SHIFTS[];
-
 public:
 	enum PAGE_FLAGS {
 		EXIST = pte::P,
 		WRITE = pte::RW,
 	};
 
+protected:
+	static const int PAGETYPE_TO_LEVELINDEX[];
+	static const int PTE_INDEX_SHIFTS[];
+
 public:
 	page_table_base(pte* _top) : top(_top) {}
+
+	void set_toptable(void* _top) { top = static_cast<pte*>(_top); }
 
 	pte* get_table() { return top; }
 
 	void dump(log_target& x) {
 		dump_pte(x, top, 4);
 	}
+
+protected:
+	pte* top;
 };
 
 
@@ -139,11 +142,16 @@ void pte_init(pte* table);
 template <class page_alloc, void* (*p2v)(u64 padr)>
 class page_table : public page_table_base
 {
-	page_alloc* alloc;
 public:
 	page_table(pte* top, page_alloc* _alloc);
+	page_table() {}
+
+	void set_alloc(page_alloc* _alloc) { alloc = _alloc; }
 
 	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
+
+private:
+	page_alloc* alloc;
 };
 
 /// @param[in] top  exist page table. null available.
