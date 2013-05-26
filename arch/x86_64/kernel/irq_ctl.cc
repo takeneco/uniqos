@@ -57,23 +57,25 @@ void call_eoi()
 
 cause::type irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 {
-	u32 vec;
+	u32 vec = *intr_vec;
 
-	switch (irq) {
-	case 2: // HPET Timer 0
-		vec = 0x5e;
-		break;
-	case 3: // COM2
-		vec = 0x41;
-		break;
-	case 4: // COM1
-		vec = 0x40;
-		break;
-	case 8: // HPET Timer 1
-		vec = 0x5f;
-		break;
-	default:
-		return cause::UNKNOWN;
+	if (*intr_vec == 0xffffffff) {
+		switch (irq) {
+		case 2: // HPET Timer 0
+			vec = 0x5e;
+			break;
+		case 3: // COM2
+			vec = 0x41;
+			break;
+		case 4: // COM1
+			vec = 0x40;
+			break;
+		case 8: // HPET Timer 1
+			vec = 0x5f;
+			break;
+		default:
+			return cause::UNKNOWN;
+		}
 	}
 
 	//global_vars::core.intr_ctl_obj->set_post_handler(vec, lapic_eoi);

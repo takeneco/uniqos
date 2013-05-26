@@ -188,7 +188,7 @@ serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
 
 cause::type serial_ctl::configure()
 {
-	u32 vec;
+	u32 vec = 0xffffffff;
 	arch::irq_interrupt_map(4, &vec);
 
 	intr_hdr.data = this;

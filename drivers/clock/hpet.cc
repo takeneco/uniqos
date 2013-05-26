@@ -59,11 +59,15 @@ struct hpet_regs
 	};
 	timer_regs timer[32];
 
+	void enable() { configs |= 0x1; }
 	void enable_legrep() { configs |= 0x3; }
 	void disable() { configs &= ~0x3; }
 
 	u64 usecs_to_cnt(u64 usecs) const {
 		return usecs * U64(1000000000) / caps_h32;
+	}
+	u64 nanosecs_to_cnt(u64 nanosecs) const {
+		return nanosecs * U64(1000000) / caps_h32;
 	}
 
 	/// @brief  enable nonperiodic timer.
@@ -97,7 +101,6 @@ struct hpet_regs
 
 	void unset_timer(timer_index i) {
 		timer[i].config_l32 = timer[i].config_l32 & 0xffff8030;
-		timer[i].comparator = U64(0xffffffffffffffff);
 	}
 
 	/// set time on nonperiodicmode
@@ -185,12 +188,25 @@ cause::type hpet::setup()
 
 	clock_period = regs->caps_h32;
 
+	auto _1sec_clks = nanosec_to_clock(1000000000);
+	if (is_fail(_1sec_clks))
+		return _1sec_clks.r;
+
 	regs->disable();
 	regs->counter = 0;
-	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */);
+	regs->set_periodic_timer(TIMER_0, 1000000 /* 1sec */, 0);
+	//regs->set_periodic_timer(TIMER_0, _1sec_clks.value, 0);
 	regs->enable_legrep();
 
-	regs->set_nonperiodic_timer(TIMER_1, 0);
+	regs->set_nonperiodic_timer(TIMER_1, 2);
+
+	log()("HPET:timer[0].config_h32=").x(regs->timer[0].config_h32)();
+	log()("HPET:timer[0].config_l32=").x(regs->timer[0].config_l32)();
+	log()("HPET:timer[1].config_h32=").x(regs->timer[1].config_h32)();
+	log()("HPET:timer[1].config_l32=").x(regs->timer[1].config_l32)();
+
+	log()("HPET:clock_period=").u(clock_period)();
+	log()("HPET:clock/1sec=").u(_1sec_clks.value)();
 
 	return cause::OK;
 }
@@ -199,23 +215,27 @@ namespace {
 
 u64 t;
 bool msg_posted;
-void _msg(message*)
+void _msg(message* m)
 {
 	msg_posted=false;
-	log(2)("t=").u(t)('\n');
+	//log(2)("t=").u(t)('\n');
 	log()("t=").u(t)('\n');
-	//log()("t=").u(t)();
 	++t;
+
+	auto m2 = static_cast<message_with<hpet*>*>(m);
 }
 
-message msg;
+message_with<hpet*> msg;
 void _handler0(intr_handler* h)
 {
+	auto hh = static_cast<intr_handler_with<hpet*>*>(h);
+
 	if (msg_posted)
 		return;
 
 	msg_posted = true;
 	msg.handler = _msg;
+	msg.data = hh->data;
 
 	cpu_node* cpu = get_cpu_node();
 	cpu->post_intr_message(&msg);
@@ -247,7 +267,7 @@ t=0;
 msg_posted=false;
 	auto h = new (mem_alloc(sizeof (intr_handler_with<hpet*>)))
 	    intr_handler_with<hpet*>(_handler0, this);
-	u32 vec;
+	u32 vec = 0x5e;
 	arch::irq_interrupt_map(2, &vec);
 
 	global_vars::core.intr_ctl_obj->install_handler(vec, h);
@@ -255,6 +275,7 @@ msg_posted=false;
 
 	h = new (mem_alloc(sizeof (intr_handler_with<hpet*>)))
 	    intr_handler_with<hpet*>(_handler1, this);
+	vec = 0x5f;
 	arch::irq_interrupt_map(8, &vec);
 
 	global_vars::core.intr_ctl_obj->install_handler(vec, h);
