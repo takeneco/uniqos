@@ -15,6 +15,8 @@
 #include <mem_io.hh>
 #include <mempool_ctl.hh>
 #include <native_ops.hh>
+#include <process.hh>
+#include <string.hh>
 #include <new_ops.hh>
 #include <vga.hh>
 
@@ -95,6 +97,49 @@ void timer_handler(message* msg)
 	//tmsg->nanosec_delay = 1000000000;
 	global_vars::core.timer_ctl_obj->set_timer(tmsg);
 }
+
+cause::t create_init_process()
+{
+	process* pr = new (mem_alloc(sizeof (process))) process;
+	pr->init();
+
+	const multiboot_tag_module* bundle =
+	    reinterpret_cast<const multiboot_tag_module*>
+	    (get_bootinfo(bootinfo::TYPE_BUNDLE));
+	if (!bundle) {
+		log()("no bundle")();
+		return cause::FAIL;
+	}
+
+	uptr padr;
+	cause::t r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
+	if (is_fail(r)) {
+		return r;
+	}
+
+	void* vadr = arch::map_phys_adr(padr, arch::page::PHYS_L1_SIZE);
+
+	void* src = arch::map_phys_adr(bundle->mod_start, bundle->size);
+
+	mem_copy(bundle->size, src, vadr);
+
+	log()("vadr=")(vadr)().x(bundle->size, vadr, 1, 8, "vadr")();
+
+	pr->ref_ptbl().set_page(0x00100000, padr,
+	    arch::page::PHYS_L1,
+	    arch::pte::P | arch::pte::A);
+
+	thread_queue& tc = get_cpu_node()->get_thread_ctl();
+	thread* t;
+	tc.create_thread(0x00100000, 0, &t);
+	t->ref_regset()->cr3 = arch::unmap_phys_adr(pr->ref_ptbl().get_table(), arch::page::PHYS_L1);
+	tc.ready(t);
+
+	log()("process:")(pr)()("thread->regset:")(t->ref_regset())();
+
+	return cause::OK;
+}
+
 }  // namespace
 
 text_vga vga_dev;
@@ -172,11 +217,26 @@ log(1)("memlog:")(memlog_buffer);
 	log_install(0, serial);
 log(1)("  serial:")(serial)();
 
+log(1)("cpu_node:")(get_cpu_node())
+      ("  sizeof (cpu_node):").u(sizeof (cpu_node))();
+
 	const bootinfo::log* bootlog =
 	    reinterpret_cast<const bootinfo::log*>
 	    (get_bootinfo(bootinfo::TYPE_LOG));
 	if (bootlog) {
 		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
+	}
+
+	const multiboot_tag_module* bundle =
+	    reinterpret_cast<const multiboot_tag_module*>
+	    (get_bootinfo(bootinfo::TYPE_BUNDLE));
+	if (bundle) {
+		//log()("bundle size:").u(bundle->size)();
+		//log()("bundle start:").x(bundle->mod_start)();
+		//log().write(bundle->size,
+		//            reinterpret_cast<void*>(arch::map_phys_adr(bundle->mod_start, bundle->size)));
+	} else {
+		log()("no bundle.")();
 	}
 
 	r = acpi_init();
@@ -204,11 +264,6 @@ log(1)("  serial:")(serial)();
 	log()("tick=").u(tt)();
 
 	/*
-	hpet_init();
-	log()("clock=").u(get_clock())();
-	log()("clock=").u(get_clock())();
-
-
 	lapic_post_init_ipi();
 	u64 initipi_clock = get_clock();
 
@@ -253,9 +308,6 @@ log(1)("  serial:")(serial)();
 	log(1)("loop count:").u(i)();
 	*/
 
-//	cpu_test();
-//	serial_dump(serial);
-
 	r = mempool_post_setup();
 	if (is_fail(r))
 		return r;
@@ -271,8 +323,14 @@ log(1)("  serial:")(serial)();
 	tc.create_thread(test, 0, &t);
 	tc.ready(t);
 
-	tc.create_thread(test, 0, &t);
-	tc.ready(t);
+	//tc.create_thread(test, 0, &t);
+	//tc.ready(t);
+
+	r = create_init_process();
+	if (is_fail(r)) {
+		log()("create_init_process() failed")();
+	}
+	log()("create_init_process() succeeded")();
 
 	tc.sleep();
 /*

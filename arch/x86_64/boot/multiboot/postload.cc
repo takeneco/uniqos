@@ -2,7 +2,7 @@
 /// @brief  カーネルへ渡すパラメータを作成する。
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 
 
 extern u32 stack_start[];
+
+extern const u8 first_process[];
+extern const u8 first_process_size[];
 
 namespace {
 
@@ -102,12 +105,50 @@ uptr store_log(uptr bootinfo_left, u8* bootinfo)
 	if (is_fail(r))
 		return 0;
 
+	if (read_bytes & (MULTIBOOT_TAG_ALIGN - 1)) {
+		int pads = MULTIBOOT_TAG_ALIGN -
+		           (read_bytes & (MULTIBOOT_TAG_ALIGN - 1));
+		for (int i = 0; i < pads; ++i) {
+			if (iov.bytes <= read_bytes)
+				break;
+			static_cast<char*>(iov.base)[read_bytes++] = '_';
+		}
+	}
+
 	size += read_bytes;
 
 	tag_log->type = bootinfo::TYPE_LOG;
 	tag_log->size = size;
 
 	return size;
+}
+
+uptr store_first_process(uptr bootinfo_left, u8* bootinfo)
+{
+	multiboot_tag_module* tag_mod =
+	    reinterpret_cast<multiboot_tag_module*>(bootinfo);
+
+	const uptr tag_size = sizeof *tag_mod + sizeof (uptr);
+	if (bootinfo_left < tag_size)
+		return tag_size;
+
+	const uptr bundle_size = reinterpret_cast<uptr>(first_process_size);
+
+	void* p = get_alloc()->alloc(
+	    SLOTM_NORMAL | SLOTM_CONVENTIONAL,
+	    bundle_size,
+	    4096,
+	    false);
+
+	mem_copy(bundle_size, first_process, p);
+
+	tag_mod->type = bootinfo::TYPE_BUNDLE;
+	tag_mod->size = bundle_size;
+	tag_mod->mod_start = reinterpret_cast<u32>(p);
+	tag_mod->mod_end = tag_mod->mod_start + bundle_size;
+	tag_mod->cmdline[0] = '\0';
+
+	return tag_size;
 }
 
 u8* bootinfo_alloc()
@@ -151,6 +192,12 @@ bool store_bootinfo(const u32* mb_info)
 	bootinfo_left -= size;
 
 	size = store_log(bootinfo_left, &bootinfo[wrote]);
+	if (size > bootinfo_left)
+		return false;
+	wrote += size;
+	bootinfo_left -= size;
+
+	size = store_first_process(bootinfo_left, &bootinfo[wrote]);
 	if (size > bootinfo_left)
 		return false;
 	wrote += size;

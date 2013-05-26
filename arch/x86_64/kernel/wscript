@@ -1,6 +1,6 @@
 # @brief  x86_64固有カーネルコード
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 
@@ -80,3 +80,12 @@ def build(x):
 	    source   = 'kernel.bin',
 	    rule     = '${LZMA} -c ${SRC} > ${TGT}')
 
+	fp_target = x.path.find_or_declare('first_process')
+	fp_linkerscript = x.path.find_node('first_process.lds')
+	x.add_manual_dependency(fp_target, fp_linkerscript)
+	fp_linkflags = ['-nostdlib', '-Wl,-T'+fp_linkerscript.abspath()]
+	x.program(
+	    features  = 'asm cprogram',
+	    target    = fp_target,
+	    source    = 'first_process.S',
+	    linkflags = fp_linkflags)

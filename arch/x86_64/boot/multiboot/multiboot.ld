@@ -14,7 +14,7 @@ SECTIONS {
 	. = self_baseadr + SIZEOF_HEADERS;
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
-	.data : { *(EXCLUDE_FILE(*/kernel.o */test.o) .data) }
+	.data : { *(EXCLUDE_FILE(*/kernel.o */first_process.o) .data) }
 	.bss : { *(.bss) }
 
 	/* C++の例外フレームらしい。
@@ -26,9 +26,9 @@ SECTIONS {
 	.kernel : { */kernel.o(.data) }
 	kernel_size = . - kernel;
 
-	test = .;
-	.test : { */test.o(.data) }
-	test_size = . - test;
+	first_process = .;
+	.first_process : { */first_process.o(.data) }
+	first_process_size = . - first_process;
 
 	self_size = . - self_baseadr;
 }

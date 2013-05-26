@@ -1,6 +1,6 @@
 # wscript for the multiboot image.
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 source = [
@@ -35,14 +35,26 @@ def build(x):
 	env = x.env.derive()
 	env.append_value('ASFLAGS', '-m32')
 
-	kobj = x.path.find_or_declare('kernel.o')
+	# kernel
+	k_obj = x.path.find_or_declare('kernel.o')
 	x(
 	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
 	           '${SRC} ${TGT}',
-	    target = kobj,
+	    target = k_obj,
 	    source = '../../kernel/kernel.bin',
 	)
-	source.append(kobj)
+	source.append(k_obj)
+
+	# first_process
+	fp_obj = x.path.find_or_declare('first_process.o')
+	x(
+	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
+	           '${SRC} ${TGT}',
+	    target = fp_obj,
+	    source = '../../kernel/first_process',
+	)
+	source.append(fp_obj)
+
 
 	mapfile = x.path.find_or_declare('multiboot.map')
 	map_opt = '-Wl,-Map,' + mapfile.abspath()
