@@ -369,6 +369,9 @@ void output_buffer_hexv(
 		     str(cpu_byte_order ? ",CPU" : ",RAW").str(" order,HEX]\n");
 	}
 
+	if (bytes == 0)
+		return;
+
 	int col = 0;
 	uptr off = 0;
 	for (;;) {
@@ -742,7 +745,7 @@ void output_buffer_format(
 		x->_1vec(raw_out_len, raw_out_pos);
 }
 
-cause::type output_buffer_flush(output_buffer* x)
+cause::t output_buffer_flush(output_buffer* x)
 {
 	return x->_flush();
 }
@@ -827,7 +830,7 @@ void output_buffer::_rep(int count, char c)
 	}
 }
 
-cause::type output_buffer::_flush()
+cause::t output_buffer::_flush()
 {
 	if (info.buf_offset) {
 		iovec iov;
@@ -835,7 +838,7 @@ cause::type output_buffer::_flush()
 		iov.bytes = info.buf_offset;
 
 		const io_node::offset before_offset = info.dest_offset;
-		cause::type r =
+		cause::t r =
 		    info.destination->write(&info.dest_offset, 1, &iov);
 		if (is_fail(r))
 			return r;
