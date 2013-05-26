@@ -20,6 +20,7 @@ kern_sources = [
     'page.cc',
     'page_pool.cc',
     'pic_dev.cc',
+    'process.cc',
     'spinlock.cc',
     'spinrwlock.cc',
     'string.cc',
