@@ -1,6 +1,6 @@
 /// @file  regset.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_REGSET_HH_
@@ -41,6 +41,8 @@ struct regset
 	u16 fs;
 	u16 gs;
 	u16 unused2_;
+
+	u64  cr3;
 
 	regset(u64 text, u64 param, u64 stack, u64 stack_size) :
 		rdi(param),

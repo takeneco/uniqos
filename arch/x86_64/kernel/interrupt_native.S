@@ -1,7 +1,7 @@
 /// @file  interrupt_handler.S
 /// @brief interrupt handler.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 
@@ -24,7 +24,8 @@
 //
 // save regs:
 //   %rbx, %rbp, %r12, %r13, %r14, %r15, %rf,
-//   %rip, %cs, %ds, %es, %rsp, %ss, %fs, %gs
+//   %rip, %cs, %ds, %es, %rsp, %ss, %fs, %gs,
+//   %cr3
 // load regs:
 //   all
 ENTRY_START(switch_regset)
@@ -62,11 +63,13 @@ ENTRY_START(switch_regset)
 	movw  %ss, %ax
 	movw  %fs, %dx
 	movw  %gs, %bx
+	movq  %cr3, %rcx
 	movw  %ax,  8*19  (%rsi)  // save %ss
 	movw  %dx,  8*19+2(%rsi)  // save %fs
-	movw  %bx,  8*19+2(%rsi)  // save %gs
+	movw  %bx,  8*19+4(%rsi)  // save %gs
+	movq  %rcx, 8*20(%rsi)    // save %cr3
 
-        // load regs
+	// load regs
 	jmp   load_regs
 ENTRY_END(switch_regset)
 
@@ -118,10 +121,12 @@ LOCAL_START(save_regs_on_intr)
 	movw  8*6(%rsp), %bx      // load %ss
 	movw  %fs, %cx
 	movw  %gs, %dx
-	movq  %rax, 8*18  (%rdi)  // save %rsp
+	movq  %rax, 8*18(%rdi)    // save %rsp
 	movw  %bx,  8*19  (%rdi)  // save %ss
 	movw  %cx,  8*19+2(%rdi)  // save %fs
 	movw  %dx,  8*19+4(%rdi)  // save %gs
+	movq  %cr3, %rax
+	movq  %rax, 8*20(%rdi)    // save %cr3
 	ret
 LOCAL_END(save_regs_on_intr)
 
@@ -144,6 +149,12 @@ LOCAL_START(load_regs_on_intr)
 // input:
 //   %rdi is ptr to regset
 load_regs:
+	movq  8*20(%rdi), %rax
+	movq  %cr3, %rcx
+	cmpq  %rax, %rcx
+	je 1f
+	movq  %rax, %cr3          // load %cr3 if %cr3 changed.
+1:
 	movw  8*19+4 (%rdi), %dx  // load %gs
 	movw  8*19+2 (%rdi), %cx  // load %fs
 	movw  %dx, %gs
@@ -168,7 +179,7 @@ load_regs:
 	movq      (%rdi), %rax
 
 	leaq  8*15(%rdi), %rsp
-        movq  8*-9(%rsp), %rdi    // load %rdi
+	movq  8*-9(%rsp), %rdi    // load %rdi
 	iretq
 LOCAL_END(load_regs_on_intr)
 

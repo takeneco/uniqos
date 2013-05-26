@@ -2,7 +2,7 @@
 // @brief  thread class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@
 #include <cpu_node.hh>
 
 
+#include <native_ops.hh>
 thread::thread(
     cpu_node* _owner,
     uptr text,
@@ -31,6 +32,8 @@ thread::thread(
 	rs(text, param, stack, stack_size),
 	anti_sleep(false)
 {
+	// TODO:これはarch依存
+	rs.cr3 = native::get_cr3();
 }
 
 void thread::ready()
