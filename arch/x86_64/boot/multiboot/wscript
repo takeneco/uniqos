@@ -19,6 +19,11 @@ def configure(x):
 	x.env.append_value('CXXFLAGS_MB', '-m32')
 	x.env.append_value('CFLAGS_MB', x.env.COMMON_CFLAGS)
 	x.env.append_value('CXXFLAGS_MB', x.env.COMMON_CXXFLAGS)
+	x.env.append_value('DEFINES_MB', 'ARCH_LE')
+	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
+
+	x.env.append_value('CXXFLAGS_MB', '-Wc++11-compat')
+	x.env.append_value('CXXFLAGS_MB', '-Wc++11-extensions')
 
 def build(x):
 	target = x.path.find_or_declare('us')
@@ -28,12 +33,6 @@ def build(x):
 	ls_opt = '-Wl,-T' + linker_script.abspath()
 
 	x.add_manual_dependency(target, linker_script)
-
-	x.env.append_value('DEFINES_MB', 'ARCH_LE')
-	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
-
-	env = x.env.derive()
-	env.append_value('ASFLAGS', '-m32')
 
 	# kernel
 	k_obj = x.path.find_or_declare('kernel.o')
@@ -55,6 +54,8 @@ def build(x):
 	)
 	source.append(fp_obj)
 
+	env32 = x.env.derive()
+	env32.append_value('ASFLAGS', '-m32')
 
 	mapfile = x.path.find_or_declare('multiboot.map')
 	map_opt = '-Wl,-Map,' + mapfile.abspath()
@@ -64,7 +65,7 @@ def build(x):
 	    source = source,
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
 	    linkflags = ['-m32', '-nostdlib', '-static', ls_opt, map_opt],
-	    env = env,
+	    env = env32,
 	    use = ['MB', 'mb_archlibs', 'mb_libs'],
 	)
 

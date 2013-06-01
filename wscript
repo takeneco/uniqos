@@ -1,5 +1,5 @@
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 VERSION = '0.0.1.0'
@@ -40,6 +40,7 @@ def configure(x):
 		x.find_program('clang', var='CC')
 		x.find_program('clang++', var='CXX')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++11')
+		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-compat')
 
 	elif x.options.compiler == 'gnu':
 		x.find_program('gcc', var='AS')

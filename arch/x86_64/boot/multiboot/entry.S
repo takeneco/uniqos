@@ -1,14 +1,14 @@
 /// @brief multiboot entry point
 
-//  Uniqos  --  Unique Operating System
-//  (C) 2011 KATO Takeshi
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2013 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -39,14 +39,14 @@ mbh:
 
 	// infomation request
 inforeq:
-	.word 1, 0
+	.word MULTIBOOT_HEADER_TAG_INFORMATION_REQUEST, 0
 	.long inforeq_end - inforeq
-	.long 8
-	.long 6
+	.long MULTIBOOT_TAG_TYPE_MMAP
+	.long MULTIBOOT_TAG_TYPE_FRAMEBUFFER
 inforeq_end:
 
 	// end of tags
-	.word 0, 0
+	.word MULTIBOOT_HEADER_TAG_END, 0
 	.long 8
 mbh_end:
 
