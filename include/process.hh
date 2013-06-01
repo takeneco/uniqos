@@ -12,13 +12,13 @@
 
 class process
 {
-	class page_allocator;
+	class page_table_acquire;
 
 	static void* phys_to_virt(uptr adr) {
 		return arch::map_phys_adr(adr, arch::page::PHYS_L1_SIZE);
 	}
 
-	typedef arch::page_table<page_allocator, phys_to_virt> pagetable;
+	typedef arch::page_table<page_table_acquire, phys_to_virt> pagetable;
 
 public:
 	process();
@@ -32,11 +32,11 @@ private:
 	 pagetable ptbl;
 };
 
-class process::page_allocator
+class process::page_table_acquire
 {
 public:
-	cause::t alloc(u64* padr);
-	cause::t free(u64 padr);
+	static cause::pair<uptr> acquire(pagetable* x);
+	static cause::t          release(pagetable* x, u64 padr);
 };
 
 

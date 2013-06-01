@@ -25,7 +25,7 @@
 
 
 process::process() :
-	ptbl(0, 0)
+	ptbl(0)
 {
 }
 
@@ -35,8 +35,6 @@ process::~process()
 
 cause::t process::init()
 {
-	ptbl.set_alloc(0);
-
 	uptr top_padr;
 	//TODO:ret val
 	get_cpu_node()->page_alloc(arch::page::PHYS_L1, &top_padr);
@@ -55,14 +53,16 @@ cause::t process::init()
 	return cause::OK;
 }
 
-// process::page_allocator
+// process::page_table_acquire
 
-cause::t process::page_allocator::alloc(u64* padr)
+cause::pair<uptr> process::page_table_acquire::acquire(pagetable* /*x*/)
 {
-	return get_cpu_node()->page_alloc(arch::page::PHYS_L1, padr);
+	cause::pair<uptr> r;
+	r.r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &r.value);
+	return r;
 }
 
-cause::t process::page_allocator::free(u64 padr)
+cause::t process::page_table_acquire::release(pagetable* /*x*/, u64 padr)
 {
 	return get_cpu_node()->page_dealloc(arch::page::PHYS_L1, padr);
 }

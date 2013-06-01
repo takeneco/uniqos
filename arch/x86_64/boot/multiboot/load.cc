@@ -9,7 +9,7 @@
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -31,14 +31,20 @@ extern const u8 kernel_size[];
 
 namespace {
 
-class page_table_alloc
+class page_table_acquire;
+inline void* phys_to_virt(u64 padr) {
+	return reinterpret_cast<void*>(padr);
+}
+typedef arch::page_table<page_table_acquire, phys_to_virt> boot_page_table;
+
+class page_table_acquire
 {
 public:
-	static cause::t alloc(uptr* padr);
-	static cause::t free(uptr padr);
+	static cause::pair<uptr> acquire(boot_page_table* x);
+	static cause::t          release(boot_page_table* x, uptr padr);
 };
 
-inline cause::t page_table_alloc::alloc(uptr* padr)
+cause::pair<uptr> page_table_acquire::acquire(boot_page_table* /*x*/)
 {
 	void* p = get_alloc()->alloc(
 	    SLOTM_BOOTHEAP,
@@ -46,24 +52,18 @@ inline cause::t page_table_alloc::alloc(uptr* padr)
 	    arch::page::PHYS_L1_SIZE,
 	    false);
 
-	*padr = reinterpret_cast<uptr>(p);
-
-	return p ? cause::OK : cause::NOMEM;
+	return cause::pair<uptr>(
+	    p != 0 ? cause::OK : cause::NOMEM,
+	    reinterpret_cast<uptr>(p));
 }
 
-inline cause::t page_table_alloc::free(uptr padr)
+cause::t page_table_acquire::release(boot_page_table* /*x*/, uptr padr)
 {
 	bool b = get_alloc()->dealloc(
 	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
 
 	return b ? cause::OK : cause::FAIL;
 }
-
-inline void* phys_to_virt(u64 padr) {
-	return reinterpret_cast<void*>(padr);
-}
-
-typedef arch::page_table<page_table_alloc, phys_to_virt> boot_page_table;
 
 
 /// @brief  オブジェクトをページへコピーする。
@@ -149,12 +149,12 @@ cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 		phys_adr = reinterpret_cast<uptr>(p);
 		r = load_segm_page(
 		    phe, page_adr, arch::page::PHYS_L2_SIZE, phys_adr);
-		if (r != cause::OK)
+		if (is_fail(r))
 			return r;
 
 		r = pg_tbl->set_page(page_adr, static_cast<u64>(phys_adr),
 		    arch::page::PHYS_L2, page_flags);
-		if (r != cause::OK)
+		if (is_fail(r))
 			return r;
 
 		// end_page がメモリ空間の最後のページを指している場合は、
@@ -171,7 +171,7 @@ cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 extern "C" u32 load(u32 magic, u32* tag)
 {
 	cause::t r = pre_load(magic, tag);
-	if (r != cause::OK)
+	if (is_fail(r))
 		return r;
 
 	log(1)("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
@@ -196,15 +196,18 @@ extern "C" u32 load(u32 magic, u32* tag)
 	     ("e_shstrndx : ").u(elf->e_shstrndx)();
 #endif  // CONFIG_DEBUG_BOOT >= 1
 
-	boot_page_table pg_tbl(0, 0);
+	boot_page_table pg_tbl(0);
 
 	const u8* ph = kernel + elf->e_phoff;
 	for (int i = 0; i < elf->e_phnum; ++i) {
 		const Elf64_Phdr* phe = reinterpret_cast<const Elf64_Phdr*>(ph);
 		if (phe->p_type == PT_LOAD) {
 			cause::t r = load_segm(phe, &pg_tbl);
-			if (is_fail(r))
+			if (is_fail(r)) {
+				log(1)(SRCPOS)
+				    ("load_segm() failed. cause=").u(r)();
 				return r;
+			}
 		}
 #if CONFIG_DEBUG_BOOT >= 1
 		log()("program header[").u(i)("]:")()
@@ -228,16 +231,20 @@ extern "C" u32 load(u32 magic, u32* tag)
 	{
 		r = pg_tbl.set_page(adr, adr,
 		    arch::page::PHYS_L2, boot_page_table::EXIST);
-		if (r != cause::OK)
+		if (is_fail(r)) {
+			log(1)(SRCPOS)("set_page() failed. cause=").u(r)();
 			return r;
+		}
 	}
 
 	// ページテーブル自身をページテーブルにマップする。
 	u64 pg_tbl_top = reinterpret_cast<u64>(pg_tbl.get_table());
 	pg_tbl.set_page(pg_tbl_top, pg_tbl_top,
 	    arch::page::PHYS_L1, boot_page_table::EXIST);
-	if (r != cause::OK)
+	if (is_fail(r)) {
+		log(1)(SRCPOS)("set_page() failed. cause=").u(r)();
 		return r;
+	}
 
 /*	// sharing stack with .bss section
 	// stack

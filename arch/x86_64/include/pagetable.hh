@@ -134,30 +134,27 @@ protected:
 void pte_init(pte* table);
 
 /// @brief Page table creater.
-/// @tparam page_alloc Memory allocator class, must having
+/// @tparam page_table_acquire Memory allocator class, must having
 ///                    following public function.
-///  - cause::t page_alloc::alloc(u64* padr)
-///  - cause::t page_alloc::free(u64 padr)
+///  - static cause::pair<u64>
+///    page_table_acquire::acquire(page_table<>* x)
+///  - static cause::t
+///    page_table_acquire::release(page_table<>* x, u64 padr)
 /// @tparam p2v        physical to virtual convert function.
-template <class page_alloc, void* (*p2v)(u64 padr)>
+template <class page_table_acquire, void* (*p2v)(u64 padr)>
 class page_table : public page_table_base
 {
 public:
-	page_table(pte* top, page_alloc* _alloc);
+	page_table(pte* top);
 	page_table() {}
 
-	void set_alloc(page_alloc* _alloc) { alloc = _alloc; }
-
 	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
-
-private:
-	page_alloc* alloc;
 };
 
 /// @param[in] top  exist page table. null available.
-template <class page_alloc, void* (*p2v)(u64 padr)>
-page_table<page_alloc, p2v>::page_table(pte* top, page_alloc* _alloc)
-    : page_table_base(top), alloc(_alloc)
+template <class page_table_acquire, void* (*p2v)(u64 padr)>
+page_table<page_table_acquire, p2v>::page_table(pte* top)
+    : page_table_base(top)
 {
 }
 
@@ -166,36 +163,35 @@ page_table<page_alloc, p2v>::page_table(pte* top, page_alloc* _alloc)
 /// @param[in] padr  physical page address.
 /// @param[in] pt    page type. one of PHYS_L*.
 /// @param[in] flags page flags.
-template <class page_alloc, void* (*p2v)(u64 padr)>
-cause::t page_table<page_alloc, p2v>::set_page(
+template <class page_table_acquire, void* (*p2v)(u64 padr)>
+cause::t page_table<page_table_acquire, p2v>::set_page(
     u64 vadr, u64 padr, page::TYPE pt, u64 flags)
 {
 	const int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	if (UNLIKELY(!top)) {
-		uptr page_adr;
-		const cause::t r = alloc->alloc(&page_adr);
-		if (r != cause::OK)
-			return r;
+		const auto r = page_table_acquire::acquire(this);
+		if (r.is_fail())
+			return r.r;
 
-		top = static_cast<pte*>(p2v(page_adr));
+		top = static_cast<pte*>(p2v(r.value));
 		pte_init(top);
 	}
 
 	pte* table = top;
 	for (int level = PAGETYPE_TO_LEVELINDEX[page::PHYS_HIGHEST];
-	     level > target_level; --level)
+	     level > target_level;
+	     --level)
 	{
 		const int index = (vadr >> PTE_INDEX_SHIFTS[level]) & 0x1ff;
 
 		if (table[index].test_flags(pte::P) == 0) {
-			uptr p;
-			const cause::t r = alloc->alloc(&p);
-			if (r != cause::OK)
-				return r;
+			const auto r = page_table_acquire::acquire(this);
+			if (r.is_fail())
+				return r.r;
 
-			pte_init(static_cast<pte*>(p2v(p)));
-			table[index].set(p, pte::P | pte::RW);
+			pte_init(static_cast<pte*>(p2v(r.value)));
+			table[index].set(r.value, pte::P | pte::RW);
 		}
 
 		table = static_cast<pte*>(p2v(table[index].get_adr()));

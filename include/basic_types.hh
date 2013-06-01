@@ -395,8 +395,8 @@ namespace cause
 			value(_value)
 		{}
 
-		bool is_ok() const { return is_ok(r); }
-		bool is_fail() const { return is_fail(r); }
+		bool is_ok() const { return cause::is_ok(r); }
+		bool is_fail() const { return cause::is_fail(r); }
 
 		type r;      ///< Result.
 		T    value;  ///< Additional result value.

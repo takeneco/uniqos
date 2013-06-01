@@ -170,20 +170,20 @@ cause::t setup_heap(tmp_alloc* heap)
 	return cause::OK;
 }
 
-class page_table_tmpalloc
+class page_table_tmpacquire
 {
 	tmp_alloc*                  tmpalloc;
 	const tmp_alloc::slot_mask  slotm;
 
 public:
-	page_table_tmpalloc(tmp_alloc* _alloc, tmp_alloc::slot_mask _slotm)
+	page_table_tmpacquire(tmp_alloc* _alloc, tmp_alloc::slot_mask _slotm)
 	    : tmpalloc(_alloc), slotm(_slotm)
 	{}
-	cause::t alloc(u64* padr);
-	cause::t free(u64 padr);
+	cause::pair<uptr> acquire(void*);
+	cause::t          release(u64 padr);
 };
 
-cause::t page_table_tmpalloc::alloc(u64* padr)
+cause::pair<uptr> page_table_tmpacquire::acquire(void*)
 {
 	void* p = tmpalloc->alloc(
 	    slotm,
@@ -191,23 +191,84 @@ cause::t page_table_tmpalloc::alloc(u64* padr)
 	    arch::page::PHYS_L1_SIZE,
 	    true);
 
-	*padr = reinterpret_cast<u64>(p);
-
-	return p != 0 ? cause::OK : cause::NOMEM;
+	return cause::pair<uptr>(
+	    p != 0 ? cause::OK : cause::NOMEM,
+	    reinterpret_cast<uptr>(p));
 }
 
-cause::t page_table_tmpalloc::free(u64 padr)
+cause::t page_table_tmpacquire::release(u64 padr)
 {
 	void* p = reinterpret_cast<void*>(padr);
 
 	return tmpalloc->dealloc(SLOTM_ANY, p) ? cause::OK : cause::FAIL;
 }
 
-inline void* phys_to_virt_1(u64 padr) {
+inline void* pam1_p2v(uptr padr) {
 	return reinterpret_cast<void*>(padr);
 }
-inline void* phys_to_virt_2(u64 padr) {
+class pam1_page_table_acquire;
+typedef arch::page_table<pam1_page_table_acquire, pam1_p2v> _pam1_page_table;
+class pam1_page_table : public _pam1_page_table
+{
+public:
+	pam1_page_table(arch::pte* top, tmp_alloc* _heap) :
+		_pam1_page_table(top), heap(_heap)
+	{}
+
+	tmp_alloc* heap;
+};
+class pam1_page_table_acquire
+{
+public:
+	static cause::pair<uptr> acquire(_pam1_page_table* x);
+};
+cause::pair<uptr> pam1_page_table_acquire::acquire(_pam1_page_table* x)
+{
+	pam1_page_table* _x = static_cast<pam1_page_table*>(x);
+
+	void* p = _x->heap->alloc(
+	    SLOTM_BOOTHEAP,
+	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE,
+	    true);
+
+	return cause::pair<uptr>(
+	    p != 0 ? cause::OK : cause::NOMEM,
+	    reinterpret_cast<uptr>(p));
+}
+
+inline void* pam2_p2v(u64 padr) {
 	return reinterpret_cast<void*>(arch::PHYS_MAP_ADR + padr);
+}
+class pam2_page_table_acquire;
+typedef arch::page_table<pam2_page_table_acquire, pam2_p2v> _pam2_page_table;
+class pam2_page_table : public _pam2_page_table
+{
+public:
+	pam2_page_table(arch::pte* top, tmp_alloc* _heap) :
+		_pam2_page_table(top), heap(_heap)
+	{}
+
+	tmp_alloc* heap;
+};
+class pam2_page_table_acquire
+{
+public:
+	static cause::pair<uptr> acquire(_pam2_page_table* x);
+};
+cause::pair<uptr> pam2_page_table_acquire::acquire(_pam2_page_table* x)
+{
+	pam2_page_table* _x = static_cast<pam2_page_table*>(x);
+
+	void* p = _x->heap->alloc(
+	    SLOTM_BOOTHEAP | SLOTM_PAM1,
+	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE,
+	    true);
+
+	return cause::pair<uptr>(
+	    p != 0 ? cause::OK : cause::NOMEM,
+	    reinterpret_cast<uptr>(p));
 }
 
 /// @brief  Setup physical mapping address 1st phase.
@@ -220,14 +281,9 @@ inline void* phys_to_virt_2(u64 padr) {
 /// 最大 6GiB まで作成する。
 cause::t setup_pam1(u64 padr_end, tmp_alloc* heap)
 {
-	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_1>
-	    page_table_1;
-
-	page_table_tmpalloc pt_alloc(heap, SLOTM_BOOTHEAP);
-
 	arch::pte* cr3 = reinterpret_cast<arch::pte*>(native::get_cr3());
 
-	page_table_1 pg_tbl(cr3, &pt_alloc);
+	pam1_page_table pg_tbl(cr3, heap);
 
 	padr_end = min<u64>(padr_end, SETUP_PAM1_MAPEND);
 
@@ -237,7 +293,7 @@ cause::t setup_pam1(u64 padr_end, tmp_alloc* heap)
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
-		    page_table_1::EXIST | page_table_1::WRITE);
+		    pam1_page_table::EXIST | pam1_page_table::WRITE);
 
 		if (is_fail(r))
 			return r;
@@ -253,15 +309,10 @@ cause::t setup_pam1(u64 padr_end, tmp_alloc* heap)
 /// @retval false Failed.
 cause::t setup_pam2(u64 padr_end, tmp_alloc* heap)
 {
-	typedef arch::page_table<page_table_tmpalloc, phys_to_virt_2>
-	    page_table_2;
-
-	page_table_tmpalloc pt_alloc(heap, SLOTM_BOOTHEAP | SLOTM_PAM1);
-
 	arch::pte* cr3 = static_cast<arch::pte*>(
 	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
 
-	page_table_2 pg_tbl(cr3, &pt_alloc);
+	pam2_page_table pg_tbl(cr3, heap);
 
 	for (uptr padr = SETUP_PAM1_MAPEND + 1;
 	     padr < padr_end;
@@ -271,7 +322,7 @@ cause::t setup_pam2(u64 padr_end, tmp_alloc* heap)
 		    arch::PHYS_MAP_ADR + padr,
 		    padr,
 		    arch::page::PHYS_L2,
-		    page_table_2::EXIST | page_table_2::WRITE);
+		    pam2_page_table::EXIST | pam2_page_table::WRITE);
 
 		if (is_fail(r))
 			return r;
