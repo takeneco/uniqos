@@ -1,7 +1,7 @@
 /// @file  ctype.h
 /// @brief used by ACPICA
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_CTYPE_H_
@@ -18,6 +18,8 @@ int isprint(int c);
 int isspace(int c);
 int isupper(int c);
 int isxdigit(int c);
+int tolower(int c);
+int toupper(int c);
 
 
 #ifdef __cplusplus

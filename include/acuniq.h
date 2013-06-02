@@ -1,7 +1,7 @@
 /// @file  include/acuniq.h
 /// @brief used by ACPICA
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_ACUNIQ_H_
@@ -38,6 +38,10 @@
 
 #include <stdarg.h>
 #include <platform/acgcc.h>
+
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
 
 
 #endif  // include guard

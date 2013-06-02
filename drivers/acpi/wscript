@@ -1,5 +1,5 @@
 #
-# (C) 2012 KATO Takeshi
+# (C) 2012-2013 KATO Takeshi
 #
 
 acpi_includes = [
@@ -23,6 +23,6 @@ def build(x):
 		    target   = acpi_name,
 		    includes = acpi_includes,
 		    source   = acpi_sources,
-		    use      = ['KERNEL', 'acpica_objs'],
+		    use      = ['ACPICA', 'KERNEL', 'acpica_objs'],
 		)
 

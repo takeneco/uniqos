@@ -41,6 +41,7 @@ def configure(x):
 		x.find_program('clang++', var='CXX')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++11')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-compat')
+		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-extensions')
 
 	elif x.options.compiler == 'gnu':
 		x.find_program('gcc', var='AS')
