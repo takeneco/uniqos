@@ -1,7 +1,7 @@
 /// @file   cpu_ctl.cc
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2012 KATO Takeshi
+//  (C) 2010-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 #include <new_ops.hh>
 
 
+extern char on_syscall[];
+
 namespace {
 
 enum {
@@ -45,9 +47,9 @@ namespace arch {
 
 // arch::cpu_ctl
 
-cause::type cpu_ctl::setup()
+cause::t cpu_ctl::setup()
 {
-	cause::type r = setup_tss();
+	cause::t r = setup_tss();
 	if (is_fail(r))
 		return r;
 
@@ -67,12 +69,12 @@ void cpu_ctl::set_running_thread(thread* t)
 	running_thread_regset = t->ref_regset();
 }
 
-cause::type cpu_ctl::setup_tss()
+cause::t cpu_ctl::setup_tss()
 {
 	tss.iomap_base = sizeof tss;
 
 	mempool* ist_mp;
-	cause::type r = mempool_acquire_shared(IST_BYTES, &ist_mp);
+	cause::t r = mempool_acquire_shared(IST_BYTES, &ist_mp);
 	if (is_fail(r))
 		return r;
 
@@ -85,10 +87,27 @@ cause::type cpu_ctl::setup_tss()
 	tss.set_ist(ist_layout(ist_intr), IST_INTR);
 	tss.set_ist(ist_layout(ist_trap), IST_TRAP);
 
+	syscall_buf.running_thread_regset_p = &running_thread_regset;
+	// syscall から swapgs で syscall_buf へアクセスできるようにする
+	const uptr gs_base = reinterpret_cast<uptr>(&syscall_buf);
+	native::write_msr(gs_base, 0xc0000100);
+
+	// STAR
+	const u64 msr_star =
+	    (static_cast<u64>(gdt.kern_code_offset()) << 32) |
+	    (static_cast<u64>(gdt.user_data_offset() + 3 - 8) << 48);
+	native::write_msr(msr_star, 0xc0000081);
+
+	// LSTAR
+	native::write_msr(reinterpret_cast<u64>(on_syscall), 0xc0000082);
+
+	// FMASK
+	native::write_msr(0x00003000L, 0xc0000084);
+
 	return cause::OK;
 }
 
-cause::type cpu_ctl::setup_gdt()
+cause::t cpu_ctl::setup_gdt()
 {
 	gdt.null_entry.set_null();
 	gdt.kern_code.set(0);
@@ -138,9 +157,9 @@ cpu_ctl_common::cpu_ctl_common()
 {
 }
 
-cause::type cpu_ctl_common::init()
+cause::t cpu_ctl_common::init()
 {
-	cause::type r = mps.load();
+	cause::t r = mps.load();
 	if (is_fail(r))
 		return r;
 
@@ -151,7 +170,7 @@ cause::type cpu_ctl_common::init()
 	return cause::OK;
 }
 
-cause::type cpu_ctl_common::setup_idt()
+cause::t cpu_ctl_common::setup_idt()
 {
 	native::idt_ptr64 idtptr;
 	idtptr.set(sizeof (idte) * 256, idt.get());
@@ -162,7 +181,7 @@ cause::type cpu_ctl_common::setup_idt()
 }
 
 
-cause::type cpu_common_init()
+cause::t cpu_common_init()
 {
 	cpu_ctl_common* obj =
 	    new (mem_alloc(sizeof (cpu_ctl_common))) cpu_ctl_common;
@@ -170,7 +189,7 @@ cause::type cpu_common_init()
 	if (!obj)
 		return cause::NOMEM;
 
-	cause::type r = obj->init();
+	cause::t r = obj->init();
 	if (is_fail(r))
 		return r;
 

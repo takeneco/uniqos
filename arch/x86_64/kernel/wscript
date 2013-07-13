@@ -18,6 +18,7 @@ kern_source = [
     'ioapic.cc',
     'irq_ctl.cc',
     'kerninit.cc',
+    'on_syscall.S',
     'page_ctl.cc',
     'page_ctl_init.cc',
     'serial.cc',

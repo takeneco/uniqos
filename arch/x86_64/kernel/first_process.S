@@ -1,4 +1,4 @@
-/// @file   pr.S
+/// @file   first_process.S
 /// @brief  Initial process.
 //
 // (C) 2013 KATO Takeshi
@@ -9,5 +9,7 @@
 .globl _start
 
 _start:
-	1:hlt
+	xorq %rax, %rax
+	1:syscall
+	incq %rax
 	jmp 1b

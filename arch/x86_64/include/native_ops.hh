@@ -1,7 +1,7 @@
 /// @file native_ops.hh
 /// @brief  C++ から呼び出すアセンブラ命令
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
@@ -236,7 +236,7 @@ inline void lidt(idt_ptr64* ptr) {
 	asm volatile ("lidt %0" : : "m" (*ptr));
 }
 
-inline void write_msr(u32 adr, u64 val)
+inline void write_msr(u64 val, u32 adr)
 {
 	asm volatile ("wrmsr" : :
 	    "d" (val >> 32), "a" (val & 0xffffffff), "c" (adr));

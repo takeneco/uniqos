@@ -1,6 +1,6 @@
 /// @file  cpu_ctl.hh
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_KERNEL_CPU_CTL_HH_
@@ -15,7 +15,7 @@ class thread;
 class cpu_node;
 
 // call by cpu_ctl::IDT
-cause::type intr_init(idte* idt);
+cause::t intr_init(idte* idt);
 
 namespace arch {
 
@@ -28,7 +28,7 @@ public:
 protected:
 	cpu_ctl() : original_lapic_id(-1) {}
 
-	cause::type setup();
+	cause::t setup();
 
 public:
 	void set_running_thread(thread* t);
@@ -40,8 +40,8 @@ public:
 	}
 
 private:
-	cause::type setup_tss();
-	cause::type setup_gdt();
+	cause::t setup_tss();
+	cause::t setup_gdt();
 	void* ist_layout(void* mem);
 
 public:
@@ -53,9 +53,9 @@ public:
 
 		enum FLAGS {
 			/// Exec and Read segment
-			XR  = U64(0x1a) << 40,
+			XR  = U64(0x1b) << 40,
 			/// Read and Write segment
-			RW  = U64(0x12) << 40,
+			RW  = U64(0x13) << 40,
 
 			/// Descriptor exist if set.
 			P   = U64(1) << 47,
@@ -167,8 +167,8 @@ public:
 		gdte          null_entry;
 		code_seg_desc kern_code;
 		data_seg_desc kern_data;
-		code_seg_desc user_code;
 		data_seg_desc user_data;
+		code_seg_desc user_code;
 		tss_desc      tss;
 
 		static u16 kern_code_offset() {
@@ -176,6 +176,12 @@ public:
 		}
 		static u16 kern_data_offset() {
 			return offset_cast(&nullgdt()->kern_data);
+		}
+		static u16 user_code_offset() {
+			return offset_cast(&nullgdt()->user_code);
+		}
+		static u16 user_data_offset() {
+			return offset_cast(&nullgdt()->user_data);
 		}
 		static u16 tss_offset() {
 			return offset_cast(&nullgdt()->tss);
@@ -245,6 +251,11 @@ public:
 	GDT gdt;
 	TSS tss;
 
+	struct {
+		arch::regset** running_thread_regset_p;
+		uptr tmp;
+	} syscall_buf;
+
 	arch::regset* running_thread_regset;
 
 	u8 original_lapic_id;
@@ -255,7 +266,7 @@ public:
 class cpu_ctl::IDT
 {
 public:
-	cause::type init() {
+	cause::t init() {
 		return intr_init(idt);
 	}
 
@@ -273,9 +284,9 @@ class cpu_ctl_common
 public:
 	cpu_ctl_common();
 
-	cause::type init();
+	cause::t init();
 
-	cause::type setup_idt();
+	cause::t setup_idt();
 
 	const mpspec* get_mpspec() const {
 		return &mps;

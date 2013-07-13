@@ -127,12 +127,18 @@ cause::t create_init_process()
 
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
-	    arch::pte::P | arch::pte::A);
+	    arch::pte::P | arch::pte::US | arch::pte::A);
 
 	thread_queue& tc = get_cpu_node()->get_thread_ctl();
 	thread* t;
 	tc.create_thread(0x00100000, 0, &t);
 	t->ref_regset()->cr3 = arch::unmap_phys_adr(pr->ref_ptbl().get_table(), arch::page::PHYS_L1);
+	t->ref_regset()->cs = 0x20 + 3;
+	t->ref_regset()->ds = 0x18 + 3;
+	t->ref_regset()->es = 0x18 + 3;
+	t->ref_regset()->fs = 0x18 + 3;
+	t->ref_regset()->gs = 0x18 + 3;
+	t->ref_regset()->ss = 0x18 + 3;
 	tc.ready(t);
 
 	log()("process:")(pr)()("thread->regset:")(t->ref_regset())();

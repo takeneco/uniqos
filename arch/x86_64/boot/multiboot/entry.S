@@ -95,7 +95,7 @@ entry_:
 	// IA32_EFER.LME = 1
 	movl  $0xc0000080, %ecx
 	rdmsr
-	orw   $0x0100, %ax
+	orw   $0x0101, %ax
 	wrmsr
 
 	movl  $0x80000001, %eax
