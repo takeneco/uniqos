@@ -2,7 +2,7 @@
 // @brief  thread_queue class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
 
 #include <log.hh>
 
+// TODO: include from arch
+#include <native_thread.hh>
 
 namespace {
 
@@ -34,58 +36,39 @@ const uptr STACK_SIZE = 0x1000;
 }
 
 
-thread_queue::thread_queue(cpu_node* _owner) :
-	owner_cpu(_owner),
-	thread_mempool(0),
-	stack_mempool(0)
+thread_queue::thread_queue(cpu_node* _owner_cpu) :
+	owner_cpu(_owner_cpu),
+	running_thread(0)
 {
 }
 
-cause::type thread_queue::init()
+cause::t thread_queue::init()
 {
-	cause::type r = mempool_acquire_shared(sizeof (thread),
-	                                       &thread_mempool);
-	if (is_fail(r))
-		return r;
+	return cause::OK;
+}
 
-	r = mempool_acquire_shared(STACK_SIZE, &stack_mempool);
-	if (is_fail(r))
-		return r;
-
-	thread* current = new (thread_mempool->alloc()) thread(get_cpu_node(),
-	    0, 0, 0, 0);
-	running_thread = current;
+/// @brief カーネルの初期化処理用スレッドを関連付ける。
+//
+/// 何もスレッドが無い状態で呼び出さなければならない。
+cause::t thread_queue::attach_boot_thread(thread* t)
+{
+	running_thread = t;
 
 	return cause::OK;
 }
 
-cause::type thread_queue::create_thread(
-    uptr text, uptr param, thread** newthread)
+void thread_queue::attach(thread* t)
 {
-	void* stack = stack_mempool->alloc();
-	if (!stack)
-		return cause::NOMEM;
-
-	void* p = thread_mempool->alloc();
-	if (!p) {
-		stack_mempool->dealloc(stack);
-		return cause::NOMEM;
-	}
-
-	thread* t = new (p) thread(get_cpu_node(),
-	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
-
-	t->state = thread::SLEEPING;
+	t->owner_cpu = owner_cpu;
 
 	thread_state_lock.wlock();
 
-	sleeping_queue.insert_tail(t);
+	if (t->state == thread::SLEEPING)
+		sleeping_queue.insert_tail(t);
+	else
+		ready_queue.insert_tail(t);
 
 	thread_state_lock.un_wlock();
-
-	*newthread = t;
-
-	return cause::OK;
 }
 
 extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
@@ -112,7 +95,10 @@ bool thread_queue::force_switch_thread()
 		owner_cpu->set_running_thread(next_thr);
 	}
 
-	switch_regset(next_thr->ref_regset(), prev_thr->ref_regset());
+	// TODO: refs arch
+	switch_regset(
+	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),
+	    static_cast<x86::native_thread*>(prev_thr)->ref_regset());
 
 	return true;
 }
@@ -150,7 +136,10 @@ void thread_queue::sleep()
 		owner_cpu->set_running_thread(next_run);
 	}
 
-	switch_regset(next_run->ref_regset(), prev_run->ref_regset());
+	// TODO: refs arch
+	switch_regset(
+	    static_cast<x86::native_thread*>(next_run)->ref_regset(),
+	    static_cast<x86::native_thread*>(prev_run)->ref_regset());
 
 	arch::intr_enable();
 }

@@ -20,24 +20,15 @@
 #include <cpu_node.hh>
 
 
-#include <native_ops.hh>
-thread::thread(
-    cpu_node* _owner,
-    uptr text,
-    uptr param,
-    uptr stack,
-    uptr stack_size
-) :
-	owner(_owner),
-	rs(text, param, stack, stack_size),
+thread::thread() :
+	owner_cpu(0),
+	state(SLEEPING),
 	anti_sleep(false)
 {
-	// TODO:これはarch依存
-	rs.cr3 = native::get_cr3();
 }
 
 void thread::ready()
 {
-	owner->get_thread_ctl().ready(this);
+	owner_cpu->get_thread_ctl().ready(this);
 }
 

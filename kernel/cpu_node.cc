@@ -2,7 +2,7 @@
 /// @brief  cpu_node class implementation.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,9 @@
 #include <log.hh>
 #include <page_pool.hh>
 
+// TODO:include from arch
+#include <native_thread.hh>
+#include <native_ops.hh>
 
 /// @class cpu_node
 //
@@ -69,17 +72,19 @@ cause::type cpu_node::setup()
 	if (is_fail(r))
 		return r;
 
-	arch::cpu_ctl::set_running_thread(thread_q.get_running_thread());
+	//arch::cpu_ctl::set_running_thread(thread_q.get_running_thread());
 
 	return cause::OK;
 }
 
 cause::type cpu_node::start_message_loop()
 {
-	cause::type r = thread_q.create_thread(
-	    &cpu_node::message_loop_entry, this, &message_thread);
+	// TODO: refs arch
+	auto r = x86::create_thread(
+	    get_cpu_node(), &cpu_node::message_loop_entry, this);
 	if (is_fail(r))
-		return r;
+		return r.r;
+	message_thread = r.value;
 
 	thread_q.ready(message_thread);
 

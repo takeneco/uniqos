@@ -24,6 +24,7 @@
 #include <mempool.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
+#include <native_thread.hh>
 
 
 extern char on_syscall[];
@@ -66,7 +67,8 @@ cause::t cpu_ctl::setup()
 
 void cpu_ctl::set_running_thread(thread* t)
 {
-	running_thread_regset = t->ref_regset();
+	running_thread_regset =
+	    static_cast<x86::native_thread*>(t)->ref_regset();
 }
 
 cause::t cpu_ctl::setup_tss()

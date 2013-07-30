@@ -1,6 +1,6 @@
 /// @file  thread_queue.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_THREAD_QUEUE_HH_
@@ -15,20 +15,12 @@ class mempool;
 class thread_queue
 {
 public:
-	thread_queue(cpu_node* _owner);
+	thread_queue(cpu_node* _owner_cpu);
 
 	cause::type init();
+	cause::t attach_boot_thread(thread* t);
 
-	cause::type create_thread(uptr text, uptr param, thread** newthread);
-
-	typedef void (*entry_point)(void* context);
-	cause::type create_thread(entry_point func,
-	                          void* context,
-	                          thread** newthread) {
-		return create_thread(reinterpret_cast<uptr>(func),
-		                     reinterpret_cast<uptr>(context),
-		                     newthread);
-	}
+	void attach(thread* t);
 
 	bool force_switch_thread();
 
@@ -53,9 +45,6 @@ private:
 	typedef bibochain<thread, &thread::chain_node> thread_chain;
 	thread_chain ready_queue;
 	thread_chain sleeping_queue;
-
-	mempool* thread_mempool;
-	mempool* stack_mempool;
 };
 
 

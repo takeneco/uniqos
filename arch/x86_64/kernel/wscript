@@ -27,6 +27,7 @@ kern_source = [
     'bootinfo.cc',
     'spinlock_ops.cc',
     'start.S',
+    'thread_ctl.cc',
     'cpu_ctl.cc',
 
     # for g++

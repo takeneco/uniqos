@@ -1,7 +1,7 @@
 /// @file  global_vars.hh
 /// @brief Global variables declaration.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_GLOBAL_VARS_HH_
@@ -21,6 +21,12 @@ class timer_ctl;
 class log_target;
 class cpu_node;
 
+namespace x86 {
+
+class thread_ctl;
+
+}  // namespace x86
+
 
 namespace global_vars {
 
@@ -29,6 +35,8 @@ struct _arch
 	cpu_ctl_common*    cpu_ctl_common_obj;
 
 	irq_ctl*           irq_ctl_obj;
+
+	x86::thread_ctl*   thread_ctl_obj;
 
 	void*              bootinfo;
 };

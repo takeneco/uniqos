@@ -10,14 +10,6 @@ out = 'build'
 
 import os.path
 
-def configure_x86_64(x):
-
-	if x.options.compiler == 'llvm':
-		x.env.CFLAGS_KERNEL.append('-emit-llvm')
-		x.env.CXXFLAGS_KERNEL.append('-emit-llvm')
-		x.env.LINKFLAGS = ['-code-model=large', '-native']
-
-
 def options(x):
 	x.load('compiler_c')
 	x.load('compiler_cxx')
@@ -33,7 +25,7 @@ def options(x):
 
 
 def configure(x):
-	configure_x86_64(x)
+	x.recurse('tools')
 
 	if x.options.compiler == 'clang':
 		x.find_program('clang', var='AS')
@@ -52,8 +44,6 @@ def configure(x):
 	x.load('compiler_c')
 	x.load('compiler_cxx')
 	x.load('gcc gas')
-
-	x.recurse('tools')
 
 	x.recurse('arch')
 	x.recurse('drivers')

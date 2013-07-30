@@ -1,6 +1,6 @@
 /// @file  cpu_node.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_CPU_NODE_HH_
@@ -43,6 +43,7 @@ public:
 	void post_soft_message(message* ev);
 
 	thread_queue& get_thread_ctl() { return thread_q; }
+	thread_queue& get_thread_queue() { return thread_q; }
 	message_queue& get_soft_msgq() { return soft_msgq; }
 
 	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
