@@ -3,8 +3,8 @@
 // (C) 2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_THREAD_HH_
-#define INCLUDE_THREAD_HH_
+#ifndef INCLUDE_NATIVE_THREAD_HH_
+#define INCLUDE_NATIVE_THREAD_HH_
 
 #include <regset.hh>
 #include <thread.hh>
@@ -27,7 +27,8 @@ private:
 	arch::regset rs;
 };
 
-cause::pair<native_thread*> create_thread(cpu_node* owner_cpu, uptr text, uptr param);
+cause::pair<native_thread*> create_thread(
+    cpu_node* owner_cpu, uptr text, uptr param);
 
 typedef void (*entry_point)(void* context);
 inline cause::pair<native_thread*> create_thread(
