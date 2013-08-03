@@ -64,11 +64,7 @@ cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
 
 cause::type cpu_node::setup()
 {
-	cause::type r = arch::cpu_ctl::setup();
-	if (is_fail(r))
-		return r;
-
-	r = thread_q.init();
+	cause::t r = thread_q.init();
 	if (is_fail(r))
 		return r;
 

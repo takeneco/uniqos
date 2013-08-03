@@ -20,9 +20,9 @@
 
 #include <global_vars.hh>
 #include <mempool.hh>
+#include <native_cpu_node.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
-#include <cpu_node.hh>
 
 #include <log.hh>
 
@@ -84,7 +84,7 @@ cause::t thread_ctl::setup()
 
 cause::t thread_ctl::create_boot_thread()
 {
-	cpu_node* cn = get_cpu_node();
+	native_cpu_node* cn = get_native_cpu_node();
 	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0, 0, 0);
 
 	cn->get_thread_queue().attach_boot_thread(t);

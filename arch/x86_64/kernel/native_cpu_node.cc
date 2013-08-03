@@ -16,13 +16,17 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cpu_node.hh>
+#include <native_cpu_node.hh>
+
+#include <global_vars.hh>
+#include <mempool.hh>
+#include <native_ops.hh>
+#include <native_thread.hh>
 
 
 extern char on_syscall[];
 namespace {
 
-/*
 enum {
 	IST_BYTES = 0x2000,  // size of ist entry
 };
@@ -32,17 +36,20 @@ struct ist_footer_layout
 	arch::regset** regs;
 	cpu_node* proc;
 };
-*/
 
 }  // namespace
 
 namespace x86 {
-/*
-// arch::cpu_ctl
 
-cause::t cpu_ctl::setup()
+// x86::native_cpu_node
+
+cause::t native_cpu_node::setup()
 {
-	cause::t r = setup_tss();
+	cause::t r = cpu_node::setup();
+	if (is_fail(r))
+		return r;
+
+	r = setup_tss();
 	if (is_fail(r))
 		return r;
 
@@ -54,16 +61,19 @@ cause::t cpu_ctl::setup()
 	if (is_fail(r))
 		return r;
 
+	r = setup_syscall();
+	if (is_fail(r))
+		return r;
+
 	return cause::OK;
 }
 
-void cpu_ctl::set_running_thread(thread* t)
+void native_cpu_node::set_running_thread(thread* t)
 {
-	running_thread_regset =
-	    static_cast<x86::native_thread*>(t)->ref_regset();
+	running_thread_regset = static_cast<native_thread*>(t)->ref_regset();
 }
 
-cause::t cpu_ctl::setup_tss()
+cause::t native_cpu_node::setup_tss()
 {
 	tss.iomap_base = sizeof tss;
 
@@ -81,6 +91,11 @@ cause::t cpu_ctl::setup_tss()
 	tss.set_ist(ist_layout(ist_intr), IST_INTR);
 	tss.set_ist(ist_layout(ist_trap), IST_TRAP);
 
+	return cause::OK;
+}
+
+cause::t native_cpu_node::setup_syscall()
+{
 	syscall_buf.running_thread_regset_p = &running_thread_regset;
 	// syscall から swapgs で syscall_buf へアクセスできるようにする
 	const uptr gs_base = reinterpret_cast<uptr>(&syscall_buf);
@@ -101,7 +116,7 @@ cause::t cpu_ctl::setup_tss()
 	return cause::OK;
 }
 
-cause::t cpu_ctl::setup_gdt()
+cause::t native_cpu_node::setup_gdt()
 {
 	gdt.null_entry.set_null();
 	gdt.kern_code.set(0);
@@ -129,7 +144,7 @@ cause::t cpu_ctl::setup_gdt()
 /// @return IST として使用するポインタを返す。
 //
 /// 割り込みハンドラが IST から情報をたどれるようにする。
-void* cpu_ctl::ist_layout(void* mem)
+void* native_cpu_node::ist_layout(void* mem)
 {
 	void* memf = static_cast<u8*>(mem) + IST_BYTES;
 
@@ -142,7 +157,6 @@ void* cpu_ctl::ist_layout(void* mem)
 
 	return istf;
 }
-*/
 
 native_cpu_node* get_native_cpu_node()
 {
@@ -156,6 +170,11 @@ native_cpu_node* get_native_cpu_node(cpu_id cpuid)
 {
 	return static_cast<native_cpu_node*>(
 	    global_vars::core.cpu_node_objs[cpuid]);
+}
+
+cause::t cpu_setup()
+{
+	return get_native_cpu_node()->setup();
 }
 
 }  // namespace x86
@@ -203,11 +222,6 @@ cause::t cpu_common_init()
 		return r;
 
 	return cause::OK;
-}
-
-cause::type cpu_setup()
-{
-	return get_cpu_node()->setup();
 }
 */
 namespace arch {

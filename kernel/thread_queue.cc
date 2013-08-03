@@ -27,6 +27,7 @@
 #include <log.hh>
 
 // TODO: include from arch
+#include <native_cpu_node.hh>
 #include <native_thread.hh>
 
 namespace {
@@ -92,7 +93,7 @@ bool thread_queue::force_switch_thread()
 		ready_queue.insert_tail(running_thread);
 
 		running_thread = next_thr;
-		owner_cpu->set_running_thread(next_thr);
+		static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(next_thr);
 	}
 
 	// TODO: refs arch
@@ -133,7 +134,7 @@ void thread_queue::sleep()
 		// next_run は 0 にならない。
 
 		running_thread = next_run;
-		owner_cpu->set_running_thread(next_run);
+		static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(next_run);
 	}
 
 	// TODO: refs arch
@@ -165,7 +166,7 @@ void thread_queue::switch_thread_after_intr(thread* t)
 	ready_queue.remove(t);
 	running_thread = t;
 
-	owner_cpu->set_running_thread(t);
+	static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(t);
 }
 
 void thread_queue::_ready(thread* t)

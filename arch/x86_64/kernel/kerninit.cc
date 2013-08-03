@@ -6,7 +6,7 @@
 
 #include <acpi_ctl.hh>
 #include <bootinfo.hh>
-#include <cpu_node.hh>
+#include <native_cpu_node.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
@@ -34,9 +34,6 @@ void test(void*);
 bool test_init();
 void cpu_test();
 io_node* create_serial();
-void lapic_dump();
-void serial_dump(void*);
-bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
 
@@ -177,11 +174,11 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	r = cpu_setup();
+	r = x86::cpu_setup();
 	if (is_fail(r))
 		return r;
 
-	r = thread_ctl_setup();
+	r = x86::thread_ctl_setup();
 	if (is_fail(r))
 		return r;
 
@@ -332,9 +329,6 @@ log(1)("cpu_node:")(get_cpu_node())
 	}
 	native_thread* t = thr.value;
 	t->ready();
-
-	//tc.create_thread(test, 0, &t);
-	//tc.ready(t);
 
 	r = create_init_process();
 	if (is_fail(r)) {

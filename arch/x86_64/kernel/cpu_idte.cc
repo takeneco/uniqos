@@ -1,7 +1,7 @@
 /// @file   cpu_idte.cc
 /// @brief  interrupt entry.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #include "kerninit.hh"
@@ -9,8 +9,8 @@
 #include "global_vars.hh"
 #include <intr_ctl.hh>
 #include "log.hh"
-#include "native_ops.hh"
-#include <cpu_node.hh>
+#include <native_cpu_node.hh>
+#include <native_ops.hh>
 
 
 /// interrupt vector map
@@ -287,7 +287,7 @@ cause::type intr_init(idte* idt)
 
 void except_dump(int vec, const char* msg)
 {
-	cpu_node* cn = get_cpu_node();
+	x86::native_cpu_node* cn = x86::get_native_cpu_node();
 	arch::regset* rs = cn->running_thread_regset;
 
 	log(1)(msg)(" v=").u(vec)()

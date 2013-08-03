@@ -690,7 +690,7 @@ cause::t renumber_cpu_ids(const mpspec& mps)
 
 		const u8 id = pe->localapic_id;
 		if (id < cpu_cnt) {
-			cns[id]->set_original_lapic_id(id);
+			static_cast<x86::native_cpu_node*>(cns[id])->set_original_lapic_id(id);
 			--left;
 		}
 	}
@@ -703,9 +703,9 @@ cause::t renumber_cpu_ids(const mpspec& mps)
 
 		const u8 id = pe->localapic_id;
 		if (id >= cpu_cnt) {
-			while (cns[cns_i]->original_lapic_id_is_enable())
+			while (static_cast<x86::native_cpu_node*>(cns[cns_i])->original_lapic_id_is_enable())
 				++cns_i;
-			cns[cns_i]->set_original_lapic_id(id);
+			static_cast<x86::native_cpu_node*>(cns[cns_i])->set_original_lapic_id(id);
 			--left;
 		}
 	}

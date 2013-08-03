@@ -1,14 +1,13 @@
-/// @file  native_cpu_ctl.hh
+/// @file  native_cpu_node.hh
 //
 // (C) 2013 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_KERNEL_NATIVE_CPU_CTL_HH_
-#define ARCH_X86_64_KERNEL_NATIVE_CPU_CTL_HH_
+#ifndef ARCH_X86_64_KERNEL_NATIVE_CPU_NODE_HH_
+#define ARCH_X86_64_KERNEL_NATIVE_CPU_NODE_HH_
 
 #include <cpu_node.hh>
 #include <cpu_idte.hh>
-#include <mpspec.hh>
 #include <regset.hh>
 
 
@@ -22,24 +21,24 @@ public:
 
 public:
 	native_cpu_node() {}
-/*
-	cause::t setup();
 
-public:
-	void set_running_thread(thread* t);
+	cause::t setup();
 
 	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
 	u8 get_original_lapic_id() const { return original_lapic_id; }
 	bool original_lapic_id_is_enable() const {
 		return original_lapic_id != (u8)-1;
 	}
+	//TODO:この関数はなくしたい
+	void set_running_thread(thread* t);
 
 private:
 	cause::t setup_tss();
 	cause::t setup_gdt();
+	cause::t setup_syscall();
 	void* ist_layout(void* mem);
 
-public:
+private:
 	/// Global Descriptor Table Entry
 	struct gdte
 	{
@@ -182,7 +181,6 @@ public:
 			return offset_cast(&nullgdt()->tss);
 		}
 	};
-
 	// Task State Segment
 	struct TSS
 	{
@@ -246,15 +244,15 @@ public:
 	GDT gdt;
 	TSS tss;
 
+public:
+
 	struct {
 		arch::regset** running_thread_regset_p;
 		uptr tmp;
 	} syscall_buf;
 
 	arch::regset* running_thread_regset;
-
 	u8 original_lapic_id;
-*/
 };
 
 
