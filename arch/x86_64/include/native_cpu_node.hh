@@ -20,9 +20,10 @@ public:
 	class IDT;
 
 public:
-	native_cpu_node() {}
+	native_cpu_node();
 
 	cause::t setup();
+	cause::t start_message_loop();
 
 	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
 	u8 get_original_lapic_id() const { return original_lapic_id; }
@@ -32,11 +33,27 @@ public:
 	//TODO:この関数はなくしたい
 	void set_running_thread(thread* t);
 
+	void preempt_disable();
+	void preempt_enable();
+
+	void ready_messenger();
+	void ready_messenger_np();
+	void switch_messenger_after_intr();
+
+	void post_intr_message(message* ev);
+	void post_soft_message(message* ev);
+
 private:
 	cause::t setup_tss();
 	cause::t setup_gdt();
 	cause::t setup_syscall();
 	void* ist_layout(void* mem);
+
+	u8   inc_preempt_disable() { return ++preempt_disable_cnt; }
+	u8   dec_preempt_disable() { return --preempt_disable_cnt; }
+
+	void message_loop();
+	static void message_loop_entry(void* _cpu_node);
 
 private:
 	/// Global Descriptor Table Entry
@@ -243,6 +260,19 @@ private:
 
 	GDT gdt;
 	TSS tss;
+
+	thread* message_thread;
+
+	/// 外部割込みによって発生したイベントを溜める。
+	/// intr_evq を操作するときは CPU が割り込み禁止状態になっていなければ
+	/// ならない。
+	message_queue intr_msgq;
+
+	message_queue soft_msgq;
+
+#if CONFIG_PREEMPT
+	u8 preempt_disable_cnt;
+#endif  // CONFIG_PREEMPT
 
 public:
 

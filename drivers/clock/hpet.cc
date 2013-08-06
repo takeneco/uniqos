@@ -7,7 +7,8 @@
 #include <arch.hh>
 #include <clock_src.hh>
 #include <config.h>
-#include <cpu_node.hh>
+// TODO:arch deps
+#include <native_cpu_node.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
@@ -237,10 +238,11 @@ void _handler0(intr_handler* h)
 	msg.handler = _msg;
 	msg.data = hh->data;
 
-	cpu_node* cpu = get_cpu_node();
-	cpu->post_intr_message(&msg);
-
-	cpu->switch_messenger_after_intr();
+	arch::post_intr_message(&msg);
+	//TODO:delete
+	//x86::native_cpu_node* cpu = x86::get_native_cpu_node();
+	//cpu->post_intr_message(&msg);
+	//cpu->switch_messenger_after_intr();
 }
 
 void _handler1(intr_handler* h)
@@ -254,9 +256,11 @@ void _handler1(intr_handler* h)
 void hpet::handler1()
 {
 	if (msg1) {
-		cpu_node* cpu = get_cpu_node();
-		cpu->post_intr_message(msg1);
-		cpu->switch_messenger_after_intr();
+		x86::native_cpu_node* cpu = x86::get_native_cpu_node();
+		arch::post_intr_message(msg1);
+		//TODO:delete
+		//cpu->post_intr_message(msg1);
+		//cpu->switch_messenger_after_intr();
 		msg1 = 0;
 	}
 }

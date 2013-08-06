@@ -43,6 +43,11 @@ namespace x86 {
 
 // x86::native_cpu_node
 
+native_cpu_node::native_cpu_node() :
+	preempt_disable_cnt(0)
+{
+}
+
 cause::t native_cpu_node::setup()
 {
 	cause::t r = cpu_node::setup();
@@ -64,6 +69,19 @@ cause::t native_cpu_node::setup()
 	r = setup_syscall();
 	if (is_fail(r))
 		return r;
+
+	return cause::OK;
+}
+
+cause::t native_cpu_node::start_message_loop()
+{
+	auto r = x86::create_thread(
+	    this, &message_loop_entry, this);
+	if (is_fail(r))
+		return r.r;
+	message_thread = r.value;
+
+	thread_q.ready(message_thread);
 
 	return cause::OK;
 }
@@ -158,17 +176,110 @@ void* native_cpu_node::ist_layout(void* mem)
 	return istf;
 }
 
-native_cpu_node* get_native_cpu_node()
+/// Preemption contorl
+
+void native_cpu_node::preempt_disable()
+{
+#if CONFIG_PREEMPT
+	arch::intr_disable();
+
+	inc_preempt_disable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+void native_cpu_node::preempt_enable()
+{
+#if CONFIG_PREEMPT
+	if (dec_preempt_disable() == 0)
+		arch::intr_enable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+void native_cpu_node::ready_messenger()
+{
+	thread_q.ready(message_thread);
+}
+
+void native_cpu_node::ready_messenger_np()
+{
+	thread_q.ready_np(message_thread);
+}
+
+void native_cpu_node::switch_messenger_after_intr()
+{
+	thread_q.switch_thread_after_intr(message_thread);
+}
+
+/// @brief 外部割込みからのイベントを登録する。
+//
+/// 外部割込み中は CPU が割り込み禁止状態なので割り込み可否の制御はしない。
+void native_cpu_node::post_intr_message(message* ev)
+{
+	intr_msgq.push(ev);
+	thread_q.ready_np(message_thread);
+
+	switch_messenger_after_intr();
+}
+
+void native_cpu_node::post_soft_message(message* ev)
+{
+	preempt_disable();
+
+	soft_msgq.push(ev);
+	thread_q.ready_np(message_thread);
+
+	preempt_enable();
+}
+
+void native_cpu_node::message_loop()
+{
+	preempt_disable();
+
+	for (;;) {
+		arch::intr_enable();
+		arch::intr_disable();
+
+		if (intr_msgq.deliv_all_np())
+			continue;
+
+		if (soft_msgq.deliv_np())
+			continue;
+
+
+		// preempt_enable / intr_disable の状態を作る
+		dec_preempt_disable();
+
+		bool r = thread_q.force_switch_thread();
+
+		// preempt_disable / intr_disable の状態に戻す
+		inc_preempt_disable();
+
+		if (r)
+			continue;
+
+		arch::intr_wait();
+	}
+}
+
+void native_cpu_node::message_loop_entry(void* _cpu_node)
+{
+	static_cast<native_cpu_node*>(_cpu_node)->message_loop();
+}
+
+
+x86::native_cpu_node* get_native_cpu_node()
 {
 	const cpu_id id = arch::get_cpu_id();
 
-	return static_cast<native_cpu_node*>(
+	return static_cast<x86::native_cpu_node*>(
 	    global_vars::core.cpu_node_objs[id]);
 }
 
-native_cpu_node* get_native_cpu_node(cpu_id cpuid)
+x86::native_cpu_node* get_native_cpu_node(cpu_id cpuid)
 {
-	return static_cast<native_cpu_node*>(
+	return static_cast<x86::native_cpu_node*>(
 	    global_vars::core.cpu_node_objs[cpuid]);
 }
 
@@ -178,6 +289,22 @@ cause::t cpu_setup()
 }
 
 }  // namespace x86
+
+void preempt_disable()
+{
+#if CONFIG_PREEMPT
+	x86::get_native_cpu_node()->preempt_disable();
+
+#endif  // CONFIG_PREEMPT
+}
+
+void preempt_enable()
+{
+#if CONFIG_PREEMPT
+	x86::get_native_cpu_node()->preempt_enable();
+
+#endif  // CONFIG_PREEMPT
+}
 
 // cpu_ctl_common
 /*
@@ -225,6 +352,22 @@ cause::t cpu_common_init()
 }
 */
 namespace arch {
+
+void post_intr_message(message* msg)
+{
+	x86::get_native_cpu_node()->post_intr_message(msg);
+}
+
+void post_cpu_message(message* msg)
+{
+	x86::get_native_cpu_node()->post_soft_message(msg);
+}
+
+void post_cpu_message(message* msg, cpu_node* cpu)
+{
+	static_cast<x86::native_cpu_node*>(cpu)->post_soft_message(msg);
+}
+
 /*
 void intr_enable()
 {

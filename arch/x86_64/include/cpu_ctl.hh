@@ -27,11 +27,6 @@ public:
 
 protected:
 	cause::t setup();
-
-private:
-	cause::t setup_tss();
-	cause::t setup_gdt();
-	void* ist_layout(void* mem);
 };
 
 

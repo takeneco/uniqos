@@ -2,7 +2,7 @@
 /// @brief serial port.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -332,8 +332,10 @@ void serial_ctl::post_write_msg()
 		write_posted = true;
 	}
 
-	cpu_node* cpu = get_cpu_node();
-	cpu->post_soft_message(&write_msg);
+	//TODO:delete
+	//cpu_node* cpu = get_cpu_node();
+	//cpu->post_soft_message(&write_msg);
+	post_message(&write_msg);
 }
 
 void serial_ctl::on_write_msg()
@@ -369,10 +371,12 @@ void serial_ctl::post_intr_msg()
 		intr_posted = true;
 	}
 
-	cpu_node* cpu = get_cpu_node();
-	cpu->post_intr_message(&intr_msg);
+	arch::post_intr_message(&intr_msg);
+	// TODO: delete
+	//cpu_node* cpu = get_cpu_node();
+	//cpu->post_intr_message(&intr_msg);
 
-	cpu->switch_messenger_after_intr();
+	//cpu->switch_messenger_after_intr();
 }
 
 void serial_ctl::on_intr_msg()

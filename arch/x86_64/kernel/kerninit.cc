@@ -70,12 +70,6 @@ void disable_intr_from_8259A()
 	native::outb(0xff, PIC1_OCW1);
 }
 
-void apentry()
-{
-	log(1)("apentry()")();
-	for(;;)native::hlt();
-}
-
 namespace {
 void timer_handler(message* msg)
 {
@@ -198,7 +192,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	arch::apic_init();
 
 	thread_queue& tc = get_cpu_node()->get_thread_ctl();
-	r = get_cpu_node()->start_message_loop();
+	r = get_native_cpu_node()->start_message_loop();
 	if (is_fail(r))
 		return r;
 
