@@ -16,6 +16,7 @@ kern_sources = [
     'mem_io.cc',
     'mempool.cc',
     'mempool_ctl.cc',
+    'message_queue.cc',
     'output_buffer.cc',
     'page.cc',
     'page_pool.cc',

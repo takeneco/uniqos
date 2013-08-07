@@ -324,7 +324,7 @@ cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 void serial_ctl::post_write_msg()
 {
 	{
-		spin_lock_section _wml_sec(write_msg_lock, true);
+		spin_lock_section_np _wml_sec(write_msg_lock);
 
 		if (write_posted)
 			return;
@@ -362,7 +362,7 @@ void serial_ctl::post_intr_msg()
 	intr_pending = true;
 
 	{
-		spin_lock_section _sls_iwl(intr_msg_lock, true);
+		spin_lock_section_np _sls_iwl(intr_msg_lock);
 
 		// TODO: exclusive
 		if (intr_posted)
