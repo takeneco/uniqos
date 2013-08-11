@@ -3,8 +3,8 @@
 // (C) 2013 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_KERNEL_NATIVE_CPU_NODE_HH_
-#define ARCH_X86_64_KERNEL_NATIVE_CPU_NODE_HH_
+#ifndef ARCH_X86_64_INCLUDE_NATIVE_CPU_NODE_HH_
+#define ARCH_X86_64_INCLUDE_NATIVE_CPU_NODE_HH_
 
 #include <cpu_node.hh>
 #include <cpu_idte.hh>
@@ -12,6 +12,8 @@
 
 
 namespace x86 {
+
+class native_thread;
 
 /// Architecture dependent part of processor control.
 class native_cpu_node : public cpu_node
@@ -44,6 +46,7 @@ public:
 	void post_soft_message(message* ev);
 
 	void sleep_current_thread();
+	void switch_thread_after_intr(native_thread* t);
 
 private:
 	cause::t setup_tss();
@@ -263,7 +266,7 @@ private:
 	GDT gdt;
 	TSS tss;
 
-	thread* message_thread;
+	native_thread* message_thread;
 
 	/// 外部割込みによって発生したイベントを溜める。
 	/// intr_evq を操作するときは CPU が割り込み禁止状態になっていなければ

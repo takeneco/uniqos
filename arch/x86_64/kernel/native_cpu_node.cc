@@ -255,6 +255,17 @@ void native_cpu_node::sleep_current_thread()
 	arch::intr_enable();
 }
 
+/// @brief  Switch thread after interrupt returned.
+//
+/// 割込み処理中にこの関数を使うと、割込み終了後の iret の後に実行するスレッド
+/// を指定できる。割込み処理以外の状態でこの関数を呼んではならない。
+void native_cpu_node::switch_thread_after_intr(native_thread* t)
+{
+	running_thread_regset = t->ref_regset();
+
+	thread_q.set_running_thread(t);
+}
+
 void native_cpu_node::message_loop()
 {
 	preempt_disable();
@@ -391,6 +402,7 @@ void post_cpu_message(message* msg, cpu_node* cpu)
 }
 
 /*
+TODO
 void intr_enable()
 {
 	native::sti();

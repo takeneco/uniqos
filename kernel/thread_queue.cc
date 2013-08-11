@@ -152,6 +152,29 @@ void thread_queue::switch_thread_after_intr(thread* t)
 	static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(t);
 }
 
+/// @brief  Change running thread ptr.
+//
+/// この関数は running thread のポインタを更新するだけなので、
+/// スレッドを切り替える実装は呼び出し元に書く必要がある。
+void thread_queue::set_running_thread(thread* t)
+{
+	if (CONFIG_DEBUG_VALIDATE > 0) {
+		if (!(t->state == thread::READY &&
+		      t->owner_cpu == this->owner_cpu &&
+		      t != running_thread))
+		{
+			log()(SRCPOS)(" Call fault:t=")(t)();
+		}
+	}
+
+	spin_wlock_section_np _tsl_sec(thread_state_lock);
+
+	ready_queue.insert_tail(running_thread);
+
+	ready_queue.remove(t);
+	running_thread = t;
+}
+
 void thread_queue::_ready(thread* t)
 {
 	spin_wlock_section_np _tsl_sec(thread_state_lock);
