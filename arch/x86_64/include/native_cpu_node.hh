@@ -43,6 +43,8 @@ public:
 	void post_intr_message(message* ev);
 	void post_soft_message(message* ev);
 
+	void sleep_current_thread();
+
 private:
 	cause::t setup_tss();
 	cause::t setup_gdt();

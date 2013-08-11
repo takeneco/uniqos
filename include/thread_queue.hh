@@ -25,6 +25,7 @@ public:
 	bool force_switch_thread();
 
 	void sleep();
+	thread* sleep_current_thread();
 	void ready(thread* t);
 	void ready_np(thread* t);
 	void ready_thread(thread* t);

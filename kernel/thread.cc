@@ -17,6 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <arch/thread_ctl.hh>
 #include <cpu_node.hh>
 
 
@@ -32,3 +33,7 @@ void thread::ready()
 	owner_cpu->get_thread_ctl().ready(this);
 }
 
+void sleep_current_thread()
+{
+	arch::sleep_current_thread();
+}

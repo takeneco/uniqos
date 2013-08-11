@@ -25,6 +25,8 @@
 
 
 extern char on_syscall[];
+extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
+
 namespace {
 
 enum {
@@ -231,6 +233,26 @@ void native_cpu_node::post_soft_message(message* ev)
 	thread_q.ready_np(message_thread);
 
 	preempt_enable();
+}
+
+/// @brief  Make running thread sleep.
+void native_cpu_node::sleep_current_thread()
+{
+	thread* prev_run = thread_q.get_running_thread();
+
+	arch::intr_disable();
+
+	thread* next_run = thread_q.sleep_current_thread();
+
+	if (next_run) {
+		set_running_thread(next_run);
+
+		switch_regset(
+		    static_cast<x86::native_thread*>(next_run)->ref_regset(),
+		    static_cast<x86::native_thread*>(prev_run)->ref_regset());
+	}
+
+	arch::intr_enable();
 }
 
 void native_cpu_node::message_loop()

@@ -39,6 +39,8 @@ private:
 	spin_lock anti_sleep_lock;
 };
 
+void sleep_current_thread();
+
 
 #endif  // include guard
 

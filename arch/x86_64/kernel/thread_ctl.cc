@@ -151,3 +151,13 @@ cause::pair<native_thread*> create_thread(
 
 }  // namespace x86
 
+namespace arch {
+
+
+void sleep_current_thread()
+{
+	x86::get_native_cpu_node()->sleep_current_thread();
+}
+
+
+}  // namespace arch

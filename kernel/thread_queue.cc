@@ -145,6 +145,33 @@ void thread_queue::sleep()
 	arch::intr_enable();
 }
 
+/// @brief Make current running thread sleeping.
+/// @return Returns next running thread.
+///         Returns 0 if sleep was canceled.
+thread* thread_queue::sleep_current_thread()
+{
+	thread* prev_run = running_thread;
+
+	spin_wlock_section_np _tsl_sec(thread_state_lock);
+	{
+		spin_lock_section_np _asl_sec(
+		    prev_run->anti_sleep_lock);
+
+		if (prev_run->anti_sleep == true) {
+			prev_run->anti_sleep = false;
+			return 0;
+		}
+
+		prev_run->state = thread::SLEEPING;
+		sleeping_queue.insert_tail(prev_run);
+	}
+
+	running_thread = ready_queue.remove_head();
+	// message_thread が常に READY なので 0 にならない。
+
+	return running_thread;
+}
+
 void thread_queue::ready(thread* t)
 {
 	preempt_disable_section _pds;
