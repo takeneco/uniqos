@@ -104,47 +104,6 @@ bool thread_queue::force_switch_thread()
 	return true;
 }
 
-/// @brief  running_thread を SLEEPING にする。
-void thread_queue::sleep()
-{
-	thread* prev_run = running_thread;
-	thread* next_run;
-
-	arch::intr_disable();
-
-	{
-		spin_wlock_section_np _tsl_sec(thread_state_lock);
-
-		{
-			spin_lock_section_np _asl_sec(
-			    prev_run->anti_sleep_lock);
-
-			if (prev_run->anti_sleep == true) {
-				prev_run->anti_sleep = false;
-				arch::intr_enable();
-				return;
-			}
-
-			prev_run->state = thread::SLEEPING;
-			sleeping_queue.insert_tail(prev_run);
-		}
-
-		next_run = ready_queue.remove_head();
-		// message_thread が常に READY なので、
-		// next_run は 0 にならない。
-
-		running_thread = next_run;
-		static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(next_run);
-	}
-
-	// TODO: refs arch
-	switch_regset(
-	    static_cast<x86::native_thread*>(next_run)->ref_regset(),
-	    static_cast<x86::native_thread*>(prev_run)->ref_regset());
-
-	arch::intr_enable();
-}
-
 /// @brief Make current running thread sleeping.
 /// @return Returns next running thread.
 ///         Returns 0 if sleep was canceled.
