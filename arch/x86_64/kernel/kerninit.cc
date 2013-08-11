@@ -191,7 +191,6 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	// TODO: replace
 	arch::apic_init();
 
-	thread_queue& tc = get_cpu_node()->get_thread_ctl();
 	r = get_native_cpu_node()->start_message_loop();
 	if (is_fail(r))
 		return r;
@@ -330,7 +329,8 @@ log(1)("cpu_node:")(get_cpu_node())
 	}
 	log()("create_init_process() succeeded")();
 
-	tc.sleep();
+	//TODO:このスレッドは削除したい
+	sleep_current_thread();
 
 	return 0;
 }

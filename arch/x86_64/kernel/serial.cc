@@ -154,8 +154,7 @@ private:
 	}
 	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
-	cause::type on_io_node_write(
-	    offset* off, int iov_cnt, const iovec* iov);
+	cause::t on_io_node_write(offset* off, int iov_cnt, const iovec* iov);
 	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void post_write_msg();
@@ -173,6 +172,7 @@ public:
 	void dump();
 };
 
+//TODO:
 io_node::operations serial_ctl::serial_ops;
 
 serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
@@ -256,13 +256,13 @@ bool serial_ctl::is_txfifo_empty() const
 
 /// @brief  Write to buffer.
 /// @param[out] bytes  write bytes.
-cause::type serial_ctl::on_io_node_write(
+cause::t serial_ctl::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	const offset before_off = *off;
 	iovec_iterator iov_itr(iov, iov_cnt);
 
-	cause::type r;
+	cause::t r;
 	{
 		preempt_disable_section _pds;
 
@@ -274,7 +274,7 @@ cause::type serial_ctl::on_io_node_write(
 	}
 
 	if (false /* sync */ && *off != before_off) {
-		get_cpu_node()->get_thread_ctl().sleep();
+		sleep_current_thread();
 	}
 
 	return r;
@@ -332,9 +332,6 @@ void serial_ctl::post_write_msg()
 		write_posted = true;
 	}
 
-	//TODO:delete
-	//cpu_node* cpu = get_cpu_node();
-	//cpu->post_soft_message(&write_msg);
 	post_message(&write_msg);
 }
 
@@ -372,11 +369,6 @@ void serial_ctl::post_intr_msg()
 	}
 
 	arch::post_intr_message(&intr_msg);
-	// TODO: delete
-	//cpu_node* cpu = get_cpu_node();
-	//cpu->post_intr_message(&intr_msg);
-
-	//cpu->switch_messenger_after_intr();
 }
 
 void serial_ctl::on_intr_msg()
