@@ -113,9 +113,6 @@ thread* thread_queue::sleep_current_thread()
 
 	spin_wlock_section_np _tsl_sec(thread_state_lock);
 	{
-		spin_lock_section_np _asl_sec(
-		    prev_run->anti_sleep_lock);
-
 		if (prev_run->anti_sleep == true) {
 			prev_run->anti_sleep = false;
 			return 0;
@@ -158,7 +155,6 @@ void thread_queue::switch_thread_after_intr(thread* t)
 void thread_queue::_ready(thread* t)
 {
 	spin_wlock_section_np _tsl_sec(thread_state_lock);
-	spin_lock_section_np _sl_sec(t->anti_sleep_lock);
 
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);

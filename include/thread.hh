@@ -1,4 +1,5 @@
 /// @file  thread.hh
+/// @brief thread class declaration.
 //
 // (C) 2012-2013 KATO Takeshi
 //
@@ -35,8 +36,8 @@ private:
 		SLEEPING,
 	} state;
 
+	/// locked by thread_queue::thread_state_lock
 	bool      anti_sleep;
-	spin_lock anti_sleep_lock;
 };
 
 void sleep_current_thread();
