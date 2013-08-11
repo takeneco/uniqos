@@ -140,18 +140,6 @@ void thread_queue::ready_np(thread* t)
 	_ready(t);
 }
 
-void thread_queue::switch_thread_after_intr(thread* t)
-{
-	spin_wlock_section_np _tsl_sec(thread_state_lock);
-
-	ready_queue.insert_tail(running_thread);
-
-	ready_queue.remove(t);
-	running_thread = t;
-
-	static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(t);
-}
-
 /// @brief  Change running thread ptr.
 //
 /// この関数は running thread のポインタを更新するだけなので、

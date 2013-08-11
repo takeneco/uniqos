@@ -211,7 +211,7 @@ void native_cpu_node::ready_messenger_np()
 
 void native_cpu_node::switch_messenger_after_intr()
 {
-	thread_q.switch_thread_after_intr(message_thread);
+	switch_thread_after_intr(message_thread);
 }
 
 /// @brief 外部割込みからのイベントを登録する。
