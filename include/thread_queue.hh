@@ -32,6 +32,8 @@ public:
 	thread* get_running_thread() { return running_thread; }
 	void set_running_thread(thread* t);
 
+	thread* switch_next_thread();
+
 private:
 	void _ready(thread* t);
 

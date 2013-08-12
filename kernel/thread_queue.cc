@@ -163,6 +163,26 @@ void thread_queue::set_running_thread(thread* t)
 	running_thread = t;
 }
 
+/// @brief  Change running thread ptr to next thread.
+/// @return This function returns new running thread ptr.
+//
+/// この関数は running thread のポインタを更新するだけなので、
+/// スレッドを切り替える実装は呼び出し元に書く必要がある。
+thread* thread_queue::switch_next_thread()
+{
+	spin_wlock_section_np swl_sec(thread_state_lock);
+
+	thread* next_thr = ready_queue.remove_head();
+	if (!next_thr)
+		return 0;
+
+	ready_queue.insert_tail(running_thread);
+
+	running_thread = next_thr;
+
+	return next_thr;
+}
+
 void thread_queue::_ready(thread* t)
 {
 	spin_wlock_section_np _tsl_sec(thread_state_lock);

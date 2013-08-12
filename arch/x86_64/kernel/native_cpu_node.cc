@@ -88,7 +88,9 @@ cause::t native_cpu_node::start_message_loop()
 	return cause::OK;
 }
 
-void native_cpu_node::set_running_thread(thread* t)
+/// running thread が変わったらこの関数を呼び出す必要がある
+/// @param[in] t  Ptr to new running thread.
+void native_cpu_node::load_running_thread(thread* t)
 {
 	running_thread_regset = static_cast<native_thread*>(t)->ref_regset();
 }
@@ -245,7 +247,7 @@ void native_cpu_node::sleep_current_thread()
 	thread* next_run = thread_q.sleep_current_thread();
 
 	if (next_run) {
-		set_running_thread(next_run);
+		load_running_thread(next_run);
 
 		switch_regset(
 		    static_cast<x86::native_thread*>(next_run)->ref_regset(),
@@ -253,6 +255,27 @@ void native_cpu_node::sleep_current_thread()
 	}
 
 	arch::intr_enable();
+}
+
+/// @brief  呼び出し元スレッドは READY のままでスレッドを切り替える。
+/// @retval true スレッド切り替えの後、実行順が戻ってきた。
+/// @retval false 切り替えるスレッドがなかった。
+/// @note preempt_enable / intr_disable の状態で呼び出す必要がある。
+bool native_cpu_node::force_switch_thread()
+{
+	thread* prev_thr = thread_q.get_running_thread();
+	thread* next_thr = thread_q.switch_next_thread();
+
+	if (!next_thr)
+		return false;
+
+	this->load_running_thread(next_thr);
+
+	switch_regset(
+	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),
+	    static_cast<x86::native_thread*>(prev_thr)->ref_regset());
+
+	return true;
 }
 
 /// @brief  Switch thread after interrupt returned.
@@ -284,7 +307,8 @@ void native_cpu_node::message_loop()
 		// preempt_enable / intr_disable の状態を作る
 		dec_preempt_disable();
 
-		bool r = thread_q.force_switch_thread();
+		//bool r = thread_q.force_switch_thread();
+		bool r = force_switch_thread();
 
 		// preempt_disable / intr_disable の状態に戻す
 		inc_preempt_disable();

@@ -33,7 +33,8 @@ public:
 		return original_lapic_id != (u8)-1;
 	}
 	//TODO:この関数はなくしたい
-	void set_running_thread(thread* t);
+	void set_running_thread(thread* t) { load_running_thread(t); }
+	void load_running_thread(thread* t);
 
 	void preempt_disable();
 	void preempt_enable();
@@ -46,6 +47,7 @@ public:
 	void post_soft_message(message* ev);
 
 	void sleep_current_thread();
+	bool force_switch_thread();
 	void switch_thread_after_intr(native_thread* t);
 
 private:
