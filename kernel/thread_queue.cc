@@ -26,9 +26,6 @@
 
 #include <log.hh>
 
-// TODO: include from arch
-#include <native_cpu_node.hh>
-#include <native_thread.hh>
 
 namespace {
 
@@ -70,38 +67,6 @@ void thread_queue::attach(thread* t)
 		ready_queue.insert_tail(t);
 
 	thread_state_lock.un_wlock();
-}
-
-extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
-
-/// @brief  呼び出し元スレッドは READY のままでスレッドを切り替える。
-/// @retval true スレッド切り替えの後、実行順が戻ってきた。
-/// @retval false 切り替えるスレッドがなかった。
-/// @note preempt_enable / intr_disable の状態で呼び出す必要がある。
-bool thread_queue::force_switch_thread()
-{
-	thread* prev_thr = running_thread;
-	thread* next_thr;
-
-	{
-		spin_wlock_section_np swl_sec(thread_state_lock);
-
-		next_thr = ready_queue.remove_head();
-		if (!next_thr)
-			return false;
-
-		ready_queue.insert_tail(running_thread);
-
-		running_thread = next_thr;
-		static_cast<x86::native_cpu_node*>(owner_cpu)->set_running_thread(next_thr);
-	}
-
-	// TODO: refs arch
-	switch_regset(
-	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),
-	    static_cast<x86::native_thread*>(prev_thr)->ref_regset());
-
-	return true;
 }
 
 /// @brief Make current running thread sleeping.

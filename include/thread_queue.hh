@@ -22,8 +22,6 @@ public:
 
 	void attach(thread* t);
 
-	bool force_switch_thread();
-
 	thread* sleep_current_thread();
 	void ready(thread* t);
 	void ready_np(thread* t);
