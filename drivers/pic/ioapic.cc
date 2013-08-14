@@ -18,11 +18,11 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
+#include <arch/mem_ops.hh>
 #include <cpu_ctl.hh>
 #include <global_vars.hh>
 #include <mempool.hh>
 #include <mpspec.hh>
-#include <native_ops.hh>
 #include <new_ops.hh>
 #include <pic_dev.hh>
 #include <spinlock.hh>
@@ -92,8 +92,8 @@ void ioapic::write_reg(u32 sel, u32 data)
 {
 	reg_lock.lock();
 
-	native::mem_write32(sel, &regs->ioregsel);
-	native::mem_write32(data, &regs->iowin);
+	arch::mem_write32(sel, &regs->ioregsel);
+	arch::mem_write32(data, &regs->iowin);
 
 	reg_lock.unlock();
 }

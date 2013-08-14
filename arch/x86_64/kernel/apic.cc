@@ -18,10 +18,10 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
+#include <arch/mem_ops.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <log.hh>
-#include <native_ops.hh>
 
 
 namespace {
@@ -71,10 +71,12 @@ enum LAPIC_REG {
 };
 
 inline u32 read_reg(LAPIC_REG offset) {
-	return native::mem_read32(LOCAL_APIC_REG_BASE + offset);
+	return arch::mem_read32(
+	    reinterpret_cast<u32*>(LOCAL_APIC_REG_BASE + offset));
 }
 inline void write_reg(u32 val, LAPIC_REG offset) {
-	native::mem_write32(val, LOCAL_APIC_REG_BASE + offset);
+	arch::mem_write32(val,
+	    reinterpret_cast<u32*>(LOCAL_APIC_REG_BASE + offset));
 }
 
 intr_handler timer_ih;
@@ -146,7 +148,7 @@ cause::type apic_init()
 {
 	return local_apic_init();
 }
-
+#include <native_ops.hh>
 void wait(u32 n)
 {
 	write_reg(n, LOCAL_APIC_INI_COUNT);
