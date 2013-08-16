@@ -7,8 +7,7 @@
 #include <arch.hh>
 #include <clock_src.hh>
 #include <config.h>
-// TODO:arch deps
-#include <native_cpu_node.hh>
+#include <cpu_node.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
@@ -16,7 +15,6 @@
 #include <mempool.hh>
 #include <message.hh>
 #include "mpspec.hh"
-#include <native_ops.hh>
 #include <new_ops.hh>
 
 #if CONFIG_ACPI
@@ -38,12 +36,75 @@ enum timer_index
 	TIMER_1 = 1,
 };
 
+enum {
+	/// @{
+	/// General Capabilities and ID Register
+	GCAPSL32_REV_ID_MASK            = 0x000000ff,
+	GCAPSL32_REV_ID_SHIFT           = 0,
+
+	GCAPSL32_NUM_TIM_CAP_MASK       = 0x00001f00,
+	GCAPSL32_NUM_TIM_CAP_SHIFT      = 8,
+
+	GCAPSL32_COUNT_SIZE_CAP_MASK    = 0x00002000,
+	GCAPSL32_COUNT_SIZE_CAP_SHIFT   = 13,
+
+	GCAPSL32_LEG_ROUTE_CAP_MASK     = 0x00008000,
+	GCAPSL32_LEG_ROUTE_CAP_SHIFT    = 15,
+
+	GCAPSL32_VENDOR_ID_MASK         = 0xffff0000,
+	GCAPSL32_VENDOR_ID_SHIFT        = 16,
+	/// @}
+
+	/// @{
+	/// General Configuration Register
+	GCONFL32_ENABLE_CNF_MASK        = 0x00000001,
+	GCONFL32_ENABLE_CNF_SHIFT       = 0,
+
+	GCONFL32_LEG_RT_CNF_MASK        = 0x00000002,
+	GCONFL32_LEG_RT_CNF_SHIFT       = 1,
+	/// @}
+
+	/// @{
+	/// Timer N Configuration and Capabilities Register
+	TCONFL32_INT_TYPE_CNF_MASK      = 0x00000002,
+	TCONFL32_INT_TYPE_CNF_SHIFT     = 1,
+
+	TCONFL32_INT_ENB_CNF_MASK       = 0x00000004,
+	TCONFL32_INT_ENB_CNF_SHIFT      = 2,
+
+	TCONFL32_TYPE_CNF_MASK          = 0x00000008,
+	TCONFL32_TYPE_CNF_SHIFT         = 3,
+
+	TCONFL32_PER_INT_CAP_MASK       = 0x00000010,
+	TCONFL32_PER_INT_CAP_SHIFT      = 4,
+
+	TCONFL32_SIZE_CAP_MASK          = 0x00000020,
+	TCONFL32_SIZE_CAP_SHIFT         = 5,
+
+	TCONFL32_VAL_SET_CNF_MASK       = 0x00000040,
+	TCONFL32_VAL_SET_CNF_SHIFT      = 6,
+
+	TCONFL32_32MODE_CNF_MASK        = 0x00000100,
+	TCONFL32_32MODE_CNF_SHIFT       = 8,
+
+	TCONFL32_INT_ROUTE_CNF_MASK     = 0x00003e00,
+	TCONFL32_INT_ROUTE_CNF_SHIFT    = 9,
+
+	TCONFL32_FSB_EN_CNF_MASK        = 0x00004000,
+	TCONFL32_FSB_EN_CNF_SHIFT       = 14,
+
+	TCONFL32_FSB_INT_DEL_CAP_MASK   = 0x00008000,
+	TCONFL32_FSB_INT_DEL_CAP_SHIFT  = 15,
+	/// @}
+};
+
 struct hpet_regs
 {
-	u32          caps_l32;
-	u32          caps_h32;
+	u32          gcaps_l32;
+	u32          gcaps_h32;
 	u64          reserved1;
-	u64 volatile configs;
+	u32 volatile gconf_l32;
+	u32          gconf_h32; ///< reserved
 	u64          reserved2;
 	u64 volatile intr_status;
 	u64          reserved3[25];
@@ -52,23 +113,23 @@ struct hpet_regs
 
 	struct timer_regs
 	{
-		u32 volatile config_l32;
-		u32 volatile config_h32;
+		u32 volatile tconf_l32;
+		u32 volatile tconf_h32;
 		u64 volatile comparator;
 		u64 volatile fsb_intr;
 		u64          reserved;
 	};
 	timer_regs timer[32];
 
-	void enable() { configs |= 0x1; }
-	void enable_legrep() { configs |= 0x3; }
-	void disable() { configs &= ~0x3; }
+	void enable() { gconf_l32 |= 0x1; }
+	void enable_legrep() { gconf_l32 |= 0x3; }
+	void disable() { gconf_l32 &= ~0x3; }
 
 	u64 usecs_to_cnt(u64 usecs) const {
-		return usecs * U64(1000000000) / caps_h32;
+		return usecs * U64(1000000000) / gcaps_h32;
 	}
 	u64 nanosecs_to_cnt(u64 nanosecs) const {
-		return nanosecs * U64(1000000) / caps_h32;
+		return nanosecs * U64(1000000) / gcaps_h32;
 	}
 
 	/// @brief  enable nonperiodic timer.
@@ -81,8 +142,8 @@ struct hpet_regs
 	///   ignored in LegacyReplacement mode.
 	void set_nonperiodic_timer(timer_index i, u32 intr_route=0)
 	{
-		timer[i].config_l32 =
-		    (timer[i].config_l32 & 0xffff8030) |
+		timer[i].tconf_l32 =
+		    (timer[i].tconf_l32 & 0xffff8030) |
 		    0x00000004 |
 		    (intr_route << 9);
 	}
@@ -93,15 +154,15 @@ struct hpet_regs
 	void set_periodic_timer(
 	    timer_index i, u64 interval_usecs, u32 intr_route=0)
 	{
-		timer[i].config_l32 =
-		    (timer[i].config_l32 & 0xffff8030) |
+		timer[i].tconf_l32 =
+		    (timer[i].tconf_l32 & 0xffff8030) |
 		    0x0000004c |
 		    (intr_route << 9);
 		timer[i].comparator = usecs_to_cnt(interval_usecs);
 	}
 
 	void unset_timer(timer_index i) {
-		timer[i].config_l32 = timer[i].config_l32 & 0xffff8030;
+		timer[i].tconf_l32 = timer[i].tconf_l32 & 0xffff8030;
 	}
 
 	/// set time on nonperiodicmode
@@ -187,7 +248,7 @@ cause::type hpet::setup()
 	if (is_fail(r))
 		return r;
 
-	clock_period = regs->caps_h32;
+	clock_period = regs->gcaps_h32;
 
 	auto _1sec_clks = nanosec_to_clock(1000000000);
 	if (is_fail(_1sec_clks))
@@ -201,10 +262,10 @@ cause::type hpet::setup()
 
 	regs->set_nonperiodic_timer(TIMER_1, 2);
 
-	log()("HPET:timer[0].config_h32=").x(regs->timer[0].config_h32)();
-	log()("HPET:timer[0].config_l32=").x(regs->timer[0].config_l32)();
-	log()("HPET:timer[1].config_h32=").x(regs->timer[1].config_h32)();
-	log()("HPET:timer[1].config_l32=").x(regs->timer[1].config_l32)();
+	log()("HPET:timer[0].tconf_h32=").x(regs->timer[0].tconf_h32)();
+	log()("HPET:timer[0].tconf_l32=").x(regs->timer[0].tconf_l32)();
+	log()("HPET:timer[1].tconf_h32=").x(regs->timer[1].tconf_h32)();
+	log()("HPET:timer[1].tconf_l32=").x(regs->timer[1].tconf_l32)();
 
 	log()("HPET:clock_period=").u(clock_period)();
 	log()("HPET:clock/1sec=").u(_1sec_clks.value)();
@@ -239,10 +300,6 @@ void _handler0(intr_handler* h)
 	msg.data = hh->data;
 
 	arch::post_intr_message(&msg);
-	//TODO:delete
-	//x86::native_cpu_node* cpu = x86::get_native_cpu_node();
-	//cpu->post_intr_message(&msg);
-	//cpu->switch_messenger_after_intr();
 }
 
 void _handler1(intr_handler* h)
@@ -256,11 +313,7 @@ void _handler1(intr_handler* h)
 void hpet::handler1()
 {
 	if (msg1) {
-		x86::native_cpu_node* cpu = x86::get_native_cpu_node();
 		arch::post_intr_message(msg1);
-		//TODO:delete
-		//cpu->post_intr_message(msg1);
-		//cpu->switch_messenger_after_intr();
 		msg1 = 0;
 	}
 }
