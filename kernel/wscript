@@ -49,7 +49,7 @@ def build(x):
 	    use      = 'KERNEL',
 	)
 
-	if x.env.boot_multiboot:
+	if x.env.MULTIBOOT2:
 		x.objects(
 		    target   = 'mb_libs',
 		    source   = mb_sources,

@@ -1,7 +1,7 @@
 # カーネル本体とブート処理から参照されるコード。
 # コンパイルオプションが違うので別々にコンパイルする。
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 
@@ -23,7 +23,7 @@ def build(x):
 	    use = 'KERNEL',
 	)
 
-	if x.env.boot_multiboot:
+	if x.env.MULTIBOOT2:
 		x.objects(
 		    target = 'mb_archlibs',
 		    source = mb_sources,

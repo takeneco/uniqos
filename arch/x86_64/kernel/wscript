@@ -41,6 +41,7 @@ kern_source = [
 
 def configure(x):
 	x.find_program('lzma', var='LZMA')
+	x.find_program('objcopy', var='OBJCOPY')
 
 
 def build(x):
