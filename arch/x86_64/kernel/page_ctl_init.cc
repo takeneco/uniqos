@@ -20,6 +20,8 @@
 ///
 /// それ以降は page_ctl を通してメモリを管理する。
 
+//TODO:ここのログは機能しない
+
 #include <page_ctl.hh>
 
 #include <acpi_ctl.hh>
@@ -613,6 +615,7 @@ cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 	// native_cpu_node のサイズが１ページを超えたらソースレベルで
 	// 何とかする。
 	if (sizeof (x86::native_cpu_node) <= arch::page::PHYS_L1_SIZE) {
+		/*
 		if (CONFIG_DEBUG_VERBOSE >= 1) {
 			log()("sizeof (native_cpu_node) : ")
 			    .u(sizeof (x86::native_cpu_node))
@@ -620,6 +623,7 @@ cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 			    ("PHYS_L1_SIZE : ")
 			    .u(arch::page::PHYS_L1_SIZE)();
 		}
+		*/
 	} else {
 		log()(SRCPOS)("!!! sizeof (native_cpu_node) is too large.")();
 		return ret_type(cause::UNKNOWN, 0);

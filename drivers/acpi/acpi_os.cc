@@ -2,7 +2,7 @@
 /// @brief  AcpiOs* interfaces.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -193,9 +193,7 @@ ACPI_STATUS AcpiOsTableOverride(
     ACPI_TABLE_HEADER       *ExistingTable,
     ACPI_TABLE_HEADER       **NewTable)
 {
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)("(")(ExistingTable)(", ")(NewTable)(")")();
-	}
+	// ここはログの初期化前に呼ばれるため、ログ出力できない。
 
 	*NewTable = 0;
 
@@ -208,12 +206,7 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(
     ACPI_PHYSICAL_ADDRESS   *NewAddress,
     UINT32                  *NewTableLength)
 {
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)("(")
-		    (ExistingTable)(", ")
-		    (NewAddress)(", ")
-		    (NewTableLength)(")")();
-	}
+	// ここはログの初期化前に呼ばれるため、ログ出力できない。
 
 	*NewAddress = 0;
 	*NewTableLength = 0;
@@ -405,15 +398,9 @@ void * AcpiOsMapMemory(
     ACPI_PHYSICAL_ADDRESS   Where,
     ACPI_SIZE               Length)
 {
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)("(0x").x(Where)(", ").u(Length)(")")();
-	}
+	// ここはログの初期化前に呼ばれるため、ログ出力できない。
 
 	void* r = arch::map_phys_adr(Where, Length);
-
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)(":RET ")(r)();
-	}
 
 	return r;
 }
@@ -423,15 +410,11 @@ void AcpiOsUnmapMemory(
     void                    *LogicalAddress,
     ACPI_SIZE               Size)
 {
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)("(").p(LogicalAddress)(", ").u(Size)(")")();
-	}
+	// ここはログの初期化前に呼ばれるため、ログ出力できない。
 
 	uptr r = arch::unmap_phys_adr(LogicalAddress, Size);
 
-	if (CONFIG_DEBUG_VERBOSE >= 1) {
-		log()(SRCPOS)(":PHYSICAL ").x(r)();
-	}
+	UNUSE(r);
 }
 
 
