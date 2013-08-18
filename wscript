@@ -54,6 +54,7 @@ def build(x):
 	x.env.append_value('DEFINES', 'IT_IS_UNIQUE')
 	x.env.append_value('DEFINES_KERNEL', 'KERNEL')
 	x.env.append_value('INCLUDES', '#include')
+	x.env.append_value('INCLUDES', '#core/include')
 	x.env.append_value('INCLUDES', '#arch/'+x.env.CONFIG_ARCH+'/include')
 
 	x.recurse('arch')

@@ -21,8 +21,9 @@
 
 #include <bitops.hh>
 #include <clock_src.hh>
+#include <core/global_vars.hh>
+#include <core/timer.hh>
 #include <cpu_node.hh>
-#include <global_vars.hh>
 #include <log.hh>
 #include <mempool.hh>
 #include <new_ops.hh>
@@ -196,5 +197,10 @@ cause::type timer_setup()
 cause::type get_jiffy_tick(tick_time* tick)
 {
 	return global_vars::core.timer_ctl_obj->get_jiffy_tick(tick);
+}
+
+cause::t timer_set(timer_message* m)
+{
+	return global_vars::core.timer_ctl_obj->set_timer(m);
 }
 
