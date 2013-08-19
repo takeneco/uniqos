@@ -1,12 +1,12 @@
 /// @file  ioapic.hh
 //
-// (C) 2011 Kato Takeshi
+// (C) 2011-2013 Kato Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_IOAPIC_HH_
 #define ARCH_X86_64_INCLUDE_IOAPIC_HH_
 
-#include "basic_types.hh"
+#include <basic.hh>
 
 
 class ioapic_ctl

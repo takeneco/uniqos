@@ -1,12 +1,12 @@
 /// @file native_bitops.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_BITOPS_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_BITOPS_HH_
 
-#include <basic_types.hh>
+#include <basic.hh>
 
 
 namespace native {

@@ -1,12 +1,12 @@
-/// @file   placement_new.hh
+/// @file   new_ops.hh
 //
-// (C) 2010 KATO Takeshi
+// (C) 2010,2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_PLACEMENT_NEW_HH_
-#define INCLUDE_PLACEMENT_NEW_HH_
+#ifndef INCLUDE_NEW_OPS_HH_
+#define INCLUDE_NEW_OPS_HH_
 
-#include "basic_types.hh"
+#include <basic.hh>
 
 
 inline void* operator new  (uptr, void* ptr) { return ptr; }

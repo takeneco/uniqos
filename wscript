@@ -60,5 +60,5 @@ def build(x):
 	x.recurse('arch')
 	x.recurse('drivers')
 	x.recurse('external')
-	x.recurse('kernel')
+	x.recurse('core/source')
 

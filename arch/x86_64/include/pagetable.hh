@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include <basic_types.hh>
+#include <basic.hh>
 #include <arch.hh>
 
 

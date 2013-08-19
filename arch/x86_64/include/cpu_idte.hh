@@ -1,13 +1,13 @@
 /// @file   cpu_idte.hh
 /// @brief  IDT ops.
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 #define ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 
-#include <basic_types.hh>
+#include <basic.hh>
 
 
 class idte

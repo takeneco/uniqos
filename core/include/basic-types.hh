@@ -1,13 +1,13 @@
-/// @file  basic_types.hh
+/// @file  basic-types.hh
 /// @brief 共通で使う型・関数など。
 //
 // (C) 2008-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_BASIC_TYPES_HH_
-#define INCLUDE_BASIC_TYPES_HH_
+#ifndef CORE_INCLUDE_BASIC_TYPES_HH_
+#define CORE_INCLUDE_BASIC_TYPES_HH_
 
-#include <inttype.hh>
+#include <arch/inttype.hh>
 
 
 #define U32(n)  suffix_u32(n)
@@ -374,6 +374,7 @@ namespace cause
 		INVALID_OPERATION,
 		INVALID_OBJECT,
 		NOFUNC,
+		/// バグ
 		UNKNOWN = 1000,
 	};
 	typedef type t;
