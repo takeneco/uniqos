@@ -22,8 +22,12 @@ def configure(x):
 	x.env.append_value('DEFINES_MB', 'ARCH_LE')
 	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
 
-	x.env.append_value('CXXFLAGS_MB', '-Wc++11-compat')
-	x.env.append_value('CXXFLAGS_MB', '-Wc++11-extensions')
+	if x.options.compiler == 'clang':
+		x.env.append_value('CXXFLAGS_MB', '-Wc++11-compat')
+		x.env.append_value('CXXFLAGS_MB', '-Wc++11-extensions')
+
+	elif x.options.compiler == 'gnu':
+		x.env.append_unique('CXXFLAGS_MB', '-std=c++0x')
 
 def build(x):
 	target = x.path.find_or_declare('us')
