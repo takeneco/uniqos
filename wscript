@@ -10,14 +10,6 @@ out = 'build'
 
 import os.path
 
-def configure_x86_64(x):
-
-	if x.options.compiler == 'llvm':
-		x.env.CFLAGS_KERNEL.append('-emit-llvm')
-		x.env.CXXFLAGS_KERNEL.append('-emit-llvm')
-		x.env.LINKFLAGS = ['-code-model=large', '-native']
-
-
 def options(x):
 	x.load('compiler_c')
 	x.load('compiler_cxx')
@@ -33,7 +25,7 @@ def options(x):
 
 
 def configure(x):
-	configure_x86_64(x)
+	x.recurse('tools')
 
 	if x.options.compiler == 'clang':
 		x.find_program('clang', var='AS')
@@ -41,6 +33,7 @@ def configure(x):
 		x.find_program('clang++', var='CXX')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++11')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-compat')
+		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-extensions')
 
 	elif x.options.compiler == 'gnu':
 		x.find_program('gcc', var='AS')
@@ -52,8 +45,6 @@ def configure(x):
 	x.load('compiler_cxx')
 	x.load('gcc gas')
 
-	x.recurse('tools')
-
 	x.recurse('arch')
 	x.recurse('drivers')
 	x.recurse('external')
@@ -63,10 +54,11 @@ def build(x):
 	x.env.append_value('DEFINES', 'IT_IS_UNIQUE')
 	x.env.append_value('DEFINES_KERNEL', 'KERNEL')
 	x.env.append_value('INCLUDES', '#include')
+	x.env.append_value('INCLUDES', '#core/include')
 	x.env.append_value('INCLUDES', '#arch/'+x.env.CONFIG_ARCH+'/include')
 
 	x.recurse('arch')
 	x.recurse('drivers')
 	x.recurse('external')
-	x.recurse('kernel')
+	x.recurse('core/source')
 

@@ -15,7 +15,6 @@ source = [
 ]
 
 def configure(x):
-	x.find_program('objcopy', var='OBJCOPY')
 	x.env.append_value('CXXFLAGS_MB', '-m32')
 	x.env.append_value('CFLAGS_MB', x.env.COMMON_CFLAGS)
 	x.env.append_value('CXXFLAGS_MB', x.env.COMMON_CXXFLAGS)

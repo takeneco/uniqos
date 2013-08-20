@@ -29,7 +29,7 @@ timer_store::operations timer_liner_store_ops;
 }  // namespace
 
 
-cause::type timer_liner_store::setup()
+cause::t timer_liner_store::setup()
 {
 	timer_store::operations& ops = timer_liner_store_ops;
 
@@ -85,10 +85,8 @@ cause::pair<tick_time> timer_liner_store::on_timer_store_NextClock()
 	}
 }
 
-cause::type timer_liner_store::on_timer_store_Post(tick_time clock)
+cause::t timer_liner_store::on_timer_store_Post(tick_time clock)
 {
-	cpu_node* cpu = get_cpu_node();
-
 	auto msg = msg_chain.front();
 
 	while (msg) {
@@ -96,7 +94,7 @@ cause::type timer_liner_store::on_timer_store_Post(tick_time clock)
 
 		if (msg->expires_clock < clock) {
 			msg_chain.remove(msg);
-			cpu->post_soft_message(msg);
+			post_message(msg);
 		}
 
 		msg = next;

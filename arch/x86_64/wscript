@@ -1,6 +1,6 @@
 # x86_64 固有のコードをビルドする
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 
@@ -10,17 +10,12 @@ def options(x):
 	    action  = 'store_true',
 	    default = False,
 	    help    = 'create boot floppy image.')
-	conf_opt.add_option('--boot-multiboot',
-	    action  = 'store_true',
-	    default = True,
-	    help    = 'create multiboot kernel (default enable)')
 
 	x.recurse('boot')
 
 
 def configure(x):
 	x.env.boot_fd = x.options.boot_fd
-	x.env.boot_multiboot = x.options.boot_multiboot
 
 	if x.env.boot_fd:
 		x.find_program('mcopy', var='MCOPY')

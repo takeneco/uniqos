@@ -1,6 +1,6 @@
 /// @file  kerninit.hh
 //
-// (C) 2010,2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_KERNEL_KERNINIT_HH_
@@ -12,8 +12,13 @@
 
 cause::type cpu_page_init();
 cause::type cpu_common_init();
-cause::type cpu_setup();
 cause::type irq_setup();
+
+namespace x86 {
+cause::t cpu_setup();
+cause::t thread_ctl_setup();
+cause::t create_boot_thread();
+} // namespace x86
 
 namespace arch {
 

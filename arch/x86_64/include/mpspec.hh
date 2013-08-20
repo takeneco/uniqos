@@ -4,13 +4,13 @@
 /// MultiProcessor Specification:
 /// http://developer.intel.com/design/pentium/datashts/242016.htm
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_MPSPEC_HH_
 #define ARCH_X86_64_INCLUDE_MPSPEC_HH_
 
-#include "basic_types.hh"
+#include <basic.hh>
 
 
 class mpspec

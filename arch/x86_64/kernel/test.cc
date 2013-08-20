@@ -180,7 +180,7 @@ void mempool_test()
 			wakeupme.data = th;
 			wakeupme.nanosec_delay = 1000000000;
 			global_vars::core.timer_ctl_obj->set_timer(&wakeupme);
-			tc.sleep();
+			sleep_current_thread();
 		}
 	}
 

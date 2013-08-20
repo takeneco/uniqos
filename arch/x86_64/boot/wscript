@@ -1,5 +1,5 @@
 #
-# (C) 2011-2012 KATO Takeshi
+# (C) 2011-2013 KATO Takeshi
 #
 
 
@@ -7,12 +7,12 @@ def options(x):
 	debug_opt = x.get_option_group('debug options')
 
 def configure(x):
-	if x.env.boot_multiboot:
+	if x.env.MULTIBOOT2:
 		x.recurse('multiboot')
 
 def build(x):
 	if x.env.boot_fd:
 		x.recurse('fd')
 
-	if x.env.boot_multiboot:
+	if x.env.MULTIBOOT2:
 		x.recurse('multiboot')

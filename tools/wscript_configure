@@ -37,6 +37,9 @@ def load_config(x, cf):
 	# 0:disable / 1:enable HPET.
 	def_config(x, cf, 'HPET', 0)
 
+	# 0:disable / 1:enable multiboot2 kernel generation
+	env_config(x, cf, 'MULTIBOOT2', 0)
+
 	env_config(x, cf, 'COMMON_CFLAGS', ['-pipe', '-Wall', '-Wextra'])
 	env_config(x, cf, 'COMMON_CXXFLAGS', ['-pipe', '-Wall', '-Wextra'])
 

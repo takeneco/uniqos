@@ -6,7 +6,7 @@
 #ifndef ARCH_X86_64_INCLUDE_REGSET_HH_
 #define ARCH_X86_64_INCLUDE_REGSET_HH_
 
-#include <basic_types.hh>
+#include <basic.hh>
 
 
 namespace arch {

@@ -20,6 +20,8 @@
 ///
 /// それ以降は page_ctl を通してメモリを管理する。
 
+//TODO:ここのログは機能しない
+
 #include <page_ctl.hh>
 
 #include <acpi_ctl.hh>
@@ -30,11 +32,11 @@
 #include <global_vars.hh>
 #include <log.hh>
 #include <mpspec.hh>
+#include <native_cpu_node.hh>
 #include <native_ops.hh>
 #include <page.hh>
 #include <page_pool.hh>
 #include <pagetable.hh>
-#include <cpu_node.hh>
 
 
 namespace {
@@ -602,30 +604,43 @@ cause::t load_page_pool(
 	return cause::OK;
 }
 
-/// @brief  page_pool から1ページを割り当てて cpu_node を作る。
-/// @return  If succeeds, returns ptr to cpu_node.
-///          If failed, returns nullptr.
-cpu_node* create_cpu_node(page_pool* pp)
+/// @brief  page_pool から1ページを割り当てて native_cpu_node を作る。
+/// @retval r=cause::OK Succeeds, value is pointer to native_cpu_node.
+cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 {
-	// cpu_node はCPUごとに別ページになるように１ページを固定で割り当てる。
-	// cpu_node のサイズが１ページを超えたらソースレベルで何とかする。
-	if (sizeof (cpu_node) >= arch::page::PHYS_L1_SIZE) {
-		log()("!!! sizeof (cpu_node) is too large.")();
-		return 0;
+	typedef cause::pair<x86::native_cpu_node*> ret_type;
+
+	// native_cpu_node はCPUごとに別ページになるように１ページを
+	// 固定で割り当てる。
+	// native_cpu_node のサイズが１ページを超えたらソースレベルで
+	// 何とかする。
+	if (sizeof (x86::native_cpu_node) <= arch::page::PHYS_L1_SIZE) {
+		/*
+		if (CONFIG_DEBUG_VERBOSE >= 1) {
+			log()("sizeof (native_cpu_node) : ")
+			    .u(sizeof (x86::native_cpu_node))
+			    (" <= ")
+			    ("PHYS_L1_SIZE : ")
+			    .u(arch::page::PHYS_L1_SIZE)();
+		}
+		*/
+	} else {
+		log()(SRCPOS)("!!! sizeof (native_cpu_node) is too large.")();
+		return ret_type(cause::UNKNOWN, 0);
 	}
 
 	uptr page_adr;
 	cause::t r = pp->alloc(arch::page::PHYS_L1, &page_adr);
 	if (is_fail(r)) {
 		log()("!!! No enough memory.")();
-		return 0;
+		return ret_type(cause::NOMEM, 0);
 	}
 
 	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
 
-	cpu_node* cn = new (buf) cpu_node;
+	x86::native_cpu_node* cn = new (buf) x86::native_cpu_node;
 
-	return cn;
+	return ret_type(cause::OK, cn);
 }
 
 void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
@@ -650,10 +665,10 @@ cause::t create_cpu_nodes()
 	const int n = global_vars::core.cpu_node_cnt;
 	for (int i = 0; i < n; ++i) {
 		page_pool* pp = global_vars::core.page_pool_objs[i];
-		cpu_node* cn = create_cpu_node(pp);
-		if (!cn)
-			return cause::FAIL;
-		global_vars::core.cpu_node_objs[i] = cn;
+		auto rcn = create_native_cpu_node(pp);
+		if (is_fail(rcn))
+			return rcn.r;
+		global_vars::core.cpu_node_objs[i] = rcn.value;
 
 		set_page_pool_to_cpu_node(i);
 	}
@@ -679,7 +694,7 @@ cause::t renumber_cpu_ids(const mpspec& mps)
 
 		const u8 id = pe->localapic_id;
 		if (id < cpu_cnt) {
-			cns[id]->set_original_lapic_id(id);
+			static_cast<x86::native_cpu_node*>(cns[id])->set_original_lapic_id(id);
 			--left;
 		}
 	}
@@ -692,9 +707,9 @@ cause::t renumber_cpu_ids(const mpspec& mps)
 
 		const u8 id = pe->localapic_id;
 		if (id >= cpu_cnt) {
-			while (cns[cns_i]->original_lapic_id_is_enable())
+			while (static_cast<x86::native_cpu_node*>(cns[cns_i])->original_lapic_id_is_enable())
 				++cns_i;
-			cns[cns_i]->set_original_lapic_id(id);
+			static_cast<x86::native_cpu_node*>(cns[cns_i])->set_original_lapic_id(id);
 			--left;
 		}
 	}

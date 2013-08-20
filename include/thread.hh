@@ -1,6 +1,7 @@
 /// @file  thread.hh
+/// @brief thread class declaration.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_THREAD_HH_
@@ -8,7 +9,6 @@
 
 #include <basic.hh>
 #include <chain.hh>
-#include <regset.hh>
 #include <spinlock.hh>
 
 
@@ -21,29 +21,26 @@ class thread
 	friend class thread_queue;
 
 public:
-	thread(cpu_node* _owner,
-	    uptr text, uptr param, uptr stack, uptr stack_size);
+	thread();
 
 	void ready();
-
-	arch::regset* ref_regset() { return &rs; }
 
 	bichain_node<thread>& chain_node() { return _chain_node; }
 
 private:
 	bichain_node<thread> _chain_node;
-	cpu_node* owner;
-
-	arch::regset rs;
+	cpu_node* owner_cpu;
 
 	enum STATE {
 		READY,
 		SLEEPING,
 	} state;
 
+	/// locked by thread_queue::thread_state_lock
 	bool      anti_sleep;
-	spin_lock anti_sleep_lock;
 };
+
+void sleep_current_thread();
 
 
 #endif  // include guard

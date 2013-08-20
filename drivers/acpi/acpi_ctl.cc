@@ -1,11 +1,25 @@
 /// @file   acpi_ctl.cc
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2012-2013 KATO Takeshi
 //
-// (C) 2012 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <acpi_ctl.hh>
 
 #include <log.hh>
+
 
 namespace {
 void acpi_walk();
@@ -164,7 +178,7 @@ const ACPI_SUBTABLE_HEADER* madt_iterator::get_next_header(u8 type)
 }  // namespace acpi
 
 ACPI_STATUS disp_obj(
-    ACPI_HANDLE h, u32 level, void* Context, void** ReturnValue)
+    ACPI_HANDLE h, u32 /*level*/, void* /*Context*/, void** ReturnValue)
 {
 	ACPI_STATUS       Status;
 	ACPI_DEVICE_INFO* Info;
@@ -205,7 +219,8 @@ void acpi_walk()
 	log()("\nAcpiGetTable: APIC")();
 	for (int i = 0; ; ++i) {
 		ACPI_TABLE_MADT* madt_table;
-		r = AcpiGetTable(ACPI_SIG_MADT, i,
+		char acpi_sig_madt[] = ACPI_SIG_MADT;
+		r = AcpiGetTable(acpi_sig_madt, i,
 		    reinterpret_cast<ACPI_TABLE_HEADER**>(&madt_table));
 		if (ACPI_FAILURE(r)) {
 			log()("table:fail(").u(r)(")")();
@@ -217,7 +232,8 @@ void acpi_walk()
 
 	log()("\nAcpiGetTable: HPET")();
 	ACPI_TABLE_HPET* hpet_table;
-	r = AcpiGetTable(ACPI_SIG_HPET, 0, reinterpret_cast<ACPI_TABLE_HEADER**>(&hpet_table));
+	char acpi_sig_hpet[] = ACPI_SIG_HPET;
+	r = AcpiGetTable(acpi_sig_hpet, 0, reinterpret_cast<ACPI_TABLE_HEADER**>(&hpet_table));
 	if (ACPI_FAILURE(r))
 		log()("table:fail(").u(r)(")")();
 	log()("hpet_table=")(hpet_table)();

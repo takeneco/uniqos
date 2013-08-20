@@ -9,43 +9,13 @@
 #ifndef INCLUDE_TIMER_CTL_HH_
 #define INCLUDE_TIMER_CTL_HH_
 
-#include <basic.hh>
 #include <clock_src.hh>
 #include <config.h>
-#include <message.hh>
+#include <core/timer.hh>
 #include <spinlock.hh>
 
 
 class output_buffer;
-
-enum { TICK_HZ = 1000000000, };
-
-class timer_message : public message
-{
-	friend class timer_ctl;
-
-	typedef bichain_node<timer_message> chain_node_type;
-
-	chain_node_type _chain_node;
-
-public:
-	chain_node_type& chain_hook() { return _chain_node; }
-
-	tick_time nanosec_delay;
-
-private:
-public:
-	tick_time expires_clock;
-};
-
-
-template <class T>
-class timer_message_with : public timer_message
-{
-public:
-	T data;
-};
-
 
 class timer_store
 {

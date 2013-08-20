@@ -6,7 +6,7 @@
 
 #include <acpi_ctl.hh>
 #include <bootinfo.hh>
-#include <cpu_node.hh>
+#include <native_cpu_node.hh>
 #include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
@@ -17,36 +17,23 @@
 #include <native_ops.hh>
 #include <process.hh>
 #include <string.hh>
+#include <native_thread.hh>
 #include <new_ops.hh>
 #include <vga.hh>
 
 #include <clock_src.hh>
 #include <timer_ctl.hh>
 
+using namespace x86;
+
 void dump_build_info(output_buffer& ob);
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_start[];
 extern char _binary_arch_x86_64_kernel_ap_boot_bin_size[];
-thread* ta;
-void testA(void* p)
-{
-	cpu_node* proc = get_cpu_node();
-	thread_queue& tc = proc->get_thread_ctl();
-	for (u32 i=0;;++i) {
-		log()("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n");
-		if (i==0){
-			//tc.ready_thread(tb);
-			//proc->sleep_current_thread();
-		}
-	}
-}
 
 void test(void*);
 bool test_init();
 void cpu_test();
 io_node* create_serial();
-void lapic_dump();
-void serial_dump(void*);
-bool hpet_init();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
 
@@ -81,12 +68,6 @@ void disable_intr_from_8259A()
 
 	native::outb(0xff, PIC0_OCW1);
 	native::outb(0xff, PIC1_OCW1);
-}
-
-void apentry()
-{
-	log(1)("apentry()")();
-	for(;;)native::hlt();
 }
 
 namespace {
@@ -127,13 +108,21 @@ cause::t create_init_process()
 
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
-	    arch::pte::P | arch::pte::A);
+	    arch::pte::P | arch::pte::US | arch::pte::A);
 
-	thread_queue& tc = get_cpu_node()->get_thread_ctl();
-	thread* t;
-	tc.create_thread(0x00100000, 0, &t);
+	auto thr = create_thread(get_cpu_node(), 0x00100000, 0);
+	if (is_fail(thr)) {
+		return thr.r;
+	}
+	native_thread* t = thr.value;
 	t->ref_regset()->cr3 = arch::unmap_phys_adr(pr->ref_ptbl().get_table(), arch::page::PHYS_L1);
-	tc.ready(t);
+	t->ref_regset()->cs = 0x20 + 3;
+	t->ref_regset()->ds = 0x18 + 3;
+	t->ref_regset()->es = 0x18 + 3;
+	t->ref_regset()->fs = 0x18 + 3;
+	t->ref_regset()->gs = 0x18 + 3;
+	t->ref_regset()->ss = 0x18 + 3;
+	t->ready();
 
 	log()("process:")(pr)()("thread->regset:")(t->ref_regset())();
 
@@ -179,7 +168,15 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	r = cpu_setup();
+	r = x86::cpu_setup();
+	if (is_fail(r))
+		return r;
+
+	r = x86::thread_ctl_setup();
+	if (is_fail(r))
+		return r;
+
+	r = create_boot_thread();
 	if (is_fail(r))
 		return r;
 
@@ -194,8 +191,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	// TODO: replace
 	arch::apic_init();
 
-	thread_queue& tc = get_cpu_node()->get_thread_ctl();
-	r = get_cpu_node()->start_message_loop();
+	r = get_native_cpu_node()->start_message_loop();
 	if (is_fail(r))
 		return r;
 
@@ -319,12 +315,13 @@ log(1)("cpu_node:")(get_cpu_node())
 
 	log()("test_init() : ").u(test_init())();
 
-	thread* t;
-	tc.create_thread(test, 0, &t);
-	tc.ready(t);
-
-	//tc.create_thread(test, 0, &t);
-	//tc.ready(t);
+	auto thr = create_thread(get_cpu_node(), test, 0);
+	if (is_fail(thr)) {
+		log()(SRCPOS)("create_thread() failed");
+		return thr.r;
+	}
+	native_thread* t = thr.value;
+	t->ready();
 
 	r = create_init_process();
 	if (is_fail(r)) {
@@ -332,12 +329,9 @@ log(1)("cpu_node:")(get_cpu_node())
 	}
 	log()("create_init_process() succeeded")();
 
-	tc.sleep();
-/*
-	tc.create_thread(testA, 0, &t);
-	ta = t;
-	tc.ready_thread(t);
-*/
+	//TODO:このスレッドは削除したい
+	sleep_current_thread();
+
 	return 0;
 }
 

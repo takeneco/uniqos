@@ -18,6 +18,8 @@ kern_source = [
     'ioapic.cc',
     'irq_ctl.cc',
     'kerninit.cc',
+    'native_cpu_node.cc',
+    'on_syscall.S',
     'page_ctl.cc',
     'page_ctl_init.cc',
     'serial.cc',
@@ -26,6 +28,7 @@ kern_source = [
     'bootinfo.cc',
     'spinlock_ops.cc',
     'start.S',
+    'thread_ctl.cc',
     'cpu_ctl.cc',
 
     # for g++
@@ -38,6 +41,7 @@ kern_source = [
 
 def configure(x):
 	x.find_program('lzma', var='LZMA')
+	x.find_program('objcopy', var='OBJCOPY')
 
 
 def build(x):

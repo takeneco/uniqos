@@ -1,5 +1,5 @@
-// @file   thread.cc
-// @brief  thread class implements.
+/// @file   message_queue.cc
+/// @brief  message_queue class implementation.
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2013 KATO Takeshi
@@ -17,27 +17,43 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cpu_node.hh>
+#include <message_queue.hh>
 
 
-#include <native_ops.hh>
-thread::thread(
-    cpu_node* _owner,
-    uptr text,
-    uptr param,
-    uptr stack,
-    uptr stack_size
-) :
-	owner(_owner),
-	rs(text, param, stack, stack_size),
-	anti_sleep(false)
+message_queue::message_queue()
 {
-	// TODO:これはarch依存
-	rs.cr3 = native::get_cr3();
 }
 
-void thread::ready()
+message_queue::~message_queue()
 {
-	owner->get_thread_ctl().ready(this);
 }
 
+/// @brief  Deliver a message.
+/// @retval true   Message delivered.
+/// @retval false  No message.
+bool message_queue::deliv_np()
+{
+	message* msg = pop();
+
+	if (msg) {
+		msg->handler(msg);
+		return true;
+	}
+
+	return false;
+}
+
+bool message_queue::deliv_all_np()
+{
+	if (!probe())
+		return false;
+
+	do {
+		message* msg = pop();
+
+		msg->handler(msg);
+
+	} while (probe());
+
+	return true;
+}

@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include <basic_types.hh>
+#include <basic.hh>
 #include <arch.hh>
 
 
@@ -191,7 +191,8 @@ cause::t page_table<page_table_acquire, p2v>::set_page(
 				return r.r;
 
 			pte_init(static_cast<pte*>(p2v(r.value)));
-			table[index].set(r.value, pte::P | pte::RW);
+			table[index].set(r.value,
+			    pte::P | pte::RW | pte::US | pte::A);
 		}
 
 		table = static_cast<pte*>(p2v(table[index].get_adr()));

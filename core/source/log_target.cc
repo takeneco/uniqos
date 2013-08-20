@@ -1,7 +1,7 @@
 /// @file   log_target.cc
 /// @brief  log destination.
 //
-// (C) 2009-2012 KATO Takeshi
+// (C) 2009-2013 KATO Takeshi
 //
 
 #include <log_target.hh>
@@ -32,7 +32,7 @@ void log_target::install(io_node* target, offset off)
 	target_off = off;
 }
 
-cause::type log_target::on_io_node_write(
+cause::t log_target::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	if (!this || !target_node)
@@ -44,7 +44,7 @@ cause::type log_target::on_io_node_write(
 
 	offset pre_target_off = target_off;
 
-	cause::type r = target_node->write(&target_off, iov_cnt, iov);
+	cause::t r = target_node->write(&target_off, iov_cnt, iov);
 
 	*off += target_off - pre_target_off;
 

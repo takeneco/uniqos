@@ -1,6 +1,6 @@
 /// @file  cpu_node.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
 #ifndef INCLUDE_CPU_NODE_HH_
@@ -29,21 +29,10 @@ public:
 
 	cause::type setup();
 
-	cause::type start_message_loop();
-	void ready_messenger();
-	void ready_messenger_np();
-	void switch_messenger_after_intr();
-
 	bool run_all_intr_message();
 
-	u8   inc_preempt_disable() { return ++preempt_disable_cnt; }
-	u8   dec_preempt_disable() { return --preempt_disable_cnt; }
-
-	void post_intr_message(message* ev);
-	void post_soft_message(message* ev);
-
 	thread_queue& get_thread_ctl() { return thread_q; }
-	message_queue& get_soft_msgq() { return soft_msgq; }
+	thread_queue& get_thread_queue() { return thread_q; }
 
 	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
 	cause::type page_dealloc(arch::page::TYPE page_type, uptr padr);
@@ -51,40 +40,23 @@ public:
 private:
 	static void preempt_wait();
 
-	bool probe_intr_message();
-	message* get_next_intr_message();
-
-	bool run_message();
-	void message_loop();
-	static void message_loop_entry(void* _cpu_node);
-
-private:
-
-#if CONFIG_PREEMPT
-	s8 preempt_disable_cnt;
-#endif  // CONFIG_PREEMPT
-
+protected:
 	thread_queue thread_q;
-
-	thread* message_thread;
-
-	/// 外部割込みによって発生したイベントを溜める。
-	/// intr_evq を操作するときは CPU が割り込み禁止状態になっていなければ
-	/// ならない。
-	message_queue intr_msgq;
-
-	message_queue soft_msgq;
-
+private:
 	cpu_id     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];
-
-public:
-	s8 _ref_preempt_disable_cnt() const { return preempt_disable_cnt; }
 };
 
 cpu_id get_cpu_node_count();
 cpu_node* get_cpu_node();
 cpu_node* get_cpu_node(cpu_id cpuid);
+
+namespace arch {
+void post_intr_message(message* msg);
+void post_cpu_message(message* msg);
+void post_cpu_message(message* msg, cpu_node* cpu);
+}  // namespace arch
+void post_message(message* msg);
 
 void preempt_disable();
 void preempt_enable();
