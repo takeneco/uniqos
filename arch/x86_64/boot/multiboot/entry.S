@@ -89,7 +89,7 @@ entry_:
 	// Set page table
 	// load_info.page_table_adr
 	movl  $load_info, %ebx
-	movl  0x08(%ebx), %eax
+	movl  0x10(%ebx), %eax
 	movl  %eax, %cr3
 
 	// IA32_EFER.LME = 1
@@ -112,7 +112,10 @@ stop:
 start64:
 .code64
 	// load_info.bootinfo_adr
-	movq  0x10(%ebx), %rax
+	movq  0x18(%ebx), %rax
+
+	// load_info.stack_adr
+	movq  0x08(%ebx), %rsp
 
 	// load_info.entry_adr
 	movq  0x00(%ebx), %rcx

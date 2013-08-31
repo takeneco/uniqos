@@ -1,6 +1,6 @@
 /// @file   misc.hh
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
@@ -37,10 +37,11 @@ cause::type post_load(u32* tag);
 
 extern struct load_info_
 {
-	u64 entry_adr;
-	u64 page_table_adr;
+	u64 entry_adr;       // 0x00
+	u64 stack_adr;       // 0x08
+	u64 page_table_adr;  // 0x10
 
-	u64 bootinfo_adr;
+	u64 bootinfo_adr;    // 0x18
 } load_info;
 
 

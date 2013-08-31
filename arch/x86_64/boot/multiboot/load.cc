@@ -246,18 +246,21 @@ extern "C" u32 load(u32 magic, u32* tag)
 		return r;
 	}
 
-/*	// sharing stack with .bss section
-	// stack
-	uptr stack_padr;
-	cause::type r = arch::page::alloc(arch::page::PHYS_L2, &stack_padr);
-	if (r != cause::OK)
-		return r;
-	pg_tbl.set_page(0 - arch::page::PHYS_L2_SIZE, stack_padr,
-	    arch::page::PHYS_L2,
-	    arch::page_table::EXIST | arch::page_table::WRITE);
-*/
+	// stack memory
+	void* p = get_alloc()->alloc(
+	    SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
+	    arch::page::PHYS_L1_SIZE * 2,
+	    arch::page::PHYS_L1_SIZE,
+	    false);
+	if (!p) {
+		log(1)(SRCPOS)(" No enough memory.")();
+		return cause::NOMEM;
+	}
+	u64 stack_adr =
+	    reinterpret_cast<uptr>(p) + arch::page::PHYS_L1_SIZE * 2;
 
 	load_info.entry_adr = elf->e_entry;
+	load_info.stack_adr = stack_adr;
 	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());
 
 	return post_load(tag);

@@ -1,8 +1,8 @@
 /* @file    arch/x86_64/kernel/kernel.ld
- * @author  Kato Takeshi
+ * @author  KATO Takeshi
  * @brief   カーネル本体のリンカスクリプト。
  *
- * (C) 2009-2010 Kato Takeshi.
+ * (C) 2009-2013 Kato Takeshi.
  */
 
 OUTPUT_FORMAT(elf64-x86-64)
@@ -17,7 +17,6 @@ SECTIONS {
 	.data : { *(.data) }
 
 	. = 0xffffffffffffe000;
-	STACK_END = .;
 	.bss : { *(.bss) }
 	kern_tail_addr = .;
 }
