@@ -14,6 +14,7 @@
 namespace x86 {
 
 class native_thread;
+struct native_cpu_buffer;
 
 /// Architecture dependent part of processor control.
 class native_cpu_node : public cpu_node
@@ -22,7 +23,7 @@ public:
 	class IDT;
 
 public:
-	native_cpu_node();
+	native_cpu_node(native_cpu_buffer* priv_buf);
 
 	cause::t setup();
 	cause::t start_message_loop();
@@ -281,6 +282,7 @@ private:
 	u8 preempt_disable_cnt;
 #endif  // CONFIG_PREEMPT
 
+	native_cpu_buffer* private_buffer;
 public:
 
 	struct {
@@ -305,6 +307,18 @@ public:
 
 private:
 	idte idt[256];
+};
+
+struct native_cpu_buffer
+{
+	native_cpu_buffer() :
+		node(this)
+	{}
+
+	arch::regset* running_thread_regset;
+	uptr tmp;
+
+	native_cpu_node node;
 };
 
 native_cpu_node* get_native_cpu_node();

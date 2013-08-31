@@ -45,8 +45,9 @@ namespace x86 {
 
 // x86::native_cpu_node
 
-native_cpu_node::native_cpu_node() :
-	preempt_disable_cnt(0)
+native_cpu_node::native_cpu_node(native_cpu_buffer* priv_buf) :
+	preempt_disable_cnt(0),
+	private_buffer(priv_buf)
 {
 }
 

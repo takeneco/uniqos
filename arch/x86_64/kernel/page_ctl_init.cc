@@ -614,7 +614,7 @@ cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 	// 固定で割り当てる。
 	// native_cpu_node のサイズが１ページを超えたらソースレベルで
 	// 何とかする。
-	if (sizeof (x86::native_cpu_node) <= arch::page::PHYS_L1_SIZE) {
+	if (sizeof (x86::native_cpu_buffer) <= arch::page::PHYS_L1_SIZE) {
 		/*
 		if (CONFIG_DEBUG_VERBOSE >= 1) {
 			log()("sizeof (native_cpu_node) : ")
@@ -638,9 +638,9 @@ cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 
 	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
 
-	x86::native_cpu_node* cn = new (buf) x86::native_cpu_node;
+	x86::native_cpu_buffer* cpubuf = new (buf) x86::native_cpu_buffer;
 
-	return ret_type(cause::OK, cn);
+	return ret_type(cause::OK, &cpubuf->node);
 }
 
 void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
