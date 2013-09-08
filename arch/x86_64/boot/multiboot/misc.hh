@@ -32,8 +32,9 @@ enum MEM_SLOT_MASK {
 void  init_alloc();
 allocator* get_alloc();
 
-cause::type pre_load(u32 magic, const u32* tag);
-cause::type post_load(u32* tag);
+cause::t pre_load_mb2(u32 magic, const u32* tag);
+cause::t pre_load_mb(u32 magic, const void* tag);
+cause::t post_load(u32* tag);
 
 extern struct load_info_
 {
@@ -72,14 +73,14 @@ public:
 
 	memlog_file() {}
 
-	cause::type open();
-	cause::type close();
+	cause::t open();
+	cause::t close();
 
-	cause::type on_io_node_seek(
+	cause::t on_io_node_seek(
 	    seek_whence whence, offset rel_off, offset* abs_off);
-	cause::type on_io_node_read(
+	cause::t on_io_node_read(
 	    offset* off, int iov_cnt, iovec* iov);
-	cause::type on_io_node_write(
+	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:

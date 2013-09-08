@@ -15,9 +15,15 @@ SECTIONS {
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(EXCLUDE_FILE(*/kernel.o */first_process.o) .data) }
-	.bss : { *(.bss) }
+	.bss : {
+		*(.bss)
+		stack_start = .;
+		. = . + 0x1000;
+		stack_end = .;
+	}
 
-	/* C++の例外フレームらしい。
+	/* TODO:
+	 * C++の例外フレームらしい。
 	 * clangでは例外を無効化できないため必要。
 	 */
 	.eh_frame : { *(.eh_frame) }

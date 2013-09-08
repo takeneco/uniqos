@@ -1,4 +1,4 @@
-/// @brief multiboot entry point
+/// @brief multiboot2 entry point
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2011-2013 KATO Takeshi
@@ -20,37 +20,6 @@
 #include <multiboot2.h>
 
 
-STACK_SIZE = 0x1000
-
-//
-// multiboot header
-//
-
-.section .mbh
-
-	.align MULTIBOOT_HEADER_ALIGN
-
-	// magic field
-mbh:
-	.long MULTIBOOT2_HEADER_MAGIC
-	.long MULTIBOOT_ARCHITECTURE_I386
-	.long mbh_end - mbh
-	.long -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (mbh_end - mbh))
-
-	// infomation request
-inforeq:
-	.word MULTIBOOT_HEADER_TAG_INFORMATION_REQUEST, 0
-	.long inforeq_end - inforeq
-	.long MULTIBOOT_TAG_TYPE_MMAP
-	.long MULTIBOOT_TAG_TYPE_FRAMEBUFFER
-inforeq_end:
-
-	// end of tags
-	.word MULTIBOOT_HEADER_TAG_END, 0
-	.long 8
-mbh_end:
-
-
 //
 // entry point
 //
@@ -65,12 +34,15 @@ entry_:
 
 	movl %eax, %edx
 
-	movl $(stack_start + STACK_SIZE), %esp
+	movl $stack_end, %esp
 
 	// clear stack zero.
 	xorl %eax, %eax
 	movl $stack_start, %edi
-	movl $STACK_SIZE / 4, %ecx
+	// %ecx = (stack_end - stack_start) / 4
+	movl %esp, %ecx
+	subl %edi, %ecx
+	shrl $2, %ecx
 	rep stosl
 
 	pushl %ebx  // multiboot infomation
@@ -137,7 +109,3 @@ end_gdt:
 gdtr:
 	.short end_gdt - gdt - 1
 	.long  gdt
-
-	.align 4
-	.comm stack_start, STACK_SIZE
-

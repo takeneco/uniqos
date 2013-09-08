@@ -1,14 +1,14 @@
 /// @file   preload.cc
 
-//  uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2011-2013 KATO Takeshi
 //
-//  uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -74,8 +74,24 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 		    (" type=").u(u32(mmap->type))();
 		*/
 
-		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE)
-			sep.add_free(mmap->addr, mmap->len);
+		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
+			const uptr MEMMAX = 0xfffff000;
+			uptr addr, len;
+
+			if (mmap->addr <= MEMMAX)
+				addr = mmap->addr;
+			else
+				continue;
+
+			if ((mmap->addr + mmap->len) <= MEMMAX)
+				len = mmap->len;
+			else if (mmap->addr <= MEMMAX)
+				len = MEMMAX - mmap->addr;
+			else
+				continue;
+
+			sep.add_free(addr, len);
+		}
 
 		mmap = (const multiboot_memory_map_t*)
 		    ((const u8*)mmap + mbt_mmap->entry_size);
@@ -107,10 +123,10 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 /// @brief  Previous load kernel.
 /// @param[in] magic  multiboot magic code.
 /// @param[in] tag    multiboot info.
-cause::stype pre_load(u32 magic, const u32* tag)
+cause::t pre_load_mb2(u32 magic, const u32* tag)
 {
 	if (magic != MULTIBOOT2_BOOTLOADER_MAGIC)
-		return cause::INVALID_PARAMS;
+		return cause::BADARG;
 
 	cause::stype r = memlog_file::setup();
 	if (is_fail(r))

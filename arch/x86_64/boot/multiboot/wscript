@@ -3,7 +3,7 @@
 # (C) 2011-2013 KATO Takeshi
 #
 
-source = [
+source = (
     'cheap_alloc_use.cc',
     'entry.S',
     'log_access.cc',
@@ -11,8 +11,16 @@ source = [
     'global.cc',
     'memlog.cc',
     'postload.cc',
+)
+
+source_mb = (
+    'header_mb.S',
+    'preload_mb.cc',
+)
+source_mb2 = (
+    'header_mb2.S',
     'preload.cc',
-]
+)
 
 def configure(x):
 	x.env.append_value('CXXFLAGS_MB', '-m32')
@@ -29,6 +37,12 @@ def configure(x):
 		x.env.append_unique('CXXFLAGS_MB', '-std=c++0x')
 
 def build(x):
+	sources = list(source)
+	if x.env.MULTIBOOT:
+		sources.extend(source_mb)
+	if x.env.MULTIBOOT2:
+		sources.extend(source_mb2)
+
 	target = x.path.find_or_declare('us')
 
 	linker_script = x.path.find_node('multiboot.ld')
@@ -45,7 +59,7 @@ def build(x):
 	    target = k_obj,
 	    source = '../../kernel/kernel.bin',
 	)
-	source.append(k_obj)
+	sources.append(k_obj)
 
 	# first_process
 	fp_obj = x.path.find_or_declare('first_process.o')
@@ -55,7 +69,7 @@ def build(x):
 	    target = fp_obj,
 	    source = '../../kernel/first_process',
 	)
-	source.append(fp_obj)
+	sources.append(fp_obj)
 
 	env32 = x.env.derive()
 	env32.append_value('ASFLAGS', '-m32')
@@ -65,7 +79,8 @@ def build(x):
 
 	x.program(
 	    target = target,
-	    source = source,
+	    source = sources,
+	    includes = '#external/multiboot/include',
 	    cxxflags = ['-fno-exceptions', '-fno-rtti', '-mno-sse'],
 	    linkflags = ['-m32', '-nostdlib', '-static', ls_opt, map_opt],
 	    env = env32,

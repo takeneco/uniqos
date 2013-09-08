@@ -3,16 +3,13 @@
 #
 
 
-def options(x):
-	debug_opt = x.get_option_group('debug options')
-
 def configure(x):
-	if x.env.MULTIBOOT2:
+	if x.env.MULTIBOOT or x.env.MULTIBOOT2:
 		x.recurse('multiboot')
 
 def build(x):
 	if x.env.boot_fd:
 		x.recurse('fd')
 
-	if x.env.MULTIBOOT2:
+	if x.env.MULTIBOOT or x.env.MULTIBOOT2:
 		x.recurse('multiboot')

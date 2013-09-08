@@ -170,7 +170,9 @@ cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 extern "C" u32 load(u32 magic, u32* tag)
 {
-	cause::t r = pre_load(magic, tag);
+	cause::t r = pre_load_mb2(magic, tag);
+	if (r == cause::BADARG)
+		r = pre_load_mb(magic, tag);
 	if (is_fail(r))
 		return r;
 
