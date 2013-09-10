@@ -77,21 +77,21 @@ const struct {
 /// AVAILABLE でないアドレスも計算に含める。
 u64 search_padr_end()
 {
-	const void* src = bootinfo::get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	const void* src = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
 	if (src == 0)
 		return 0;
 
-	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+	const bootinfo::adr_map* adrmap =
+	    static_cast<const bootinfo::adr_map*>(src);
 
-	const void* mmap_end = (const u8*)mmap + mmap->size;
-	const multiboot_mmap_entry* entry = mmap->entries;
+	const void* end = adrmap->next();
+	const bootinfo::adr_map::entry* ent = adrmap->entries;
 
 	u64 adr_end = 0;
-	while (entry < mmap_end) {
-		adr_end = max<u64>(adr_end, entry->addr + entry->len - 1);
+	while (ent < end) {
+		adr_end = max<u64>(adr_end, ent->adr + ent->len - 1);
 
-		entry = (const multiboot_mmap_entry*)
-		    ((const u8*)entry + mmap->entry_size);
+		++ent;
 	}
 
 	return adr_end;
@@ -102,23 +102,23 @@ u64 search_padr_end()
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
 cause::t load_avail(tmp_separator* heap)
 {
-	const void* src = bootinfo::get_bootinfo(MULTIBOOT_TAG_TYPE_MMAP);
+	const void* src = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
 	if (src == 0)
 		return cause::FAIL;
 
-	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)src;
+	const bootinfo::adr_map* adrmap =
+	    static_cast<const bootinfo::adr_map*>(src);
 
-	const void* mmap_end = (const u8*)mmap + mmap->size;
-	const multiboot_mmap_entry* entry = mmap->entries;
+	const void* end = adrmap->next();
+	const bootinfo::adr_map::entry* ent = adrmap->entries;
 
-	while (entry < mmap_end) {
-		if (entry->type == MULTIBOOT_MEMORY_AVAILABLE) {
-			if (!heap->add_free(entry->addr, entry->len))
+	while (ent < end) {
+		if (ent->type == bootinfo::adr_map::entry::AVAILABLE) {
+			if (!heap->add_free(ent->adr, ent->len))
 				return cause::FAIL;
 		}
 
-		entry = (const multiboot_mmap_entry*)
-		    ((const u8*)entry + mmap->entry_size);
+		++ent;
 	}
 
 	return cause::OK;
@@ -129,7 +129,7 @@ cause::t load_avail(tmp_separator* heap)
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
 cause::t load_allocated(tmp_alloc* heap)
 {
-	const void* src = bootinfo::get_bootinfo(bootinfo::TYPE_MEMALLOC);
+	const void* src = bootinfo::get_info(bootinfo::TYPE_MEM_ALLOC);
 	if (src == 0)
 		return cause::FAIL;
 

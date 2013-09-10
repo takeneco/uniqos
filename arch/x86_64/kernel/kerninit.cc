@@ -84,9 +84,9 @@ cause::t create_init_process()
 	process* pr = new (mem_alloc(sizeof (process))) process;
 	pr->init();
 
-	const multiboot_tag_module* bundle =
-	    reinterpret_cast<const multiboot_tag_module*>
-	    (get_bootinfo(bootinfo::TYPE_BUNDLE));
+	const bootinfo::module* bundle =
+	    reinterpret_cast<const bootinfo::module*>
+	    (get_info(bootinfo::TYPE_BUNDLE));
 	if (!bundle) {
 		log()("no bundle")();
 		return cause::FAIL;
@@ -100,11 +100,12 @@ cause::t create_init_process()
 
 	void* vadr = arch::map_phys_adr(padr, arch::page::PHYS_L1_SIZE);
 
-	void* src = arch::map_phys_adr(bundle->mod_start, bundle->size);
+	void* src =
+	    arch::map_phys_adr(bundle->mod_start, bundle->mod_size);
 
-	mem_copy(bundle->size, src, vadr);
+	mem_copy(bundle->mod_size, src, vadr);
 
-	log()("vadr=")(vadr)().x(bundle->size, vadr, 1, 8, "vadr")();
+	log()("vadr=")(vadr)().x(bundle->mod_size, vadr, 1, 8, "vadr")();
 
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
@@ -217,15 +218,14 @@ log(1)("cpu_node:")(get_cpu_node())
       ("  sizeof (cpu_node):").u(sizeof (cpu_node))();
 
 	const bootinfo::log* bootlog =
-	    reinterpret_cast<const bootinfo::log*>
-	    (get_bootinfo(bootinfo::TYPE_LOG));
+	    static_cast<const bootinfo::log*>(get_info(bootinfo::TYPE_LOG));
 	if (bootlog) {
 		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
 	}
 
-	const multiboot_tag_module* bundle =
-	    reinterpret_cast<const multiboot_tag_module*>
-	    (get_bootinfo(bootinfo::TYPE_BUNDLE));
+	const bootinfo::module* bundle =
+	    static_cast<const bootinfo::module*>
+	    (get_info(bootinfo::TYPE_BUNDLE));
 	if (bundle) {
 		//log()("bundle size:").u(bundle->size)();
 		//log()("bundle start:").x(bundle->mod_start)();

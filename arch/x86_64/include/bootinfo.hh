@@ -12,10 +12,57 @@
 
 namespace bootinfo {
 
-enum {
-	TYPE_MEMALLOC = 0x80000001,
+struct tag;
+
+struct header
+{
+	u32 length;
+	u32 zero;
+
+	const tag* next() const {
+		return (const tag*)(this + 1);
+	}
+};
+
+enum BOOTINFO_TYPE {
+	TYPE_ADR_MAP = 1,
+	TYPE_MEM_ALLOC,
 	TYPE_LOG,
 	TYPE_BUNDLE,
+	TYPE_MULTIBOOT,
+
+	TYPE_END = 0xff,
+};
+
+struct tag
+{
+	u16 type;   ///< BOOTINFO_TYPE
+	u16 flags;
+	u32 size;
+
+	const tag* next() const {
+		return (const tag*)((const u8*)this + size);
+	}
+};
+
+struct adr_map : tag
+{
+	struct entry
+	{
+		enum TYPE {
+			AVAILABLE = 1,
+			RESERVED,
+			ACPI,
+			NVS,
+			BADRAM,
+		};
+		u64 adr;
+		u64 len;
+		u32 type;   ///< TYPE
+		u32 zero;
+	};
+
+	entry entries[0];
 };
 
 struct mem_alloc_entry {
@@ -28,10 +75,25 @@ struct mem_alloc {
 	mem_alloc_entry entries[0];
 };
 
-struct log {
-	u32 type;
-	u32 size;
+struct module : tag
+{
+	u32 mod_start;
+	u32 mod_size;
+	char cmdline[0];
+};
+
+struct log : tag
+{
 	u8 log[0];
+};
+
+struct multiboot : tag
+{
+	enum {
+		FLAG_2 = 1,  ///< multiboot2 if set.
+	};
+
+	u8 info[0];
 };
 
 enum {
@@ -41,7 +103,7 @@ enum {
 	BOOTHEAP_END   = 0x01ffffff,
 };
 
-const void* get_bootinfo(u32 tag_type);
+const tag* get_info(u16 type);
 
 }  // namespace bootinfo
 
