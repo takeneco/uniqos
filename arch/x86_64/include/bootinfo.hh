@@ -19,29 +19,32 @@ struct header
 	u32 length;
 	u32 zero;
 
-	const tag* next() const {
+	const tag* next_tag() const {
 		return (const tag*)(this + 1);
+	}
+	const void* end() const {
+		return (const u8*)this + length;
 	}
 };
 
-enum BOOTINFO_TYPE {
+enum INFO_TYPE {
+	TYPE_END = 0,
+
 	TYPE_ADR_MAP = 1,
 	TYPE_MEM_ALLOC,
 	TYPE_LOG,
 	TYPE_BUNDLE,
 	TYPE_MULTIBOOT,
-
-	TYPE_END = 0xff,
 };
 
 struct tag
 {
-	u16 type;   ///< BOOTINFO_TYPE
-	u16 flags;
-	u32 size;
+	u16 info_type;   ///< BOOTINFO_TYPE
+	u16 info_flags;
+	u32 info_bytes;
 
-	const tag* next() const {
-		return (const tag*)((const u8*)this + size);
+	const tag* next_tag() const {
+		return (const tag*)((const u8*)this + info_bytes);
 	}
 };
 
@@ -57,28 +60,37 @@ struct adr_map : tag
 			BADRAM,
 		};
 		u64 adr;
-		u64 len;
+		u64 bytes;
 		u32 type;   ///< TYPE
 		u32 zero;
 	};
 
+	const void* end_entry() const {
+		return tag::next_tag();
+	}
+
 	entry entries[0];
 };
 
-struct mem_alloc_entry {
-	u64 adr;
-	u64 bytes;
-};
-struct mem_alloc {
-	u32 type;
-	u32 size;
-	mem_alloc_entry entries[0];
+struct mem_alloc : tag
+{
+	struct entry
+	{
+		u64 adr;
+		u64 bytes;
+	};
+
+	const void* end_entry() const {
+		return tag::next_tag();
+	}
+
+	entry entries[0];
 };
 
 struct module : tag
 {
 	u32 mod_start;
-	u32 mod_size;
+	u32 mod_bytes;
 	char cmdline[0];
 };
 

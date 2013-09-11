@@ -77,21 +77,21 @@ const struct {
 /// AVAILABLE でないアドレスも計算に含める。
 u64 search_padr_end()
 {
-	const void* src = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
-	if (src == 0)
+	const void* info = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
+	if (info == 0)
 		return 0;
 
 	const bootinfo::adr_map* adrmap =
-	    static_cast<const bootinfo::adr_map*>(src);
+	    static_cast<const bootinfo::adr_map*>(info);
 
-	const void* end = adrmap->next();
-	const bootinfo::adr_map::entry* ent = adrmap->entries;
+	const void* end = adrmap->end_entry();
+	const bootinfo::adr_map::entry* entry = adrmap->entries;
 
 	u64 adr_end = 0;
-	while (ent < end) {
-		adr_end = max<u64>(adr_end, ent->adr + ent->len - 1);
+	while (entry < end) {
+		adr_end = max<u64>(adr_end, entry->adr + entry->bytes - 1);
 
-		++ent;
+		++entry;
 	}
 
 	return adr_end;
@@ -102,23 +102,23 @@ u64 search_padr_end()
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
 cause::t load_avail(tmp_separator* heap)
 {
-	const void* src = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
-	if (src == 0)
+	const void* info = bootinfo::get_info(bootinfo::TYPE_ADR_MAP);
+	if (info == 0)
 		return cause::FAIL;
 
 	const bootinfo::adr_map* adrmap =
-	    static_cast<const bootinfo::adr_map*>(src);
+	    static_cast<const bootinfo::adr_map*>(info);
 
-	const void* end = adrmap->next();
-	const bootinfo::adr_map::entry* ent = adrmap->entries;
+	const void* end = adrmap->end_entry();
+	const bootinfo::adr_map::entry* entry = adrmap->entries;
 
-	while (ent < end) {
-		if (ent->type == bootinfo::adr_map::entry::AVAILABLE) {
-			if (!heap->add_free(ent->adr, ent->len))
+	while (entry < end) {
+		if (entry->type == bootinfo::adr_map::entry::AVAILABLE) {
+			if (!heap->add_free(entry->adr, entry->bytes))
 				return cause::FAIL;
 		}
 
-		++ent;
+		++entry;
 	}
 
 	return cause::OK;
@@ -129,13 +129,17 @@ cause::t load_avail(tmp_separator* heap)
 /// @retval cause::FAIL メモリの情報が見つからないか、tmp_alloc があふれた。
 cause::t load_allocated(tmp_alloc* heap)
 {
-	const void* src = bootinfo::get_info(bootinfo::TYPE_MEM_ALLOC);
-	if (src == 0)
+	const void* info = bootinfo::get_info(bootinfo::TYPE_MEM_ALLOC);
+	if (info == 0)
 		return cause::FAIL;
 
-	const bootinfo::mem_alloc* ma = (const bootinfo::mem_alloc*)src;
-	const void* end = (const u8*)ma + ma->size;
-	const bootinfo::mem_alloc_entry* entry = ma->entries;
+	const bootinfo::mem_alloc* ma =
+	    static_cast<const bootinfo::mem_alloc*>(info);
+
+	const void* end = ma->end_entry();
+
+	const bootinfo::mem_alloc::entry* entry = ma->entries;
+
 	while (entry < end) {
 		if (!heap->reserve(SLOTM_ANY, entry->adr, entry->bytes, true))
 			return cause::FAIL;

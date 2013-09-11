@@ -101,11 +101,11 @@ cause::t create_init_process()
 	void* vadr = arch::map_phys_adr(padr, arch::page::PHYS_L1_SIZE);
 
 	void* src =
-	    arch::map_phys_adr(bundle->mod_start, bundle->mod_size);
+	    arch::map_phys_adr(bundle->mod_start, bundle->mod_bytes);
 
-	mem_copy(bundle->mod_size, src, vadr);
+	mem_copy(bundle->mod_bytes, src, vadr);
 
-	log()("vadr=")(vadr)().x(bundle->mod_size, vadr, 1, 8, "vadr")();
+	log()("vadr=")(vadr)().x(bundle->mod_bytes, vadr, 1, 8, "vadr")();
 
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
@@ -220,7 +220,7 @@ log(1)("cpu_node:")(get_cpu_node())
 	const bootinfo::log* bootlog =
 	    static_cast<const bootinfo::log*>(get_info(bootinfo::TYPE_LOG));
 	if (bootlog) {
-		log().write(bootlog->size - sizeof *bootlog, bootlog->log);
+		log().write(bootlog->info_bytes - sizeof *bootlog, bootlog->log);
 	}
 
 	const bootinfo::module* bundle =

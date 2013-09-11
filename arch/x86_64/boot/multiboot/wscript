@@ -19,7 +19,7 @@ source_mb = (
 )
 source_mb2 = (
     'header_mb2.S',
-    'preload.cc',
+    'preload_mb2.cc',
 )
 
 def configure(x):

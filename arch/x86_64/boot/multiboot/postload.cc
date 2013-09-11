@@ -31,11 +31,11 @@ extern const u8 first_process_size[];
 namespace {
 
 /// @brief multiboot_mmap_entry を bootinfo::adrmap に変換する
-uptr store_adr_map(const u32* mb_info, uptr bootinfo_left, u8* bootinfo)
+uptr store_adr_map(const u32* mb_info, uptr store_bytes, u8* store)
 {
-	bootinfo::adr_map* adrmap = (bootinfo::adr_map*)bootinfo;
+	bootinfo::adr_map* adrmap = (bootinfo::adr_map*)store;
 	bootinfo::adr_map::entry* adrmap_ent = adrmap->entries;
-	uptr data_size = sizeof (bootinfo::adr_map);
+	uptr info_bytes = sizeof (bootinfo::adr_map);
 
 	//const u32 mb_info_size = *mb_info;
 	mb_info += 2;
@@ -56,14 +56,14 @@ uptr store_adr_map(const u32* mb_info, uptr bootinfo_left, u8* bootinfo)
 	const multiboot_memory_map_t* mmap_ent = mmap->entries;
 	const void* end = (const u8*)mmap + mmap->size;
 	while (mmap_ent < end) {
-		if (bootinfo_left <
-		    data_size + sizeof (bootinfo::adr_map::entry))
-		{
-			return bootinfo_left + 1;
-		}
+		info_bytes += sizeof (bootinfo::adr_map::entry);
+
+		if (store_bytes < info_bytes)
+			return info_bytes;
 
 		adrmap_ent->adr = mmap_ent->addr;
-		adrmap_ent->len = mmap_ent->len;
+		adrmap_ent->bytes = mmap_ent->len;
+
 		if (mmap_ent->type == MULTIBOOT_MEMORY_AVAILABLE)
 			adrmap_ent->type = bootinfo::adr_map::entry::AVAILABLE;
 		else if (mmap_ent->type == MULTIBOOT_MEMORY_RESERVED)
@@ -76,54 +76,55 @@ uptr store_adr_map(const u32* mb_info, uptr bootinfo_left, u8* bootinfo)
 			adrmap_ent->type = bootinfo::adr_map::entry::BADRAM;
 		adrmap_ent->zero = 0;
 
-		data_size += sizeof (bootinfo::adr_map::entry);
 		++adrmap_ent;
 		mmap_ent = (const multiboot_memory_map_t*)
 		    ((const u8*)mmap_ent + mmap->entry_size);
 	}
 
-	adrmap->type = bootinfo::TYPE_ADR_MAP;
-	adrmap->flags = 0;
-	adrmap->size = data_size;
+	adrmap->info_type = bootinfo::TYPE_ADR_MAP;
+	adrmap->info_flags = 0;
+	adrmap->info_bytes = info_bytes;
 
-	return data_size;
+	return info_bytes;
 }
 
 /// @brief  multiboot information を bootinfo にコピーする。
 /// @param[in]  mb_info  multiboot information
-/// @param[in]  bootinfo_left  bootinfo の残バッファサイズ
-/// @param[out] bootinfo  コピー先 bootinfo のバッファ
+/// @param[in]  store_bytes  store の残バッファサイズ
+/// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
-///          バッファが足りない場合は、bootinfo_left より大きい値を返す。
-uptr store_multiboot(const u32* mb_info, uptr bootinfo_left, u8* bootinfo)
+///          バッファが足りない場合は、store_bytes より大きい値を返す。
+uptr store_multiboot(const u32* mb_info, uptr store_bytes, u8* store)
 {
-	u32 size = *mb_info;
-	if (size + sizeof (bootinfo::multiboot) > bootinfo_left)
-		return bootinfo_left + 1;
+	u32 mb_bytes = *mb_info;
 
-	bootinfo::multiboot* mbtag = (bootinfo::multiboot*)bootinfo;
-	mbtag->type = bootinfo::TYPE_MULTIBOOT;
-	mbtag->flags = bootinfo::multiboot::FLAG_2;
-	mbtag->size = size + sizeof (bootinfo::multiboot);
+	u32 info_bytes = mb_bytes + sizeof (bootinfo::multiboot);
+	if (info_bytes > store_bytes)
+		return info_bytes;
 
-	mem_move(size, mb_info, mbtag->info);
+	bootinfo::multiboot* mbtag = (bootinfo::multiboot*)store;
+	mbtag->info_type = bootinfo::TYPE_MULTIBOOT;
+	mbtag->info_flags = bootinfo::multiboot::FLAG_2;
+	mbtag->info_bytes = info_bytes;
 
-	return size + sizeof (bootinfo::multiboot);
+	mem_move(mb_bytes, mb_info, mbtag->info);
+
+	return info_bytes;
 }
 
 /// @brief  使用中のメモリ情報を bootinfo に格納する。
-/// @param[in]  bootinfo_left  bootinfo の残バッファサイズ
-/// @param[out] bootinfo  コピー先 bootinfo のバッファ
+/// @param[in]  store_bytes  store の残バッファサイズ
+/// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
-///          バッファが足りない場合は、bootinfo_left より大きい値を返す。
-uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
+///          バッファが足りない場合は、store_bytes より大きい値を返す。
+uptr store_mem_alloc(uptr store_bytes, u8* store)
 {
 	bootinfo::mem_alloc* tag_ma =
-	    reinterpret_cast<bootinfo::mem_alloc*>(bootinfo);
+	    reinterpret_cast<bootinfo::mem_alloc*>(store);
 
-	uptr size = sizeof *tag_ma;
-	if (bootinfo_left < size)
-		return size;
+	uptr info_bytes = sizeof *tag_ma;
+	if (store_bytes < info_bytes)
+		return info_bytes;
 
 	const allocator* alloc = get_alloc();
 
@@ -131,42 +132,42 @@ uptr store_mem_alloc(uptr bootinfo_left, u8* bootinfo)
 	alloc->enum_alloc(
 	    SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL, &ea_enum);
 
-	bootinfo::mem_alloc_entry* ma_ent = tag_ma->entries;
+	bootinfo::mem_alloc::entry* ma_ent = tag_ma->entries;
 	for (;;) {
 		u32 adr, bytes;
 		const bool r = alloc->enum_alloc_next(&ea_enum, &adr, &bytes);
 		if (!r)
 			break;
 
-		size += sizeof *ma_ent;
-		if(bootinfo_left < size)
-			return size;
+		info_bytes += sizeof *ma_ent;
+		if(store_bytes < info_bytes)
+			return info_bytes;
 
 		ma_ent->adr = adr;
 		ma_ent->bytes = bytes;
 		++ma_ent;
 	}
 
-	tag_ma->type = bootinfo::TYPE_MEM_ALLOC;
-	//tag_ma->flags = 0;
-	tag_ma->size = size;
+	tag_ma->info_type = bootinfo::TYPE_MEM_ALLOC;
+	tag_ma->info_flags = 0;
+	tag_ma->info_bytes = info_bytes;
 
-	return size;
+	return info_bytes;
 }
 
-uptr store_log(uptr bootinfo_left, u8* bootinfo)
+uptr store_log(uptr store_bytes, u8* store)
 {
-	bootinfo::log* tag_log = reinterpret_cast<bootinfo::log*>(bootinfo);
+	bootinfo::log* tag_log = reinterpret_cast<bootinfo::log*>(store);
 
-	uptr size = sizeof *tag_log;
-	if (bootinfo_left < size)
-		return size;
+	uptr info_bytes = sizeof *tag_log;
+	if (store_bytes < info_bytes)
+		return info_bytes;
 
 	iovec iov;
 	iov.base = tag_log->log;
-	iov.bytes = bootinfo_left - size;
+	iov.bytes = store_bytes - info_bytes;
 	io_node::offset read_bytes = 0;
-	cause::type r = memlog.read(&read_bytes, 1, &iov);
+	cause::t r = memlog.read(&read_bytes, 1, &iov);
 	if (is_fail(r))
 		return 0;
 
@@ -180,23 +181,23 @@ uptr store_log(uptr bootinfo_left, u8* bootinfo)
 		}
 	}
 
-	size += read_bytes;
+	info_bytes += read_bytes;
 
-	tag_log->type = bootinfo::TYPE_LOG;
-	tag_log->flags = 0;
-	tag_log->size = size;
+	tag_log->info_type = bootinfo::TYPE_LOG;
+	tag_log->info_flags = 0;
+	tag_log->info_bytes = info_bytes;
 
-	return size;
+	return info_bytes;
 }
 
-uptr store_first_process(uptr bootinfo_left, u8* bootinfo)
+uptr store_first_process(uptr store_bytes, u8* store)
 {
 	bootinfo::module* tag_mod =
-	    reinterpret_cast<bootinfo::module*>(bootinfo);
+	    reinterpret_cast<bootinfo::module*>(store);
 
-	const uptr tag_size = sizeof *tag_mod + sizeof (uptr);
-	if (bootinfo_left < tag_size)
-		return tag_size;
+	const uptr info_bytes = sizeof *tag_mod + sizeof (uptr);
+	if (store_bytes < info_bytes)
+		return info_bytes;
 
 	const uptr bundle_size = reinterpret_cast<uptr>(first_process_size);
 
@@ -208,14 +209,14 @@ uptr store_first_process(uptr bootinfo_left, u8* bootinfo)
 
 	mem_copy(bundle_size, first_process, p);
 
-	tag_mod->type = bootinfo::TYPE_BUNDLE;
-	tag_mod->flags = 0;
-	tag_mod->size = tag_size;
+	tag_mod->info_type = bootinfo::TYPE_BUNDLE;
+	tag_mod->info_flags = 0;
+	tag_mod->info_bytes = info_bytes;
 	tag_mod->mod_start = reinterpret_cast<u32>(p);
-	tag_mod->mod_size = bundle_size;
+	tag_mod->mod_bytes = bundle_size;
 	tag_mod->cmdline[0] = '\0';
 
-	return tag_size;
+	return info_bytes;
 }
 
 u8* bootinfo_alloc()
@@ -239,47 +240,49 @@ u8* bootinfo_alloc()
 
 bool store_bootinfo(const u32* mb_info)
 {
-	u8* const bootinfo = bootinfo_alloc();
-	if (bootinfo == 0)
+	u8* const store = bootinfo_alloc();
+	if (store == 0)
 		return false;
 
-	uptr bootinfo_left = bootinfo::MAX_BYTES;
+	uptr store_bytes = bootinfo::MAX_BYTES;
 	uptr wrote = sizeof (bootinfo::header);
 
-	uptr size = store_adr_map(mb_info, bootinfo_left, &bootinfo[wrote]);
-	if (size > bootinfo_left)
+	uptr size = store_adr_map(mb_info, store_bytes, &store[wrote]);
+	if (size > store_bytes)
 		return false;
 	wrote += size;
-	bootinfo_left -= size;
+	store_bytes -= size;
 
-	size = store_multiboot(mb_info, bootinfo_left, &bootinfo[wrote]);
-	if (size > bootinfo_left)
+	size = store_multiboot(mb_info, store_bytes, &store[wrote]);
+	if (size > store_bytes)
 		return false;
 	wrote += size;
-	bootinfo_left -= size;
+	store_bytes -= size;
 
-	size = store_mem_alloc(bootinfo_left, &bootinfo[wrote]);
-	if (size > bootinfo_left)
+	size = store_mem_alloc(store_bytes, &store[wrote]);
+	if (size > store_bytes)
 		return false;
 	wrote += size;
-	bootinfo_left -= size;
+	store_bytes -= size;
 
-	size = store_log(bootinfo_left, &bootinfo[wrote]);
-	if (size > bootinfo_left)
+	size = store_log(store_bytes, &store[wrote]);
+	if (size > store_bytes)
 		return false;
 	wrote += size;
-	bootinfo_left -= size;
+	store_bytes -= size;
 
-	size = store_first_process(bootinfo_left, &bootinfo[wrote]);
-	if (size > bootinfo_left)
+	size = store_first_process(store_bytes, &store[wrote]);
+	if (size > store_bytes)
 		return false;
 	wrote += size;
-	bootinfo_left -= size;
+	store_bytes -= size;
 
-	// total size
-	*reinterpret_cast<u32*>(bootinfo) = wrote;
+	bootinfo::header* bootinfo_header =
+	    reinterpret_cast<bootinfo::header*>(store);
+	bootinfo_header->length = wrote;
+	bootinfo_header->zero = 0;
 
-	load_info.bootinfo_adr = reinterpret_cast<u64>(bootinfo);
+	load_info.bootinfo_adr = reinterpret_cast<u64>(store);
 
 	return true;
 }
