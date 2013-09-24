@@ -117,6 +117,77 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0x2000, false);
 }
 
+cause::t mbmmap_to_adrmap(
+    const multiboot_memory_map_t* mmap_ent,
+    bootinfo::adr_map::entry*     adrmap_ent)
+{
+	adrmap_ent->adr = mmap_ent->addr;
+
+	adrmap_ent->bytes = mmap_ent->len;
+
+	switch (mmap_ent->type) {
+	case MULTIBOOT_MEMORY_AVAILABLE:
+		adrmap_ent->type = bootinfo::adr_map::entry::AVAILABLE;
+		break;
+	case  MULTIBOOT_MEMORY_RESERVED:
+		adrmap_ent->type = bootinfo::adr_map::entry::RESERVED;
+		break;
+	case  MULTIBOOT_MEMORY_ACPI_RECLAIMABLE:
+		adrmap_ent->type = bootinfo::adr_map::entry::ACPI;
+		break;
+	case  MULTIBOOT_MEMORY_NVS:
+		adrmap_ent->type = bootinfo::adr_map::entry::NVS;
+		break;
+	case  MULTIBOOT_MEMORY_BADRAM:
+		adrmap_ent->type = bootinfo::adr_map::entry::BADRAM;
+		break;
+	default:
+		return cause::BADARG;
+	}
+
+	adrmap_ent->zero = 0;
+
+	return cause::OK;
+}
+
+cause::t store_adrmap(const multiboot_tag_mmap* mbt_mmap)
+{
+	allocator* alloc = get_alloc();
+
+	int ents = (mbt_mmap->size - sizeof *mbt_mmap) / mbt_mmap->entry_size;
+
+	uptr adr_map_bytes = sizeof (bootinfo::adr_map) +
+		             sizeof (bootinfo::adr_map::entry) * ents;
+
+	bootinfo::adr_map* adrmap = static_cast<bootinfo::adr_map*>(
+	    alloc->alloc(
+	        SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
+	        adr_map_bytes,
+	        4096,
+	        true));
+
+	const void* mmap_end = (const u8*)mbt_mmap + mbt_mmap->size;
+	const multiboot_memory_map_t* mmap = mbt_mmap->entries;
+	int adrmap_i = 0;
+	while (mmap < mmap_end) {
+		auto r = mbmmap_to_adrmap(mmap, &adrmap->entries[adrmap_i]);
+		if (is_fail(r))
+			return r;
+
+		mmap = (const multiboot_memory_map_t*)
+		    ((const u8*)mmap + mbt_mmap->entry_size);
+		++adrmap_i;
+	}
+
+	adrmap->info_type = bootinfo::TYPE_ADR_MAP;
+	adrmap->info_flags = 0;
+	adrmap->info_bytes = adr_map_bytes;
+
+	adr_map_store = adrmap;
+
+	return cause::OK;
+}
+
 }  // namespace
 
 
@@ -194,6 +265,10 @@ cause::t pre_load_mb2(u32 magic, const u32* tag)
 			const multiboot_tag_mmap* mbt_mmap =
 			    reinterpret_cast<const multiboot_tag_mmap*>(mbt);
 			mem_setup(mbt_mmap, tag);
+
+			auto r = store_adrmap(mbt_mmap);
+			if (is_fail(r))
+				return r;
 			break;
 		}
 		case MULTIBOOT_TAG_TYPE_ELF_SECTIONS: {

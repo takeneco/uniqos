@@ -26,48 +26,23 @@ namespace bootinfo {
 
 const tag* get_info(u16 type)
 {
-	const void* const bootinfo = global_vars::arch.bootinfo;
+	const void* const bi = global_vars::arch.bootinfo;
 
-	const header* h =
-	    static_cast<const header*>(bootinfo);
+	const header* h = static_cast<const header*>(bi);
 
-	const void* const end =
-	    static_cast<const u8*>(bootinfo) + h->length;
+	const void* const end = h->end();
 
-	const tag* info = h->next();
-	while (info->type != TYPE_END && info < end) {
-		if (info->type == type)
+	const tag* info = h->next_tag();
+
+	while (info->info_type != TYPE_END && info < end) {
+		if (info->info_type == type)
 			return info;
 
-		info = info->next();
+		info = info->next_tag();
 	}
 
 	return 0;
 }
-/*
-const void* get_bootinfo(u32 tag_type)
-{
-	const u8* info =
-	    static_cast<const u8*>(global_vars::arch.bootinfo);
-
-	const u32 total_size = *reinterpret_cast<const u32*>(info);
-
-	u32 read = sizeof (u32) * 2;
-
-	for (;;) {
-		const multiboot_tag* tag =
-		    reinterpret_cast<const multiboot_tag*>(&info[read]);
-
-		if (tag->type == tag_type)
-			return tag;
-
-		read += up_align<u32>(tag->size, MULTIBOOT_TAG_ALIGN);
-		if (read >= total_size)
-			break;
-	}
-
-	return 0;
-}*/
 
 }  // namespace bootinfo
 

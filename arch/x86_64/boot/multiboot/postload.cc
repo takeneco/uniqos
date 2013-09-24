@@ -33,59 +33,12 @@ namespace {
 /// @brief multiboot_mmap_entry を bootinfo::adrmap に変換する
 uptr store_adr_map(const u32* mb_info, uptr store_bytes, u8* store)
 {
-	bootinfo::adr_map* adrmap = (bootinfo::adr_map*)store;
-	bootinfo::adr_map::entry* adrmap_ent = adrmap->entries;
-	uptr info_bytes = sizeof (bootinfo::adr_map);
+	if (store_bytes < adr_map_store->info_bytes)
+		return adr_map_store->info_bytes;
 
-	//const u32 mb_info_size = *mb_info;
-	mb_info += 2;
+	mem_copy(adr_map_store->info_bytes, adr_map_store, store);
 
-	// search multiboot_tag_mmap
-	const multiboot_tag* mbt =
-	    reinterpret_cast<const multiboot_tag*>(mb_info);
-	while (mbt->type != MULTIBOOT_TAG_TYPE_MMAP) {
-		const u32 inc = up_align<u32>(mbt->size, MULTIBOOT_TAG_ALIGN);
-		mbt = (const multiboot_tag*)((const u8*)mbt + inc);
-
-		if (mbt->type == MULTIBOOT_TAG_TYPE_END)
-			return 0;
-	}
-
-	// store bootinfo::adr_map
-	const multiboot_tag_mmap* mmap = (const multiboot_tag_mmap*)mbt;
-	const multiboot_memory_map_t* mmap_ent = mmap->entries;
-	const void* end = (const u8*)mmap + mmap->size;
-	while (mmap_ent < end) {
-		info_bytes += sizeof (bootinfo::adr_map::entry);
-
-		if (store_bytes < info_bytes)
-			return info_bytes;
-
-		adrmap_ent->adr = mmap_ent->addr;
-		adrmap_ent->bytes = mmap_ent->len;
-
-		if (mmap_ent->type == MULTIBOOT_MEMORY_AVAILABLE)
-			adrmap_ent->type = bootinfo::adr_map::entry::AVAILABLE;
-		else if (mmap_ent->type == MULTIBOOT_MEMORY_RESERVED)
-			adrmap_ent->type = bootinfo::adr_map::entry::RESERVED;
-		else if (mmap_ent->type == MULTIBOOT_MEMORY_ACPI_RECLAIMABLE)
-			adrmap_ent->type = bootinfo::adr_map::entry::ACPI;
-		else if (mmap_ent->type == MULTIBOOT_MEMORY_NVS)
-			adrmap_ent->type = bootinfo::adr_map::entry::NVS;
-		else if (mmap_ent->type == MULTIBOOT_MEMORY_BADRAM)
-			adrmap_ent->type = bootinfo::adr_map::entry::BADRAM;
-		adrmap_ent->zero = 0;
-
-		++adrmap_ent;
-		mmap_ent = (const multiboot_memory_map_t*)
-		    ((const u8*)mmap_ent + mmap->entry_size);
-	}
-
-	adrmap->info_type = bootinfo::TYPE_ADR_MAP;
-	adrmap->info_flags = 0;
-	adrmap->info_bytes = info_bytes;
-
-	return info_bytes;
+	return adr_map_store->info_bytes;
 }
 
 /// @brief  multiboot information を bootinfo にコピーする。
@@ -171,9 +124,9 @@ uptr store_log(uptr store_bytes, u8* store)
 	if (is_fail(r))
 		return 0;
 
-	if (read_bytes & (MULTIBOOT_TAG_ALIGN - 1)) {
-		int pads = MULTIBOOT_TAG_ALIGN -
-		           (read_bytes & (MULTIBOOT_TAG_ALIGN - 1));
+	if (read_bytes & (bootinfo::ALIGN - 1)) {
+		int pads =
+		    bootinfo::ALIGN - (read_bytes & (bootinfo::ALIGN - 1));
 		for (int i = 0; i < pads; ++i) {
 			if (iov.bytes <= read_bytes)
 				break;
@@ -224,14 +177,14 @@ u8* bootinfo_alloc()
 	void* p = get_alloc()->alloc(
 	    SLOTM_CONVENTIONAL,
 	    bootinfo::MAX_BYTES,
-	    MULTIBOOT_TAG_ALIGN,
+	    bootinfo::ALIGN,
 	    false);
 
 	if (!p) {
 		p = get_alloc()->alloc(
 		    SLOTM_BOOTHEAP,
 		    bootinfo::MAX_BYTES,
-		    MULTIBOOT_TAG_ALIGN,
+		    bootinfo::ALIGN,
 		    false);
 	}
 

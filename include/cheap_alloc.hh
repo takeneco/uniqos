@@ -1,15 +1,15 @@
 /// @file   cheap_alloc.hh
 /// @brief  cheap address allocation implement.
 
-//  Uniqos  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  UNIQOS  --  Unique Operating System
+//  (C) 2011-2013 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -255,6 +255,9 @@ void* cheap_alloc<BUF_COUNT>::alloc(
 			break;
 	}
 
+	if (!ent)
+		return 0;
+
 	return reinterpret_cast<void*>(ent->adr);
 }
 
@@ -439,15 +442,20 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
     bool forget,
     adr_slot* slot)
 {
+	// r_head, r_tail : 予約する範囲
 	uptr r_head = adr;
 	uptr r_tail = adr + bytes - 1;
 
 	for (range* ent = slot->free_ranges.head(); ent; )
 	{
+		// e_head, e_tail : 発見した空きメモリの範囲
 		uptr e_head = ent->adr;
 		uptr e_tail = e_head + ent->bytes - 1;
 		bool outofrange = false;
 
+		// 予約する範囲が発見した空きメモリ範囲に収まっている場合
+		// |--------------| 発見した空きメモリ
+		//     |-----|      予約する範囲
 		if (e_head < r_head && r_tail < e_tail) {
 			if (forget == false) {
 				range* alloc = new_range(adr, bytes);
@@ -464,8 +472,11 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 			ent->bytes = r_head - e_head;
 			break;
 		}
-
-		if (r_head <= e_head && e_head <= r_tail) {
+		// 発見した空きメモリの先頭が予約する範囲に含まれる場合
+		// (発見した空きメモリが予約する範囲の中に納まる場合も含む)
+		//    |---------| 発見した空きメモリ
+		// |------...     予約する範囲
+		else if (r_head <= e_head && e_head <= r_tail) {
 			if (forget == false) {
 				range* alloc = new_range(
 				    e_head, min(r_tail, e_tail) - e_head + 1);
@@ -478,8 +489,10 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 			if (e_head == 0)
 				outofrange = true;
 		}
-
-		if (r_head <= e_tail && e_tail <= r_tail) {
+		// 発見した空きメモリの末尾が予約する範囲に含まれる場合
+		// |---------|     発見した空きメモリ
+		//      |--------| 予約する範囲
+		else if (r_head <= e_tail && e_tail <= r_tail) {
 			if (forget == false) {
 				const uptr h = max(r_head, e_head);
 				range* alloc = new_range(h, e_tail - h + 1);

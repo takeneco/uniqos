@@ -1,14 +1,14 @@
 /// @file   preload_mb.cc
 
-//  uniqos  --  Unique Operating System
+//  UNIQOS  --  Unique Operating System
 //  (C) 2013 KATO Takeshi
 //
-//  uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -69,7 +69,7 @@ void mem_setup(const multiboot_info* mbi)
 	while (cur < end) {
 		const multiboot_memory_map_t* const mmap =
 		    (const multiboot_memory_map_t*)cur;
-		cur += mmap->size;
+		cur += sizeof mmap->size + mmap->size;
 
 		if (mmap->type == MULTIBOOT_MEMORY_AVAILABLE) {
 			const uptr MEMMAX = 0xfffff000;
@@ -107,6 +107,95 @@ void mem_setup(const multiboot_info* mbi)
 
 	// コンベンショナルメモリはパラメータの格納に使われてしまう。
 	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0xfffff, false);
+}
+
+cause::t mbmmap_to_adrmap(
+    const multiboot_memory_map_t* mmap_ent,
+    bootinfo::adr_map::entry*     adrmap_ent)
+{
+	adrmap_ent->adr = mmap_ent->addr;
+
+	adrmap_ent->bytes = mmap_ent->len;
+
+	switch (mmap_ent->type) {
+	case MULTIBOOT_MEMORY_AVAILABLE:
+		adrmap_ent->type = bootinfo::adr_map::entry::AVAILABLE;
+		break;
+	case  MULTIBOOT_MEMORY_RESERVED:
+		adrmap_ent->type = bootinfo::adr_map::entry::RESERVED;
+		break;
+	case  MULTIBOOT_MEMORY_ACPI_RECLAIMABLE:
+		adrmap_ent->type = bootinfo::adr_map::entry::ACPI;
+		break;
+	case  MULTIBOOT_MEMORY_NVS:
+		adrmap_ent->type = bootinfo::adr_map::entry::NVS;
+		break;
+	case  MULTIBOOT_MEMORY_BADRAM:
+		adrmap_ent->type = bootinfo::adr_map::entry::BADRAM;
+		break;
+	default:
+		return cause::BADARG;
+	}
+
+	adrmap_ent->zero = 0;
+
+	return cause::OK;
+}
+
+/// Convert multiboot_memory_map to bootinfo::adr_map
+cause::t store_adrmap(const multiboot_info* mbi)
+{
+	allocator* alloc = get_alloc();
+
+	// countup
+
+	const u8* const end = (const u8*)mbi->mmap_addr + mbi->mmap_length;
+
+	const u8* cur = (const u8*)mbi->mmap_addr;
+	int ents = 0;
+	while (cur < end) {
+		const multiboot_memory_map_t* const mmap =
+		    (const multiboot_memory_map_t*)cur;
+
+		++ents;
+
+		cur += sizeof mmap->size + mmap->size;
+	}
+
+	uptr adr_map_bytes = sizeof (bootinfo::adr_map) +
+		             sizeof (bootinfo::adr_map::entry) * ents;
+
+	bootinfo::adr_map* adrmap = static_cast<bootinfo::adr_map*>(
+	    alloc->alloc(
+	        SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
+	        adr_map_bytes,
+	        4096,
+	        true));
+
+	// store
+
+	cur = (const u8*)mbi->mmap_addr;
+	int adrmap_i = 0;
+	while (cur < end) {
+		const multiboot_memory_map_t* const mmap =
+		    (const multiboot_memory_map_t*)cur;
+
+		auto r = mbmmap_to_adrmap(mmap, &adrmap->entries[adrmap_i]);
+		if (is_fail(r))
+			return r;
+
+		++adrmap_i;
+
+		cur += sizeof mmap->size + mmap->size;
+	}
+
+	adrmap->info_type = bootinfo::TYPE_ADR_MAP;
+	adrmap->info_flags = 0;
+	adrmap->info_bytes = adr_map_bytes;
+
+	adr_map_store = adrmap;
+
+	return cause::OK;
 }
 
 }  // namespace
@@ -183,6 +272,10 @@ cause::t pre_load_mb(u32 magic, const void* tag)
 			log(1)("mmap_addr    : 0x").x(mbh->mmap_addr)();
 		}
 		mem_setup(mbh);
+
+		auto r = store_adrmap(mbh);
+		if (is_fail(r))
+			return r;
 	}
 	/*
 	if (mbh->flags & MULTIBOOT_INFO_DRIVE_INFO) {
@@ -238,8 +331,6 @@ cause::t pre_load_mb(u32 magic, const void* tag)
 	r = memlog.open();
 	if (is_fail(r))
 		return r;
-
-	for(;;)asm ("hlt");
 
 	return cause::OK;
 }
