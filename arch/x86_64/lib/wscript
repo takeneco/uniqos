@@ -23,7 +23,7 @@ def build(x):
 	    use = 'KERNEL',
 	)
 
-	if x.env.MULTIBOOT2:
+	if x.env.CONFIG_MULTIBOOT or x.env.CONFIG_MULTIBOOT2:
 		x.objects(
 		    target = 'mb_archlibs',
 		    source = mb_sources,

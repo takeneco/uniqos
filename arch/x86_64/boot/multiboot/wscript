@@ -38,9 +38,9 @@ def configure(x):
 
 def build(x):
 	sources = list(source)
-	if x.env.MULTIBOOT:
+	if x.env.CONFIG_MULTIBOOT:
 		sources.extend(source_mb)
-	if x.env.MULTIBOOT2:
+	if x.env.CONFIG_MULTIBOOT2:
 		sources.extend(source_mb2)
 
 	target = x.path.find_or_declare('us')

@@ -4,12 +4,12 @@
 
 
 def configure(x):
-	if x.env.MULTIBOOT or x.env.MULTIBOOT2:
+	if x.env.CONFIG_MULTIBOOT or x.env.CONFIG_MULTIBOOT2:
 		x.recurse('multiboot')
 
 def build(x):
 	if x.env.boot_fd:
 		x.recurse('fd')
 
-	if x.env.MULTIBOOT or x.env.MULTIBOOT2:
+	if x.env.CONFIG_MULTIBOOT or x.env.CONFIG_MULTIBOOT2:
 		x.recurse('multiboot')

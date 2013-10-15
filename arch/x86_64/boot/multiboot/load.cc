@@ -166,13 +166,30 @@ cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 	return cause::OK;
 }
 
+cause::t _pre_load(u32 magic, u32* tag)
+{
+	cause::t r = cause::FAIL;
+
+#if CONFIG_MULTIBOOT2
+	r = pre_load_mb2(magic, tag);
+	if (r != cause::BADARG)
+		return r;
+#endif  // CONFIG_MULTIBOOT2
+
+#if CONFIG_MULTIBOOT
+	r = pre_load_mb(magic, tag);
+	if (r != cause::BADARG)
+		return r;
+#endif  // CONFIG_MULTIBOOT
+
+	return r;
+}
+
 }  // namespace
 
 extern "C" u32 load(u32 magic, u32* tag)
 {
-	cause::t r = pre_load_mb2(magic, tag);
-	if (r == cause::BADARG)
-		r = pre_load_mb(magic, tag);
+	cause::t r = _pre_load(magic, tag);
 	if (is_fail(r))
 		return r;
 
