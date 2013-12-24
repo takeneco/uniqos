@@ -92,6 +92,7 @@ cause::t create_init_process()
 		return cause::FAIL;
 	}
 
+	// load text start
 	uptr padr;
 	cause::t r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
 	if (is_fail(r)) {
@@ -110,6 +111,21 @@ cause::t create_init_process()
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
 	    arch::pte::P | arch::pte::US | arch::pte::A);
+	// load text end
+
+	// alloc stack start
+	r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
+	if (is_fail(r)) {
+		return r;
+	}
+
+	log()("init:stack/p=").x(padr)();
+
+	pr->ref_ptbl().set_page(UPTR(0x00007ffffffff000), padr,
+	    arch::page::PHYS_L1,
+	    arch::pte::P | arch::pte::RW | arch::pte::US |
+	    arch::pte::A | arch::pte::D);
+	// alloc stack end
 
 	auto thr = create_thread(get_cpu_node(), 0x00100000, 0);
 	if (is_fail(thr)) {
@@ -123,6 +139,24 @@ cause::t create_init_process()
 	t->ref_regset()->fs = 0x18 + 3;
 	t->ref_regset()->gs = 0x18 + 3;
 	t->ref_regset()->ss = 0x18 + 3;
+
+	t->thread_private_info =
+	    t->stack_low_adr + t->stack_bytes - sizeof (native_thread*);
+	native_thread** tpi =
+	    reinterpret_cast<native_thread**>(t->thread_private_info);
+	*tpi = t;
+
+	// thread_private_info
+	// カーネル空間内のスタックポインタとして使えるアドレスを指す
+	// そのアドレスから native_thread 自身を参照できるようにする
+	thread** ppt = reinterpret_cast<thread**>(
+	    t->stack_low_adr + t->stack_bytes - sizeof (thread**)
+	);
+	*ppt = t;
+	t->set_thread_private_info(
+	    t->stack_low_adr + t->stack_bytes - sizeof (thread**)
+	);
+
 	t->ready();
 
 	log()("process:")(pr)()("thread->regset:")(t->ref_regset())();

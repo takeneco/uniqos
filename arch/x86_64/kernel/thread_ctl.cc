@@ -45,7 +45,9 @@ native_thread::native_thread(
     uptr stack_size
 ) :
 	thread(),
-	rs(text, param, stack, stack_size)
+	rs(text, param, stack, stack_size),
+	stack_low_adr(stack),
+	stack_bytes(stack_size)
 {
 	rs.cr3 = native::get_cr3();
 }

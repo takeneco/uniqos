@@ -6,9 +6,9 @@
 
 #include "kerninit.hh"
 #include "cpu_idte.hh"
-#include "global_vars.hh"
+#include <global_vars.hh>
 #include <intr_ctl.hh>
-#include "log.hh"
+#include <log.hh>
 #include <native_cpu_node.hh>
 #include <native_ops.hh>
 
@@ -17,19 +17,6 @@
 /// - 0x00-0x1f cpu reserved interrupts
 /// - 0x20-0x5f device interrupts
 /// - 0x60-0xff unused
-
-namespace {
-
-void intr_update(idte* idt)
-{
-	//idte* idt = global_vars::gv.cpu_ctl_obj->get_idt();
-	native::idt_ptr64 idtptr;
-	idtptr.set(sizeof (idte) * 256, idt);
-
-	native::lidt(&idtptr);
-}
-
-}  // namespace
 
 extern "C" {
 
@@ -185,7 +172,7 @@ void intr_0x8d();
 void intr_0x8e();
 void intr_0x8f();
 
-}
+}  // extern "C"
 
 cause::type intr_init(idte* idt)
 {
@@ -281,14 +268,13 @@ cause::type intr_init(idte* idt)
 		idt[i].disable();
 	}
 
-	//intr_update(idt);
 	return cause::OK;
 }
 
 void except_dump(int vec, const char* msg)
 {
 	x86::native_cpu_node* cn = x86::get_native_cpu_node();
-	arch::regset* rs = cn->running_thread_regset;
+	arch::regset* rs = cn->intr_buf.running_thread_regset;
 
 	log(1)(msg)(" v=").u(vec)()
 	    ("rax:").x(rs->rax, 16)
@@ -319,6 +305,8 @@ void except_dump(int vec, const char* msg)
 	for (;;)
 		native::hlt();
 }
+
+const char* UNKNOWN_INTR = "!!!UNKNOWN INTERRUPT";
 
 extern "C" void on_except_0x00() {
 	except_dump(0x00, "Divide Error Exception (#DE)");
@@ -366,7 +354,7 @@ extern "C" void on_except_0x0e() {
 	except_dump(0x0e, "Page-Fault Exception (#PF)");
 }
 extern "C" void on_except_0x0f() {
-	except_dump(0x0f, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x0f, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x10() {
 	except_dump(0x10, "x87 FPU Floating-Point Error (#MF)");
@@ -381,39 +369,39 @@ extern "C" void on_except_0x13() {
 	except_dump(0x13, "SIMD Floating-Point Exception (#XM)");
 }
 extern "C" void on_except_0x14() {
-	except_dump(0x14, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x14, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x15() {
-	except_dump(0x15, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x15, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x16() {
-	except_dump(0x16, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x16, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x17() {
-	except_dump(0x17, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x17, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x18() {
-	except_dump(0x18, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x18, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x19() {
-	except_dump(0x19, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x19, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1a() {
-	except_dump(0x1a, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1a, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1b() {
-	except_dump(0x1b, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1b, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1c() {
-	except_dump(0x1c, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1c, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1d() {
-	except_dump(0x1d, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1d, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1e() {
-	except_dump(0x1e, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1e, UNKNOWN_INTR);
 }
 extern "C" void on_except_0x1f() {
-	except_dump(0x1f, "!!!UNKNOWN INTERRUPT");
+	except_dump(0x1f, UNKNOWN_INTR);
 }
 

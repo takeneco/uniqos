@@ -286,16 +286,19 @@ private:
 public:
 
 	struct {
-		arch::regset** running_thread_regset_p;
+		uptr thread_private_info;
 		uptr tmp;
 	} syscall_buf;
 
-	arch::regset* running_thread_regset;
+	struct {
+		arch::regset* running_thread_regset;
+	} intr_buf;
+
 	u8 original_lapic_id;
 };
 
 
-// 別ヘッダへ移動予定
+// TODO:別ヘッダへ移動予定
 class native_cpu_node::IDT
 {
 public:
@@ -309,6 +312,7 @@ private:
 	idte idt[256];
 };
 
+// TODO:
 struct native_cpu_buffer
 {
 	native_cpu_buffer() :

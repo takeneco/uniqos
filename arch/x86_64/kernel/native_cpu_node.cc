@@ -18,6 +18,7 @@
 
 #include <native_cpu_node.hh>
 
+#include <flags.hh>
 #include <global_vars.hh>
 #include <mempool.hh>
 #include <native_ops.hh>
@@ -93,7 +94,10 @@ cause::t native_cpu_node::start_message_loop()
 /// @param[in] t  Ptr to new running thread.
 void native_cpu_node::load_running_thread(thread* t)
 {
-	running_thread_regset = static_cast<native_thread*>(t)->ref_regset();
+	native_thread* nt = static_cast<native_thread*>(t);
+
+	syscall_buf.thread_private_info = nt->thread_private_info;
+	intr_buf.running_thread_regset = nt->ref_regset();
 }
 
 cause::t native_cpu_node::setup_tss()
@@ -119,10 +123,9 @@ cause::t native_cpu_node::setup_tss()
 
 cause::t native_cpu_node::setup_syscall()
 {
-	syscall_buf.running_thread_regset_p = &running_thread_regset;
 	// syscall から swapgs で syscall_buf へアクセスできるようにする
 	const uptr gs_base = reinterpret_cast<uptr>(&syscall_buf);
-	native::write_msr(gs_base, 0xc0000100);
+	native::write_msr(gs_base, 0xc0000102);
 
 	// STAR
 	const u64 msr_star =
@@ -134,7 +137,8 @@ cause::t native_cpu_node::setup_syscall()
 	native::write_msr(reinterpret_cast<u64>(on_syscall), 0xc0000082);
 
 	// FMASK
-	native::write_msr(0x00003000L, 0xc0000084);
+	native::write_msr(
+	    x86::REGFLAGS::IOPL | x86::REGFLAGS::IF, 0xc0000084);
 
 	return cause::OK;
 }
@@ -176,7 +180,7 @@ void* native_cpu_node::ist_layout(void* mem)
 	istf -= 1;
 
 	istf->proc = static_cast<cpu_node*>(this);
-	istf->regs = &this->running_thread_regset;
+	istf->regs = &this->intr_buf.running_thread_regset;
 
 	return istf;
 }
@@ -285,7 +289,8 @@ bool native_cpu_node::force_switch_thread()
 /// を指定できる。割込み処理以外の状態でこの関数を呼んではならない。
 void native_cpu_node::switch_thread_after_intr(native_thread* t)
 {
-	running_thread_regset = t->ref_regset();
+	syscall_buf.thread_private_info = t->thread_private_info;
+	intr_buf.running_thread_regset = t->ref_regset();
 
 	thread_q.set_running_thread(t);
 }
