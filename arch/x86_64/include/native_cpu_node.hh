@@ -23,7 +23,7 @@ public:
 	class IDT;
 
 public:
-	native_cpu_node(native_cpu_buffer* priv_buf);
+	native_cpu_node();
 
 	cause::t setup();
 	cause::t start_message_loop();
@@ -312,45 +312,11 @@ private:
 	idte idt[256];
 };
 
-// TODO:
-struct native_cpu_buffer
-{
-	native_cpu_buffer() :
-		node(this)
-	{}
-
-	arch::regset* running_thread_regset;
-	uptr tmp;
-
-	native_cpu_node node;
-};
-
 native_cpu_node* get_native_cpu_node();
 native_cpu_node* get_native_cpu_node(cpu_id cpuid);
 
 }  // namespace x86
 
-/*
-/// CPUの共有データ
-class cpu_ctl_common
-{
-public:
-	cpu_ctl_common();
-
-	cause::t init();
-
-	cause::t setup_idt();
-
-	const mpspec* get_mpspec() const {
-		return &mps;
-	}
-
-private:
-	mpspec mps;
-
-	arch::cpu_ctl::IDT idt;
-};
-*/
 
 #endif  // include guard
 

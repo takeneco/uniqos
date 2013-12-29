@@ -46,9 +46,8 @@ namespace x86 {
 
 // x86::native_cpu_node
 
-native_cpu_node::native_cpu_node(native_cpu_buffer* priv_buf) :
-	preempt_disable_cnt(0),
-	private_buffer(priv_buf)
+native_cpu_node::native_cpu_node() :
+	preempt_disable_cnt(0)
 {
 }
 
@@ -369,51 +368,6 @@ void preempt_enable()
 #endif  // CONFIG_PREEMPT
 }
 
-// cpu_ctl_common
-/*
-cpu_ctl_common::cpu_ctl_common()
-{
-}
-
-cause::t cpu_ctl_common::init()
-{
-	cause::t r = mps.load();
-	if (is_fail(r))
-		return r;
-
-	r = idt.init();
-	if (is_fail(r))
-		return r;
-
-	return cause::OK;
-}
-
-cause::t cpu_ctl_common::setup_idt()
-{
-	native::idt_ptr64 idtptr;
-	idtptr.set(sizeof (idte) * 256, idt.get());
-
-	native::lidt(&idtptr);
-
-	return cause::OK;
-}
-
-
-cause::t cpu_common_init()
-{
-	cpu_ctl_common* obj =
-	    new (mem_alloc(sizeof (cpu_ctl_common))) cpu_ctl_common;
-	global_vars::arch.cpu_ctl_common_obj = obj;
-	if (!obj)
-		return cause::NOMEM;
-
-	cause::t r = obj->init();
-	if (is_fail(r))
-		return r;
-
-	return cause::OK;
-}
-*/
 namespace arch {
 
 void post_intr_message(message* msg)
@@ -431,22 +385,5 @@ void post_cpu_message(message* msg, cpu_node* cpu)
 	static_cast<x86::native_cpu_node*>(cpu)->post_soft_message(msg);
 }
 
-/*
-TODO
-void intr_enable()
-{
-	native::sti();
-}
-
-void intr_disable()
-{
-	native::cli();
-}
-
-void intr_wait()
-{
-	asm volatile ("sti;hlt;cli" : : : "memory");
-}
-*/
 }  // namespace arch
 
