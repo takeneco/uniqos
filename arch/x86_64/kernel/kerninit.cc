@@ -32,7 +32,6 @@ extern char _binary_arch_x86_64_kernel_ap_boot_bin_size[];
 
 void test(void*);
 bool test_init();
-void cpu_test();
 io_node* create_serial();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
@@ -153,8 +152,9 @@ cause::t create_init_process()
 	    t->stack_low_adr + t->stack_bytes - sizeof (thread**)
 	);
 	*ppt = t;
+	// スタックへレジスタを退避するときの都合で、レジスタ１つ分ずらしておく
 	t->set_thread_private_info(
-	    t->stack_low_adr + t->stack_bytes - sizeof (thread**)
+	    t->stack_low_adr + t->stack_bytes - sizeof (thread**) -sizeof (uptr)
 	);
 
 	t->ready();

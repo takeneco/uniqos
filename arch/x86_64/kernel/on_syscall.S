@@ -15,38 +15,41 @@
 
 // syscall
 ENTRY_START(on_syscall)
-	/*
-	cli
+	swapgs
+	movq  %rsp, %gs:8
+	movq  %gs:0, %rsp
+	//pushq %r15 // C saved
+	//pushq %r14 // C saved
+	//pushq %r13 // C saved
+	//pushq %r12 // C saved
+	pushq %r11   // %eflags
+	pushq %r10   // 4th param
+	pushq %r9    // 6th param
+	pushq %r8    // 5th param
+	pushq %rdi   // 1st param
+	pushq %rsi   // 2nd param
+	//pushq %rbp // C saved
+	pushq %rdx   // 3rd param
+	pushq %rcx   // %rip
+	//pushq %rbx // C saved
+	pushq %rax   // system call num
+	movq  %gs:8, %rsi
+	movq  %rsi, 72(%rsp)
 	swapgs
 
-	movq  %rdi, %gs:8
-	movq  %gs:0, %rdi
-	movq  (%rdi), %rdi
+	movq  %rsp, %rdi
+	call  syscall_entry
 
-	movq  %rax,     (%rdi)
-	movq  %rcx, 8* 1(%rdi)
-	movq  %rdx, 8* 2(%rdi)
-	movq  %rbx, 8* 3(%rdi)
-	movq  %rbp, 8* 4(%rdi)
-	movq  %rsi, 8* 5(%rdi)
-	movq  %r8,  8* 7(%rdi)
-	movq  %r9,  8* 8(%rdi)
-	movq  %r10, 8* 9(%rdi)
-	movq  %r11, 8*10(%rdi)
-	movq  %r12, 8*11(%rdi)
-	movq  %r13, 8*12(%rdi)
-	movq  %r14, 8*13(%rdi)
-	movq  %r15, 8*14(%rdi)
-	movq  %rcx, 8*15(%rdi)  // %rip
-	movq  %r11, 8*17(%rdi)  // %rf
-	movq  %gs:8, %rdi
+	movq  8(%rsp), %rcx
+	addq  $8*3, %rsp
+	popq  %rsi
+	popq  %rdi
+	popq  %r8
+	popq  %r9
+	popq  %r10
+	popq  %r11
+	popq  %rsp
 
-	swapgs
-	sti
-
-	movq  8*17(%rdi), %rcx  // %rf
-	movq  8*15(%rdi), %r11
-	*/
 	sysretq
 
 ENTRY_END(on_syscall)
