@@ -1,11 +1,11 @@
 /// @file  int_bitset.hh
 /// @brief Bitmap structure.
 //
-// (C) 2010,2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
-#ifndef INT_BITSET_HH_
-#define INT_BITSET_HH_
+#ifndef CORE_INCLUDE_INT_BITSET_HH_
+#define CORE_INCLUDE_INT_BITSET_HH_
 
 #include <arch.hh>
 #include <bitops.hh>
@@ -50,5 +50,5 @@ public:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_INT_BITSET_HH_
 

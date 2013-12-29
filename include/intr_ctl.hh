@@ -1,10 +1,10 @@
 /// @file  intr_ctl.hh
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_INTR_CTL_HH_
-#define INCLUDE_INTR_CTL_HH_
+#ifndef CORE_INCLUDE_INTR_CTL_HH_
+#define CORE_INCLUDE_INTR_CTL_HH_
 
 #include <arch.hh>
 #include "arch_specs.hh"
@@ -77,5 +77,5 @@ public:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_INTR_CTL_HH_
 

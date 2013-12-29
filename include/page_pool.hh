@@ -1,10 +1,10 @@
 /// @file  page_pool.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_PAGE_POOL_HH_
-#define INCLUDE_PAGE_POOL_HH_
+#ifndef CORE_INCLUDE_PAGE_POOL_HH_
+#define CORE_INCLUDE_PAGE_POOL_HH_
 
 #include <arch.hh>
 #include <memcell.hh>
@@ -39,5 +39,5 @@ private:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_PAGE_POOL_HH_
 

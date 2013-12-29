@@ -1,11 +1,11 @@
-/// @file   include/io_node.hh
+/// @file   core/include/io_node.hh
 /// @brief  io_node class declaration.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_IO_NODE_HH_
-#define INCLUDE_IO_NODE_HH_
+#ifndef CORE_INCLUDE_IO_NODE_HH_
+#define CORE_INCLUDE_IO_NODE_HH_
 
 #include <basic.hh>
 
@@ -146,5 +146,5 @@ protected:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_IO_NODE_HH_
 

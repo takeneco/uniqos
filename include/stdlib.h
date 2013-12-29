@@ -1,11 +1,11 @@
 /// @file   stdlib.h
 /// @brief  used by ACPICA
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_STDLIB_H_
-#define INCLUDE_STDLIB_H_
+#ifndef CORE_INCLUDE_STDLIB_H_
+#define CORE_INCLUDE_STDLIB_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,5 +19,5 @@ unsigned long strtoul(const char *nptr, char **endptr, int base);
 }  // extern "C"
 #endif  // __cplusplus
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_STDLIB_H_
 

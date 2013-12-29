@@ -1,10 +1,10 @@
 /// @file atomic.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_ATOMIC_HH_
-#define INCLUDE_ATOMIC_HH_
+#ifndef CORE_INCLUDE_ATOMIC_HH_
+#define CORE_INCLUDE_ATOMIC_HH_
 
 #include <atomic_ops.hh>
 
@@ -167,5 +167,5 @@ private:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_ATOMIC_HH_
 

@@ -7,15 +7,14 @@
 ///  @endcode
 ///  のように分岐するときに使う。
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_ARCHID_HH_
-#define INCLUDE_ARCHID_HH_
+#ifndef CORE_INCLUDE_ARCHID_HH_
+#define CORE_INCLUDE_ARCHID_HH_
 
 
 #define ARCH_x86_64  1
 
 
-#endif  // include guard
-
+#endif  // CORE_INCLUDE_ARCHID_HH_

@@ -1,10 +1,10 @@
 /// @file  log_target.hh
 //
-// (C) 2008-2012 KATO Takeshi
+// (C) 2008-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_LOG_TARGET_HH_
-#define INCLUDE_LOG_TARGET_HH_
+#ifndef CORE_INCLUDE_LOG_TARGET_HH_
+#define CORE_INCLUDE_LOG_TARGET_HH_
 
 #include <io_node.hh>
 #include <spinlock.hh>
@@ -29,5 +29,5 @@ private:
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_LOG_TARGET_HH_
 

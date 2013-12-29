@@ -1,11 +1,11 @@
 // @file   string.h
 // @brief  used by ACPICA
 //
-// (C) 2012 KATO Takeshi
+// (C) 2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_STRING_H_
-#define INCLUDE_STRING_H_
+#ifndef CORE_INCLUDE_STRING_H_
+#define CORE_INCLUDE_STRING_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,5 +28,5 @@ char *strcat(char *dest, const char *src);
 }  // extern "C"
 #endif  // __cplusplus
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_STRING_H_
 

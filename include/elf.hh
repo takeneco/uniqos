@@ -1,11 +1,11 @@
-/// @file   include/elf.hh
+/// @file   core/include/elf.hh
 /// @brief  ELF format data types.
 //
-// (C) 2012 KATO Takeshi
+// (C) 2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_ELF_HH_
-#define INCLUDE_ELF_HH_
+#ifndef CORE_INCLUDE_ELF_HH_
+#define CORE_INCLUDE_ELF_HH_
 
 #include <basic.hh>
 
@@ -172,5 +172,5 @@ enum {
 };
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_ELF_HH_
 

@@ -1,10 +1,10 @@
 /// @file  acpi_ctl.hh
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2013 KATO Takeshi
 //
 
-#ifndef INCLUDE_ACPI_CTL_HH_
-#define INCLUDE_ACPI_CTL_HH_
+#ifndef CORE_INCLUDE_ACPI_CTL_HH_
+#define CORE_INCLUDE_ACPI_CTL_HH_
 
 extern "C" {
 #include <acpi.h>
@@ -51,5 +51,5 @@ typedef madt_typed_iterator<ACPI_MADT_IO_APIC, ACPI_MADT_TYPE_IO_APIC>
 }  // namespace acpi
 
 
-#endif  // include guard
+#endif  // CORE_INCLUDE_ACPI_CTL_HH_
 
