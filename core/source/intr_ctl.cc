@@ -2,7 +2,7 @@
 /// @brief  interrupt.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2012 KATO Takeshi
+//  (C) 2010-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -33,12 +33,12 @@ extern "C" void on_interrupt(arch::intr_id index)
 }
 
 
-cause::type intr_ctl::init()
+cause::t intr_ctl::init()
 {
 	return cause::OK;
 }
 
-cause::type
+cause::t
 intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 {
 	if (vec > arch::INTR_UPPER)
@@ -52,7 +52,7 @@ intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 	return cause::OK;
 }
 
-cause::type
+cause::t
 intr_ctl::set_post_handler(arch::intr_id vec, post_intr_handler h)
 {
 	handler_table[vec].post_handler = h;
@@ -73,7 +73,7 @@ void intr_ctl::call_interrupt(u32 vector)
 		handler_table[vector].post_handler();
 }
 
-cause::type intr_setup()
+cause::t intr_setup()
 {
 	intr_ctl* intrc = new (mem_alloc(sizeof (intr_ctl))) intr_ctl;
 	if (!intrc)
@@ -81,7 +81,7 @@ cause::type intr_setup()
 
 	global_vars::core.intr_ctl_obj = intrc;
 
-	cause::type r = intrc->init();
+	cause::t r = intrc->init();
 	if (is_fail(r))
 		return r;
 
