@@ -9,7 +9,7 @@
 .globl _start
 
 _start:
-	xorq %rax, %rax
-	1:syscall
-	incq %rax
+	1:
+	movq $100, %rax
+	syscall
 	jmp 1b

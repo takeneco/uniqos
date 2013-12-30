@@ -18,19 +18,30 @@
 
 #include <basic.hh>
 #include <log.hh>
-
+#include <core/timer.hh>
+#include <cpu_node.hh>
 
 
 namespace {
 
-int i;
+
 
 }  // namespace
 
-extern "C" cause::pair<uptr> syscall_entry(const void* data)
+extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 {
-	if (i++ % 0xffff == 0)
-		log()('#');
+	log()('#');
+
+	if (data[0] == 100) { // timer
+		wakeup_thread_timer_message wttm;
+		cpu_node* cn = get_cpu_node();
+		thread_queue& tq = cn->get_thread_ctl();
+		wttm.thr = tq.get_running_thread();
+		wttm.nanosec_delay = 100000000;
+		timer_set(&wttm);
+		sleep_current_thread();
+	}
+
 	return cause::pair<uptr>(cause::OK, 0);
 }
 
