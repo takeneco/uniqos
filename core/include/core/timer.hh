@@ -8,6 +8,7 @@
 #define CORE_INCLUDE_CORE_TIMER_HH_
 
 #include <basic.hh>
+#include <clock_src.hh> // for tick_timer
 #include <message.hh>
 
 
@@ -37,6 +38,20 @@ class timer_message_with : public timer_message
 {
 public:
 	T data;
+};
+
+
+class thread;
+class wakeup_thread_timer_message : public timer_message
+{
+public:
+	wakeup_thread_timer_message();
+
+private:
+	static void timer_handler(message* msg);
+
+public:
+	thread* thr;
 };
 
 

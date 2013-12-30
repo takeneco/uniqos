@@ -27,6 +27,7 @@
 #include <log.hh>
 #include <mempool.hh>
 #include <new_ops.hh>
+#include <thread.hh>
 
 
 cause::type hpet_setup(clock_source** clksrc);
@@ -204,3 +205,19 @@ cause::t timer_set(timer_message* m)
 	return global_vars::core.timer_ctl_obj->set_timer(m);
 }
 
+
+// wakeup_thread_timer_message
+
+
+wakeup_thread_timer_message::wakeup_thread_timer_message()
+{
+	message::handler = &timer_handler;
+}
+
+void wakeup_thread_timer_message::timer_handler(message* msg)
+{
+	wakeup_thread_timer_message* m =
+	    static_cast<wakeup_thread_timer_message*>(msg);
+
+	m->thr->ready();
+}
