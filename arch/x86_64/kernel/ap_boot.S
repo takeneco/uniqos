@@ -2,7 +2,7 @@
 /// @brief Start point of application processor.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ start32:
 	movl  %eax, %cr4
 
 	// CANNOT use "movq".
-	// Page table must be locate 32bit address in 32bit mode.
+	// Page table must to be locate 32bit address in 32bit mode.
 	movl  (param), %edx
 	movl  %edx, %cr3
 

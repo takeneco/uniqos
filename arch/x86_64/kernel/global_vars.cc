@@ -1,7 +1,7 @@
 /// @file  global_vars.cc
 /// @brief Global variables definition.
 //
-// (C) 2010,2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #include <global_vars.hh>

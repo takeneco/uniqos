@@ -2,7 +2,7 @@
 /// @brief  mem_io class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -34,14 +34,14 @@ mem_io::mem_io(uptr bytes, void* _contents) :
 {
 }
 
-cause::type mem_io::on_io_node_seek(
+cause::t mem_io::on_io_node_seek(
     seek_whence whence, offset rel_off, offset* abs_off)
 {
 	return io_node::usual_seek(
 	    capacity_bytes - 1, whence, rel_off, abs_off);
 }
 
-cause::type mem_io::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
+cause::t mem_io::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 {
 	iovec_iterator iov_i(iov_cnt, iov);
 
@@ -52,7 +52,7 @@ cause::type mem_io::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 	return cause::OK;
 }
 
-cause::type mem_io::on_io_node_write(
+cause::t mem_io::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	if (*off > capacity_bytes)
@@ -67,7 +67,7 @@ cause::type mem_io::on_io_node_write(
 	return cause::OK;
 }
 
-cause::type mem_io::setup()
+cause::t mem_io::setup()
 {
 	mem_io_node_ops.init();
 	mem_io_node_ops.seek = call_on_io_node_seek<mem_io>;
@@ -87,7 +87,7 @@ ringed_mem_io::ringed_mem_io(uptr bytes, void* _contents) :
 {
 }
 
-cause::type ringed_mem_io::on_io_node_read(
+cause::t ringed_mem_io::on_io_node_read(
     offset* off, int iov_cnt, iovec* iov)
 {
 	iovec_iterator iov_i(iov_cnt, iov);
@@ -104,7 +104,7 @@ cause::type ringed_mem_io::on_io_node_read(
 	return cause::OK;
 }
 
-cause::type ringed_mem_io::on_io_node_write(
+cause::t ringed_mem_io::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	iovec_iterator iov_i(iov_cnt, iov);
@@ -133,7 +133,7 @@ io_node::offset ringed_mem_io::offset_normalize(offset off)
 	return off;
 }
 
-cause::type ringed_mem_io::setup()
+cause::t ringed_mem_io::setup()
 {
 	ringed_mem_io_node_ops.init();
 	ringed_mem_io_node_ops.read = call_on_io_node_read<ringed_mem_io>;
@@ -144,9 +144,9 @@ cause::type ringed_mem_io::setup()
 
 
 /// @brief  setup mem_io and ringed_mem_io.
-cause::type mem_io_setup()
+cause::t mem_io_setup()
 {
-	cause::type r = mem_io::setup();
+	cause::t r = mem_io::setup();
 	if (is_fail(r))
 		return r;
 

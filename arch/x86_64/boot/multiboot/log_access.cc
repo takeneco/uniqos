@@ -2,7 +2,7 @@
 /// @brief  global log interface.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by

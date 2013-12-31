@@ -1,7 +1,7 @@
 /// @file  inttype.hh
 /// @brief int types definition.
 //
-// (C) 2010-2012 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_INTTYPE_HH_

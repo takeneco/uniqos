@@ -1,6 +1,6 @@
 /// @file  page_ctl.hh
 //
-// (C) 2010-2011 KATO Takeshi
+// (C) 2010-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_PAGE_CTL_HH_
@@ -49,8 +49,8 @@ public:
 	bool load_free_range(u64 adr, u64 bytes);
 	void build();
 
-	cause::type alloc(arch::page::TYPE pt, uptr* padr);
-	cause::type free(arch::page::TYPE pt, uptr padr);
+	cause::t alloc(arch::page::TYPE pt, uptr* padr);
+	cause::t free(arch::page::TYPE pt, uptr padr);
 };
 
 }  // namespace arch

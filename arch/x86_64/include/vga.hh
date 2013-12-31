@@ -1,7 +1,7 @@
 /// @file   vga.hh
 /// @brief  declare of text_vga (and graph_vga).
 //
-// (C) 2011-2012 KATO Takeshi
+// (C) 2011-2013 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_VGA_HH_
@@ -26,7 +26,7 @@ public:
 	text_vga() {}
 	void init(u32 _width, u32 _height, void* _vram);
 
-	cause::type on_io_node_write(
+	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:

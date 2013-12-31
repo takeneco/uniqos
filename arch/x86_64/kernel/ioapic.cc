@@ -2,7 +2,7 @@
 /// @brief I/O APIC contorl.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012 KATO Takeshi
+//  (C) 2012-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include <log.hh>
 
 
-cause::type ioapic_ctl::init_detect()
+cause::t ioapic_ctl::init_detect()
 {
 	const mpspec* mps = global_vars::arch.cpu_ctl_common_obj->get_mpspec();
 	mpspec::ioapic_iterator itr(mps);

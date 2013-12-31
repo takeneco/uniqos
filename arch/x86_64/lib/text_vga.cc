@@ -2,7 +2,7 @@
 /// @brief  text mode VGA output interface.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ void text_vga::init(u32 _width, u32 _height, void* _vram)
 	xpos = ypos = 0;
 }
 
-cause::type text_vga::on_io_node_write(
+cause::t text_vga::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	uptr total = 0;

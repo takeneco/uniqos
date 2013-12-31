@@ -2,7 +2,7 @@
 /// @brief  io_node class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2012 KATO Takeshi
+//  (C) 2010-2013 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -120,7 +120,7 @@ void io_node::operations::init()
 // io_node
 
 /// seek可能な範囲を [0, upper_limit] と仮定して seek 相当の結果を返す。
-cause::type io_node::usual_seek(
+cause::t io_node::usual_seek(
     offset upper_limit,
     seek_whence whence,
     offset rel_off,

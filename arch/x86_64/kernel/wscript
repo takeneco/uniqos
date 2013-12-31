@@ -23,7 +23,6 @@ kern_source = [
     'page_ctl.cc',
     'page_ctl_init.cc',
     'serial.cc',
-    'serialh.S',
     'string.cc',
     'bootinfo.cc',
     'spinlock_ops.cc',
