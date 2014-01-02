@@ -1,6 +1,6 @@
 /// @file  native_cpu_node.hh
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_CPU_NODE_HH_
@@ -26,6 +26,7 @@ public:
 	native_cpu_node();
 
 	cause::t setup();
+	cause::t attach_boot_thread(thread* t);
 	cause::t start_message_loop();
 
 	void set_original_lapic_id(u8 id) { original_lapic_id = id; }
@@ -33,15 +34,11 @@ public:
 	bool original_lapic_id_is_enable() const {
 		return original_lapic_id != (u8)-1;
 	}
-	//TODO:この関数はなくしたい
-	void set_running_thread(thread* t) { load_running_thread(t); }
 	void load_running_thread(thread* t);
 
 	void preempt_disable();
 	void preempt_enable();
 
-	void ready_messenger();
-	void ready_messenger_np();
 	void switch_messenger_after_intr();
 
 	void post_intr_message(message* ev);

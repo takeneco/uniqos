@@ -1,7 +1,7 @@
 /// @file   native_cpu_node.cc
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 
 
 extern char on_syscall[];
-extern "C" void switch_regset(arch::regset* r1, arch::regset* r2);
+extern "C" void native_switch_regset(arch::regset* r1, arch::regset* r2);
 
 namespace {
 
@@ -76,6 +76,11 @@ cause::t native_cpu_node::setup()
 	return cause::OK;
 }
 
+cause::t native_cpu_node::attach_boot_thread(thread* t)
+{
+	return threads.attach_boot_thread(t);
+}
+
 cause::t native_cpu_node::start_message_loop()
 {
 	auto r = x86::create_thread(
@@ -84,7 +89,7 @@ cause::t native_cpu_node::start_message_loop()
 		return r.r;
 	message_thread = r.value;
 
-	thread_q.ready(message_thread);
+	ready_thread(message_thread);
 
 	return cause::OK;
 }
@@ -205,16 +210,6 @@ void native_cpu_node::preempt_enable()
 #endif  // CONFIG_PREEMPT
 }
 
-void native_cpu_node::ready_messenger()
-{
-	thread_q.ready(message_thread);
-}
-
-void native_cpu_node::ready_messenger_np()
-{
-	thread_q.ready_np(message_thread);
-}
-
 void native_cpu_node::switch_messenger_after_intr()
 {
 	switch_thread_after_intr(message_thread);
@@ -226,7 +221,7 @@ void native_cpu_node::switch_messenger_after_intr()
 void native_cpu_node::post_intr_message(message* ev)
 {
 	intr_msgq.push(ev);
-	thread_q.ready_np(message_thread);
+	ready_thread_np(message_thread);
 
 	switch_messenger_after_intr();
 }
@@ -236,7 +231,7 @@ void native_cpu_node::post_soft_message(message* ev)
 	preempt_disable();
 
 	soft_msgq.push(ev);
-	thread_q.ready_np(message_thread);
+	ready_thread_np(message_thread);
 
 	preempt_enable();
 }
@@ -244,16 +239,18 @@ void native_cpu_node::post_soft_message(message* ev)
 /// @brief  Make running thread sleep.
 void native_cpu_node::sleep_current_thread()
 {
-	thread* prev_run = thread_q.get_running_thread();
-
 	arch::intr_disable();
 
-	thread* next_run = thread_q.sleep_current_thread();
+	thread* prev_run = threads.get_running_thread();
 
+	thread* next_run = threads.sleep_current_thread();
+
+	// next_run が null になることはありえない。
+	// TODO:null になったらエラーを表示したい
 	if (next_run) {
 		load_running_thread(next_run);
 
-		switch_regset(
+		native_switch_regset(
 		    static_cast<x86::native_thread*>(next_run)->ref_regset(),
 		    static_cast<x86::native_thread*>(prev_run)->ref_regset());
 	}
@@ -267,15 +264,16 @@ void native_cpu_node::sleep_current_thread()
 /// @note preempt_enable / intr_disable の状態で呼び出す必要がある。
 bool native_cpu_node::force_switch_thread()
 {
-	thread* prev_thr = thread_q.get_running_thread();
-	thread* next_thr = thread_q.switch_next_thread();
+	thread* prev_thr = threads.get_running_thread();
+
+	thread* next_thr = threads.switch_next_thread();
 
 	if (!next_thr)
 		return false;
 
 	this->load_running_thread(next_thr);
 
-	switch_regset(
+	native_switch_regset(
 	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),
 	    static_cast<x86::native_thread*>(prev_thr)->ref_regset());
 
@@ -288,10 +286,9 @@ bool native_cpu_node::force_switch_thread()
 /// を指定できる。割込み処理以外の状態でこの関数を呼んではならない。
 void native_cpu_node::switch_thread_after_intr(native_thread* t)
 {
-	syscall_buf.thread_private_info = t->thread_private_info;
-	intr_buf.running_thread_regset = t->ref_regset();
+	force_set_running_thread(t);
 
-	thread_q.set_running_thread(t);
+	load_running_thread(t);
 }
 
 void native_cpu_node::message_loop()
@@ -312,7 +309,6 @@ void native_cpu_node::message_loop()
 		// preempt_enable / intr_disable の状態を作る
 		dec_preempt_disable();
 
-		//bool r = thread_q.force_switch_thread();
 		bool r = force_switch_thread();
 
 		// preempt_disable / intr_disable の状態に戻す

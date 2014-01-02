@@ -1,7 +1,7 @@
 // @file   thread_ctl.cc
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -89,9 +89,9 @@ cause::t thread_ctl::create_boot_thread()
 	native_cpu_node* cn = get_native_cpu_node();
 	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0, 0, 0);
 
-	cn->get_thread_queue().attach_boot_thread(t);
+	cn->attach_boot_thread(t);
 
-	cn->set_running_thread(t);
+	cn->load_running_thread(t);
 
 	return cause::OK;
 }
@@ -114,7 +114,7 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 	native_thread* t = new (p) native_thread(
 	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
 
-	owner_cpu->get_thread_queue().attach(t);
+	owner_cpu->attach_thread(t);
 
 	return cause::pair<native_thread*>(cause::OK, t);
 }
@@ -155,11 +155,9 @@ cause::pair<native_thread*> create_thread(
 
 namespace arch {
 
-
 void sleep_current_thread()
 {
 	x86::get_native_cpu_node()->sleep_current_thread();
 }
-
 
 }  // namespace arch

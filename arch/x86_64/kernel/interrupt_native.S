@@ -28,7 +28,7 @@
 //   %cr3
 // load regs:
 //   all
-ENTRY_START(switch_regset)
+ENTRY_START(native_switch_regset)
 	// 省略可
 	movq  %rax,     (%rsi)
 	movq  %rcx, 8* 1(%rsi)
@@ -71,7 +71,7 @@ ENTRY_START(switch_regset)
 
 	// load regs
 	jmp   load_regs
-ENTRY_END(switch_regset)
+ENTRY_END(native_switch_regset)
 
 
 // Save regs to regset
@@ -153,7 +153,7 @@ load_regs:
 	movq  %cr3, %rcx
 	cmpq  %rax, %rcx
 	je 1f
-	movq  %rax, %cr3          // load %cr3 if %cr3 changed.
+	movq  %rax, %cr3          // load %cr3 if %cr3 was changed.
 1:
 	movw  8*19+4 (%rdi), %dx  // load %gs
 	movw  8*19+2 (%rdi), %cx  // load %fs

@@ -1,8 +1,8 @@
-// @file   thread_queue.cc
-// @brief  thread_queue class implements.
+// @file   thread_sched.cc
+// @brief  thread_sched class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -34,13 +34,13 @@ const uptr STACK_SIZE = 0x1000;
 }
 
 
-thread_queue::thread_queue(cpu_node* _owner_cpu) :
+thread_sched::thread_sched(cpu_node* _owner_cpu) :
 	owner_cpu(_owner_cpu),
 	running_thread(0)
 {
 }
 
-cause::t thread_queue::init()
+cause::t thread_sched::init()
 {
 	return cause::OK;
 }
@@ -48,14 +48,14 @@ cause::t thread_queue::init()
 /// @brief カーネルの初期化処理用スレッドを関連付ける。
 //
 /// 何もスレッドが無い状態で呼び出さなければならない。
-cause::t thread_queue::attach_boot_thread(thread* t)
+cause::t thread_sched::attach_boot_thread(thread* t)
 {
 	running_thread = t;
 
 	return cause::OK;
 }
 
-void thread_queue::attach(thread* t)
+void thread_sched::attach(thread* t)
 {
 	t->owner_cpu = owner_cpu;
 
@@ -72,7 +72,7 @@ void thread_queue::attach(thread* t)
 /// @brief Make current running thread sleeping.
 /// @return Returns next running thread.
 ///         Returns 0 if sleep was canceled.
-thread* thread_queue::sleep_current_thread()
+thread* thread_sched::sleep_current_thread()
 {
 	thread* prev_run = running_thread;
 
@@ -93,14 +93,14 @@ thread* thread_queue::sleep_current_thread()
 	return running_thread;
 }
 
-void thread_queue::ready(thread* t)
+void thread_sched::ready(thread* t)
 {
 	preempt_disable_section _pds;
 
 	_ready(t);
 }
 
-void thread_queue::ready_np(thread* t)
+void thread_sched::ready_np(thread* t)
 {
 	_ready(t);
 }
@@ -109,14 +109,20 @@ void thread_queue::ready_np(thread* t)
 //
 /// この関数は running thread のポインタを更新するだけなので、
 /// スレッドを切り替える実装は呼び出し元に書く必要がある。
-void thread_queue::set_running_thread(thread* t)
+void thread_sched::set_running_thread(thread* t)
 {
 	if (CONFIG_DEBUG_VALIDATE > 0) {
 		if (!(t->state == thread::READY &&
 		      t->owner_cpu == this->owner_cpu &&
 		      t != running_thread))
 		{
-			log()(SRCPOS)(" Call fault:t=")(t)();
+			/* TODO:スレッドが変わらないのにこの関数を呼び出すこと
+			 * をよしとするか？
+			log()(SRCPOS)(" Call fault:t=")(t)('@').
+			    u(t->state == thread::READY).
+			    u(t->owner_cpu == this->owner_cpu).
+			    u(t != running_thread)();
+			*/
 		}
 	}
 
@@ -133,7 +139,7 @@ void thread_queue::set_running_thread(thread* t)
 //
 /// この関数は running thread のポインタを更新するだけなので、
 /// スレッドを切り替える実装は呼び出し元に書く必要がある。
-thread* thread_queue::switch_next_thread()
+thread* thread_sched::switch_next_thread()
 {
 	spin_wlock_section_np swl_sec(thread_state_lock);
 
@@ -148,7 +154,8 @@ thread* thread_queue::switch_next_thread()
 	return next_thr;
 }
 
-void thread_queue::_ready(thread* t)
+/// @brief Make thread ready.
+void thread_sched::_ready(thread* t)
 {
 	spin_wlock_section_np _tsl_sec(thread_state_lock);
 

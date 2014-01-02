@@ -1,7 +1,7 @@
 /// @file  thread.hh
 /// @brief thread class declaration.
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_THREAD_HH_
@@ -18,7 +18,7 @@ class thread
 {
 	DISALLOW_COPY_AND_ASSIGN(thread);
 
-	friend class thread_queue;
+	friend class thread_sched;
 
 public:
 	thread();

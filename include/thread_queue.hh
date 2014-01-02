@@ -1,10 +1,10 @@
-/// @file  thread_queue.hh
+/// @file  thread_sched.hh
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_THREAD_QUEUE_HH_
-#define INCLUDE_THREAD_QUEUE_HH_
+#ifndef INCLUDE_THREAD_SCHED_HH_
+#define INCLUDE_THREAD_SCHED_HH_
 
 #include <thread.hh>
 
@@ -12,12 +12,12 @@
 class cpu_node;
 class mempool;
 
-class thread_queue
+class thread_sched
 {
 public:
-	thread_queue(cpu_node* _owner_cpu);
+	thread_sched(cpu_node* _owner_cpu);
 
-	cause::type init();
+	cause::t init();
 	cause::t attach_boot_thread(thread* t);
 
 	void attach(thread* t);
@@ -46,6 +46,9 @@ private:
 	thread_chain ready_queue;
 	thread_chain sleeping_queue;
 };
+
+//TODO
+typedef thread_sched thread_queue;
 
 
 #endif  // include guard

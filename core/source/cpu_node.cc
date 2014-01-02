@@ -2,7 +2,7 @@
 /// @brief  cpu_node class implementation.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -39,7 +39,7 @@
 /// (3) 各CPU から setup() を呼び出す。
 
 cpu_node::cpu_node() :
-	thread_q(this)
+	threads(this)
 {
 }
 
@@ -63,11 +63,35 @@ cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
 
 cause::type cpu_node::setup()
 {
-	cause::t r = thread_q.init();
+	cause::t r = threads.init();
 	if (is_fail(r))
 		return r;
 
 	return cause::OK;
+}
+
+void cpu_node::attach_thread(thread* t)
+{
+	threads.attach(t);
+}
+
+void cpu_node::ready_thread(thread* t)
+{
+	threads.ready(t);
+}
+
+void cpu_node::ready_thread_np(thread* t)
+{
+	threads.ready_np(t);
+}
+
+/// @brief running_thread を設定する。
+//
+/// 実行中のスレッドは t だと思い込ませる。
+/// 実際に実行スレッドを t に切り替える処理は呼び出し元で行う必要がある。
+void cpu_node::force_set_running_thread(thread* t)
+{
+	threads.set_running_thread(t);
 }
 
 void cpu_node::preempt_wait()

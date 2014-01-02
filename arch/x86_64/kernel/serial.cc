@@ -2,7 +2,7 @@
 /// @brief serial port.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -450,9 +450,7 @@ void serial_ctl::transmit()
 
 			thread* client = buf->get_client();
 			if (client) {
-				thread_queue& tc =
-				    get_cpu_node()->get_thread_ctl();
-				tc.ready(client);
+				client->ready();
 			}
 
 			buf_entry* tmp = buf_queue.remove_tail();

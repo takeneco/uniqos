@@ -1,6 +1,6 @@
 /// @file  cpu_node.hh
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_CPU_NODE_HH_
@@ -24,15 +24,20 @@ class cpu_node : public arch::cpu_ctl
 public:
 	cpu_node();
 
-	cause::type set_page_pool_cnt(int cnt);
-	cause::type set_page_pool(int pri, page_pool* pp);
+	cause::t set_page_pool_cnt(int cnt);
+	cause::t set_page_pool(int pri, page_pool* pp);
 
-	cause::type setup();
+	cause::t setup();
+
+	void attach_thread(thread* t);
+	void ready_thread(thread* t);
+	void ready_thread_np(thread* t);
+
+	void force_set_running_thread(thread* t);
 
 	bool run_all_intr_message();
 
-	thread_queue& get_thread_ctl() { return thread_q; }
-	thread_queue& get_thread_queue() { return thread_q; }
+	thread_sched& get_thread_ctl() { return threads; }
 
 	cause::type page_alloc(arch::page::TYPE page_type, uptr* padr);
 	cause::type page_dealloc(arch::page::TYPE page_type, uptr padr);
@@ -41,8 +46,7 @@ private:
 	static void preempt_wait();
 
 protected:
-	thread_queue thread_q;
-private:
+	thread_sched threads;
 	cpu_id     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];
 };

@@ -2,7 +2,7 @@
 // @brief  thread class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ thread::thread() :
 
 void thread::ready()
 {
-	owner_cpu->get_thread_ctl().ready(this);
+	owner_cpu->ready_thread(this);
 }
 
 void sleep_current_thread()

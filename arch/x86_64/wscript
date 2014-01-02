@@ -1,6 +1,6 @@
 # x86_64 固有のコードをビルドする
 #
-# (C) 2011-2013 KATO Takeshi
+# (C) 2011-2014 KATO Takeshi
 #
 
 
@@ -10,8 +10,6 @@ def options(x):
 	    action  = 'store_true',
 	    default = False,
 	    help    = 'create boot floppy image.')
-
-	x.recurse('boot')
 
 
 def configure(x):
