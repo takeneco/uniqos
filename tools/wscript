@@ -1,7 +1,14 @@
+#
+# (C) 2013-2014 KATO Takeshi
+#
 
-def configure(conf):
-	conf.env.DEFINES_TOOLS = ['ARCH_LE']
-	conf.env.INCLUDES_TOOLS = ['.']
+def options(x):
+	conf_opt = x.get_option_group('configure options')
+	conf_opt.add_option('--option',
+	    default = './options',
+	    action  = 'store',
+	    dest    = 'option_file',
+	    help    = 'build option file [default: ./options]')
 
 def build(bld):
 	bld.objects(

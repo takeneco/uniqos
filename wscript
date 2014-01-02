@@ -1,5 +1,5 @@
 #
-# (C) 2011-2013 KATO Takeshi
+# (C) 2011-2014 KATO Takeshi
 #
 
 VERSION = '0.0.1.0'
@@ -21,6 +21,7 @@ def options(x):
 	    action  = 'store',
 	    help    = 'compiler family (clang, llvm, gnu)')
 
+	x.recurse('tools')
 	x.recurse('arch')
 
 

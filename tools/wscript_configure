@@ -1,5 +1,5 @@
 #
-# (C) 2012-2013 KATO Takeshi
+# (C) 2012-2014 KATO Takeshi
 #
 
 import os.path
@@ -75,7 +75,7 @@ def env_config(x, config, name, default_val):
 def configure(x):
 	cf = dict()
 
-	config_file = x.path.find_node('../config')
+	config_file = x.path.parent.find_node(x.options.option_file)
 	if config_file:
 		execfile(config_file.abspath(), cf)
 
