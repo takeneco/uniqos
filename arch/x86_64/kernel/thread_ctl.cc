@@ -16,8 +16,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <native_thread.hh>
+#include <arch/thread_ctl.hh>
 
+#include <native_thread.hh>
 #include <global_vars.hh>
 #include <mempool.hh>
 #include <native_cpu_node.hh>
@@ -145,6 +146,17 @@ cause::pair<native_thread*> create_thread(
 }  // namespace x86
 
 namespace arch {
+
+thread* get_current_thread()
+{
+	thread* t;
+	asm ("movq %%rsp, %0 \n"
+	     "andq %1, %0"
+	    : "=r"(t)
+	    : "n"(~((1 << THREAD_SIZE_SHIFTS) - 1)));
+
+	return t;
+}
 
 void sleep_current_thread()
 {

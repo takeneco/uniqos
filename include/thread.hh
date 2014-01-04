@@ -4,8 +4,8 @@
 // (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_THREAD_HH_
-#define INCLUDE_THREAD_HH_
+#ifndef CORE_INCLUDE_CORE_THREAD_HH_
+#define CORE_INCLUDE_CORE_THREAD_HH_
 
 #include <basic.hh>
 #include <chain.hh>
@@ -40,6 +40,7 @@ private:
 	bool      anti_sleep;
 };
 
+thread* get_current_thread();
 void sleep_current_thread();
 
 

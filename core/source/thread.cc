@@ -37,3 +37,8 @@ void sleep_current_thread()
 {
 	arch::sleep_current_thread();
 }
+
+thread* get_current_thread()
+{
+	return arch::get_current_thread();
+}
