@@ -2,7 +2,7 @@
 /// @brief  ELF kernel loader.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -269,7 +269,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 	void* p = get_alloc()->alloc(
 	    SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
 	    arch::page::PHYS_L1_SIZE * 2,
-	    arch::page::PHYS_L1_SIZE,
+	    arch::page::PHYS_L1_SIZE * 2,
 	    false);
 	if (!p) {
 		log(1)(SRCPOS)(" No enough memory.")();

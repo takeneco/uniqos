@@ -29,7 +29,10 @@
 
 namespace {
 
-const uptr STACK_SIZE = 0x1000;
+/// 1 << THREAD_SIZE_SHIFTS は thread を含むスレッドのスタックサイズ。
+/// このパラメータを変える場合はブート時に割り当てるスタックの仕様も
+/// 修正が必要。
+const uptr THREAD_SIZE_SHIFTS = 13;
 
 }
 
@@ -68,16 +71,11 @@ public:
 
 private:
 	mempool* thread_mp;
-	mempool* stack_mp;
 };
 
 cause::t thread_ctl::setup()
 {
-	auto r = mempool_acquire_shared(sizeof (native_thread), &thread_mp);
-	if (is_fail(r))
-		return r;
-
-	r = mempool_acquire_shared(STACK_SIZE, &stack_mp);
+	auto r = mempool_acquire_shared(1 << THREAD_SIZE_SHIFTS, &thread_mp);
 	if (is_fail(r))
 		return r;
 
@@ -101,18 +99,13 @@ cause::pair<native_thread*> thread_ctl::create_thread(
     uptr text,
     uptr param)
 {
-	void* stack = stack_mp->alloc();
-	if (!stack)
-		return cause::pair<native_thread*>(cause::NOMEM, 0);
-
 	void* p = thread_mp->alloc();
 	if (!p) {
-		stack_mp->dealloc(stack);
 		return cause::pair<native_thread*>(cause::NOMEM, 0);
 	}
 
 	native_thread* t = new (p) native_thread(
-	    text, param, reinterpret_cast<uptr>(stack), STACK_SIZE);
+	    text, param, reinterpret_cast<uptr>(p), 1 << THREAD_SIZE_SHIFTS);
 
 	owner_cpu->attach_thread(t);
 
