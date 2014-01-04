@@ -2,7 +2,7 @@
 /// @brief  cheap address allocation implement.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -121,16 +121,17 @@ private:
 	}
 	range* new_range(uptr adr, uptr bytes);
 	void free_range(range* e);
-	bool   _reserve(uptr adr, uptr bytes, bool forget, adr_slot* slot);
-	range* _alloc(uptr bytes, uptr align, bool forget, adr_slot* slot);
-	bool   _free(void* p, adr_slot* slot);
+	bool _reserve(uptr adr, uptr bytes, bool forget, adr_slot* slot);
+	bool _alloc(uptr bytes, uptr align, bool forget, adr_slot* slot,
+	            uptr* adr);
+	bool _free(void* p, adr_slot* slot);
 
 public:
 	void _debug_dump(adr_slot& slot, output_buffer& log) {
 	 for(range*r=slot.free_ranges.head();r;r=slot.free_ranges.next(r))
-	  log("free:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
+	  log("free:adr:").x(r->adr,16)(";bytes=").x(r->bytes,16)();
 	 for(range*r=slot.alloc_ranges.head();r;r=slot.alloc_ranges.next(r))
-	  log("alloc:adr:").u(r->adr,16)(";bytes=").u(r->bytes,16)();
+	  log("alloc:adr:").x(r->adr,16)(";bytes=").x(r->bytes,16)();
 	}
 	void debug_dump(output_buffer& lt) {
 		for (unsigned i = 0; i < SLOT_COUNT; ++i) {
@@ -242,23 +243,24 @@ bool cheap_alloc<BUF_COUNT>::reserve(
 template<int BUF_COUNT>
 void* cheap_alloc<BUF_COUNT>::alloc(
     slot_mask slotm,
-    uptr bytes, uptr align,
+    uptr bytes,
+    uptr align,
     bool forget)
 {
-	range* ent;
-	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
+	uptr adr;
+	slot_index i;
+	for (i = 0; i < SLOT_COUNT; ++i) {
 		if (!is_masked(i, slotm))
 			continue;
 
-		ent = _alloc(bytes, align, forget, &slots[i]);
-		if (ent)
+		if (_alloc(bytes, align, forget, &slots[i], &adr))
 			break;
 	}
 
-	if (!ent)
+	if (i >= SLOT_COUNT)
 		return 0;
 
-	return reinterpret_cast<void*>(ent->adr);
+	return reinterpret_cast<void*>(adr);
 }
 
 /// @brief  Deallocate memory.
@@ -438,7 +440,8 @@ void cheap_alloc<BUF_COUNT>::free_range(range* e)
 ///   slot->alloc_ranges は操作しない。
 template<int BUF_COUNT>
 bool cheap_alloc<BUF_COUNT>::_reserve(
-    uptr adr, uptr bytes,
+    uptr adr,
+    uptr bytes,
     bool forget,
     adr_slot* slot)
 {
@@ -523,19 +526,24 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 /// @brief  空きメモリを割り当てる。
 /// @param[in] bytes     メモリサイズ。
 /// @param[in] align     アライメント。
+///                      アライメントを考慮する必要がなければ 1 を指定する。
 /// @param[in] forget    Forget this address range.
 /// @param[in,out] slot  Address slot. Must not be null.
+/// @param[out] adr      Alloced address.
+/// @retval true  成功した。
+/// @retval false 失敗した。
 //
 /// - forget = false ならば slot->free_ranges から割り当てたメモリは
 ///   slot->alloc_ranges に格納する。
 /// - forget = true ならば slot->free_ranges からメモリを割り当てるだけ。
-///   slot->alloc_ranges は無視する。
+///   slot->alloc_ranges には格納しない。
 template<int BUF_COUNT>
-typename cheap_alloc<BUF_COUNT>::range*
-cheap_alloc<BUF_COUNT>::_alloc(
-    uptr bytes, uptr align,
+bool cheap_alloc<BUF_COUNT>::_alloc(
+    uptr bytes,
+    uptr align,
     bool forget,
-    adr_slot* slot)
+    adr_slot* slot,
+    uptr* adr)
 {
 	uptr align_gap;
 	range* ent;
@@ -543,42 +551,47 @@ cheap_alloc<BUF_COUNT>::_alloc(
 	     ent;
 	     ent = slot->free_ranges.next(ent))
 	{
+		if (ent->bytes < bytes)
+			continue;
+
 		align_gap = up_align(ent->adr, align) - ent->adr;
 		if ((ent->bytes - align_gap) >= bytes)
 			break;
 	}
 	if (!ent)
-		return 0;
+		return false;
 
-	range* r;
 	if (ent->bytes == bytes) {
-		r = ent;
+		*adr = ent->adr;
 		slot->free_ranges.remove(ent);
 		if (forget == false)
 			slot->alloc_ranges.insert_head(ent);
 	} else {
 		if (align_gap != 0) {
-			range* newent = new_range(ent->adr, align_gap);
-			if (!newent)
-				return 0;
+			range* rng = new_range(ent->adr, align_gap);
+			if (!rng)
+				return false;
 
-			slot->free_ranges.insert_head(newent);
+			slot->free_ranges.insert_head(rng);
 
 			ent->adr += align_gap;
 			ent->bytes -= align_gap;
 		}
-		r = new_range(ent->adr, bytes);
-		if (!r)
-			return 0;
 
-		if (forget == false)
-			slot->alloc_ranges.insert_head(r);
+		*adr = ent->adr;
+		if (forget == false) {
+			range* rng = new_range(ent->adr, bytes);
+			if (!rng)
+				return false;
+
+			slot->alloc_ranges.insert_head(rng);
+		}
 
 		ent->adr += bytes;
 		ent->bytes -= bytes;
 	}
 
-	return r;
+	return true;
 }
 
 template<int BUF_COUNT>
@@ -711,7 +724,9 @@ void cheap_alloc_separator<CHEAP_ALLOC>::set_slot_range(
 //
 /// set_slot_range() で指定したアドレス範囲に振り分ける。
 template<class CHEAP_ALLOC>
-bool cheap_alloc_separator<CHEAP_ALLOC>::add_free_range(uptr head, uptr tail)
+bool cheap_alloc_separator<CHEAP_ALLOC>::add_free_range(
+    uptr head,
+    uptr tail)
 {
 	for (slot_index i = 0; i < SLOT_COUNT; ++i) {
 		if (slots[i].enable) {
@@ -725,7 +740,9 @@ bool cheap_alloc_separator<CHEAP_ALLOC>::add_free_range(uptr head, uptr tail)
 
 template<class CHEAP_ALLOC>
 bool cheap_alloc_separator<CHEAP_ALLOC>::_add_free_range(
-    slot_index i, uptr free_head, uptr free_tail)
+    slot_index i,
+    uptr free_head,
+    uptr free_tail)
 {
 	const slot_range& slot = slots[i];
 
