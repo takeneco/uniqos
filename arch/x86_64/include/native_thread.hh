@@ -1,6 +1,6 @@
 /// @file  native_thread.hh
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_THREAD_HH_
@@ -19,7 +19,7 @@ class native_thread : public thread
 	DISALLOW_COPY_AND_ASSIGN(native_thread);
 
 public:
-	native_thread(uptr text, uptr param, uptr stack, uptr stack_size);
+	native_thread(uptr text, uptr param, uptr stack_size);
 
 	arch::regset* ref_regset() { return &rs; }
 
@@ -28,7 +28,6 @@ public:
 
 public:
 	arch::regset rs;
-	uptr stack_low_adr;
 	uptr stack_bytes;
 	/// swapgs でアクセスできる値
 	uptr thread_private_info;

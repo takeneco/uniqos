@@ -1,7 +1,7 @@
 /// @file  kerninit.cc
 /// @brief Call kernel initialize funcs.
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #include <acpi_ctl.hh>
@@ -139,23 +139,18 @@ cause::t create_init_process()
 	t->ref_regset()->gs = 0x18 + 3;
 	t->ref_regset()->ss = 0x18 + 3;
 
-	t->thread_private_info =
-	    t->stack_low_adr + t->stack_bytes - sizeof (native_thread*);
-	native_thread** tpi =
-	    reinterpret_cast<native_thread**>(t->thread_private_info);
-	*tpi = t;
+	const uptr thread_private_info =
+	   reinterpret_cast<uptr>(t) + t->stack_bytes - sizeof (native_thread*);
+
+	t->thread_private_info = thread_private_info;
 
 	// thread_private_info
 	// カーネル空間内のスタックポインタとして使えるアドレスを指す
 	// そのアドレスから native_thread 自身を参照できるようにする
-	thread** ppt = reinterpret_cast<thread**>(
-	    t->stack_low_adr + t->stack_bytes - sizeof (thread**)
-	);
-	*ppt = t;
+	*reinterpret_cast<native_thread**>(thread_private_info) = t;
+
 	// スタックへレジスタを退避するときの都合で、レジスタ１つ分ずらしておく
-	t->set_thread_private_info(
-	    t->stack_low_adr + t->stack_bytes - sizeof (thread**) -sizeof (uptr)
-	);
+	t->set_thread_private_info(thread_private_info - sizeof (uptr));
 
 	t->ready();
 

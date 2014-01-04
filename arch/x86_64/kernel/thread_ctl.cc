@@ -44,12 +44,10 @@ namespace x86 {
 native_thread::native_thread(
     uptr text,
     uptr param,
-    uptr stack,
     uptr stack_size
 ) :
 	thread(),
-	rs(text, param, stack, stack_size),
-	stack_low_adr(stack),
+	rs(text, param, reinterpret_cast<uptr>(this), stack_size),
 	stack_bytes(stack_size)
 {
 	rs.cr3 = native::get_cr3();
@@ -85,7 +83,7 @@ cause::t thread_ctl::setup()
 cause::t thread_ctl::create_boot_thread()
 {
 	native_cpu_node* cn = get_native_cpu_node();
-	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0, 0, 0);
+	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0, 0);
 
 	cn->attach_boot_thread(t);
 
@@ -105,7 +103,7 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 	}
 
 	native_thread* t = new (p) native_thread(
-	    text, param, reinterpret_cast<uptr>(p), 1 << THREAD_SIZE_SHIFTS);
+	    text, param, 1 << THREAD_SIZE_SHIFTS);
 
 	owner_cpu->attach_thread(t);
 
