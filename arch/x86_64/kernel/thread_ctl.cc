@@ -81,10 +81,15 @@ cause::t thread_ctl::setup()
 	return cause::OK;
 }
 
+/// @brief 実行中のスレッドに対応する thread を生成する。
+//
+/// boot thread に対応する thread を生成するために使う。
+/// boot thread には最初は thread のインスタンスが無いが、boot thread を
+/// 終了するために thread のインスタンスが必要なため。
 cause::t thread_ctl::create_boot_thread()
 {
 	native_cpu_node* cn = get_native_cpu_node();
-	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0, 0);
+	native_thread* t = new (get_current_thread()) native_thread(0, 0, 0);
 
 	cn->attach_boot_thread(t);
 
