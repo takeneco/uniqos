@@ -2,7 +2,7 @@
 /// @brief  カーネルへ渡すパラメータを作成する。
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -52,17 +52,22 @@ uptr store_multiboot(const u32* mb_info, uptr store_bytes, u8* store)
 	u32 mb_bytes = *mb_info;
 
 	u32 info_bytes = mb_bytes + sizeof (bootinfo::multiboot);
-	if (info_bytes > store_bytes)
+
+	u32 total_bytes = up_align<u32>(info_bytes, bootinfo::ALIGN);
+
+	if (total_bytes > store_bytes)
 		return info_bytes;
 
 	bootinfo::multiboot* mbtag = (bootinfo::multiboot*)store;
 	mbtag->info_type = bootinfo::TYPE_MULTIBOOT;
 	mbtag->info_flags = bootinfo::multiboot::FLAG_2;
-	mbtag->info_bytes = info_bytes;
+	mbtag->info_bytes = total_bytes;
 
 	mem_move(mb_bytes, mb_info, mbtag->info);
 
-	return info_bytes;
+	mem_fill(total_bytes - info_bytes, 0, &store[info_bytes]);
+
+	return total_bytes;
 }
 
 /// @brief  使用中のメモリ情報を bootinfo に格納する。
