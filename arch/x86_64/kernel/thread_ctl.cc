@@ -89,7 +89,8 @@ cause::t thread_ctl::setup()
 cause::t thread_ctl::create_boot_thread()
 {
 	native_cpu_node* cn = get_native_cpu_node();
-	native_thread* t = new (get_current_thread()) native_thread(0, 0, 0);
+	native_thread* t = new (thread_mp->alloc()) native_thread(0, 0,
+	    1 << THREAD_SIZE_SHIFTS);
 
 	cn->attach_boot_thread(t);
 
