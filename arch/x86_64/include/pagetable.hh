@@ -1,7 +1,7 @@
 /// @file   pagetable.hh
 /// @brief  64bit paging table ops.
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
@@ -148,31 +148,32 @@ public:
 	page_table(pte* top);
 	page_table() {}
 
+	cause::pair<pte*> declare_table(u64 vadr, page::TYPE pt);
 	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
 };
 
 /// @param[in] top  exist page table. null available.
 template <class page_table_acquire, void* (*p2v)(u64 padr)>
-page_table<page_table_acquire, p2v>::page_table(pte* top)
-    : page_table_base(top)
+page_table<page_table_acquire, p2v>::page_table(pte* top) :
+	page_table_base(top)
 {
 }
 
-/// @brief  ページテーブルに物理アドレスを割り当てる。
+/// @brief  ページテーブルを指定した深さまで作る。
 /// @param[in] vadr  virtual address.
-/// @param[in] padr  physical page address.
-/// @param[in] pt    page type. one of PHYS_L*.
-/// @param[in] flags page flags.
+/// @param[in] pt    page type. one of PHYS_L* without PHYS_L1.
+/// @return 作成したページテーブルを返す。
+///         すでにページテーブルがある場合はそれを返す。
 template <class page_table_acquire, void* (*p2v)(u64 padr)>
-cause::t page_table<page_table_acquire, p2v>::set_page(
-    u64 vadr, u64 padr, page::TYPE pt, u64 flags)
+cause::pair<pte*> page_table<page_table_acquire, p2v>::declare_table(
+    u64 vadr, page::TYPE pt)
 {
-	const int target_level = PAGETYPE_TO_LEVELINDEX[pt];
+	int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	if (UNLIKELY(!top)) {
 		const auto r = page_table_acquire::acquire(this);
-		if (r.is_fail())
-			return r.r;
+		if (is_fail(r))
+			return cause::p<pte*>(r.r, 0);
 
 		top = static_cast<pte*>(p2v(r.value));
 		pte_init(top);
@@ -187,8 +188,8 @@ cause::t page_table<page_table_acquire, p2v>::set_page(
 
 		if (table[index].test_flags(pte::P) == 0) {
 			const auto r = page_table_acquire::acquire(this);
-			if (r.is_fail())
-				return r.r;
+			if (is_fail(r))
+				return cause::p<pte*>(r.r, 0);
 
 			pte_init(static_cast<pte*>(p2v(r.value)));
 			table[index].set(r.value,
@@ -198,8 +199,28 @@ cause::t page_table<page_table_acquire, p2v>::set_page(
 		table = static_cast<pte*>(p2v(table[index].get_adr()));
 	}
 
+	return cause::p(cause::OK, table);
+}
+
+/// @brief  ページテーブルに物理アドレスを割り当てる。
+/// @param[in] vadr  virtual address.
+/// @param[in] padr  physical page address.
+/// @param[in] pt    page type. one of PHYS_L*.
+/// @param[in] flags page flags.
+template <class page_table_acquire, void* (*p2v)(u64 padr)>
+cause::t page_table<page_table_acquire, p2v>::set_page(
+    u64 vadr, u64 padr, page::TYPE pt, u64 flags)
+{
+	auto r = declare_table(vadr, pt);
+	if (is_fail(r))
+		return r.r;
+
+	pte* table = r.value;
+
 	if (pt != page::PHYS_L1)
 		flags |= pte::PS;
+
+	const int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	const int index = (vadr >> PTE_INDEX_SHIFTS[target_level]) & 0x1ff;
 	table[index].set(padr, flags);
@@ -211,3 +232,4 @@ cause::t page_table<page_table_acquire, p2v>::set_page(
 
 
 #endif  // include guard
+
