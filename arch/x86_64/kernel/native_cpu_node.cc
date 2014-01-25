@@ -241,19 +241,7 @@ void native_cpu_node::sleep_current_thread()
 {
 	arch::intr_disable();
 
-	thread* prev_run = threads.get_running_thread();
-
-	thread* next_run = threads.sleep_current_thread();
-
-	// next_run が null になることはありえない。
-	// TODO:null になったらエラーを表示したい
-	if (next_run) {
-		load_running_thread(next_run);
-
-		native_switch_regset(
-		    static_cast<x86::native_thread*>(next_run)->ref_regset(),
-		    static_cast<x86::native_thread*>(prev_run)->ref_regset());
-	}
+	_sleep_current_thread();
 
 	arch::intr_enable();
 }
@@ -291,6 +279,27 @@ void native_cpu_node::switch_thread_after_intr(native_thread* t)
 	load_running_thread(t);
 }
 
+/// @brief Exit boot thread.
+//
+/// Must to be call from boot thread.
+void native_cpu_node::exit_boot_thread()
+{
+	arch::intr_disable();
+
+	thread* boot_thr = threads.get_running_thread();
+
+	thread* next_thr = threads.exit_thread(boot_thr);
+
+	load_running_thread(next_thr);
+
+
+	// 下で使っているので boot_thr はまだ開放できない
+
+	native_switch_regset(
+	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),
+	    static_cast<x86::native_thread*>(boot_thr)->ref_regset());
+}
+
 void native_cpu_node::message_loop()
 {
 	preempt_disable();
@@ -324,6 +333,23 @@ void native_cpu_node::message_loop()
 void native_cpu_node::message_loop_entry(void* _cpu_node)
 {
 	static_cast<native_cpu_node*>(_cpu_node)->message_loop();
+}
+
+/// Make running thread sleep without lock.
+void native_cpu_node::_sleep_current_thread()
+{
+	thread* prev_run = threads.get_running_thread();
+
+	thread* next_run = threads.sleep_current_thread_np();
+
+	// thread の anti_sleep フラグがセットされると next_run は null になる。
+	if (next_run) {
+		load_running_thread(next_run);
+
+		native_switch_regset(
+		    static_cast<x86::native_thread*>(next_run)->ref_regset(),
+		    static_cast<x86::native_thread*>(prev_run)->ref_regset());
+	}
 }
 
 

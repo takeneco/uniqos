@@ -15,7 +15,7 @@
 #include <mem_io.hh>
 #include <mempool_ctl.hh>
 #include <native_ops.hh>
-#include <process.hh>
+#include "native_process.hh"
 #include <string.hh>
 #include <native_thread.hh>
 #include <new_ops.hh>
@@ -80,7 +80,8 @@ void timer_handler(message* msg)
 
 cause::t create_init_process()
 {
-	process* pr = new (mem_alloc(sizeof (process))) process;
+	native_process* pr =
+	    new (mem_alloc(sizeof (native_process))) native_process;
 	pr->init();
 
 	const bootinfo::module* bundle =
@@ -194,15 +195,19 @@ extern "C" int kern_init(u64 bootinfo_adr)
 
 	disable_intr_from_8259A();
 
+	r = x86::thread_ctl_setup();
+	if (is_fail(r))
+		return r;
+
+	r = x86::native_process_init();
+	if (is_fail(r))
+		return r;
+
 	r = cpu_common_init();
 	if (is_fail(r))
 		return r;
 
 	r = x86::cpu_setup();
-	if (is_fail(r))
-		return r;
-
-	r = x86::thread_ctl_setup();
 	if (is_fail(r))
 		return r;
 
@@ -359,6 +364,7 @@ log(1)("cpu_node:")(get_cpu_node())
 	log()("create_init_process() succeeded")();
 
 	//TODO:このスレッドは削除したい
+	get_native_cpu_node()->exit_boot_thread();
 	sleep_current_thread();
 
 	return 0;

@@ -14,7 +14,6 @@
 namespace x86 {
 
 class native_thread;
-struct native_cpu_buffer;
 
 /// Architecture dependent part of processor control.
 class native_cpu_node : public cpu_node
@@ -48,6 +47,8 @@ public:
 	bool force_switch_thread();
 	void switch_thread_after_intr(native_thread* t);
 
+	void exit_boot_thread();
+
 private:
 	cause::t setup_tss();
 	cause::t setup_gdt();
@@ -59,6 +60,8 @@ private:
 
 	void message_loop();
 	static void message_loop_entry(void* _cpu_node);
+
+	void _sleep_current_thread();
 
 private:
 	/// Global Descriptor Table Entry
@@ -279,7 +282,6 @@ private:
 	u8 preempt_disable_cnt;
 #endif  // CONFIG_PREEMPT
 
-	native_cpu_buffer* private_buffer;
 public:
 
 	struct {

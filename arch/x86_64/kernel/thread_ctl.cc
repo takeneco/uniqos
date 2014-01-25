@@ -117,10 +117,10 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 	return cause::pair<native_thread*>(cause::OK, t);
 }
 
+/// @brief Initialize native_thread_ctl.
+/// @pre mempool_init() was successful.
 cause::t thread_ctl_setup()
 {
-	void* p = mem_alloc(sizeof (thread_ctl));
-
 	thread_ctl* tc = new (mem_alloc(sizeof (thread_ctl))) thread_ctl;
 	if (!tc)
 		return cause::NOMEM;
@@ -128,7 +128,7 @@ cause::t thread_ctl_setup()
 	auto r = tc->setup();
 	if (is_fail(r)) {
 		tc->~thread_ctl();
-		mem_dealloc(p);
+		mem_dealloc(tc);
 		return r;
 	}
 

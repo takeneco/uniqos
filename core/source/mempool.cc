@@ -2,7 +2,7 @@
 /// @brief Memory pooler.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 		mempool_nodes[i] = 0;
 }
 
-cause::type mempool::destroy()
+cause::t mempool::destroy()
 {
 	for (;;) {
 		memobj* obj = free_objs.remove_head();
@@ -358,7 +358,7 @@ void mempool::delete_page(page* pg)
 		page_pool->dealloc(pg);
 		page_dealloc(page_type, adr);
 	} else {
-		const cause::type r = page_dealloc(
+		const cause::t r = page_dealloc(
 		    page_type, arch::unmap_phys_adr(pg, page_size));
 		if (is_fail(r)) {
 			log()(SRCPOS)("() failed page free:").u(r)
@@ -465,7 +465,7 @@ void mempool::page::init(const mempool& pool)
 }
 
 
-void* operator new (uptr size, mempool* mp) throw()
+void* operator new (uptr size, mempool* mp)
 {
 #if CONFIG_DEBUG_VALIDATE >= 1
 	if (size > mp->get_obj_size()) {
@@ -480,3 +480,17 @@ void* operator new (uptr size, mempool* mp) throw()
 	return mp->alloc();
 }
 
+void* operator new [] (uptr size, mempool* mp)
+{
+#if CONFIG_DEBUG_VALIDATE >= 1
+	if (size > mp->get_obj_size()) {
+		log()(SRCPOS)
+		    ("!!!!new object size is over the mempool object size.")
+		    ("\nnew object size:").u(size)
+		    (", mempool object size:").u(mp->get_obj_size())();
+		return 0;
+	}
+#endif  // CONFIG_DEBUG_VALIDATE
+
+	return mp->alloc();
+}

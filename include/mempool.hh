@@ -1,7 +1,7 @@
 /// @file   mempool.hh
 /// @brief  mempool interface.
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMPOOL_HH_
@@ -88,7 +88,7 @@ public:
 	mempool(u32 _obj_size,
 	        arch::page::TYPE ptype = arch::page::INVALID,
 	        mempool* _page_pool = 0);
-	cause::type destroy();
+	cause::t destroy();
 
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
@@ -177,12 +177,17 @@ private:
 	char obj_name[32];
 };
 
-extern "C" cause::type mempool_acquire_shared(u32 objsize, mempool** mp);
-extern "C" void        mempool_release_shared(mempool* mp);
+extern "C" cause::t mempool_acquire_shared(u32 objsize, mempool** mp);
+extern "C" void     mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 
-inline void* operator new (uptr, mempool* mp) throw();
+void* operator new (uptr, mempool* mp);
+void* operator new [] (uptr, mempool* mp);
+
+inline void operator delete (void* p, mempool* mp) {
+	mp->dealloc(p);
+}
 
 
 #endif  // include guard

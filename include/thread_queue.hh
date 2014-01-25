@@ -22,7 +22,7 @@ public:
 
 	void attach(thread* t);
 
-	thread* sleep_current_thread();
+	thread* sleep_current_thread_np();
 	void ready(thread* t);
 	void ready_np(thread* t);
 	void ready_thread(thread* t);
@@ -31,6 +31,8 @@ public:
 	void set_running_thread(thread* t);
 
 	thread* switch_next_thread();
+
+	thread* exit_thread(thread* t);
 
 private:
 	void _ready(thread* t);

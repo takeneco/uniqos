@@ -72,7 +72,7 @@ void thread_sched::attach(thread* t)
 /// @brief Make current running thread sleeping.
 /// @return Returns next running thread.
 ///         Returns 0 if sleep was canceled.
-thread* thread_sched::sleep_current_thread()
+thread* thread_sched::sleep_current_thread_np()
 {
 	thread* prev_run = running_thread;
 
@@ -141,7 +141,7 @@ void thread_sched::set_running_thread(thread* t)
 /// スレッドを切り替える実装は呼び出し元に書く必要がある。
 thread* thread_sched::switch_next_thread()
 {
-	spin_wlock_section_np swl_sec(thread_state_lock);
+	spin_wlock_section_np _swl_sec(thread_state_lock);
 
 	thread* next_thr = ready_queue.remove_head();
 	if (!next_thr)
@@ -152,6 +152,24 @@ thread* thread_sched::switch_next_thread()
 	running_thread = next_thr;
 
 	return next_thr;
+}
+
+/// @brief Exit thread.
+/// @return This function returns new running thread ptr.
+thread* thread_sched::exit_thread(thread* t)
+{
+	spin_wlock_section_np _tsl_sec(thread_state_lock);
+
+	if (t->state == thread::READY) {
+		if (t == running_thread)
+			running_thread = ready_queue.remove_head();
+		else
+			ready_queue.remove(t);
+	} else {
+		sleeping_queue.remove(t);
+	}
+
+	return running_thread;
 }
 
 /// @brief Make thread ready.
