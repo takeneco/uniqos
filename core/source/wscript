@@ -1,6 +1,6 @@
 # architecture independent kernel codes.
 #
-# (C) 2011-2013 KATO Takeshi
+# (C) 2011-2014 KATO Takeshi
 #
 
 
@@ -22,6 +22,7 @@ kern_sources = [
     'page_pool.cc',
     'pic_dev.cc',
     'process.cc',
+    'process_ctl.cc',
     'spinlock.cc',
     'spinrwlock.cc',
     'string.cc',

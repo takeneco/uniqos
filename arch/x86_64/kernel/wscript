@@ -1,6 +1,6 @@
 # @brief  x86_64固有カーネルコード
 #
-# (C) 2011-2013 KATO Takeshi
+# (C) 2011-2014 KATO Takeshi
 #
 
 
@@ -19,6 +19,8 @@ kern_source = [
     'irq_ctl.cc',
     'kerninit.cc',
     'native_cpu_node.cc',
+    'native_process.cc',
+    'native_process_ctl.cc',
     'on_syscall.S',
     'page_ctl.cc',
     'page_ctl_init.cc',

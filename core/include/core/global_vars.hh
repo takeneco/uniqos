@@ -1,7 +1,7 @@
 /// @file  global_vars.hh
 /// @brief Global variables declaration.
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
 #ifndef CORE_INCLUDE_CORE_GLOBAL_VARS_HH_
@@ -13,6 +13,7 @@
 
 class page_pool;
 class mempool_ctl;
+class process_ctl;
 class intr_ctl;
 class timer_ctl;
 class log_target;
@@ -35,6 +36,8 @@ struct _core
 
 	mempool_ctl*       mempool_ctl_obj;
 
+	process_ctl*       process_ctl_obj;
+
 	intr_ctl*          intr_ctl_obj;
 
 	timer_ctl*         timer_ctl_obj;
@@ -54,4 +57,3 @@ extern _core core;
 
 
 #endif  // include guard
-
