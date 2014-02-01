@@ -1,8 +1,21 @@
 /// @file  kerninit.cc
 /// @brief Call kernel initialize funcs.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2014 KATO Takeshi
 //
-// (C) 2010-2014 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <acpi_ctl.hh>
 #include <bootinfo.hh>
@@ -132,7 +145,8 @@ cause::t create_init_process()
 		return thr.r;
 	}
 	native_thread* t = thr.value;
-	t->ref_regset()->cr3 = arch::unmap_phys_adr(pr->ref_ptbl().get_table(), arch::page::PHYS_L1);
+	t->ref_regset()->cr3 = arch::unmap_phys_adr(
+	    pr->ref_ptbl().get_toptable(), arch::page::PHYS_L1);
 	t->ref_regset()->cs = 0x20 + 3;
 	t->ref_regset()->ds = 0x18 + 3;
 	t->ref_regset()->es = 0x18 + 3;
@@ -230,26 +244,23 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	void* memlog_buffer = mem_alloc(8192);
+	const int MEMLOG_SIZE = 8192 - 16;
+	void* memlog_buffer = mem_alloc(MEMLOG_SIZE);
 	if (memlog_buffer) {
 		io_node* memio =
 		    new (mem_alloc(sizeof (ringed_mem_io)))
-		    ringed_mem_io(8192, memlog_buffer);
+		    ringed_mem_io(MEMLOG_SIZE, memlog_buffer);
 
 		log_install(2, memio);
 
 		global_vars::core.memlog_buffer = memlog_buffer;
 	}
-log(1)("memlog:")(memlog_buffer);
+log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 
 	preempt_enable();
 
 	io_node* serial = create_serial();
 	log_install(0, serial);
-log(1)("  serial:")(serial)();
-
-log(1)("cpu_node:")(get_cpu_node())
-      ("  sizeof (cpu_node):").u(sizeof (cpu_node))();
 
 	const bootinfo::log* bootlog =
 	    static_cast<const bootinfo::log*>(get_info(bootinfo::TYPE_LOG));

@@ -24,6 +24,7 @@ kern_source = [
     'on_syscall.S',
     'page_ctl.cc',
     'page_ctl_init.cc',
+    'page_table.cc',
     'serial.cc',
     'string.cc',
     'bootinfo.cc',

@@ -31,39 +31,38 @@ extern const u8 kernel_size[];
 
 namespace {
 
-class page_table_acquire;
-inline void* phys_to_virt(u64 padr) {
-	return reinterpret_cast<void*>(padr);
-}
-typedef arch::page_table<page_table_acquire, phys_to_virt> boot_page_table;
+class page_table_traits;
+typedef arch::page_table_tmpl<page_table_traits> boot_page_table;
 
-class page_table_acquire
+class page_table_traits
 {
 public:
-	static cause::pair<uptr> acquire(boot_page_table* x);
-	static cause::t          release(boot_page_table* x, uptr padr);
+	static cause::pair<uptr> acquire_page(boot_page_table*)
+	{
+		void* p = get_alloc()->alloc(
+		    SLOTM_BOOTHEAP,
+		    arch::page::PHYS_L1_SIZE,
+		    arch::page::PHYS_L1_SIZE,
+		    false);
+
+		return cause::pair<uptr>(
+		    p != 0 ? cause::OK : cause::NOMEM,
+		    reinterpret_cast<uptr>(p));
+	}
+
+	static cause::t release_page(boot_page_table*, uptr padr)
+	{
+		bool b = get_alloc()->dealloc(
+		    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
+
+		return b ? cause::OK : cause::FAIL;
+	}
+
+	static void* phys_to_virt(u64 padr)
+	{
+		return reinterpret_cast<void*>(padr);
+	}
 };
-
-cause::pair<uptr> page_table_acquire::acquire(boot_page_table* /*x*/)
-{
-	void* p = get_alloc()->alloc(
-	    SLOTM_BOOTHEAP,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    false);
-
-	return cause::pair<uptr>(
-	    p != 0 ? cause::OK : cause::NOMEM,
-	    reinterpret_cast<uptr>(p));
-}
-
-cause::t page_table_acquire::release(boot_page_table* /*x*/, uptr padr)
-{
-	bool b = get_alloc()->dealloc(
-	    SLOTM_BOOTHEAP, reinterpret_cast<void*>(padr));
-
-	return b ? cause::OK : cause::FAIL;
-}
 
 
 /// @brief  オブジェクトをページへコピーする。
@@ -242,6 +241,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 		ph += elf->e_phentsize;
 	}
 
+	// BOOT_HEAP を設定する。
 	// カーネルが自分でメモリ管理できるようになるまでの
 	// 一時的なヒープとして使う。
 	for (int adr = 0;
@@ -254,15 +254,6 @@ extern "C" u32 load(u32 magic, u32* tag)
 			log(1)(SRCPOS)("set_page() failed. cause=").u(r)();
 			return r;
 		}
-	}
-
-	// ページテーブル自身をページテーブルにマップする。
-	u64 pg_tbl_top = reinterpret_cast<u64>(pg_tbl.get_table());
-	pg_tbl.set_page(pg_tbl_top, pg_tbl_top,
-	    arch::page::PHYS_L1, boot_page_table::EXIST);
-	if (is_fail(r)) {
-		log(1)(SRCPOS)("set_page() failed. cause=").u(r)();
-		return r;
 	}
 
 	// stack memory
@@ -280,7 +271,8 @@ extern "C" u32 load(u32 magic, u32* tag)
 
 	load_info.entry_adr = elf->e_entry;
 	load_info.stack_adr = stack_adr;
-	load_info.page_table_adr = reinterpret_cast<uptr>(pg_tbl.get_table());
+	load_info.page_table_adr =
+	    reinterpret_cast<uptr>(pg_tbl.get_toptable());
 
 	return post_load(tag);
 }

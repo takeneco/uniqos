@@ -1,23 +1,35 @@
 /// @file  page_ctl_init.cc
 /// @brief Page control initialize.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2014 KATO Takeshi
 //
-// (C) 2010-2013 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /// 物理アドレスに直接マッピングされた仮想アドレスのことを
 /// Physical Address Map (PAM) と呼ぶことにする。
 /// このソースコードの目的は物理アドレス全体の PAM を作ること。
 ///
-/// カーネルに jmp した時点ではメモリの先頭 32MiB のヒープしか使えないと
-/// 想定する。
-/// そこで、最初に 32MiB のヒープを利用して 6GiB の PAM を作成する。
-/// この 6GiB の PAM のことを PAM1 と呼ぶことにする。
+/// カーネルに jmp した時点ではメモリの先頭 32MiB のヒープ(BOOT_HEAP)しか
+/// 使えないと想定する。そこで、最初に 32MiB のヒープを利用して 6GiB の
+/// PAM を作成する。この 6GiB の PAM のことを PAM1 と呼ぶことにする。
 ///
 /// 次に、PAM1 をヒープとして使い、メモリ全体をカバーする PAM を作成する。
+/// このソースコードではメモリ全体をカバーする PAM を PAM1 と区別するために
+/// PAM2 と呼ぶ。
 ///
-/// メモリ全体をカバーする PAM を作成したら page_ctl を初期化し、
-/// ページを管理できるようにする。
-///
+/// PAM2 を作成したら page_ctl を初期化し、ページを管理できるようにする。
 /// それ以降は page_ctl を通してメモリを管理する。
 
 //TODO:ここのログは機能しない
@@ -36,10 +48,13 @@
 #include <native_ops.hh>
 #include <page.hh>
 #include <page_pool.hh>
-#include <pagetable.hh>
+#include "page_table.hh"
 
 
 namespace {
+
+const uptr KERNEL_ADR_SPACE_START = U64(0x0000800000000000);
+const uptr KERNEL_ADR_SPACE_END   = U64(0x0000ffffffffffff);
 
 typedef cheap_alloc<64>                  tmp_alloc;
 typedef cheap_alloc_separator<tmp_alloc> tmp_separator;
@@ -176,44 +191,10 @@ cause::t setup_heap(tmp_alloc* heap)
 	return cause::OK;
 }
 
-class page_table_tmpacquire
-{
-	tmp_alloc*                  tmpalloc;
-	const tmp_alloc::slot_mask  slotm;
+// Page table for PAM1.
 
-public:
-	page_table_tmpacquire(tmp_alloc* _alloc, tmp_alloc::slot_mask _slotm)
-	    : tmpalloc(_alloc), slotm(_slotm)
-	{}
-	cause::pair<uptr> acquire(void*);
-	cause::t          release(u64 padr);
-};
-
-cause::pair<uptr> page_table_tmpacquire::acquire(void*)
-{
-	void* p = tmpalloc->alloc(
-	    slotm,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    true);
-
-	return cause::pair<uptr>(
-	    p != 0 ? cause::OK : cause::NOMEM,
-	    reinterpret_cast<uptr>(p));
-}
-
-cause::t page_table_tmpacquire::release(u64 padr)
-{
-	void* p = reinterpret_cast<void*>(padr);
-
-	return tmpalloc->dealloc(SLOTM_ANY, p) ? cause::OK : cause::FAIL;
-}
-
-inline void* pam1_p2v(uptr padr) {
-	return reinterpret_cast<void*>(padr);
-}
-class pam1_page_table_acquire;
-typedef arch::page_table<pam1_page_table_acquire, pam1_p2v> _pam1_page_table;
+class pam1_page_table_traits;
+typedef arch::page_table_tmpl<pam1_page_table_traits> _pam1_page_table;
 class pam1_page_table : public _pam1_page_table
 {
 public:
@@ -223,31 +204,34 @@ public:
 
 	tmp_alloc* heap;
 };
-class pam1_page_table_acquire
+class pam1_page_table_traits
 {
 public:
-	static cause::pair<uptr> acquire(_pam1_page_table* x);
+	static cause::pair<uptr> acquire_page(_pam1_page_table* x)
+	{
+		pam1_page_table* _x = static_cast<pam1_page_table*>(x);
+
+		void* p = _x->heap->alloc(
+		    SLOTM_BOOTHEAP,
+		    arch::page::PHYS_L1_SIZE,
+		    arch::page::PHYS_L1_SIZE,
+		    true);
+
+		return cause::pair<uptr>(
+		    p != 0 ? cause::OK : cause::NOMEM,
+		    reinterpret_cast<uptr>(p));
+	}
+
+	static void* phys_to_virt(uptr padr)
+	{
+		return reinterpret_cast<void*>(padr);
+	}
 };
-cause::pair<uptr> pam1_page_table_acquire::acquire(_pam1_page_table* x)
-{
-	pam1_page_table* _x = static_cast<pam1_page_table*>(x);
 
-	void* p = _x->heap->alloc(
-	    SLOTM_BOOTHEAP,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    true);
+// page table for PAM2.
 
-	return cause::pair<uptr>(
-	    p != 0 ? cause::OK : cause::NOMEM,
-	    reinterpret_cast<uptr>(p));
-}
-
-inline void* pam2_p2v(u64 padr) {
-	return reinterpret_cast<void*>(arch::PHYS_MAP_ADR + padr);
-}
-class pam2_page_table_acquire;
-typedef arch::page_table<pam2_page_table_acquire, pam2_p2v> _pam2_page_table;
+class pam2_page_table_traits;
+typedef arch::page_table_tmpl<pam2_page_table_traits> _pam2_page_table;
 class pam2_page_table : public _pam2_page_table
 {
 public:
@@ -257,25 +241,29 @@ public:
 
 	tmp_alloc* heap;
 };
-class pam2_page_table_acquire
+class pam2_page_table_traits
 {
 public:
-	static cause::pair<uptr> acquire(_pam2_page_table* x);
+	static cause::pair<uptr> acquire_page(_pam2_page_table* x)
+	{
+		pam2_page_table* _x = static_cast<pam2_page_table*>(x);
+
+		void* p = _x->heap->alloc(
+		    SLOTM_BOOTHEAP | SLOTM_PAM1,
+		    arch::page::PHYS_L1_SIZE,
+		    arch::page::PHYS_L1_SIZE,
+		    true);
+
+		return cause::pair<uptr>(
+		    p != 0 ? cause::OK : cause::NOMEM,
+		    reinterpret_cast<uptr>(p));
+	}
+
+	static void* phys_to_virt(u64 padr)
+	{
+		return reinterpret_cast<void*>(arch::PHYS_MAP_ADR + padr);
+	}
 };
-cause::pair<uptr> pam2_page_table_acquire::acquire(_pam2_page_table* x)
-{
-	pam2_page_table* _x = static_cast<pam2_page_table*>(x);
-
-	void* p = _x->heap->alloc(
-	    SLOTM_BOOTHEAP | SLOTM_PAM1,
-	    arch::page::PHYS_L1_SIZE,
-	    arch::page::PHYS_L1_SIZE,
-	    true);
-
-	return cause::pair<uptr>(
-	    p != 0 ? cause::OK : cause::NOMEM,
-	    reinterpret_cast<uptr>(p));
-}
 
 /// @brief  Setup physical mapping address 1st phase.
 /// @param[in] padr_end  Maximum address.
@@ -332,6 +320,26 @@ cause::t setup_pam2(u64 padr_end, tmp_alloc* heap)
 
 		if (is_fail(r))
 			return r;
+	}
+
+	return cause::OK;
+}
+
+cause::t init_kern_space()
+{
+	arch::pte* cr3 = static_cast<arch::pte*>(
+	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
+
+	x86::page_table pg_tbl(cr3);
+
+	for (uptr padr = KERNEL_ADR_SPACE_START;
+	     padr < KERNEL_ADR_SPACE_END;
+	     padr += arch::page::PHYS_L4_SIZE)
+	{
+		auto r = pg_tbl.declare_table(padr, arch::page::PHYS_L4);
+
+		if (is_fail(r))
+			return r.r;
 	}
 
 	return cause::OK;
@@ -823,6 +831,10 @@ cause::t cpu_page_init()
 
 	page_heap_dealloc(node_ram_mem);
 	page_heap_dealloc(node_heap_mem);
+
+	r = init_kern_space();
+	if (is_fail(r))
+		return r;
 
 	return cause::OK;
 }

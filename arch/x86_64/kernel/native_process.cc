@@ -1,5 +1,4 @@
-/// @file   bootinfo.cc
-/// @brief  Access to setup data.
+/// @file   native_process.cc
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
@@ -19,12 +18,43 @@
 
 #include "native_process.hh"
 
+#include <cpu_node.hh>
+#include <native_ops.hh>
+#include <string.hh>
+
 
 namespace x86 {
 
-native_process::native_process()
+native_process::native_process() :
+	ptbl(0)
 {
 }
 
-}  // namespace bootinfo
+cause::t native_process::init()
+{
+	cause::t r = process::init();
+	if (is_fail(r))
+		return r;
+
+	uptr top_padr;
+	r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &top_padr);
+	if (is_fail(r))
+		return r;
+
+	u8* top = static_cast<u8*>(
+	    arch::map_phys_adr(top_padr, arch::page::PHYS_L1_SIZE));
+
+	u8* cr3 = reinterpret_cast<u8*>(native::get_cr3());
+
+	// アドレス空間の後半をカーネル用としている。
+	// ページテーブルは 4096 byte で、その後半の 2048 byte を
+	// コピーすることで、カーネル用アドレス空間を共有する。
+	mem_copy(2048, &cr3[2048], &top[2048]);
+
+	ptbl.set_toptable(top);
+
+	return cause::OK;
+}
+
+}  // namespace x86
 

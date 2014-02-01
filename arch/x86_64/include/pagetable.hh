@@ -1,13 +1,26 @@
 /// @file   pagetable.hh
 /// @brief  64bit paging table ops.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2010-2014 KATO Takeshi
 //
-// (C) 2010-2014 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 #include <arch.hh>
 
 
@@ -120,7 +133,7 @@ public:
 
 	void set_toptable(void* _top) { top = static_cast<pte*>(_top); }
 
-	pte* get_table() { return top; }
+	pte* get_toptable() { return top; }
 
 	void dump(log_target& x) {
 		dump_pte(x, top, 4);
@@ -133,49 +146,55 @@ protected:
 
 void pte_init(pte* table);
 
-/// @brief Page table creater.
-/// @tparam page_table_acquire Memory allocator class, must having
-///                    following public function.
-///  - static cause::pair<u64>
-///    page_table_acquire::acquire(page_table<>* x)
-///  - static cause::t
-///    page_table_acquire::release(page_table<>* x, u64 padr)
-/// @tparam p2v        physical to virtual convert function.
-template <class page_table_acquire, void* (*p2v)(u64 padr)>
-class page_table : public page_table_base
+/// @brief Page table controller.
+/// @tparam page_table_traits  Page table traits class.
+//
+/// page_table_traits class must provide following interfaces.
+/// class page_table_traits {
+/// public:
+///     static cause::pair<u64> acquire_page(page_table<>* x);
+///     static cause::t         release_page(page_table<>* x, u64 padr);
+///
+///     // Convert physical adr to virtual adr.
+///     static void* phys_to_virt(u64 padr);
+/// };
+template <class page_table_traits>
+class page_table_tmpl : public page_table_base
 {
 public:
-	page_table(pte* top);
-	page_table() {}
+	page_table_tmpl(pte* top);
+	page_table_tmpl() {}
 
 	cause::pair<pte*> declare_table(u64 vadr, page::TYPE pt);
 	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
 };
 
 /// @param[in] top  exist page table. null available.
-template <class page_table_acquire, void* (*p2v)(u64 padr)>
-page_table<page_table_acquire, p2v>::page_table(pte* top) :
+template <class page_table_traits>
+page_table_tmpl<page_table_traits>::page_table_tmpl(pte* top) :
 	page_table_base(top)
 {
 }
 
-/// @brief  ページテーブルを指定した深さまで作る。
+/// @brief  ページテーブルを指定した深さまで作る。アドレスは割り当てず、
+///         エントリは空のままにする。
 /// @param[in] vadr  virtual address.
 /// @param[in] pt    page type. one of PHYS_L* without PHYS_L1.
 /// @return 作成したページテーブルを返す。
-///         すでにページテーブルがある場合はそれを返す。
-template <class page_table_acquire, void* (*p2v)(u64 padr)>
-cause::pair<pte*> page_table<page_table_acquire, p2v>::declare_table(
+///         すでにページテーブルがある場合はそのテーブルを返す。
+template <class page_table_traits>
+cause::pair<pte*> page_table_tmpl<page_table_traits>::declare_table(
     u64 vadr, page::TYPE pt)
 {
 	int target_level = PAGETYPE_TO_LEVELINDEX[pt];
 
 	if (UNLIKELY(!top)) {
-		const auto r = page_table_acquire::acquire(this);
+		const auto r = page_table_traits::acquire_page(this);
 		if (is_fail(r))
 			return cause::p<pte*>(r.r, 0);
 
-		top = static_cast<pte*>(p2v(r.value));
+		top = static_cast<pte*>(
+		    page_table_traits::phys_to_virt(r.value));
 		pte_init(top);
 	}
 
@@ -187,16 +206,18 @@ cause::pair<pte*> page_table<page_table_acquire, p2v>::declare_table(
 		const int index = (vadr >> PTE_INDEX_SHIFTS[level]) & 0x1ff;
 
 		if (table[index].test_flags(pte::P) == 0) {
-			const auto r = page_table_acquire::acquire(this);
+			const auto r = page_table_traits::acquire_page(this);
 			if (is_fail(r))
 				return cause::p<pte*>(r.r, 0);
 
-			pte_init(static_cast<pte*>(p2v(r.value)));
+			pte_init(static_cast<pte*>(
+			    page_table_traits::phys_to_virt(r.value)));
 			table[index].set(r.value,
 			    pte::P | pte::RW | pte::US | pte::A);
 		}
 
-		table = static_cast<pte*>(p2v(table[index].get_adr()));
+		table = static_cast<pte*>(
+		    page_table_traits::phys_to_virt(table[index].get_adr()));
 	}
 
 	return cause::p(cause::OK, table);
@@ -207,8 +228,8 @@ cause::pair<pte*> page_table<page_table_acquire, p2v>::declare_table(
 /// @param[in] padr  physical page address.
 /// @param[in] pt    page type. one of PHYS_L*.
 /// @param[in] flags page flags.
-template <class page_table_acquire, void* (*p2v)(u64 padr)>
-cause::t page_table<page_table_acquire, p2v>::set_page(
+template <class page_table_traits>
+cause::t page_table_tmpl<page_table_traits>::set_page(
     u64 vadr, u64 padr, page::TYPE pt, u64 flags)
 {
 	auto r = declare_table(vadr, pt);
