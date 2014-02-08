@@ -3,11 +3,11 @@
 // (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_CPU_NODE_HH_
-#define INCLUDE_CPU_NODE_HH_
+#ifndef INCLUDE_CORE_CPU_NODE_HH_
+#define INCLUDE_CORE_CPU_NODE_HH_
 
 #include <arch.hh>
-#include <basic.hh>
+#include <core/basic.hh>
 #include <config.h>
 #include <cpu_ctl.hh>
 #include <message_queue.hh>
@@ -29,13 +29,12 @@ public:
 
 	cause::t setup();
 
-	void attach_thread(thread* t);
-	void ready_thread(thread* t);
-	void ready_thread_np(thread* t);
+	void     attach_thread(thread* t);
+	cause::t detach_thread(thread* t);
+	void     ready_thread(thread* t);
+	void     ready_thread_np(thread* t);
 
 	void force_set_running_thread(thread* t);
-
-	bool run_all_intr_message();
 
 	thread_sched& get_thread_ctl() { return threads; }
 

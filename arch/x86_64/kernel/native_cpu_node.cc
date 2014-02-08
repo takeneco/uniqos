@@ -20,9 +20,11 @@
 
 #include <flags.hh>
 #include <global_vars.hh>
+#include <log.hh>
 #include <mempool.hh>
 #include <native_ops.hh>
 #include <native_thread.hh>
+#include <new_ops.hh>
 
 
 extern char on_syscall[];
@@ -279,6 +281,21 @@ void native_cpu_node::switch_thread_after_intr(native_thread* t)
 	load_running_thread(t);
 }
 
+/// exit boot thread
+
+typedef message_with<thread*> exit_thread_message;
+
+void exit_boot_thread_handler(message* m)
+{
+	exit_thread_message* etm = static_cast<exit_thread_message*>(m);
+	native_thread* boot_thr = static_cast<native_thread*>(etm->data);
+
+	auto r = x86::destroy_thread(boot_thr);
+	if (is_fail(r)) {
+		log()("!!!")(SRCPOS)("() failed.");
+	}
+}
+
 /// @brief Exit boot thread.
 //
 /// Must to be call from boot thread.
@@ -286,14 +303,32 @@ void native_cpu_node::exit_boot_thread()
 {
 	arch::intr_disable();
 
+	// dec_preempt_disable() に対応して使用する。
+	inc_preempt_disable();
+
 	thread* boot_thr = threads.get_running_thread();
 
 	thread* next_thr = threads.exit_thread(boot_thr);
 
 	load_running_thread(next_thr);
 
+	void* p = mem_alloc(sizeof (exit_thread_message));
+	if (!p) {
+		log()("!!!")(SRCPOS)("() failed.");
+	}
 
-	// 下で使っているので boot_thr はまだ開放できない
+	exit_thread_message* etm = new (p) exit_thread_message;
+	etm->handler = exit_boot_thread_handler;
+	etm->data = boot_thr;
+	post_soft_message(etm);
+
+	// この後、コンテキストスイッチするので、preempt_disable を解除し
+	// なければならない。
+	// しかし、割込みが発生するとスレッドが切り替わってスレッドが開放
+	// されてしまう。
+	// そこで、割込みは禁止したままで preempt_disable が解除された状態
+	// を作るために dec_preempt_disable() を使う。
+	dec_preempt_disable();
 
 	native_switch_regset(
 	    static_cast<x86::native_thread*>(next_thr)->ref_regset(),

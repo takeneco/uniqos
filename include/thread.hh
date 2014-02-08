@@ -7,8 +7,7 @@
 #ifndef CORE_INCLUDE_CORE_THREAD_HH_
 #define CORE_INCLUDE_CORE_THREAD_HH_
 
-#include <basic.hh>
-#include <chain.hh>
+#include <core/basic.hh>
 #include <spinlock.hh>
 
 
@@ -22,6 +21,8 @@ class thread
 
 public:
 	thread();
+
+	cpu_node* get_owner_cpu() { return owner_cpu; }
 
 	void ready();
 

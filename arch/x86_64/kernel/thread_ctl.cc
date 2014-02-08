@@ -67,6 +67,7 @@ public:
 
 	cause::pair<native_thread*> create_thread(
 	    cpu_node* owner_cpu, uptr text, uptr param);
+	cause::t destroy_thread(native_thread* t);
 
 private:
 	mempool* thread_mp;
@@ -104,17 +105,25 @@ cause::pair<native_thread*> thread_ctl::create_thread(
     uptr text,
     uptr param)
 {
-	void* p = thread_mp->alloc();
-	if (!p) {
-		return cause::pair<native_thread*>(cause::NOMEM, 0);
-	}
-
-	native_thread* t = new (p) native_thread(
+	native_thread* t = new (thread_mp) native_thread(
 	    text, param, 1 << THREAD_SIZE_SHIFTS);
+	if (!t) {
+		return cause::gen_pair(cause::NOMEM, t);
+	}
 
 	owner_cpu->attach_thread(t);
 
-	return cause::pair<native_thread*>(cause::OK, t);
+	return cause::gen_pair(cause::OK, t);
+}
+
+/// @param[in] t  cpu から detach() された native_thread.
+cause::t thread_ctl::destroy_thread(native_thread* t)
+{
+	t->~native_thread();
+
+	operator delete (t, thread_mp);
+
+	return cause::OK;
 }
 
 /// @brief Initialize native_thread_ctl.
@@ -147,6 +156,11 @@ cause::pair<native_thread*> create_thread(
 {
 	return global_vars::arch.thread_ctl_obj->
 	    create_thread(owner_cpu, text, param);
+}
+
+cause::t destroy_thread(native_thread* t)
+{
+	return global_vars::arch.thread_ctl_obj->destroy_thread(t);
 }
 
 }  // namespace x86

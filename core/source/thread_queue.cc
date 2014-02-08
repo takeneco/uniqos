@@ -50,6 +50,8 @@ cause::t thread_sched::init()
 /// 何もスレッドが無い状態で呼び出さなければならない。
 cause::t thread_sched::attach_boot_thread(thread* t)
 {
+	t->owner_cpu = owner_cpu;
+
 	running_thread = t;
 
 	return cause::OK;
@@ -65,6 +67,18 @@ void thread_sched::attach(thread* t)
 		sleeping_queue.insert_tail(t);
 	else
 		ready_queue.insert_tail(t);
+
+	thread_state_lock.un_wlock();
+}
+
+void thread_sched::detach(thread* t)
+{
+	thread_state_lock.wlock();
+
+	if (t->state == thread::SLEEPING)
+		sleeping_queue.remove(t);
+	else
+		ready_queue.remove(t);
 
 	thread_state_lock.un_wlock();
 }

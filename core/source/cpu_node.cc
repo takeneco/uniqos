@@ -43,7 +43,7 @@ cpu_node::cpu_node() :
 {
 }
 
-cause::type cpu_node::set_page_pool_cnt(int cnt)
+cause::t cpu_node::set_page_pool_cnt(int cnt)
 {
 	page_pool_cnt = cnt;
 
@@ -54,14 +54,14 @@ cause::type cpu_node::set_page_pool_cnt(int cnt)
 }
 
 /// @brief  page_pool を指定する。
-cause::type cpu_node::set_page_pool(int pri, page_pool* pp)
+cause::t cpu_node::set_page_pool(int pri, page_pool* pp)
 {
 	page_pools[pri] = pp;
 
 	return cause::OK;
 }
 
-cause::type cpu_node::setup()
+cause::t cpu_node::setup()
 {
 	cause::t r = threads.init();
 	if (is_fail(r))
@@ -73,6 +73,20 @@ cause::type cpu_node::setup()
 void cpu_node::attach_thread(thread* t)
 {
 	threads.attach(t);
+}
+
+/// @retval cause::OK     Succeeded.
+/// @retval cause::BADARG The cpu_node is not owner of the thread.
+cause::t cpu_node::detach_thread(thread* t)
+{
+	if (CONFIG_DEBUG_VALIDATE >= 1) {
+		if (t->get_owner_cpu() != this)
+			return cause::BADARG;
+	}
+
+	threads.detach(t);
+
+	return cause::OK;
 }
 
 void cpu_node::ready_thread(thread* t)
@@ -99,7 +113,7 @@ void cpu_node::preempt_wait()
 	arch::intr_wait();
 }
 
-cause::type cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
+cause::t cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
 {
 	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
 		const cause::type r = page_pools[i]->alloc(page_type, padr);
@@ -110,7 +124,7 @@ cause::type cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
 	return cause::FAIL;
 }
 
-cause::type cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
+cause::t cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
 {
 	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
 		const cause::type r = page_pools[i]->dealloc(page_type, padr);
