@@ -19,7 +19,6 @@
 
 #include "misc.hh"
 
-#include <bootinfo.hh>
 #include <string.hh>
 
 
@@ -30,8 +29,13 @@ extern const u8 first_process_size[];
 
 namespace {
 
-/// @brief multiboot_mmap_entry を bootinfo::adrmap に変換する
-uptr store_adr_map(const u32* mb_info, uptr store_bytes, u8* store)
+/// @brief  adr_map を bootinfo にコピーする。
+/// @param[in]  mb_info  multiboot information
+/// @param[in]  store_bytes  store の残バッファサイズ
+/// @param[out] store  コピー先 bootinfo のバッファ
+/// @return  コピーしたサイズを返す。
+///          バッファが足りない場合は、store_bytes より大きい値を返す。
+uptr store_adr_map(uptr store_bytes, u8* store)
 {
 	if (store_bytes < adr_map_store->info_bytes)
 		return adr_map_store->info_bytes;
@@ -111,6 +115,21 @@ uptr store_mem_alloc(uptr store_bytes, u8* store)
 	tag_ma->info_bytes = info_bytes;
 
 	return info_bytes;
+}
+
+/// @brief  boot thread workspace のメモリ情報を bootinfo に格納する。
+/// @param[in]  store_bytes  store の残バッファサイズ
+/// @param[out] store  コピー先 bootinfo のバッファ
+/// @return  コピーしたサイズを返す。
+///          バッファが足りない場合は、store_bytes より大きい値を返す。
+uptr store_mem_work(uptr store_bytes, u8* store)
+{
+	if (store_bytes < mem_work_store->info_bytes)
+		return mem_work_store->info_bytes;
+
+	mem_copy(mem_work_store->info_bytes, mem_work_store, store);
+
+	return mem_work_store->info_bytes;
 }
 
 uptr store_log(uptr store_bytes, u8* store)
@@ -205,7 +224,7 @@ bool store_bootinfo(const u32* mb_info)
 	uptr store_bytes = bootinfo::MAX_BYTES;
 	uptr wrote = sizeof (bootinfo::header);
 
-	uptr size = store_adr_map(mb_info, store_bytes, &store[wrote]);
+	uptr size = store_adr_map(store_bytes, &store[wrote]);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
@@ -218,6 +237,12 @@ bool store_bootinfo(const u32* mb_info)
 	store_bytes -= size;
 
 	size = store_mem_alloc(store_bytes, &store[wrote]);
+	if (size > store_bytes)
+		return false;
+	wrote += size;
+	store_bytes -= size;
+
+	size = store_mem_work(store_bytes, &store[wrote]);
 	if (size > store_bytes)
 		return false;
 	wrote += size;

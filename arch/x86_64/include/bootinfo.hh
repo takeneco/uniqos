@@ -1,7 +1,7 @@
 /// @file  arch/x86_64/include/bootinfo.hh
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -46,10 +46,23 @@ struct header
 enum INFO_TYPE {
 	TYPE_END = 0,
 
+	/// Hardware implemented memory information
 	TYPE_ADR_MAP = 1,
+
+	/// Allocated memory information
 	TYPE_MEM_ALLOC,
+
+	/// Boot thread workspace memory information
+	/// @detail  This memory can be free after boot thread finished.
+	TYPE_MEM_WORK,
+
+	///< Boot log contents
 	TYPE_LOG,
+
+	///< Bundled module
 	TYPE_BUNDLE,
+
+	///< Multiboot information
 	TYPE_MULTIBOOT,
 };
 
@@ -88,7 +101,7 @@ struct adr_map : tag
 	entry entries[0];
 };
 
-struct mem_alloc : tag
+struct _mem_list : tag
 {
 	struct entry
 	{
@@ -102,6 +115,10 @@ struct mem_alloc : tag
 
 	entry entries[0];
 };
+
+typedef _mem_list mem_alloc;
+
+typedef _mem_list mem_work;
 
 struct module : tag
 {

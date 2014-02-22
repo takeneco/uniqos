@@ -19,7 +19,6 @@
 
 #include "misc.hh"
 
-#include <bootinfo.hh>
 #include <config.h>
 #include <elf.hh>
 #include <pagetable.hh>
@@ -158,6 +157,7 @@ cause::t load_segm(const Elf64_Phdr* phe, boot_page_table* pg_tbl)
 
 		// end_page がメモリ空間の最後のページを指している場合は、
 		// page_adr をインクリメントするとオーバーフローしてしまう。
+		// そのため、インクリメントする前の値で判断する。
 		if (page_adr >= end_page)
 			break;
 	}
@@ -184,6 +184,50 @@ cause::t _pre_load(u32 magic, u32* tag)
 	return r;
 }
 
+const uptr MAX_MEM_WORK_STORE = 4096;
+
+cause::t create_mem_work_store()
+{
+	bootinfo::mem_work* mem_work = static_cast<bootinfo::mem_work*>(
+	    get_alloc()->alloc(
+	        SLOTM_NORMAL | SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
+	        MAX_MEM_WORK_STORE,
+	        4096,
+	        true));
+
+	if (!mem_work)
+		return cause::NOMEM;
+
+	mem_work->info_type = bootinfo::TYPE_MEM_WORK;
+	mem_work->info_flags = 0;
+	mem_work->info_bytes = sizeof (bootinfo::mem_work);
+
+	mem_work_store = mem_work;
+
+	return cause::OK;
+}
+
+cause::t push_mem_work(u64 adr, u64 bytes)
+{
+	bootinfo::mem_work* mws = mem_work_store;
+
+	if (mws->info_bytes + sizeof (bootinfo::mem_work::entry) >
+	    MAX_MEM_WORK_STORE)
+	{
+		log(2)("!!!mem_work_store has no enough entries.");
+		return cause::NOMEM;
+	}
+
+	auto ent = (bootinfo::mem_work::entry*)((u8*)mws + mws->info_bytes);
+
+	ent->adr = adr;
+	ent->bytes = bytes;
+
+	mws->info_bytes += sizeof (bootinfo::mem_work::entry);
+
+	return cause::OK;
+}
+
 }  // namespace
 
 extern "C" u32 load(u32 magic, u32* tag)
@@ -192,11 +236,14 @@ extern "C" u32 load(u32 magic, u32* tag)
 	if (is_fail(r))
 		return r;
 
-	log(1)("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
+	r = create_mem_work_store();
+	if (is_fail(r))
+		return r;
 
 	const Elf64_Ehdr* elf = reinterpret_cast<const Elf64_Ehdr*>(kernel);
 
-#if CONFIG_DEBUG_BOOT >= 1
+#if CONFIG_DEBUG_BOOT >= 2
+	log()("kernel : ")(kernel)(", kernel_size : ")(kernel_size)();
 	log()("kernel ELF header:")()
 	     ("e_ident : ").x(8, elf->e_ident, 1, 16)
 	     (", e_type : ").x((u16)elf->e_type)
@@ -212,7 +259,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 	     ("e_shentsize : ").u(elf->e_shentsize)
 	     (", e_shnum : ").u(elf->e_shnum)()
 	     ("e_shstrndx : ").u(elf->e_shstrndx)();
-#endif  // CONFIG_DEBUG_BOOT >= 1
+#endif  // CONFIG_DEBUG_BOOT
 
 	boot_page_table pg_tbl(0);
 
@@ -227,7 +274,7 @@ extern "C" u32 load(u32 magic, u32* tag)
 				return r;
 			}
 		}
-#if CONFIG_DEBUG_BOOT >= 1
+#if CONFIG_DEBUG_BOOT >= 2
 		log()("program header[").u(i)("]:")()
 		     (" p_type : ").x((u32)phe->p_type)
 		     (", p_flags : ").x((u32)phe->p_flags)()
@@ -256,10 +303,13 @@ extern "C" u32 load(u32 magic, u32* tag)
 		}
 	}
 
-	// stack memory
+	// stack memory for boot thread
+
+	const uptr STACK_BYTES = arch::page::PHYS_L1_SIZE * 2;
+
 	void* p = get_alloc()->alloc(
 	    SLOTM_BOOTHEAP | SLOTM_CONVENTIONAL,
-	    arch::page::PHYS_L1_SIZE * 2,
+	    STACK_BYTES,
 	    arch::page::PHYS_L1_SIZE * 2,
 	    false);
 	if (!p) {
@@ -267,7 +317,9 @@ extern "C" u32 load(u32 magic, u32* tag)
 		return cause::NOMEM;
 	}
 	u64 stack_adr =
-	    reinterpret_cast<uptr>(p) + arch::page::PHYS_L1_SIZE * 2;
+	    reinterpret_cast<uptr>(p) + STACK_BYTES;
+
+	push_mem_work(reinterpret_cast<uptr>(p), STACK_BYTES);
 
 	load_info.entry_adr = elf->e_entry;
 	load_info.stack_adr = stack_adr;

@@ -3,14 +3,14 @@
 /// @details カーネルへログを渡するためにメモリ上にログを書く。
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2012 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
-//  Uniqos is free software: you can redistribute it and/or modify
+//  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  Uniqos is distributed in the hope that it will be useful,
+//  UNIQOS is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -32,7 +32,7 @@ io_node::operations memlog_ops;
 
 }  // namespace
 
-cause::type memlog_file::setup()
+cause::t memlog_file::setup()
 {
 	memlog_ops.init();
 
@@ -43,7 +43,7 @@ cause::type memlog_file::setup()
 	return cause::OK;
 }
 
-cause::type memlog_file::open()
+cause::t memlog_file::open()
 {
 	void* p = get_alloc()->alloc(HEAPSLOTM, MAX_SIZE, 1, true);
 
@@ -58,18 +58,18 @@ cause::type memlog_file::open()
 	return cause::OK;
 }
 
-cause::type memlog_file::close()
+cause::t memlog_file::close()
 {
 	return cause::OK;
 }
 
-cause::type memlog_file::on_io_node_seek(
+cause::t memlog_file::on_io_node_seek(
     seek_whence whence, offset rel_off, offset* abs_off)
 {
 	return io_node::usual_seek(MAX_SIZE - 1, whence, rel_off, abs_off);
 }
 
-cause::type memlog_file::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
+cause::t memlog_file::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 {
 	if (!buf)
 		return cause::INVALID_OBJECT;
@@ -89,7 +89,7 @@ cause::type memlog_file::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 	return cause::OK;
 }
 
-cause::type memlog_file::on_io_node_write(
+cause::t memlog_file::on_io_node_write(
     offset* off, int iov_cnt, const iovec* iov)
 {
 	if (!buf)

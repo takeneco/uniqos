@@ -1,7 +1,7 @@
 /// @file   arch/x86_64/boot/multiboot/misc.hh
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -19,10 +19,12 @@
 #ifndef ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 #define ARCH_X86_64_BOOT_MULTIBOOT_MISC_HH_
 
+#include <bootinfo.hh>
 #include <cheap_alloc.hh>
 #include <output_buffer.hh>
 
 
+// 作業用バッファのエントリ数を 256 とする。大きすぎるとスタックに置けない。
 typedef cheap_alloc<256> allocator;
 typedef cheap_alloc_separator<allocator> separator;
 
@@ -102,15 +104,8 @@ private:
 };
 
 extern memlog_file memlog;
-
-
-namespace bootinfo {
-
-struct adr_map;
-
-}  // namespace bootinfo
-
 extern bootinfo::adr_map* adr_map_store;
+extern bootinfo::mem_work* mem_work_store;
 
 
 #endif  // include guard

@@ -1,7 +1,8 @@
 /// @file   preload_mb.cc
+/// @brief  Prepare to load kernel for multiboot1.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -105,7 +106,8 @@ void mem_setup(const multiboot_info* mbi)
 	    sizeof *mbi,
 	    true);
 
-	// コンベンショナルメモリはパラメータの格納に使われてしまう。
+	// コンベンショナルメモリは multiboot のパラメータの格納に
+	// 使われてしまう。
 	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0xfffff, false);
 }
 
@@ -201,7 +203,7 @@ cause::t store_adrmap(const multiboot_info* mbi)
 }  // namespace
 
 
-/// @brief  Previous load kernel.
+/// @brief  Prepare to load kernel.
 /// @param[in] magic  multiboot magic code.
 /// @param[in] tag    multiboot info.
 cause::t pre_load_mb(u32 magic, const void* tag)
@@ -216,6 +218,9 @@ cause::t pre_load_mb(u32 magic, const void* tag)
 	// temporary
 	vga_dev.init(80, 25, (void*)0xb8000);
 
+	// memlog を設定しているが、memlog.open() するまで memlog への
+	// ログ出力はできない。
+	// memlog.open() の前に mem_setup() する必要がある。
 	log_set(0, &memlog);
 	log_set(1, &vga_dev);
 
