@@ -18,6 +18,7 @@
 
 #include <native_cpu_node.hh>
 
+#include <bootinfo.hh>
 #include <flags.hh>
 #include <global_vars.hh>
 #include <log.hh>
@@ -25,6 +26,7 @@
 #include <native_ops.hh>
 #include <native_thread.hh>
 #include <new_ops.hh>
+#include <page.hh>
 
 
 extern char on_syscall[];
@@ -283,6 +285,57 @@ void native_cpu_node::switch_thread_after_intr(native_thread* t)
 
 /// exit boot thread
 
+cause::t release_pages(uptr adr, uptr bytes)
+{
+log()("release_pages() called. adr=").x(adr)(",bytes=").x(bytes)();
+
+	uptr align_adr = up_align<uptr>(adr, arch::page::PHYS_L1_SIZE);
+	bytes -= align_adr - adr;
+	adr = align_adr;
+
+	for (;;) {
+		if ((adr & (arch::page::PHYS_L3_SIZE - 1)) == 0
+		  && bytes >= arch::page::PHYS_L3_SIZE)
+		{
+log()("page_dealloc() type=L3,adr=").x(adr)();
+			auto r = page_dealloc(arch::page::PHYS_L3, adr);
+			if (is_fail(r))
+				return r;
+
+			adr += arch::page::PHYS_L3_SIZE;
+			bytes -= arch::page::PHYS_L3_SIZE;
+		}
+		else if ((adr & (arch::page::PHYS_L2_SIZE - 1)) == 0
+		  && bytes >= arch::page::PHYS_L2_SIZE)
+		{
+log()("page_dealloc() type=L2,adr=").x(adr)();
+			auto r = page_dealloc(arch::page::PHYS_L2, adr);
+			if (is_fail(r))
+				return r;
+
+			adr += arch::page::PHYS_L2_SIZE;
+			bytes -= arch::page::PHYS_L2_SIZE;
+		}
+		else if ((adr & (arch::page::PHYS_L1_SIZE - 1)) == 0
+		  && bytes >= arch::page::PHYS_L1_SIZE)
+		{
+log()("page_dealloc() type=L1,adr=").x(adr)();
+			auto r = page_dealloc(arch::page::PHYS_L1, adr);
+			if (is_fail(r))
+				return r;
+
+			adr += arch::page::PHYS_L1_SIZE;
+			bytes -= arch::page::PHYS_L1_SIZE;
+		}
+		else {
+log()("release_pages() end")();
+			break;
+		}
+	}
+
+	return cause::OK;
+}
+
 typedef message_with<thread*> exit_thread_message;
 
 void exit_boot_thread_handler(message* m)
@@ -292,7 +345,26 @@ void exit_boot_thread_handler(message* m)
 
 	auto r = x86::destroy_thread(boot_thr);
 	if (is_fail(r)) {
-		log()("!!!")(SRCPOS)("() failed.");
+		log()("!!!")(SRCPOS)(" destroy_thread() failed.");
+	}
+
+	const bootinfo::mem_work* memwork =
+	    static_cast<const bootinfo::mem_work*>(
+	    get_info(bootinfo::TYPE_MEM_WORK));
+	if (!memwork) {
+		return;
+	}
+	u32 read_bytes = sizeof *memwork;
+	for (int i = 0; ; ++i) {
+		if (read_bytes >= memwork->info_bytes)
+			break;
+
+		auto r = release_pages(
+		    memwork->entries[i].adr, memwork->entries[i].bytes);
+		if (is_fail(r))
+			log()("!!!")(SRCPOS)(" release_pages() failed.")();
+
+		read_bytes += sizeof memwork->entries[i];
 	}
 }
 
