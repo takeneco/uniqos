@@ -47,6 +47,8 @@ inline cause::pair<native_thread*> create_thread(
 	    reinterpret_cast<uptr>(param));
 }
 
+cause::t destroy_thread(native_thread* t);
+
 }  // namespace x86
 
 

@@ -2,7 +2,7 @@
 /// @brief x86_64 hardware parameters.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  (C) 2010-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 #ifndef ARCH_X86_64_INCLUDE_ARCH_HH_
 #define ARCH_X86_64_INCLUDE_ARCH_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 #if ARCH_ADR_BITS == 64
@@ -75,7 +75,10 @@ enum TYPE {
 	PHYS_L4 = L7,
 	PHYS_HIGHEST = PHYS_L4,
 };
-enum { LEVEL_COUNT = HIGHEST + 1 };
+enum {
+	LEVEL_COUNT = HIGHEST + 1,
+	PHYS_LEVEL_CNT = 4,
+};
 
 /// page size params.
 enum {

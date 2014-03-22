@@ -27,6 +27,8 @@
 #include <native_thread.hh>
 #include <new_ops.hh>
 #include <page.hh>
+#include <pagetable.hh>
+#include "page_table.hh"
 
 
 extern char on_syscall[];
@@ -366,6 +368,29 @@ void exit_boot_thread_handler(message* m)
 
 		read_bytes += sizeof memwork->entries[i];
 	}
+
+	arch::pte* pt = static_cast<arch::pte*>(
+	    arch::map_phys_adr(boot_thr->rs.cr3, 0x1000));
+	page_table tbl(pt);
+	page_table::page_enum pe;
+	r = tbl.unset_page_start(0, UPTR(0x00007fffffffffff), &pe);
+	if (is_fail(r)) {
+		log()("unset_page_start = ").u(r)();
+		return;
+	}
+	uptr vadr;
+	u64 padr;
+	arch::page::TYPE page_type;
+	for (int i = 0; ; ++i) {
+		r = tbl.unset_page_next(&pe, &vadr, &padr, &page_type);
+		if (is_fail(r)) {
+			log()("unset_page_next = ").u(r)(":").x(pe.cur_vadr)(':').x(pe.end_vadr)();
+			break;
+		}
+		log()("vadr=").x(vadr)(" padr=").x(padr)(" page_type=").u(page_type)();
+	}
+
+	r = tbl.unset_page_end(&pe);
 }
 
 /// @brief Exit boot thread.

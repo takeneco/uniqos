@@ -31,6 +31,8 @@ public:
 	native_process_ctl();
 
 	cause::t init();
+
+private:
 };
 
 
@@ -59,7 +61,7 @@ cause::t native_process_init()
 		return r;
 	}
 
-	global_vars::arch.native_process_ctl_obj = obj;
+	global_vars::core.process_ctl_obj = obj;
 
 	return cause::OK;
 }

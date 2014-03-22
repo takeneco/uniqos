@@ -75,9 +75,9 @@ public:
 		XD   = U64(1) << 63,
 	};
 
-	void set(type a, type f) {
+	void set(type padr, type flags) {
 		//e = (a & 0x000000fffffff000) | f;
-		e = a | f;
+		e = padr | flags;
 	}
 	type get() const {
 		return e;
@@ -91,14 +91,12 @@ public:
 	type test_flags(type f) const {
 		return e & f;
 	}
-	void set_adr(type a) {
-		e = (e & U64(0xffffff0000000fff)) | a;
+	void set_adr(type padr) {
+		e = (e & U64(0xffffff0000000fff)) | padr;
 	}
-	void set_addr(type a) { set_adr(a); }
 	type get_adr() const {
 		return e & U64(0x000000fffffff000);
 	}
-	type get_addr() const { return get_adr(); }
 	void set_avail1(u32 a) {
 		e = (e & U64(0xfffffffffff1ffff)) | (a << 9);
 	}
@@ -125,8 +123,9 @@ public:
 	};
 
 protected:
-	static const int PAGETYPE_TO_LEVELINDEX[];
-	static const int PTE_INDEX_SHIFTS[];
+	static const int        PAGETYPE_TO_LEVELINDEX[];
+	static const page::TYPE LEVELINDEX_TO_PAGETYPE[];
+	static const int        PTE_INDEX_SHIFTS[];
 
 public:
 	page_table_base(pte* _top) : top(_top) {}
@@ -157,6 +156,7 @@ void pte_init(pte* table);
 ///
 ///     // Convert physical adr to virtual adr.
 ///     static void* phys_to_virt(u64 padr);
+///     static u64 virt_to_phys(void* vadr);
 /// };
 template <class page_table_traits>
 class page_table_tmpl : public page_table_base
@@ -166,7 +166,25 @@ public:
 	page_table_tmpl() {}
 
 	cause::pair<pte*> declare_table(u64 vadr, page::TYPE pt);
+
 	cause::t set_page(u64 vadr, u64 padr, page::TYPE pt, u64 flags);
+
+	struct page_enum {
+		uptr cur_vadr;
+		uptr end_vadr;
+	};
+	cause::t unset_page_start(
+	    uptr vadr1, uptr vadr2, page_enum* pe);
+	cause::t unset_page_next(
+	    page_enum* pe, uptr* vadr, u64* padr, page::TYPE* pt);
+	cause::t unset_page_end(
+	    page_enum* pe);
+
+private:
+	pte* get_pte(pte* ent) {
+		return static_cast<pte*>(
+		    page_table_traits::phys_to_virt(ent->get_adr()));
+	}
 };
 
 /// @param[in] top  exist page table. null available.
@@ -248,6 +266,92 @@ cause::t page_table_tmpl<page_table_traits>::set_page(
 
 	return cause::OK;
 }
+
+template <class page_table_traits>
+cause::t page_table_tmpl<page_table_traits>::unset_page_start(
+    uptr start_vadr, uptr end_vadr, page_enum* upe)
+{
+	upe->cur_vadr = down_align<uptr>(start_vadr, page::PHYS_L1_SIZE);
+	upe->end_vadr = down_align<uptr>(end_vadr,   page::PHYS_L1_SIZE);
+
+	return cause::OK;
+}
+
+template <class page_table_traits>
+cause::t page_table_tmpl<page_table_traits>::unset_page_next(
+    page_enum* upe, uptr* vadr, u64* padr, page::TYPE* pt)
+{
+	pte* table = top;
+	uptr cur_vadr = upe->cur_vadr;
+
+	pte* table_stack[page::PHYS_LEVEL_CNT];
+
+	int level = page::PHYS_LEVEL_CNT - 1;
+	for (;;) {
+		int index = (cur_vadr >> PTE_INDEX_SHIFTS[level]) & 0x1ff;
+		while (index < 512) {
+			if (cur_vadr > upe->end_vadr)
+				return cause::END;
+
+			pte* ent = &table[index];
+			if (ent->test_flags(pte::P)) {
+				if (ent->test_flags(pte::PS) || level == 0) {
+					*vadr = cur_vadr;
+					*padr = ent->get_adr();
+					*pt = LEVELINDEX_TO_PAGETYPE[level];
+					upe->cur_vadr = cur_vadr +
+					   (UPTR(1) << PTE_INDEX_SHIFTS[level]);
+					ent->set(0, 0);
+					return cause::OK;
+				}
+				else {
+					table_stack[level] = table;
+					--level;
+					table = static_cast<pte*>(
+					    page_table_traits::phys_to_virt(
+					    ent->get_adr()));
+					break;
+				}
+			}
+			else {
+				++index;
+				cur_vadr += UPTR(1) << PTE_INDEX_SHIFTS[level];
+				continue;
+			}
+		}
+		if (index >= 512) {
+			int i;
+			for (i = 0; i < 512; ++i) {
+				if (table[i].test_flags(pte::P))
+					break;
+			}
+
+			if (i == 512) {
+				u64 padr =
+				    page_table_traits::virt_to_phys(table);
+				auto r =
+				    page_table_traits::release_page(this, padr);
+				if (is_fail(r))
+					return r;
+			}
+
+			++level;
+			if (level >= page::PHYS_LEVEL_CNT)
+				return cause::END;
+
+			table = table_stack[level];
+		}
+	}
+}
+
+template <class page_table_traits>
+cause::t page_table_tmpl<page_table_traits>::unset_page_end(page_enum* pe)
+{
+	pe->cur_vadr = UPTR(-1);
+
+	return cause::OK;
+}
+
 
 }  // namespace arch
 

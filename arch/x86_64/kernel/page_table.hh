@@ -23,6 +23,9 @@ public:
 	static void* phys_to_virt(uptr adr) {
 		return arch::map_phys_adr(adr, arch::page::PHYS_L1_SIZE);
 	}
+	static uptr virt_to_phys(void* adr) {
+		return arch::unmap_phys_adr(adr, arch::page::PHYS_L1_SIZE);
+	}
 };
 
 }  // namespace x86

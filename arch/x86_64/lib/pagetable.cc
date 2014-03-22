@@ -1,7 +1,7 @@
 /// @file   pagetable.cc
 /// @brief  Page table.
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 #include <pagetable.hh>
@@ -17,6 +17,13 @@ namespace arch {
 /// [page::PHYS_L4] = 3
 const int page_table_base::PAGETYPE_TO_LEVELINDEX[] = {
 	0, -1, 1, -1, 2, -1, 3,
+};
+
+const page::TYPE page_table_base::LEVELINDEX_TO_PAGETYPE[] = {
+	page::PHYS_L1,
+	page::PHYS_L2,
+	page::PHYS_L3,
+	page::PHYS_L4,
 };
 
 const int page_table_base::PTE_INDEX_SHIFTS[] = {
