@@ -2,7 +2,7 @@
 /// @brief Memory pool controller.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -48,15 +48,15 @@ mempool_ctl::mempool_ctl(
 {
 }
 
-cause::type mempool_ctl::init()
+cause::t mempool_ctl::init()
 {
 	// offpage_mp を生成する。
 	// offpage_mp は offpage mempool を生成するために必要。
 	// offpage_mp 自身を offpage にすることはできない。
-	cause::type r = exclusived_mempool(sizeof (mempool::page),
-	                                   arch::page::INVALID,
-	                                   ONPAGE,
-	                                   &offpage_mp);
+	cause::t r = exclusived_mempool(sizeof (mempool::page),
+	                                arch::page::INVALID,
+	                                ONPAGE,
+	                                &offpage_mp);
 	if (is_fail(r))
 		return r;
 
@@ -69,7 +69,7 @@ cause::type mempool_ctl::init()
 
 /// @brief shared mempool に名前をつける。
 /// @pre mem_io が使用可能であること。
-cause::type mempool_ctl::post_setup()
+cause::t mempool_ctl::post_setup()
 {
 	for (mempool* mp = shared_chain.head();
 	     mp;
@@ -90,7 +90,7 @@ cause::type mempool_ctl::post_setup()
 	return cause::OK;
 }
 
-cause::type mempool_ctl::shared_mempool(u32 objsize, mempool** mp)
+cause::t mempool_ctl::shared_mempool(u32 objsize, mempool** mp)
 {
 	mempool* _mp = find_shared(objsize);
 	if (!_mp)
@@ -114,13 +114,13 @@ void mempool_ctl::release_shared_mempool(mempool* mp)
 /// @brief  用途限定の mempool を生成する。
 //
 /// pate_type に INVALID を指定すると objsize に合わせて自動で選択する。
-cause::type mempool_ctl::exclusived_mempool(
+cause::t mempool_ctl::exclusived_mempool(
     u32 objsize,                ///< [in] オブジェクトサイズ。
     arch::page::TYPE page_type, ///< [in] ページタイプを指定する。
     PAGE_STYLE page_style,      ///< [in] ONPAGE/OFFPAGE/ENTRUST を指定する。
     mempool** new_mp)           ///< [out] 生成された mempool が返される。
 {
-	cause::type r = decide_params(&objsize, &page_type, &page_style);
+	cause::t r = decide_params(&objsize, &page_type, &page_style);
 	if (is_fail(r))
 		return r;
 
@@ -143,7 +143,8 @@ cause::type mempool_ctl::exclusived_mempool(
 	exclusived_chain_lock.wlock();
 
 	mempool* mp;
-	for (mp = exclusived_chain.front(); mp; mp = shared_chain.next(mp)) {
+	for (mp = exclusived_chain.front(); mp; mp = exclusived_chain.next(mp))
+	{
 		if (objsize < mp->get_obj_size()) {
 			exclusived_chain.insert_before(mp, *new_mp);
 			break;
@@ -218,7 +219,7 @@ void mempool_ctl::dump(output_buffer& ob)
 	}
 }
 
-cause::type mempool_ctl::init_shared()
+cause::t mempool_ctl::init_shared()
 {
 	for (uptr size = sizeof (cpu_word) * 4;
 	          size <= 0x100000;
@@ -226,7 +227,7 @@ cause::type mempool_ctl::init_shared()
 	{
 		mempool* mp;
 
-		cause::type r = create_shared(size, &mp);
+		cause::t r = create_shared(size, &mp);
 		if (is_fail(r))
 			return r;
 
@@ -262,12 +263,12 @@ mempool* mempool_ctl::find_shared(u32 objsize)
 //
 /// @note  この関数を呼び出す前に、すでに同じサイズの shared mempool が
 /// 無いことを保証する必要がある。
-cause::type mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
+cause::t mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 {
 	arch::page::TYPE page_type = arch::page::INVALID;
 	PAGE_STYLE page_style = ENTRUST;
 
-	cause::type r = decide_params(&objsize, &page_type, &page_style);
+	cause::t r = decide_params(&objsize, &page_type, &page_style);
 	if (is_fail(r))
 		return r;
 
@@ -314,7 +315,7 @@ cause::type mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 /// @retval cause::OK      成功した。
 /// @retval cause::BADARG  パラメータを決定できなかった。
 ///                        objsize が大きすぎるとパラメータを決定できない。
-cause::type mempool_ctl::decide_params(
+cause::t mempool_ctl::decide_params(
     u32*              objsize,
     arch::page::TYPE* page_type,
     PAGE_STYLE*       page_style)
@@ -363,7 +364,7 @@ cause::type mempool_ctl::decide_params(
 //
 /// mempool を使って mempool_ctl を生成するために、mempool も生成する。
 /// mempool に含まれる mempool:node も生成する。
-cause::type mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
+cause::t mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 {
 	const int cpuid = arch::get_cpu_id();
 
@@ -428,7 +429,7 @@ cause::type mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 	return cause::OK;
 }
 
-extern "C" cause::type mempool_acquire_shared(u32 objsize, mempool** mp)
+extern "C" cause::t mempool_acquire_shared(u32 objsize, mempool** mp)
 {
 	return global_vars::core.mempool_ctl_obj->shared_mempool(objsize, mp);
 }
@@ -438,10 +439,10 @@ extern "C" void mempool_release_shared(mempool* mp)
 	global_vars::core.mempool_ctl_obj->release_shared_mempool(mp);
 }
 
-cause::type mempool_init()
+cause::t mempool_init()
 {
 	mempool_ctl* mpctl;
-	cause::type r = mempool_ctl::create_mempool_ctl(&mpctl);
+	cause::t r = mempool_ctl::create_mempool_ctl(&mpctl);
 	if (is_fail(r))
 		return r;
 
@@ -455,7 +456,7 @@ cause::type mempool_init()
 }
 
 /// @pre mem_io_setup() completed.
-cause::type mempool_post_setup()
+cause::t mempool_post_setup()
 {
 	return global_vars::core.mempool_ctl_obj->post_setup();
 }

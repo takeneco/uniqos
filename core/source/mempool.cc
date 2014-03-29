@@ -40,7 +40,7 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 {
 	obj_name[0] = '\0';
 
-	for (cpu_id i = 0; i < CONFIG_MAX_CPUS; ++i)
+	for (cpu_id_t i = 0; i < CONFIG_MAX_CPUS; ++i)
 		mempool_nodes[i] = 0;
 }
 
@@ -76,18 +76,47 @@ cause::t mempool::destroy()
 	return cause::OK;
 }
 
+cause::pair<void*> mempool::acquire()
+{
+	preempt_disable_section _pds;
+
+	const cpu_id_t cpuid = arch::get_cpu_id();
+
+	void* r = _alloc(cpuid);
+
+	return cause::make_pair(r ? cause::OK : cause::FAIL, r);
+}
+
+cause::pair<void*> mempool::acquire(cpu_id_t cpuid)
+{
+	preempt_disable_section _pds;
+
+	void* r = _alloc(cpuid);
+
+	return cause::make_pair(r ? cause::OK : cause::FAIL, r);
+}
+
+cause::t mempool::release(void* ptr)
+{
+	preempt_disable_section _pds;
+
+	_dealloc(ptr);
+
+	return cause::OK;
+}
+
 void* mempool::alloc()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id cpuid = arch::get_cpu_id();
+	const cpu_id_t cpuid = arch::get_cpu_id();
 
 	void* r = _alloc(cpuid);
 
 	return r;
 }
 
-void* mempool::alloc(cpu_id cpuid)
+void* mempool::alloc(cpu_id_t cpuid)
 {
 	preempt_disable_section _pds;
 
@@ -118,7 +147,7 @@ void mempool::collect_free_pages()
 
 	preempt_disable_section _pds;
 
-	const cpu_id cpuid = arch::get_cpu_id();
+	const cpu_id_t cpuid = arch::get_cpu_id();
 
 	mempool_nodes[cpuid]->collect_free_pages(this);
 }
@@ -275,7 +304,7 @@ u32 mempool::normalize_obj_size(u32 objsize)
 	return r;
 }
 
-void* mempool::_alloc(cpu_id cpuid)
+void* mempool::_alloc(cpu_id_t cpuid)
 {
 	preempt_disable_section _pds;
 
@@ -473,11 +502,15 @@ void* operator new (uptr size, mempool* mp)
 		    ("!!!!new object size is over the mempool object size.")
 		    ("\nnew object size:").u(size)
 		    (", mempool object size:").u(mp->get_obj_size())();
-		return 0;
+		return nullptr;
 	}
 #endif  // CONFIG_DEBUG_VALIDATE
 
-	return mp->alloc();
+	auto r = mp->acquire();
+	if (is_ok(r))
+		return r.get_value();
+	else
+		return nullptr;
 }
 
 void* operator new [] (uptr size, mempool* mp)
@@ -488,9 +521,13 @@ void* operator new [] (uptr size, mempool* mp)
 		    ("!!!!new object size is over the mempool object size.")
 		    ("\nnew object size:").u(size)
 		    (", mempool object size:").u(mp->get_obj_size())();
-		return 0;
+		return nullptr;
 	}
 #endif  // CONFIG_DEBUG_VALIDATE
 
-	return mp->alloc();
+	auto r = mp->acquire();
+	if (is_ok(r))
+		return r.get_value();
+	else
+		return nullptr;
 }

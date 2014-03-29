@@ -1,11 +1,11 @@
 /// @file   mempool.hh
-/// @brief  mempool interface.
+/// @brief  mempool interface declaration.
 //
 // (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_MEMPOOL_HH_
-#define INCLUDE_MEMPOOL_HH_
+#ifndef CORE_INCLUDE_CORE_MEMPOOL_HH_
+#define CORE_INCLUDE_CORE_MEMPOOL_HH_
 
 #include <arch.hh>
 #include <chain.hh>
@@ -24,8 +24,8 @@ class mempool_ctl;
 /// (2) cpu_node の数だけ set_node() を呼び出して node を設定する。
 ///     node は cpu_node に対応する領域を割り当てるべき。
 ///
-/// mempool_ctl 経由で mempool を生成すれば、node の生成には
-/// mempool_ctl::node_mp を使う。
+/// mempool_ctl 経由で mempool を生成すれば、node は mempool_ctl::node_mp
+/// から生成される。
 class mempool
 {
 	friend class mempool_ctl;
@@ -95,10 +95,14 @@ public:
 	uptr get_total_obj_size() const { return total_obj_size; }
 	sptr get_alloc_cnt() const { return alloc_cnt.load(); }
 
-	void* alloc();
-	void* alloc(cpu_id cpuid);
-	void dealloc(void* ptr);
+	cause::pair<void*> acquire();
+	cause::pair<void*> acquire(cpu_id_t cpuid);
+	cause::t release(void* ptr);
 	void collect_free_pages();
+
+	void* alloc();             ///< DUPLICATED
+	void* alloc(cpu_id cpuid); ///< DUPLICATED
+	void dealloc(void* ptr);   ///< DUPLICATED
 
 	void inc_shared_count() { shared_count.add(1); }
 	void dec_shared_count() { shared_count.sub(1); }
@@ -141,7 +145,7 @@ private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 	static u32 normalize_obj_size(u32 objsize);
 
-	void* _alloc(cpu_id cpuid);
+	void* _alloc(cpu_id_t cpuid);
 	void _dealloc(void* ptr);
 
 	void attach(page* pg);
@@ -177,6 +181,29 @@ private:
 	char obj_name[32];
 };
 
+template <class T>
+class mempool_for : public mempool
+{
+public:
+	mempool_for(u32 _obj_size,
+	            arch::page::TYPE ptype = arch::page::INVALID,
+	            mempool* _page_pool = 0) :
+		mempool(_obj_size, ptype, _page_pool)
+	{}
+
+	cause::pair<T*> acquire() {
+		auto r = mempool::acquire();
+		return cause::pair<T*>(r.r, r.value);
+	}
+	cause::pair<T*> acquire(cpu_id_t cpuid) {
+		auto r = mempool::acquire(cpuid);
+		return cause::pair<T*>(r.r, r.value);
+	}
+	cause::t release(T* ptr) {
+		return mempool::release(ptr);
+	}
+};
+
 extern "C" cause::t mempool_acquire_shared(u32 objsize, mempool** mp);
 extern "C" void     mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
@@ -186,7 +213,7 @@ void* operator new (uptr, mempool* mp);
 void* operator new [] (uptr, mempool* mp);
 
 inline void operator delete (void* p, mempool* mp) {
-	mp->dealloc(p);
+	mp->release(p);
 }
 
 
