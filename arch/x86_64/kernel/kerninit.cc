@@ -119,8 +119,7 @@ cause::t create_init_process()
 
 	mem_copy(bundle->mod_bytes, src, vadr);
 
-	log()("vadr=")(vadr)().x(bundle->mod_bytes, vadr, 1, 8, "vadr")();
-
+	//TODO:It is a magic number
 	pr->ref_ptbl().set_page(0x00100000, padr,
 	    arch::page::PHYS_L1,
 	    arch::pte::P | arch::pte::US | arch::pte::A);
@@ -131,8 +130,6 @@ cause::t create_init_process()
 	if (is_fail(r)) {
 		return r;
 	}
-
-	log()("init:stack/p=").x(padr)();
 
 	pr->ref_ptbl().set_page(UPTR(0x00007ffffffff000), padr,
 	    arch::page::PHYS_L1,
@@ -169,8 +166,6 @@ cause::t create_init_process()
 
 	t->ready();
 
-	log()("process:")(pr)()("thread->regset:")(t->ref_regset())();
-
 	return cause::OK;
 }
 
@@ -199,7 +194,8 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	vga_dev.init(80, 25, (void*)0xb8000);
+	//vga_dev.init(80, 25, (void*)0xb8000);
+	vga_dev.init(80, 25, arch::map_phys_adr(0xb8000, 4096));
 	log_install(0, &vga_dev);
 	log_install(1, &vga_dev);
 
@@ -266,18 +262,6 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 	    static_cast<const bootinfo::log*>(get_info(bootinfo::TYPE_LOG));
 	if (bootlog) {
 		log().write(bootlog->info_bytes - sizeof *bootlog, bootlog->log);
-	}
-
-	const bootinfo::module* bundle =
-	    static_cast<const bootinfo::module*>
-	    (get_info(bootinfo::TYPE_BUNDLE));
-	if (bundle) {
-		//log()("bundle size:").u(bundle->size)();
-		//log()("bundle start:").x(bundle->mod_start)();
-		//log().write(bundle->size,
-		//            reinterpret_cast<void*>(arch::map_phys_adr(bundle->mod_start, bundle->size)));
-	} else {
-		log()("no bundle.")();
 	}
 
 	r = acpi_init();
@@ -357,6 +341,59 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 		log ob;
 		dump_build_info(ob);
 	}
+
+	////// start:boot memoryのテスト
+	const bootinfo::adr_map* adr_map =
+	    reinterpret_cast<const bootinfo::adr_map*>
+	    (get_info(bootinfo::TYPE_ADR_MAP));
+	const bootinfo::mem_alloc* mem_alloc =
+	    reinterpret_cast<const bootinfo::mem_alloc*>
+	    (get_info(bootinfo::TYPE_MEM_ALLOC));
+	const bootinfo::mem_work* mem_work =
+	    reinterpret_cast<const bootinfo::mem_work*>
+	    (get_info(bootinfo::TYPE_MEM_WORK));
+
+	log()("ADR_MAP:")();
+	u32 read_bytes = sizeof *adr_map;
+	for (int i = 0; ; ++i) {
+		if (read_bytes >= adr_map->info_bytes)
+			break;
+
+		const bootinfo::adr_map::entry& e = adr_map->entries[i];
+		log()("adr:").x(e.adr, 16)
+		     ("  bytes:").x(e.bytes, 16)
+		     ("  type:").x(e.type)
+		     ("  zero:").x(e.zero)();
+
+		read_bytes += sizeof adr_map->entries[i];
+	}
+
+	log()("MEM_ALLOC:")();
+	read_bytes = sizeof *mem_alloc;
+	for (int i = 0; ; ++i) {
+		if (read_bytes >= mem_alloc->info_bytes)
+			break;
+
+		const bootinfo::mem_alloc::entry& e = mem_alloc->entries[i];
+		log()("adr:").x(e.adr, 16)
+		     ("  bytes:").x(e.bytes, 16)();
+
+		read_bytes += sizeof mem_alloc->entries[i];
+	}
+
+	log()("MEM_WORK:")();
+	read_bytes = sizeof *mem_work;
+	for (int i = 0; ; ++i) {
+		if (read_bytes >= mem_work->info_bytes)
+			break;
+
+		const bootinfo::mem_work::entry& e = mem_work->entries[i];
+		log()("adr:").x(e.adr, 16)
+		     ("  bytes:").x(e.bytes, 16)();
+
+		read_bytes += sizeof mem_work->entries[i];
+	}
+	////// end
 
 	log()("test_init() : ").u(test_init())();
 
