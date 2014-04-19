@@ -19,10 +19,9 @@
 
 #include "misc.hh"
 
-// multiboot と multiboot2 はインクルードガードがかぶっている
-#include <multiboot.h>
 #include <bootinfo.hh>
 #include <config.h>
+// multiboot と multiboot2 はインクルードガードがかぶっている
 #include <multiboot.h>
 #include <vga.hh>
 
@@ -30,32 +29,9 @@
 extern "C" u8 self_baseadr[];
 extern "C" u8 self_size[];
 
+extern text_vga vga_dev;
+
 namespace {
-
-text_vga vga_dev;
-
-const uptr BOOTHEAP_END = bootinfo::BOOTHEAP_END;
-
-const struct {
-	allocator::slot_index slot;
-	uptr slot_head;
-	uptr slot_tail;
-} memory_slots[] = {
-	{ SLOT_INDEX_CONVENTIONAL, 0x00000000,       0x000fffff   },
-	{ SLOT_INDEX_BOOTHEAP,     0x00100000,       BOOTHEAP_END },
-	{ SLOT_INDEX_NORMAL,       BOOTHEAP_END + 1, 0xffffffff   },
-};
-
-void init_sep(separator* sep)
-{
-	for (u32 i = 0; i < sizeof memory_slots / sizeof memory_slots[0]; ++i)
-	{
-		sep->set_slot_range(
-		    memory_slots[i].slot,
-		    memory_slots[i].slot_head,
-		    memory_slots[i].slot_tail);
-	}
-}
 
 void mem_setup(const multiboot_info* mbi)
 {
@@ -63,7 +39,7 @@ void mem_setup(const multiboot_info* mbi)
 
 	allocator* alloc = get_alloc();
 	separator sep(alloc);
-	init_sep(&sep);
+	init_separator(&sep);
 
 	const u8* end = (const u8*)mbi->mmap_addr + mbi->mmap_length;
 	const u8* cur = (const u8*)mbi->mmap_addr;
@@ -92,6 +68,10 @@ void mem_setup(const multiboot_info* mbi)
 		}
 	}
 
+	// コンベンショナルメモリは multiboot のパラメータの格納に
+	// 使われてしまう。
+	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0xfffff, false);
+
 	// self memory
 	alloc->reserve(
 	    SLOTM_NORMAL | SLOTM_BOOTHEAP,
@@ -105,10 +85,6 @@ void mem_setup(const multiboot_info* mbi)
 	    reinterpret_cast<uptr>(mbi),
 	    sizeof *mbi,
 	    true);
-
-	// コンベンショナルメモリは multiboot のパラメータの格納に
-	// 使われてしまう。
-	alloc->reserve(SLOTM_CONVENTIONAL, 0, 0xfffff, false);
 }
 
 cause::t mbmmap_to_adrmap(

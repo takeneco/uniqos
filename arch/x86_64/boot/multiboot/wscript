@@ -1,6 +1,6 @@
 # wscript for the multiboot image.
 #
-# (C) 2011-2013 KATO Takeshi
+# (C) 2011-2014 KATO Takeshi
 #
 
 source = (
@@ -10,6 +10,7 @@ source = (
     'load.cc',
     'global.cc',
     'memlog.cc',
+    'memslot.cc',
     'postload.cc',
 )
 
@@ -30,6 +31,7 @@ def configure(x):
 	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
 
 	if x.options.compiler == 'clang':
+		x.env.append_value('CXXFLAGS_MB', '-std=c++11')
 		x.env.append_value('CXXFLAGS_MB', '-Wc++11-compat')
 		x.env.append_value('CXXFLAGS_MB', '-Wc++11-extensions')
 

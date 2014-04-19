@@ -21,6 +21,7 @@
 
 #include <bootinfo.hh>
 #include <config.h>
+// multiboot と multiboot2 はインクルードガードがかぶっている
 #include <multiboot2.h>
 #include <vga.hh>
 
@@ -29,32 +30,9 @@
 extern "C" u8 self_baseadr[];
 extern "C" u8 self_size[];
 
+extern text_vga vga_dev;
+
 namespace {
-
-text_vga vga_dev;
-
-const uptr BOOTHEAP_END = bootinfo::BOOTHEAP_END;
-
-const struct {
-	allocator::slot_index slot;
-	uptr slot_head;
-	uptr slot_tail;
-} memory_slots[] = {
-	{ SLOT_INDEX_CONVENTIONAL, 0x00000000,       0x000fffff   },
-	{ SLOT_INDEX_BOOTHEAP,     0x00100000,       BOOTHEAP_END },
-	{ SLOT_INDEX_NORMAL,       BOOTHEAP_END + 1, 0xffffffff   },
-};
-
-void init_sep(separator* sep)
-{
-	for (u32 i = 0; i < sizeof memory_slots / sizeof memory_slots[0]; ++i)
-	{
-		sep->set_slot_range(
-		    memory_slots[i].slot,
-		    memory_slots[i].slot_head,
-		    memory_slots[i].slot_tail);
-	}
-}
 
 void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 {
@@ -65,7 +43,7 @@ void mem_setup(const multiboot_tag_mmap* mbt_mmap, const u32* tag)
 
 	allocator* alloc = get_alloc();
 	separator sep(alloc);
-	init_sep(&sep);
+	init_separator(&sep);
 
 	const void* end = (const u8*)mbt_mmap + mbt_mmap->size;
 	const multiboot_memory_map_t* mmap = mbt_mmap->entries;

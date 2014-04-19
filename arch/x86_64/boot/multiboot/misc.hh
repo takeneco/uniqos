@@ -44,6 +44,7 @@ enum MEM_SLOT_MASK {
 	SLOTM_CONVENTIONAL = 1 << SLOT_INDEX_CONVENTIONAL,
 };
 
+void  init_separator(separator* sep);
 void  init_alloc();
 allocator* get_alloc();
 
@@ -84,7 +85,7 @@ class memlog_file : public io_node
 	friend class io_node;
 
 public:
-	static cause::type setup();
+	static cause::t setup();
 
 	memlog_file() {}
 
