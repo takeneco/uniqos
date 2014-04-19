@@ -20,7 +20,7 @@
 
 #include <native_thread.hh>
 #include <global_vars.hh>
-#include <mempool.hh>
+#include <core/mempool.hh>
 #include <native_cpu_node.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
@@ -108,12 +108,12 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 	native_thread* t = new (thread_mp) native_thread(
 	    text, param, 1 << THREAD_SIZE_SHIFTS);
 	if (!t) {
-		return cause::gen_pair(cause::NOMEM, t);
+		return cause::make_pair(cause::NOMEM, t);
 	}
 
 	owner_cpu->attach_thread(t);
 
-	return cause::gen_pair(cause::OK, t);
+	return cause::make_pair(cause::OK, t);
 }
 
 /// @param[in] t  cpu から detach() された native_thread.

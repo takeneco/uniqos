@@ -1,11 +1,11 @@
 /// @file  basic-types.hh
 /// @brief 共通で使う型・関数など。
 //
-// (C) 2008-2013 KATO Takeshi
+// (C) 2008-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_BASIC_TYPES_HH_
-#define CORE_INCLUDE_BASIC_TYPES_HH_
+#ifndef CORE_INCLUDE_CORE_BASIC_TYPES_HH_
+#define CORE_INCLUDE_CORE_BASIC_TYPES_HH_
 
 #include <arch/inttype.hh>
 
@@ -364,6 +364,8 @@ namespace cause
 		BADARG = 3,
 		/// 範囲外。
 		OUTOFRANGE =4,
+		/// データの終了に到達した。
+		END = 5,
 		/// デバイスが無い。
 		NODEV = 10,
 
@@ -375,7 +377,7 @@ namespace cause
 		INVALID_OBJECT,
 		NOFUNC,
 		/// バグ
-		UNKNOWN = 1000,
+		UNKNOWN = 0xffff,
 	};
 	typedef type t;
 
@@ -396,18 +398,33 @@ namespace cause
 			value(_value)
 		{}
 
+		operator T& () {
+			return value;
+		}
+		operator const T& () const {
+			return value;
+		}
+
+		void set_cause(type _r) { r = _r; }
+		t    get_cause() const { return r; }
 		bool is_ok() const { return cause::is_ok(r); }
 		bool is_fail() const { return cause::is_fail(r); }
+
+		void set_value(T _v) { value = _v; }
+		T    get_value() { return value; }
 
 		type r;      ///< Result.
 		T    value;  ///< Additional result value.
 	};
 
-	template<class T> inline bool is_ok(pair<T> x) {
-		return is_ok(x.r);
+	template<class T> inline bool is_ok(T x) {
+		return x.is_ok();
 	}
-	template<class T> inline bool is_fail(pair<T> x) {
-		return is_fail(x.r);
+	template<class T> inline bool is_fail(T x) {
+		return x.is_fail();
+	}
+	template<class T> inline pair<T> make_pair(type r, T value) {
+		return pair<T>(r, value);
 	}
 }
 

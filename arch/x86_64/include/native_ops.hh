@@ -1,13 +1,13 @@
 /// @file native_ops.hh
 /// @brief  C++ から呼び出すアセンブラ命令
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 namespace native {
@@ -183,7 +183,9 @@ inline void lidt(idt_ptr64* ptr) {
 inline void write_msr(u64 val, u32 adr)
 {
 	asm volatile ("wrmsr" : :
-	    "d" (val >> 32), "a" (val & 0xffffffff), "c" (adr));
+	    "d" (static_cast<u32>(val >> 32)),
+	    "a" (static_cast<u32>(val & 0xffffffff)),
+	    "c" (adr));
 }
 
 inline u64 read_msr(u32 adr)

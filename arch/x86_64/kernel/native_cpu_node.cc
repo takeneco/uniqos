@@ -22,7 +22,7 @@
 #include <flags.hh>
 #include <global_vars.hh>
 #include <log.hh>
-#include <mempool.hh>
+#include <core/mempool.hh>
 #include <native_ops.hh>
 #include <native_thread.hh>
 #include <new_ops.hh>
@@ -119,14 +119,23 @@ cause::t native_cpu_node::setup_tss()
 	if (is_fail(r))
 		return r;
 
-	void* ist_intr = ist_mp->alloc();
-	void* ist_trap = ist_mp->alloc();
-	mempool_release_shared(ist_mp);
-	if (!ist_intr || !ist_trap)
-		return cause::NOMEM;
+	auto ist_intr = ist_mp->acquire();
+	auto ist_trap = ist_mp->acquire();
+	if (is_fail(ist_intr) || is_fail(ist_trap)) {
+		if (is_ok(ist_intr))
+			ist_mp->release(ist_intr.value);
+		if (is_ok(ist_trap))
+			ist_mp->release(ist_trap.value);
 
-	tss.set_ist(ist_layout(ist_intr), IST_INTR);
-	tss.set_ist(ist_layout(ist_trap), IST_TRAP);
+		mempool_release_shared(ist_mp);
+
+		return cause::NOMEM;
+	}
+
+	mempool_release_shared(ist_mp);
+
+	tss.set_ist(ist_layout(ist_intr.value), IST_INTR);
+	tss.set_ist(ist_layout(ist_trap.value), IST_TRAP);
 
 	return cause::OK;
 }

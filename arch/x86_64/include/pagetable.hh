@@ -209,10 +209,10 @@ cause::pair<pte*> page_table_tmpl<page_table_traits>::declare_table(
 	if (UNLIKELY(!top)) {
 		const auto r = page_table_traits::acquire_page(this);
 		if (is_fail(r))
-			return cause::p<pte*>(r.r, 0);
+			return cause::make_pair<pte*>(r.r, 0);
 
 		top = static_cast<pte*>(
-		    page_table_traits::phys_to_virt(r.value));
+		    page_table_traits::phys_to_virt(r));
 		pte_init(top);
 	}
 
@@ -226,10 +226,10 @@ cause::pair<pte*> page_table_tmpl<page_table_traits>::declare_table(
 		if (table[index].test_flags(pte::P) == 0) {
 			const auto r = page_table_traits::acquire_page(this);
 			if (is_fail(r))
-				return cause::p<pte*>(r.r, 0);
+				return cause::make_pair<pte*>(r.r, 0);
 
 			pte_init(static_cast<pte*>(
-			    page_table_traits::phys_to_virt(r.value)));
+			    page_table_traits::phys_to_virt(r)));
 			table[index].set(r.value,
 			    pte::P | pte::RW | pte::US | pte::A);
 		}
@@ -238,7 +238,7 @@ cause::pair<pte*> page_table_tmpl<page_table_traits>::declare_table(
 		    page_table_traits::phys_to_virt(table[index].get_adr()));
 	}
 
-	return cause::p(cause::OK, table);
+	return cause::make_pair(cause::OK, table);
 }
 
 /// @brief  ページテーブルに物理アドレスを割り当てる。

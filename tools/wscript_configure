@@ -10,8 +10,8 @@ def load_config(x, cf):
 	def_config(x, cf, 'ARCHID', 'ARCH_'+x.env.CONFIG_ARCH, quote=False)
 
 	def_config(x, cf, 'DEBUG', 0)
-	def_config(x, cf, 'DEBUG_VALIDATE', 0)
-	def_config(x, cf, 'DEBUG_VERBOSE', 0)
+	def_config(x, cf, 'DEBUG_VALIDATE', 1)
+	def_config(x, cf, 'DEBUG_VERBOSE', 1)
 
 	# 0:disable / 1:enable boot phase debugging.
 	def_config(x, cf, 'DEBUG_BOOT', 0)
@@ -77,7 +77,8 @@ def configure(x):
 
 	config_file = x.path.parent.find_node(x.options.option_file)
 	if config_file:
-		execfile(config_file.abspath(), cf)
+		exec(compile(
+		    config_file.read(), config_file.abspath(), 'exec'), cf)
 
 	load_config(x, cf)
 
