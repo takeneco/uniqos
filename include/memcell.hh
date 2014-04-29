@@ -1,15 +1,15 @@
-/// @file  memcell.cc
+/// @file  memcell.hh
 /// @brief Physical memory management.
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMCELL_HH_
 #define INCLUDE_MEMCELL_HH_
 
 #include <arch.hh>
-#include <bitmap.hh>
-#include <chain.hh>
+#include <core/bitmap.hh>
+#include <core/chain.hh>
 #include <new_ops.hh>
 
 #include <output_buffer.hh>
@@ -64,12 +64,12 @@ public:
 	sptr get_free_pages() const { return free_pages; }
 	sptr get_alloc_pages() const { return alloc_pages; }
 
-	cause::type reserve_1page(uptr* padr);
-	cause::type free_1page(uptr padr);
+	cause::t reserve_1page(uptr* padr);
+	cause::t free_1page(uptr padr);
 
 private:
-	cause::type _reserve_1page(uptr* padr);
-	cause::type _free_1page(uptr padr);
+	cause::t _reserve_1page(uptr* padr);
+	cause::t _free_1page(uptr padr);
 
 private:
 	/// メモリアドレスを表現するときは uptr を使う。
@@ -366,9 +366,9 @@ void mem_cell_base<CELLTYPE>::build_free_chain()
 }
 
 template<class CELLTYPE>
-cause::type mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
+cause::t mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
 {
-	const cause::type r = _reserve_1page(padr);
+	const cause::t r = _reserve_1page(padr);
 
 	if (is_ok(r))
 		++alloc_pages;
@@ -377,9 +377,9 @@ cause::type mem_cell_base<CELLTYPE>::reserve_1page(uptr* padr)
 }
 
 template<class CELLTYPE>
-cause::type mem_cell_base<CELLTYPE>::free_1page(uptr padr)
+cause::t mem_cell_base<CELLTYPE>::free_1page(uptr padr)
 {
-	const cause::type r = _free_1page(padr);
+	const cause::t r = _free_1page(padr);
 
 	if (is_ok(r))
 		--alloc_pages;
@@ -392,7 +392,7 @@ cause::type mem_cell_base<CELLTYPE>::free_1page(uptr padr)
 /// @retval cause::OK 成功した。
 /// @retval cause::NOMEM 空きメモリがない。
 template<class CELLTYPE>
-cause::type mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
+cause::t mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 {
 	cell* c;
 
@@ -423,9 +423,9 @@ cause::type mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 ///                 ページサイズより小さなビットは無視してしまう。
 /// @retval cause::OK  Succeeded.
 template<class CELLTYPE>
-cause::type mem_cell_base<CELLTYPE>::_free_1page(uptr padr)
+cause::t mem_cell_base<CELLTYPE>::_free_1page(uptr padr)
 {
-	cause::type r = cause::OK;
+	cause::t r = cause::OK;
 
 	cell& c = get_cell(padr);
 	if (c.table.is_false_all())
@@ -458,7 +458,7 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 		return false;
 
 	uptr up_padr;
-	const cause::type r = up_level->_reserve_1page(&up_padr);
+	const cause::t r = up_level->_reserve_1page(&up_padr);
 	if (r != cause::OK)
 		return false;
 

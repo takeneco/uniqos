@@ -1,14 +1,14 @@
 /// @file  intr_ctl.hh
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_INTR_CTL_HH_
-#define CORE_INCLUDE_INTR_CTL_HH_
+#ifndef CORE_INCLUDE_CORE_INTR_CTL_HH_
+#define CORE_INCLUDE_CORE_INTR_CTL_HH_
 
 #include <arch.hh>
 #include "arch_specs.hh"
-#include <chain.hh>
+#include <core/chain.hh>
 
 
 /// @brief 割り込み発生時に呼ばれる関数。
@@ -70,12 +70,12 @@ public:
 	/// @internal  initialize handler_table[]
 	intr_ctl() {}
 
-	cause::type init();
-	cause::type install_handler(arch::intr_id vec, intr_handler* h);
-	cause::type set_post_handler(arch::intr_id vec, post_intr_handler h);
+	cause::t init();
+	cause::t install_handler(arch::intr_id vec, intr_handler* h);
+	cause::t set_post_handler(arch::intr_id vec, post_intr_handler h);
 	void call_interrupt(u32 vector);
 };
 
 
-#endif  // CORE_INCLUDE_INTR_CTL_HH_
+#endif  // Include guard
 

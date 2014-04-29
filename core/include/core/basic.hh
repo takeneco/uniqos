@@ -9,7 +9,8 @@
 
 #include "basic-types.hh"
 #include "basic-defs.hh"
+#include "chain.hh"
 
 
-#endif  // include guards
+#endif  // include guard
 

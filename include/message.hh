@@ -1,13 +1,13 @@
 /// @file   message.hh
 /// @brief  kernel internal message.
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_MESSAGE_HH_
-#define INCLUDE_MESSAGE_HH_
+#ifndef CORE_INCLUDE_CORE_MESSAGE_HH_
+#define CORE_INCLUDE_CORE_MESSAGE_HH_
 
-#include <chain.hh>
+#include <core/chain.hh>
 
 
 class message
@@ -17,6 +17,18 @@ public:
 	chain_node<message>& chain_hook() { return chain_node_; }
 
 	typedef void (*handler_type)(message* msg);
+
+	message()
+#if CONFIG_DEBUG_VALIDATE > 0
+		: handler(0)
+#endif  // CONFIG_DEBUG_VALIDATE > 0
+	{
+	}
+	explicit message(handler_type ht)
+		: handler(ht)
+	{
+	}
+
 	handler_type handler;
 };
 

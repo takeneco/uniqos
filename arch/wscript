@@ -1,9 +1,6 @@
 #
-# (C) 2012-2013 KATO Takeshi
+# (C) 2012-2014 KATO Takeshi
 #
-
-def options(x):
-	x.recurse('x86_64')
 
 def configure(x):
 	x.recurse(x.env.CONFIG_ARCH)

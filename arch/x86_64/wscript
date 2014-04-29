@@ -4,20 +4,7 @@
 #
 
 
-def options(x):
-	conf_opt = x.get_option_group('configure options')
-	conf_opt.add_option('--boot-fd',
-	    action  = 'store_true',
-	    default = False,
-	    help    = 'create boot floppy image.')
-
-
 def configure(x):
-	x.env.boot_fd = x.options.boot_fd
-
-	if x.env.boot_fd:
-		x.find_program('mcopy', var='MCOPY')
-
 	if x.options.compiler == 'clang':
 		x.env.append_value('CFLAGS_KERNEL', '-mcmodel=large')
 		x.env.append_value('CXXFLAGS_KERNEL', '-mcmodel=large')
@@ -52,11 +39,11 @@ def configure(x):
 	x.env.append_unique('CXXFLAGS_KERNEL', x.env.COMMON_CXXFLAGS)
 
 	x.recurse('boot')
-	x.recurse('kernel')
+	x.recurse('source')
 
 
 def build(x):
 	x.recurse('lib')
-	x.recurse('kernel')
 	x.recurse('boot')
+	x.recurse('source')
 
