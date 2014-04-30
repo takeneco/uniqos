@@ -1,5 +1,5 @@
 /*
- * (C) 2011-2013 KATO Takeshi
+ * (C) 2011-2014 KATO Takeshi
  */
 
 OUTPUT_FORMAT(elf32-i386)
@@ -14,7 +14,7 @@ SECTIONS {
 	. = self_baseadr + SIZEOF_HEADERS;
 	.text : { *(.mbh) *(.entry) *(.text) }
 	.rodata : { *(.rodata) }
-	.data : { *(EXCLUDE_FILE(*/kernel.o */first_process.o) .data) }
+	.data : { *(EXCLUDE_FILE(*/kernel.o */first.o) .data) }
 	.bss : {
 		*(.bss)
 		stack_start = .;
@@ -33,7 +33,7 @@ SECTIONS {
 	kernel_size = . - kernel;
 
 	first_process = .;
-	.first_process : { */first_process.o(.data) }
+	.first_process : { */first.o(.data) }
 	first_process_size = . - first_process;
 
 	self_size = . - self_baseadr;

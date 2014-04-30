@@ -59,17 +59,17 @@ def build(x):
 	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
 	           '${SRC} ${TGT}',
 	    target = k_obj,
-	    source = '../../kernel/kernel.bin',
+	    source = '../../source/kernel.bin',
 	)
 	sources.append(k_obj)
 
 	# first_process
-	fp_obj = x.path.find_or_declare('first_process.o')
+	fp_obj = x.path.find_or_declare('first.o')
 	x(
 	    rule = '${OBJCOPY} -I binary -O elf32-i386 -B i386 '
 	           '${SRC} ${TGT}',
 	    target = fp_obj,
-	    source = '../../kernel/first_process',
+	    source = '../../source/first/first',
 	)
 	sources.append(fp_obj)
 

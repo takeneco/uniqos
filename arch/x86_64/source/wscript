@@ -48,6 +48,7 @@ def configure(x):
 
 
 def build(x):
+	x.recurse('first')
 
 	kern_target = x.path.find_or_declare('kernel.bin')
 
@@ -83,16 +84,7 @@ def build(x):
 	    use       = kernel_link_use,
 	    linkflags = kern_linkflags)
 
-	x(  target   = 'kernel.bin.lzma',
-	    source   = 'kernel.bin',
-	    rule     = '${LZMA} -c ${SRC} > ${TGT}')
+	#x(  target   = 'kernel.bin.lzma',
+	#    source   = 'kernel.bin',
+	#    rule     = '${LZMA} -c ${SRC} > ${TGT}')
 
-	fp_target = x.path.find_or_declare('first_process')
-	fp_linkerscript = x.path.find_node('first_process.lds')
-	x.add_manual_dependency(fp_target, fp_linkerscript)
-	fp_linkflags = ['-nostdlib', '-Wl,-T'+fp_linkerscript.abspath()]
-	x.program(
-	    features  = 'asm cprogram',
-	    target    = fp_target,
-	    source    = 'first_process.S',
-	    linkflags = fp_linkflags)
