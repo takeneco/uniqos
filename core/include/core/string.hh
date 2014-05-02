@@ -1,4 +1,4 @@
-// @file   core/include/core/string.hh
+// @file   core/string.hh
 // @brief  Memory ops.
 //
 // (C) 2010-2014 KATO Takeshi
@@ -7,7 +7,7 @@
 #ifndef CORE_INCLUDE_CORE_STRING_HH_
 #define CORE_INCLUDE_CORE_STRING_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 int mem_compare(uptr bytes, const void* mem1, const void* mem2);
@@ -30,5 +30,5 @@ int u_to_binstr(umax n, char s[sizeof n * 8]);
 int u_to_decstr(umax n, char s[sizeof n * 3]);
 
 
-#endif  // CORE_INCLUDE_CORE_STRING_HH_
+#endif  // Include guard
 

@@ -1,19 +1,32 @@
 /// @file  hpet.cc
 /// @brief HPET timer driver.
+
+//  UNIQOS  --  Unique Operating System
+//  (C) 2012-2014 KATO Takeshi
 //
-// (C) 2012-2013 KATO Takeshi
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
 //
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
 #include <clock_src.hh>
 #include <config.h>
-#include <cpu_node.hh>
-#include <global_vars.hh>
-#include <intr_ctl.hh>
+#include <core/cpu_node.hh>
+#include <core/global_vars.hh>
+#include <core/intr_ctl.hh>
+#include <core/log.hh>
+#include <core/mempool.hh>
+#include <core/message.hh>
 #include <irq_ctl.hh>
-#include <log.hh>
-#include <mempool.hh>
-#include <message.hh>
 #include "mpspec.hh"
 #include <new_ops.hh>
 
@@ -187,16 +200,16 @@ public:
 	hpet(const ACPI_TABLE_HPET* e);
 #endif  // CONFIG_ACPI
 
-	cause::type setup();
+	cause::t setup();
 	void handler1();
 
 private:
-	cause::type setup_ops();
-	cause::type setup_intr();
+	cause::t setup_ops();
+	cause::t setup_intr();
 	u64 get_clock();
 
 	cause::pair<tick_time> on_clock_source_UpdateClock();
-	cause::type on_clock_source_SetTimer(tick_time clock, message* msg);
+	cause::t on_clock_source_SetTimer(tick_time clock, message* msg);
 	cause::pair<u64> on_clock_source_ClockToNanosec(u64 clock);
 	cause::pair<u64> on_clock_source_NanosecToClock(u64 nanosec);
 
@@ -218,7 +231,7 @@ hpet::hpet(const ACPI_TABLE_HPET* e) :
 }
 
 namespace {
-cause::type hpet_detect_acpi(hpet** dev)
+cause::t hpet_detect_acpi(hpet** dev)
 {
 	ACPI_TABLE_HPET* hpet_entry;
 	ACPI_STATUS r = AcpiGetTable(ACPI_SIG_HPET, 0,
@@ -238,9 +251,9 @@ cause::type hpet_detect_acpi(hpet** dev)
 
 #endif  // CONFIG_ACPI
 
-cause::type hpet::setup()
+cause::t hpet::setup()
 {
-	cause::type r = setup_ops();
+	cause::t r = setup_ops();
 	if (is_fail(r))
 		return r;
 
@@ -252,7 +265,7 @@ cause::type hpet::setup()
 
 	auto _1sec_clks = nanosec_to_clock(1000000000);
 	if (is_fail(_1sec_clks))
-		return _1sec_clks.r;
+		return _1sec_clks.get_cause();
 
 	regs->disable();
 	regs->counter = 0;
@@ -318,7 +331,7 @@ void hpet::handler1()
 	}
 }
 
-cause::type hpet::setup_intr()
+cause::t hpet::setup_intr()
 {
 t=0;
 msg_posted=false;
@@ -340,7 +353,7 @@ msg_posted=false;
 	return cause::OK;
 }
 
-cause::type hpet::setup_ops()
+cause::t hpet::setup_ops()
 {
 	operations* _ops = new (mem_alloc(sizeof (operations))) operations;
 	if (!_ops)
@@ -378,7 +391,7 @@ cause::pair<tick_time> hpet::on_clock_source_UpdateClock()
 	return cause::pair<tick_time>(cause::OK, clk);
 }
 
-cause::type hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
+cause::t hpet::on_clock_source_SetTimer(tick_time clock, message* msg)
 {
 	msg1 = msg;
 	regs->set_oneshot_time(TIMER_1, clock);
@@ -409,9 +422,9 @@ cause::pair<u64> hpet::on_clock_source_NanosecToClock(u64 nanosec)
 	return cause::pair<u64>(cause::OK, clock);
 }
 
-cause::type hpet_detect(hpet** dev)
+cause::t hpet_detect(hpet** dev)
 {
-	cause::type r;
+	cause::t r;
 
 #if CONFIG_ACPI
 	r = hpet_detect_acpi(dev);
@@ -425,10 +438,10 @@ cause::type hpet_detect(hpet** dev)
 
 }  // namespace
 
-cause::type hpet_setup(clock_source** clksrc)
+cause::t hpet_setup(clock_source** clksrc)
 {
 	hpet* h;
-	cause::type r = hpet_detect(&h);
+	cause::t r = hpet_detect(&h);
 	if (is_fail(r))
 		return r;
 

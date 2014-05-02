@@ -4,13 +4,13 @@
 /// MultiProcessor Specification:
 /// http://developer.intel.com/design/pentium/datashts/242016.htm
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_MPSPEC_HH_
 #define ARCH_X86_64_INCLUDE_MPSPEC_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 class mpspec
@@ -58,9 +58,9 @@ public:
 
 	enum ENTRY {
 		PROCESSOR = 0,
-		BUS = 1,
-		IOAPIC = 2,
-		IOINTR = 3,
+		BUS       = 1,
+		IOAPIC    = 2,
+		IOINTR    = 3,
 		LOCALINTR = 4,
 	};
 
@@ -157,15 +157,15 @@ public:
 	const_mpfps* get_mpfps() const { return mpfps; }
 	const_mpcth* get_mpcth() const { return mpcth; }
 
-	cause::stype load();
+	cause::t load();
 
 private:
-	static cause::stype search(
+	static cause::t search(
 	    const_mpfps** r_mpfps, const_mpcth** r_mpcth);
-	static cause::stype scan_mpfps(
+	static cause::t scan_mpfps(
 	    u32 start_padr, u32 length,
 	    const_mpfps** r_mpfps, const_mpcth** r_mpcth);
-	static cause::stype test_mpcth(
+	static cause::t test_mpcth(
 	    const_mpfps* mpfps, const_mpcth** r_mpcth);
 
 private:

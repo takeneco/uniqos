@@ -17,15 +17,15 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <io_node.hh>
-#include <global_vars.hh>
+#include <core/cpu_node.hh>
+#include <core/global_vars.hh>
+#include <core/io_node.hh>
+#include <core/mempool.hh>
+#include <core/message.hh>
 #include <intr_ctl.hh>
 #include <irq_ctl.hh>
-#include <mempool.hh>
-#include <message.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
-#include <cpu_node.hh>
 #include <spinlock.hh>
 
 

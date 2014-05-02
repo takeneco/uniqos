@@ -1,7 +1,7 @@
 /// @file atomic_ops.hh
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ARCH_X86_64_INCLUDE_ATOMIC_OPS_HH_
-#define ARCH_X86_64_INCLUDE_ATOMIC_OPS_HH_
+#ifndef ARCH_X86_64_INCLUDE_ARCH_ATOMIC_OPS_HH_
+#define ARCH_X86_64_INCLUDE_ARCH_ATOMIC_OPS_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 namespace arch {

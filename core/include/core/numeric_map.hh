@@ -20,11 +20,19 @@
 #ifndef CORE_INCLUDE_CORE_NUMERIC_MAP_HH_
 #define CORE_INCLUDE_CORE_NUMERIC_MAP_HH_
 
-#include <basic.hh>
-#include <chain.hh>
-#include <mempool.hh>
+#include <core/basic.hh>
+#include <core/mempool.hh>
 
 
+/// @brief 数値をキーとするマップクラス
+/// @tparam KEY_TYPE  キーのデータ型。整数型でなければならない。
+/// @tparam VAL_TYPE  格納する値のデータ型。実際に扱う型は VAL_TYPE* になる。
+/// @tparam KEY       キーの値を返す VAL_TYPE のメンバ関数。
+///                   キーと値は１対１で対応しなければならず、そのキーは
+///                   値のメンバ関数 KEY を介して参照できなければならない。
+/// @tparam CHAIN_NODE  VAL_TYPE は numeric_map による管理のために bichain_node
+///                     をメンバ変数として持つ必要がある。そのメンバ変数を参照
+///                     する VAL_TYPE のメンバ関数。
 template<
     class KEY_TYPE,
     class VAL_TYPE,
@@ -107,3 +115,4 @@ cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::uninit()
 
 
 #endif  // include guard
+

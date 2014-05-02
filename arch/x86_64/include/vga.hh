@@ -1,14 +1,14 @@
 /// @file   vga.hh
 /// @brief  declare of text_vga (and graph_vga).
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_VGA_HH_
 #define ARCH_X86_64_INCLUDE_VGA_HH_
 
-#include <basic.hh>
-#include <io_node.hh>
+#include <core/basic.hh>
+#include <core/io_node.hh>
 
 
 class text_vga : public io_node

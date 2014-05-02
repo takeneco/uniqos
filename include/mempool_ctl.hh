@@ -1,23 +1,23 @@
 /// @file   mempool_ctl.hh
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEMPOOL_CTL_HH_
 #define INCLUDE_MEMPOOL_CTL_HH_
 
-#include <mempool.hh>
+#include <core/mempool.hh>
 #include <spinlock.hh>
 
 
 class mempool_ctl
 {
-	friend cause::type mempool_init();
-	friend cause::type mempool_post_setup();
+	friend cause::t mempool_init();
+	friend cause::t mempool_post_setup();
 
 	mempool_ctl(mempool* _mempool_mp, mempool* _node_mp, mempool* _own_mp);
-	cause::type init();
-	cause::type post_setup();
+	cause::t init();
+	cause::t post_setup();
 
 	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
 
@@ -29,10 +29,10 @@ public:
 	};
 
 public:
-	cause::type shared_mempool(u32 objsize, mempool** mp);
+	cause::t shared_mempool(u32 objsize, mempool** mp);
 	void release_shared_mempool(mempool* mp);
 
-	cause::type exclusived_mempool(
+	cause::t exclusived_mempool(
 	    u32 objsize,
 	    arch::page::TYPE page_type,
 	    PAGE_STYLE page_style,
@@ -44,17 +44,17 @@ public:
 	void dump(output_buffer& ob);
 
 private:
-	cause::type init_shared();
+	cause::t init_shared();
 
 	mempool* find_shared(u32 objsize);
-	cause::type create_shared(u32 objsize, mempool** new_mp);
+	cause::t create_shared(u32 objsize, mempool** new_mp);
 
-	static cause::type decide_params(
+	static cause::t decide_params(
 	    u32* objsize,
 	    arch::page::TYPE* page_type,
 	    PAGE_STYLE* page_style);
 
-	static cause::type create_mempool_ctl(mempool_ctl** mpctl);
+	static cause::t create_mempool_ctl(mempool_ctl** mpctl);
 
 private:
 	/// offpage mempool のページ源。

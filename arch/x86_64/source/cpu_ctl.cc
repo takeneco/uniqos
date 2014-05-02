@@ -1,7 +1,7 @@
 /// @file   cpu_ctl.cc
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  (C) 2010-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -16,15 +16,16 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <cpu_ctl.hh>
+
 #include <arch.hh>
-#include <cpu_node.hh>
-#include <global_vars.hh>
+#include <arch/global_vars.hh>
+#include <core/cpu_node.hh>
+#include <core/mempool.hh>
 #include "kerninit.hh"
-#include <log.hh>
-#include <mempool.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
-#include <native_thread.hh>
+#include <regset.hh>
 
 
 extern char on_syscall[];
@@ -44,28 +45,19 @@ struct ist_footer_layout
 }  // namespace
 
 
-namespace arch {
+namespace x86 {
 
-// arch::cpu_ctl
+/**
+ * native_cpu_ctl の初期化方法
+ * 最初に setup() を １回だけ呼び出す。
+ * その後、各CPUから load() を１回ずつ呼び出す。
+ */
 
-cause::t cpu_ctl::setup()
-{
-	cause::t r = global_vars::arch.cpu_ctl_common_obj->setup_idt();
-	if (is_fail(r))
-		return r;
-
-	return cause::OK;
-}
-
-}  // namespace arch
-
-// cpu_ctl_common
-
-cpu_ctl_common::cpu_ctl_common()
+native_cpu_ctl::native_cpu_ctl()
 {
 }
 
-cause::t cpu_ctl_common::init()
+cause::t native_cpu_ctl::setup()
 {
 	cause::t r = mps.load();
 	if (is_fail(r))
@@ -78,7 +70,7 @@ cause::t cpu_ctl_common::init()
 	return cause::OK;
 }
 
-cause::t cpu_ctl_common::setup_idt()
+cause::t native_cpu_ctl::load()
 {
 	native::idt_ptr64 idtptr;
 	idtptr.set(sizeof (idte) * 256, idt.get());
@@ -89,20 +81,22 @@ cause::t cpu_ctl_common::setup_idt()
 }
 
 
-cause::t cpu_common_init()
+cause::t cpu_ctl_setup()
 {
-	cpu_ctl_common* obj =
-	    new (mem_alloc(sizeof (cpu_ctl_common))) cpu_ctl_common;
-	global_vars::arch.cpu_ctl_common_obj = obj;
+	native_cpu_ctl* obj =
+	    new (mem_alloc(sizeof (native_cpu_ctl))) native_cpu_ctl;
+	global_vars::arch.native_cpu_ctl_obj = obj;
 	if (!obj)
 		return cause::NOMEM;
 
-	cause::t r = obj->init();
+	cause::t r = obj->setup();
 	if (is_fail(r))
 		return r;
 
 	return cause::OK;
 }
+
+}  // namespace x86
 
 namespace arch {
 

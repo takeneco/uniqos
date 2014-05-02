@@ -1,13 +1,13 @@
 /// @file   cpu_idte.hh
 /// @brief  IDT ops.
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 #define ARCH_X86_64_INCLUDE_CPU_IDTE_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 class idte
@@ -40,5 +40,8 @@ public:
 	u64 get(int i) const { return e[i]; }
 };
 
+cause::t intr_init(idte* idt);
+
 
 #endif  // include guard
+

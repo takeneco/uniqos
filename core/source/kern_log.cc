@@ -1,6 +1,6 @@
 /// @file  kern_log.cc
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2014 KATO Takeshi
 //
 
 /// @todo log を生成するときに offset を読み出し、破棄するときに
@@ -8,18 +8,18 @@
 
 #include <log.hh>
 
-#include <global_vars.hh>
+#include <core/global_vars.hh>
+#include <core/mempool.hh>
 #include <log_target.hh>
-#include <mempool.hh>
 #include <new_ops.hh>
 
 
 /// @pre mem_alloc() が使用できること。つまり mempool_init() が済んでいること。
-cause::type log_init()
+cause::t log_init()
 {
 	const int obj_cnt = 3;
 
-	cause::type r = log_target::setup();
+	cause::t r = log_target::setup();
 	if (is_fail(r))
 		return r;
 

@@ -1,8 +1,8 @@
 /// @file   intr_ctl.cc
-/// @brief  interrupt.
+/// @brief  Interrupt control.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  (C) 2010-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,12 +17,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <global_vars.hh>
+#include <core/global_vars.hh>
+#include <core/mempool.hh>
 #include <intr_ctl.hh>
-#include <mempool.hh>
 #include <new_ops.hh>
-
-#include <log.hh>
 
 
 /// @brief 割り込み発生時に呼ばれる。
@@ -38,8 +36,7 @@ cause::t intr_ctl::init()
 	return cause::OK;
 }
 
-cause::t
-intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
+cause::t intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 {
 	if (vec > arch::INTR_UPPER)
 		return cause::INVALID_PARAMS;
@@ -52,8 +49,7 @@ intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 	return cause::OK;
 }
 
-cause::t
-intr_ctl::set_post_handler(arch::intr_id vec, post_intr_handler h)
+cause::t intr_ctl::set_post_handler(arch::intr_id vec, post_intr_handler h)
 {
 	handler_table[vec].post_handler = h;
 

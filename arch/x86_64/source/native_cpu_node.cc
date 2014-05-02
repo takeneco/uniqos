@@ -19,10 +19,11 @@
 #include <native_cpu_node.hh>
 
 #include <bootinfo.hh>
+#include <core/mempool.hh>
+#include <cpu_ctl.hh>
 #include <flags.hh>
 #include <global_vars.hh>
 #include <log.hh>
-#include <core/mempool.hh>
 #include <native_ops.hh>
 #include <native_thread.hh>
 #include <new_ops.hh>
@@ -71,7 +72,7 @@ cause::t native_cpu_node::setup()
 	if (is_fail(r))
 		return r;
 
-	r = global_vars::arch.cpu_ctl_common_obj->setup_idt();
+	r = global_vars::arch.native_cpu_ctl_obj->load();
 	if (is_fail(r))
 		return r;
 
@@ -298,8 +299,6 @@ void native_cpu_node::switch_thread_after_intr(native_thread* t)
 
 cause::t release_pages(uptr adr, uptr bytes)
 {
-log()("release_pages() called. adr=").x(adr)(",bytes=").x(bytes)();
-
 	uptr align_adr = up_align<uptr>(adr, arch::page::PHYS_L1_SIZE);
 	bytes -= align_adr - adr;
 	adr = align_adr;
@@ -308,7 +307,6 @@ log()("release_pages() called. adr=").x(adr)(",bytes=").x(bytes)();
 		if ((adr & (arch::page::PHYS_L3_SIZE - 1)) == 0
 		  && bytes >= arch::page::PHYS_L3_SIZE)
 		{
-log()("page_dealloc() type=L3,adr=").x(adr)();
 			auto r = page_dealloc(arch::page::PHYS_L3, adr);
 			if (is_fail(r))
 				return r;
@@ -319,7 +317,6 @@ log()("page_dealloc() type=L3,adr=").x(adr)();
 		else if ((adr & (arch::page::PHYS_L2_SIZE - 1)) == 0
 		  && bytes >= arch::page::PHYS_L2_SIZE)
 		{
-log()("page_dealloc() type=L2,adr=").x(adr)();
 			auto r = page_dealloc(arch::page::PHYS_L2, adr);
 			if (is_fail(r))
 				return r;
@@ -330,7 +327,6 @@ log()("page_dealloc() type=L2,adr=").x(adr)();
 		else if ((adr & (arch::page::PHYS_L1_SIZE - 1)) == 0
 		  && bytes >= arch::page::PHYS_L1_SIZE)
 		{
-log()("page_dealloc() type=L1,adr=").x(adr)();
 			auto r = page_dealloc(arch::page::PHYS_L1, adr);
 			if (is_fail(r))
 				return r;
@@ -339,7 +335,6 @@ log()("page_dealloc() type=L1,adr=").x(adr)();
 			bytes -= arch::page::PHYS_L1_SIZE;
 		}
 		else {
-log()("release_pages() end")();
 			break;
 		}
 	}
@@ -393,10 +388,10 @@ void exit_boot_thread_handler(message* m)
 	for (int i = 0; ; ++i) {
 		r = tbl.unset_page_next(&pe, &vadr, &padr, &page_type);
 		if (is_fail(r)) {
-			log()("unset_page_next = ").u(r)(":").x(pe.cur_vadr)(':').x(pe.end_vadr)();
+			log()("unset_page_next = ").
+			    u(r)(":").x(pe.cur_vadr)(':').x(pe.end_vadr)();
 			break;
 		}
-		log()("vadr=").x(vadr)(" padr=").x(padr)(" page_type=").u(page_type)();
 	}
 
 	r = tbl.unset_page_end(&pe);

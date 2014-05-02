@@ -1,13 +1,13 @@
-/// @file   core/include/io_node.hh
+/// @file   core/io_node.hh
 /// @brief  io_node class declaration.
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_IO_NODE_HH_
-#define CORE_INCLUDE_IO_NODE_HH_
+#ifndef CORE_INCLUDE_CORE_IO_NODE_HH_
+#define CORE_INCLUDE_CORE_IO_NODE_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 struct iovec
@@ -75,61 +75,61 @@ public:
 	{
 		void init();
 
-		typedef cause::type (*seek_op)(
+		typedef cause::t (*seek_op)(
 		    io_node* x, seek_whence whence,
 		    offset rel_off, offset* abs_off);
 		seek_op seek;
 
-		typedef cause::type (*read_op)(
+		typedef cause::t (*read_op)(
 		    io_node* x, offset* off, int iov_cnt, iovec* iov);
 		read_op read;
 
-		typedef cause::type (*write_op)(
+		typedef cause::t (*write_op)(
 		    io_node* x, offset* off, int iov_cnt, const iovec* iov);
 		write_op write;
 	};
 
 	// seek
-	template<class T> static cause::type call_on_io_node_seek(
+	template<class T> static cause::t call_on_io_node_seek(
 	    io_node* x, seek_whence whence, offset rel_off, offset* abs_off) {
 		return static_cast<T*>(x)->
 		    on_io_node_seek(whence, rel_off, abs_off);
 	}
-	static cause::type nofunc_io_node_seek(
+	static cause::t nofunc_io_node_seek(
 	    io_node*, seek_whence, offset, offset*) {
 		return cause::NOFUNC;
 	}
 
 	// read
-	template<class T> static cause::type call_on_io_node_read(
+	template<class T> static cause::t call_on_io_node_read(
 	    io_node* x, offset* off, int iov_cnt, iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_read(off, iov_cnt, iov);
 	}
-	static cause::type nofunc_io_node_read(
+	static cause::t nofunc_io_node_read(
 	    io_node*, offset*, int, iovec*) {
 		return cause::NOFUNC;
 	}
 
 	// write
-	template<class T> static cause::type call_on_io_node_write(
+	template<class T> static cause::t call_on_io_node_write(
 	    io_node* x, offset* off, int iov_cnt, const iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_write(off, iov_cnt, iov);
 	}
-	static cause::type nofunc_io_node_write(
+	static cause::t nofunc_io_node_write(
 	    io_node*, offset*, int, const iovec*) {
 		return cause::NOFUNC;
 	}
 
 public:
-	cause::type seek(seek_whence whence, offset rel_off, offset* abs_off) {
+	cause::t seek(seek_whence whence, offset rel_off, offset* abs_off) {
 		return ops->seek(this, whence, rel_off, abs_off);
 	}
-	cause::type read(offset* off, int iov_cnt, iovec* iov) {
+	cause::t read(offset* off, int iov_cnt, iovec* iov) {
 		return ops->read(this, off, iov_cnt, iov);
 	}
-	cause::type write(offset* off, int iov_cnt, const iovec* iov) {
+	cause::t write(offset* off, int iov_cnt, const iovec* iov) {
 		return ops->write(this, off, iov_cnt, iov);
 	}
 
@@ -137,7 +137,7 @@ protected:
 	io_node() {}
 	io_node(const operations* _ops) : ops(_ops) {}
 
-	cause::type usual_seek(
+	cause::t usual_seek(
 	    offset upper_limit, seek_whence whence,
 	    offset rel_off, offset* abs_off);
 
@@ -146,5 +146,5 @@ protected:
 };
 
 
-#endif  // CORE_INCLUDE_IO_NODE_HH_
+#endif  // include guard
 

@@ -22,7 +22,6 @@ def options(x):
 	    help    = 'compiler family (clang, llvm, gnu)')
 
 	x.recurse('tools')
-	x.recurse('arch')
 
 
 def configure(x):

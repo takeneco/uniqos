@@ -2,7 +2,7 @@
 /// @brief  Timer implementation.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -21,22 +21,22 @@
 
 #include <bitops.hh>
 #include <clock_src.hh>
+#include <core/cpu_node.hh>
 #include <core/global_vars.hh>
+#include <core/mempool.hh>
 #include <core/timer.hh>
-#include <cpu_node.hh>
 #include <log.hh>
-#include <mempool.hh>
 #include <new_ops.hh>
 #include <thread.hh>
 
 
-cause::type hpet_setup(clock_source** clksrc);
+cause::t hpet_setup(clock_source** clksrc);
 
 namespace {
 
-cause::type detect_clock_src(clock_source** clksrc)
+cause::t detect_clock_src(clock_source** clksrc)
 {
-	cause::type r;
+	cause::t r;
 
 #if CONFIG_HPET
 	r = hpet_setup(clksrc);
@@ -85,17 +85,17 @@ void timer_ctl::set_store(timer_store* tq)
 	store = tq;
 }
 
-cause::type timer_ctl::get_jiffy_tick(tick_time* tick)
+cause::t timer_ctl::get_jiffy_tick(tick_time* tick)
 {
 #	warning error check omitted.
 	auto r = clk_src->update_clock();
 
-	*tick = r.value;
+	*tick = r.get_value();
 
 	return cause::OK;
 }
 
-cause::type timer_ctl::set_timer(timer_message* msg)
+cause::t timer_ctl::set_timer(timer_message* msg)
 {
 	// 現在時刻
 #	warning error check omitted.
@@ -113,7 +113,7 @@ cause::type timer_ctl::set_timer(timer_message* msg)
 	lock.lock();
 
 	// TODO:ここでOUTOFRANGEが帰らないようにする
-	const cause::type r = _set_timer(msg, now_clk.value);
+	const cause::t r = _set_timer(msg, now_clk.value);
 
 	lock.unlock();
 
@@ -136,7 +136,7 @@ void timer_ctl::on_timer_message()
 
 		auto next_clock = store->next_clock();
 		if (is_ok(next_clock)) {
-			const cause::type r =
+			const cause::t r =
 			    clk_src->set_timer(next_clock.value, &timer_msg);
 			if (r == cause::OUTOFRANGE)
 				continue;
@@ -152,7 +152,7 @@ void timer_ctl::on_timer_message()
 //
 /// msg->ticks ではなく msg->expires_clock をタイマの時刻とする。
 /// ロックしない。
-cause::type timer_ctl::_set_timer(timer_message* msg, tick_time now_clock)
+cause::t timer_ctl::_set_timer(timer_message* msg, tick_time now_clock)
 {
 	if (store->set(msg)) {
 		//TODO:すでにタイマー設定済みの場合は、再設定の動作にする
@@ -169,10 +169,10 @@ void timer_ctl::dump(output_buffer& ob)
 
 #include <timer_liner_q.hh>
 
-cause::type timer_setup()
+cause::t timer_setup()
 {
 	clock_source* clksrc;
-	cause::type r = detect_clock_src(&clksrc);
+	cause::t r = detect_clock_src(&clksrc);
 	if (is_fail(r))
 		return r;
 
@@ -195,7 +195,7 @@ cause::type timer_setup()
 	return cause::OK;
 }
 
-cause::type get_jiffy_tick(tick_time* tick)
+cause::t get_jiffy_tick(tick_time* tick)
 {
 	return global_vars::core.timer_ctl_obj->get_jiffy_tick(tick);
 }

@@ -20,7 +20,6 @@
 #ifndef INCLUDE_CHEAP_ALLOC_HH_
 #define INCLUDE_CHEAP_ALLOC_HH_
 
-#include <chain.hh>
 #include <output_buffer.hh>
 
 
@@ -760,3 +759,4 @@ bool cheap_alloc_separator<CHEAP_ALLOC>::_add_free_range(
 
 
 #endif  // include guard
+

@@ -1,13 +1,13 @@
-/// @file   core/include/elf.hh
+/// @file   core/elf.hh
 /// @brief  ELF format data types.
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_ELF_HH_
-#define CORE_INCLUDE_ELF_HH_
+#ifndef CORE_INCLUDE_CORE_ELF_HH_
+#define CORE_INCLUDE_CORE_ELF_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 typedef u16 Elf64_Half;
@@ -172,5 +172,5 @@ enum {
 };
 
 
-#endif  // CORE_INCLUDE_ELF_HH_
+#endif  // Include guard
 

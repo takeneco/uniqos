@@ -149,7 +149,9 @@ void intr_wait();
 }  // namespace arch
 
 typedef arch::_cpu_id cpu_id;
+typedef arch::_cpu_id cpu_id_t;
 typedef arch::_cpu_word cpu_word;
+typedef arch::_cpu_word cpu_word_t;
 
 
 #endif  // include guard

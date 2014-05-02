@@ -21,6 +21,7 @@ public:
 	cause::t attach_boot_thread(thread* t);
 
 	void attach(thread* t);
+	void detach(thread* t);
 
 	thread* sleep_current_thread_np();
 	void ready(thread* t);

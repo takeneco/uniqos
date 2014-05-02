@@ -1,12 +1,11 @@
 /// @file   cpu_idte.cc
 /// @brief  interrupt entry.
 //
-// (C) 2010-2013 KATO Takeshi
+// (C) 2010-2014 KATO Takeshi
 //
 
 #include "kerninit.hh"
 #include "cpu_idte.hh"
-#include <global_vars.hh>
 #include <intr_ctl.hh>
 #include <log.hh>
 #include <native_cpu_node.hh>
@@ -174,7 +173,7 @@ void intr_0x8f();
 
 }  // extern "C"
 
-cause::type intr_init(idte* idt)
+cause::t intr_init(idte* idt)
 {
 	struct idt_params {
 		void (*handler)();
@@ -300,7 +299,8 @@ void except_dump(int vec, const char* msg)
 	    (", es:").x(rs->es, 4)
 	    (", fs:").x(rs->fs, 4)
 	    (", gs:").x(rs->gs, 4)
-	    (", rf:").x(rs->rf, 8)();
+	    (", rf:").x(rs->rf, 8)()
+	    ("cr3:").x(rs->cr3, 16)();
 
 	for (;;)
 		native::hlt();

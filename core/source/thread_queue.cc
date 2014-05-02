@@ -19,12 +19,8 @@
 
 #include <thread_queue.hh>
 
-#include <global_vars.hh>
-#include <mempool.hh>
 #include <new_ops.hh>
-#include <cpu_node.hh>
-
-#include <log.hh>
+#include <core/cpu_node.hh>
 
 
 namespace {

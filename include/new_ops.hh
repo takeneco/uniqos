@@ -1,12 +1,12 @@
 /// @file   new_ops.hh
 //
-// (C) 2010,2013 KATO Takeshi
+// (C) 2010,2013-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_NEW_OPS_HH_
 #define INCLUDE_NEW_OPS_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 inline void* operator new  (uptr, void* ptr) { return ptr; }

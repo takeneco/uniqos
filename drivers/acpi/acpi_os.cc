@@ -2,7 +2,7 @@
 /// @brief  AcpiOs* interfaces.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -18,15 +18,14 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstdarg>
-
 #include <config.h>
-#include <global_vars.hh>
-#include <intr_ctl.hh>
-#include <log.hh>
+#include <core/global_vars.hh>
+#include <core/intr_ctl.hh>
+#include <core/log.hh>
+#include <core/mempool.hh>
+#include <core/string.hh>
 #include <new_ops.hh>
-#include <mempool.hh>
 #include <native_ops.hh>
-#include <string.hh>
 
 #define UNUSE(a) a=a
 
@@ -193,7 +192,8 @@ ACPI_STATUS AcpiOsTableOverride(
     ACPI_TABLE_HEADER       *ExistingTable,
     ACPI_TABLE_HEADER       **NewTable)
 {
-	// ここはログの初期化前に呼ばれるため、ログ出力できない。
+	// This function cannot output logs, because it will be called before
+	// log initialization.
 
 	*NewTable = 0;
 
@@ -206,7 +206,8 @@ ACPI_STATUS AcpiOsPhysicalTableOverride(
     ACPI_PHYSICAL_ADDRESS   *NewAddress,
     UINT32                  *NewTableLength)
 {
-	// ここはログの初期化前に呼ばれるため、ログ出力できない。
+	// This function cannot output logs, because it will be called before
+	// log initialization.
 
 	*NewAddress = 0;
 	*NewTableLength = 0;
@@ -398,7 +399,8 @@ void * AcpiOsMapMemory(
     ACPI_PHYSICAL_ADDRESS   Where,
     ACPI_SIZE               Length)
 {
-	// ここはログの初期化前に呼ばれるため、ログ出力できない。
+	// This function cannot output logs, because it will be called before
+	// log initialization.
 
 	void* r = arch::map_phys_adr(Where, Length);
 
@@ -410,7 +412,8 @@ void AcpiOsUnmapMemory(
     void                    *LogicalAddress,
     ACPI_SIZE               Size)
 {
-	// ここはログの初期化前に呼ばれるため、ログ出力できない。
+	// This function cannot output logs, because it will be called before
+	// log initialization.
 
 	uptr r = arch::unmap_phys_adr(LogicalAddress, Size);
 
