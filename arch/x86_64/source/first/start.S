@@ -1,15 +1,14 @@
 /// @file   first_process.S
-/// @brief  Initial process.
+/// @brief  Initial process entry point.
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
-.section .text
+.section .start
 
 .globl _start
 
 _start:
 	1:
-	movq $100, %rax
-	syscall
+	call main
 	jmp 1b

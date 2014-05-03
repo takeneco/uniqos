@@ -1,0 +1,22 @@
+# @brief  first process
+#
+# (C) 2014 KATO Takeshi
+#
+
+
+source = [
+    'main.cc',
+    'start.S',
+]
+
+
+def build(x):
+	target = x.path.find_or_declare('first')
+	linkerscript = x.path.find_node('first.lds')
+	x.add_manual_dependency(target, linkerscript)
+	linkflags = ['-nostdlib', '-Wl,-T'+linkerscript.abspath()]
+	x.program(
+	    features  = 'asm cxxprogram',
+	    target    = target,
+	    source    = source,
+	    linkflags = linkflags)

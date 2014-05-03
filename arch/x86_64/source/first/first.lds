@@ -1,8 +1,9 @@
-/* @file    arch/x86_64/kernel/pr.lds
- * @author  KATO Takeshi
- * @brief   Linker script of initial process.
- *
- * (C) 2013 KATO Takeshi
+/**
+ * @file    first.lds
+ * @brief   Linker script of first process.
+ */
+/*
+ * (C) 2013-2014 KATO Takeshi
  */
 
 OUTPUT_FORMAT(binary)
@@ -11,5 +12,5 @@ ENTRY(_start)
 
 SECTIONS {
 	. = 0x00100000;
-	.text : { *(.text) }
+	.text : { *(.start) *(.text) }
 }

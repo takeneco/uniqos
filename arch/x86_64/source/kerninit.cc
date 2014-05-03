@@ -19,17 +19,17 @@
 
 #include <acpi_ctl.hh>
 #include <bootinfo.hh>
+#include <core/intr_ctl.hh>
+#include <core/log.hh>
+#include <core/string.hh>
 #include <native_cpu_node.hh>
 #include <global_vars.hh>
-#include <intr_ctl.hh>
 #include <irq_ctl.hh>
 #include "kerninit.hh"
-#include <log.hh>
 #include <mem_io.hh>
 #include <mempool_ctl.hh>
 #include <native_ops.hh>
 #include "native_process.hh"
-#include <string.hh>
 #include <native_thread.hh>
 #include <new_ops.hh>
 #include <vga.hh>
@@ -91,7 +91,7 @@ void timer_handler(message* msg)
 	global_vars::core.timer_ctl_obj->set_timer(tmsg);
 }
 
-cause::t create_init_process()
+cause::t create_first_process()
 {
 	native_process* pr =
 	    new (mem_alloc(sizeof (native_process))) native_process;
@@ -144,6 +144,7 @@ cause::t create_init_process()
 	native_thread* t = thr.value;
 	t->ref_regset()->cr3 = arch::unmap_phys_adr(
 	    pr->ref_ptbl().get_toptable(), arch::page::PHYS_L1);
+	t->ref_regset()->rsp = 0x0000800000000000;
 	t->ref_regset()->cs = 0x20 + 3;
 	t->ref_regset()->ds = 0x18 + 3;
 	t->ref_regset()->es = 0x18 + 3;
@@ -177,7 +178,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	global_vars::arch.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
 	global_vars::core.log_target_objs = 0;
 
-	cause::type r = cpu_page_init();
+	cause::t r = cpu_page_init();
 	if (is_fail(r))
 		return r;
 
@@ -213,7 +214,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	r = cpu_common_init();
+	r = x86::cpu_ctl_setup();
 	if (is_fail(r))
 		return r;
 
@@ -405,13 +406,12 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 	native_thread* t = thr.value;
 	t->ready();
 
-	r = create_init_process();
+	r = create_first_process();
 	if (is_fail(r)) {
-		log()("create_init_process() failed")();
+		log()("create_first_process() failed")();
 	}
-	log()("create_init_process() succeeded")();
+	log()("create_first_process() succeeded")();
 
-	//TODO:このスレッドは削除したい
 	get_native_cpu_node()->exit_boot_thread();
 	sleep_current_thread();
 
