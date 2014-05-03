@@ -3,7 +3,7 @@
 /// (for IOAPIC)
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -22,27 +22,21 @@
 
 #include <global_vars.hh>
 #include <intr_ctl.hh>
-#include <mempool.hh>
+#include <core/mempool.hh>
 #include <new_ops.hh>
 
 
-cause::type ioapic_setup();
+cause::t ioapic_setup();
+void lapic_eoi();
 
-cause::type irq_ctl::init()
+cause::t irq_ctl::init()
 {
-	/*
-	cause::type r = ioapic.init_detect();
-	if (is_fail(r))
-		return r;
-	*/
-
 	// TODO:シリアルコントローラを初期化する前に割り込みが入るため、
 	// EOI する必要がある。
 	// 初期化前の割り込みが無ければ、このコードは削除できる。
 	global_vars::core.intr_ctl_obj->set_post_handler(0x40, lapic_eoi);
 	global_vars::core.intr_ctl_obj->set_post_handler(0x41, lapic_eoi);
 
-	//return r;
 	return cause::OK;
 }
 
@@ -55,7 +49,7 @@ void call_eoi()
 
 }  // namespace
 
-cause::type irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
+cause::t irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 {
 	u32 vec = *intr_vec;
 
@@ -80,7 +74,7 @@ cause::type irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 
 	//global_vars::core.intr_ctl_obj->set_post_handler(vec, lapic_eoi);
 	global_vars::core.intr_ctl_obj->set_post_handler(vec, call_eoi);
-	//ioapic.unmask(irq, 0, vec);
+
 	pic_dev->info->ops.enable(pic_dev, irq, vec);
 
 	*intr_vec = vec;
@@ -90,14 +84,14 @@ cause::type irq_ctl::interrupt_map(u32 irq, u32* intr_vec)
 
 namespace arch {
 
-cause::type irq_interrupt_map(u32 irq, u32* intr_vec)
+cause::t irq_interrupt_map(u32 irq, u32* intr_vec)
 {
 	return global_vars::arch.irq_ctl_obj->interrupt_map(irq, intr_vec);
 }
 
 }  // namespace arch
 
-cause::type irq_setup()
+cause::t irq_setup()
 {
 	irq_ctl* irqc =
 	    new (mem_alloc(sizeof (irq_ctl))) irq_ctl;
@@ -106,7 +100,7 @@ cause::type irq_setup()
 
 	global_vars::arch.irq_ctl_obj = irqc;
 
-	cause::type r = irqc->init();
+	cause::t r = irqc->init();
 	if (is_fail(r))
 		return r;
 

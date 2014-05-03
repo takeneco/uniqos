@@ -15,7 +15,6 @@ kern_source = [
     'cpu_idte.cc',
     'hpet_timer.cc',
     'interrupt_native.S',
-    'ioapic.cc',
     'irq_ctl.cc',
     'kerninit.cc',
     'native_cpu_node.cc',

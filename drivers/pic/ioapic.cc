@@ -1,8 +1,8 @@
-/// @file  ioapic.cc
+/// @file  drivers/pic/ioapic.cc
 /// @brief I/O APIC driver.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include <arch/mem_ops.hh>
 #include <cpu_ctl.hh>
 #include <global_vars.hh>
-#include <mempool.hh>
+#include <core/mempool.hh>
 #include <mpspec.hh>
 #include <new_ops.hh>
 #include <pic_dev.hh>
@@ -36,7 +36,11 @@ class ioapic : public pic_device
 {
 	DISALLOW_COPY_AND_ASSIGN(ioapic);
 
-	struct memmapped_regs;
+	struct memmapped_regs {
+		u32 ioregsel;
+		u32 unused[3];
+		u32 iowin;
+	};
 
 public:
 	ioapic(class_info* _info, uptr reg_padr) :
@@ -45,28 +49,40 @@ public:
 		    arch::map_phys_adr(reg_padr, sizeof (memmapped_regs))))
 	{}
 
-	cause::type on_pic_device_enable(uint irq, arch::intr_id vec);
-	cause::type on_pic_device_disable(uint irq);
+	cause::t on_pic_device_enable(uint irq, arch::intr_id vec);
+	cause::t on_pic_device_disable(uint irq);
 	void on_pic_device_eoi();
 
 private:
+	u32 read_reg(u32 sel);
 	void write_reg(u32 sel, u32 data);
 
 private:
-	struct memmapped_regs {
-		u32 ioregsel;
-		u32 unused[3];
-		u32 iowin;
-	};
 	memmapped_regs* regs;
 
 	spin_lock reg_lock;
 };
 
-cause::type ioapic::on_pic_device_enable(uint irq, arch::intr_id vec)
+cause::t ioapic::on_pic_device_enable(uint irq, arch::intr_id vec)
 {
-	cpu_id cpuid = 0;
-	u32 flags = 0;
+	cpu_id_t cpuid = 0;
+
+	enum {
+		FIXED_DERIV   = 0x00000000,
+		LOWPRI_DERIV  = 0x00000100,
+		SMI_DERIV     = 0x00000200,
+		NMI_DERIV     = 0x00000400,
+		INIT_DERIV    = 0x00000500,
+		EXTINT_DERIV  = 0x00000700,
+
+		PHYSICAL_DEST = 0x00000000,
+		LOGICAL_DEST  = 0x00000800,
+
+		LEVEL_SENS    = 0x00008000,
+
+		LOW_ACTIVE    = 0x00002000,
+	};
+	u32 flags = FIXED_DERIV | PHYSICAL_DEST;
 
 	// edge trigger, physical destination, fixd delivery
 	write_reg(0x10 + irq * 2 + 1,
@@ -76,7 +92,7 @@ cause::type ioapic::on_pic_device_enable(uint irq, arch::intr_id vec)
 	return cause::OK;
 }
 
-cause::type ioapic::on_pic_device_disable(uint irq)
+cause::t ioapic::on_pic_device_disable(uint irq)
 {
 	write_reg(0x10 + irq * 2, 0x00010000);
 
@@ -86,6 +102,18 @@ cause::type ioapic::on_pic_device_disable(uint irq)
 void ioapic::on_pic_device_eoi()
 {
 	lapic_eoi();
+}
+
+u32 ioapic::read_reg(u32 sel)
+{
+	reg_lock.lock();
+
+	arch::mem_write32(sel, &regs->ioregsel);
+	u32 r = arch::mem_read32(&regs->iowin);
+
+	reg_lock.unlock();
+
+	return r;
 }
 
 void ioapic::write_reg(u32 sel, u32 data)
@@ -98,7 +126,7 @@ void ioapic::write_reg(u32 sel, u32 data)
 	reg_lock.unlock();
 }
 
-cause::type gen_class_info(pic_device::class_info** info)
+cause::t gen_class_info(pic_device::class_info** info)
 {
 	auto i = new
 	    (mem_alloc(sizeof (pic_device::class_info)))
@@ -117,9 +145,9 @@ cause::type gen_class_info(pic_device::class_info** info)
 }
 
 /// @brief mpspec から I/O APIC を検出する。
-cause::type detect_by_mpspec(uptr* ioapic_map_padr)
+cause::t detect_by_mpspec(uptr* ioapic_map_padr)
 {
-	const mpspec* mps = global_vars::arch.cpu_ctl_common_obj->get_mpspec();
+	const mpspec* mps = global_vars::arch.native_cpu_ctl_obj->get_mpspec();
 	mpspec::ioapic_iterator itr(mps);
 
 	const mpspec::ioapic_entry* ioapic_ent = itr.get_next();
@@ -133,9 +161,9 @@ cause::type detect_by_mpspec(uptr* ioapic_map_padr)
 	return cause::OK;
 }
 
-cause::type detect_ioapic(uptr* ioapic_map_padr)
+cause::t detect_ioapic(uptr* ioapic_map_padr)
 {
-	cause::type r;
+	cause::t r;
 
 	r = detect_by_mpspec(ioapic_map_padr);
 	if (is_ok(r))
@@ -148,10 +176,10 @@ cause::type detect_ioapic(uptr* ioapic_map_padr)
 
 #include <irq_ctl.hh>
 
-cause::type ioapic_setup()
+cause::t ioapic_setup()
 {
 	uptr ioapic_map_padr;
-	cause::type r = detect_ioapic(&ioapic_map_padr);
+	cause::t r = detect_ioapic(&ioapic_map_padr);
 	if (is_fail(r))
 		return r;
 
