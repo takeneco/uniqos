@@ -2,6 +2,19 @@
 # (C) 2013-2014 KATO Takeshi
 #
 
+# control pch
+import waflib
+class pchxx(waflib.Task.Task):
+	run_str = '${CXX} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
+	scan = waflib.Tools.c_preproc.scan
+	ext_out = ['.hh']
+	color = 'BLUE'
+@waflib.TaskGen.extension('.hh')
+def pchxx_hook(x, node):
+	exts = { 'clang':'.hh.pch', 'gcc':'.hh.gch' }
+	x.create_task('pchxx', node, node.change_ext(exts[x.env.C_COMPILER]))
+
+
 def options(x):
 	conf_opt = x.get_option_group('configure options')
 	conf_opt.add_option('--option',
@@ -10,20 +23,6 @@ def options(x):
 	    dest    = 'option_file',
 	    help    = 'build option file [default: ./options]')
 
-def build(bld):
-	bld.objects(
-	    target = 'cmdparse',
-	    source = 'cmdparse.c',
-	    use    = 'TOOLS'
-	)
-	bld.program(
-	    target   = 'mkfdimg',
-	    source   = 'mkfdimg.cpp',
-	    use      = ['cmdparse', 'TOOLS']
-	)
-	bld.program(
-	    target = 'putimg',
-	    source = 'putimg.c',
-	    use    = ['cmdparse', 'TOOLS']
-	)
+def build(x):
+	pass
 
