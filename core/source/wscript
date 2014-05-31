@@ -9,6 +9,7 @@ kern_sources = [
     'clock_src.cc',
     'cpu_node.cc',
     'ctype.cc',
+    'fs_ctl.cc',
     'intr_ctl.cc',
     'io_node.cc',
     'kern_log.cc',

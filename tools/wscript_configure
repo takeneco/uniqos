@@ -37,6 +37,9 @@ def load_config(x, cf):
 	# 0:disable / 1:enable HPET.
 	def_config(x, cf, 'HPET', 0)
 
+	# 0:disable / 1:enable ramfs.
+	def_config(x, cf, 'RAMFS', 0)
+
 	# 0:disable / 1:enable multiboot kernel generation
 	def_config(x, cf, 'MULTIBOOT', 0)
 

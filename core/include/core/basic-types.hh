@@ -4,8 +4,8 @@
 // (C) 2008-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_BASIC_TYPES_HH_
-#define CORE_INCLUDE_CORE_BASIC_TYPES_HH_
+#ifndef CORE_BASIC_TYPES_HH_
+#define CORE_BASIC_TYPES_HH_
 
 #include <arch/inttype.hh>
 
@@ -410,6 +410,8 @@ namespace cause
 		bool is_ok() const { return cause::is_ok(r); }
 		bool is_fail() const { return cause::is_fail(r); }
 
+		void set_data(T _v) { value = _v; }
+		T    get_data() { return value; }
 		void set_value(T _v) { value = _v; }
 		T    get_value() { return value; }
 
@@ -425,6 +427,17 @@ namespace cause
 	}
 	template<class T> inline pair<T> make_pair(type r, T value) {
 		return pair<T>(r, value);
+	}
+	struct _null_pair
+	{
+		_null_pair(type _r) : r(_r) {}
+		template<class T> operator pair<T> () {
+			return pair<T>(r, nullptr);
+		}
+		type r;
+	};
+	inline _null_pair null_pair(type r) {
+		return _null_pair(r);
 	}
 }
 

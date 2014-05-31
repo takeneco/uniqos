@@ -48,7 +48,7 @@ bool test_init();
 io_node* create_serial();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
-
+cause::t ramfs_init();
 
 void disable_intr_from_8259A()
 {
@@ -234,6 +234,10 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
+	r = fs_ctl_init();
+	if (is_fail(r))
+		return r;
+
 	// TODO: replace
 	arch::apic_init();
 
@@ -405,6 +409,8 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 	}
 	native_thread* t = thr.value;
 	t->ready();
+
+	ramfs_init();
 
 	r = create_first_process();
 	if (is_fail(r)) {

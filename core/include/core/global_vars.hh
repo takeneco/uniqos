@@ -1,23 +1,26 @@
-/// @file  global_vars.hh
+/// @file  core/global_vars.hh
 /// @brief Global variables declaration.
 //
 // (C) 2013-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_GLOBAL_VARS_HH_
-#define CORE_INCLUDE_CORE_GLOBAL_VARS_HH_
+#ifndef CORE_GLOBAL_VARS_HH_
+#define CORE_GLOBAL_VARS_HH_
 
 #include <arch.hh> // cpu_id
 #include <config.h>
 
 
-class page_pool;
-class mempool_ctl;
-class process_ctl;
-class intr_ctl;
-class timer_ctl;
-class log_target;
 class cpu_node;
+class driver_ctl;
+class fs_ctl;
+class intr_ctl;
+class log_target;
+class mempool_ctl;
+class module_ctl;
+class page_pool;
+class process_ctl;
+class timer_ctl;
 
 namespace global_vars {
 
@@ -32,23 +35,29 @@ struct _core
 	/// log_target_objs のエントリ数
 	int                log_target_cnt;
 
-	page_pool**        page_pool_objs;
+	/// カーネルが認識している CPU の数
+	/// @note システムに搭載されている CPU の数ではない
+	cpu_id_t           cpu_node_cnt;
 
-	mempool_ctl*       mempool_ctl_obj;
+	cpu_node*          cpu_node_objs[CONFIG_MAX_CPUS];
 
-	process_ctl*       process_ctl_obj;
+	driver_ctl*        driver_ctl_obj;
+
+	fs_ctl*            fs_ctl_obj;
 
 	intr_ctl*          intr_ctl_obj;
 
-	timer_ctl*         timer_ctl_obj;
-
 	log_target*        log_target_objs;
 
-	/// カーネルが認識している CPU の数
-	/// @note システムに搭載されている CPU の数ではない
-	cpu_id             cpu_node_cnt;
+	mempool_ctl*       mempool_ctl_obj;
 
-	cpu_node*          cpu_node_objs[CONFIG_MAX_CPUS];
+	module_ctl*        module_ctl_obj;
+
+	page_pool**        page_pool_objs;
+
+	process_ctl*       process_ctl_obj;
+
+	timer_ctl*         timer_ctl_obj;
 };
 
 extern _core core;
@@ -57,3 +66,4 @@ extern _core core;
 
 
 #endif  // include guard
+
