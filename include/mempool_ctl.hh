@@ -3,11 +3,12 @@
 // (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_MEMPOOL_CTL_HH_
-#define INCLUDE_MEMPOOL_CTL_HH_
+#ifndef CORE_MEMPOOL_CTL_HH_
+#define CORE_MEMPOOL_CTL_HH_
 
 #include <core/mempool.hh>
 #include <spinlock.hh>
+#include <new_ops.hh>
 
 
 class mempool_ctl
@@ -38,8 +39,8 @@ public:
 	    PAGE_STYLE page_style,
 	    mempool** mp);
 
-	void* shared_alloc(u32 bytes);
-	void shared_dealloc(void* mem);
+	void* shared_allocate(u32 bytes);
+	void shared_deallocate(void* mem);
 
 	void dump(output_buffer& ob);
 
@@ -73,6 +74,23 @@ private:
 	mempool* const own_mp;
 
 	spin_rwlock exclusived_chain_lock;
+
+// mem_allocator implement
+public:
+	mem_allocator& shared_mem() { return _shared_mem; }
+
+private:
+	class shared_mem_allocator : public mem_allocator
+	{
+	public:
+		shared_mem_allocator() : mem_allocator(&_ops) {}
+		void init();
+
+	private:
+		operations _ops;
+	};
+
+	shared_mem_allocator _shared_mem;
 };
 
 

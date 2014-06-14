@@ -28,12 +28,12 @@
 
 void* mem_alloc(u32 bytes)
 {
-	return global_vars::core.mempool_ctl_obj->shared_alloc(bytes);
+	return global_vars::core.mempool_ctl_obj->shared_allocate(bytes);
 }
 
 void mem_dealloc(void* mem)
 {
-	return global_vars::core.mempool_ctl_obj->shared_dealloc(mem);
+	return global_vars::core.mempool_ctl_obj->shared_deallocate(mem);
 }
 
 
@@ -63,6 +63,8 @@ cause::t mempool_ctl::init()
 	r = init_shared();
 	if (is_fail(r))
 		return r;
+
+	_shared_mem.init();
 
 	return cause::OK;
 }
@@ -168,7 +170,7 @@ struct heap
 
 }  // namespace
 
-void* mempool_ctl::shared_alloc(u32 bytes)
+void* mempool_ctl::shared_allocate(u32 bytes)
 {
 	const u32 size = mempool::normalize_obj_size(bytes + sizeof (mempool*));
 
@@ -195,7 +197,7 @@ void* mempool_ctl::shared_alloc(u32 bytes)
 	return h->mem;
 }
 
-void mempool_ctl::shared_dealloc(void* mem)
+void mempool_ctl::shared_deallocate(void* mem)
 {
 	uptr memadr = reinterpret_cast<uptr>(mem);
 
@@ -429,6 +431,36 @@ cause::t mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 	return cause::OK;
 }
 
+// mempool_ctl::shared_mem_allocator
+
+namespace {
+
+cause::pair<void*> shared_mem_allocate(mem_allocator*, uptr bytes)
+{
+	void* p = global_vars::core.mempool_ctl_obj->shared_allocate(bytes);
+	if (p)
+		return make_pair(cause::OK, p);
+	else
+		return null_pair(cause::NOMEM);
+}
+
+cause::t shared_mem_deallocate(mem_allocator*, void* adr)
+{
+	global_vars::core.mempool_ctl_obj->shared_deallocate(adr);
+
+	return cause::OK;
+}
+
+}  // namespace
+
+void mempool_ctl::shared_mem_allocator::init()
+{
+	_ops.init();
+	_ops.allocate = shared_mem_allocate;
+	_ops.deallocate = shared_mem_deallocate;
+}
+
+
 extern "C" cause::t mempool_acquire_shared(u32 objsize, mempool** mp)
 {
 	return global_vars::core.mempool_ctl_obj->shared_mempool(objsize, mp);
@@ -459,5 +491,10 @@ cause::t mempool_init()
 cause::t mempool_post_setup()
 {
 	return global_vars::core.mempool_ctl_obj->post_setup();
+}
+
+mem_allocator& shared_mem()
+{
+	return global_vars::core.mempool_ctl_obj->shared_mem();
 }
 
