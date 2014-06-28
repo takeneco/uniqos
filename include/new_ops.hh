@@ -15,50 +15,50 @@ public:
 	struct operations
 	{
 		void init() {
-			allocate = nofunc_mem_allocator_allocate;
-			deallocate = nofunc_mem_allocator_deallocate;
+			Allocate = nofunc_mem_allocator_Allocate;
+			Deallocate = nofunc_mem_allocator_Deallocate;
 		}
 
-		typedef cause::pair<void*> (*allocate_op)(
+		typedef cause::pair<void*> (*AllocateOp)(
 		    mem_allocator* x, uptr bytes);
-		allocate_op allocate;
+		AllocateOp Allocate;
 
-		typedef cause::t (*deallocate_op)(
+		typedef cause::t (*DeallocateOp)(
 		    mem_allocator* x, void* p);
-		deallocate_op deallocate;
+		DeallocateOp Deallocate;
 	};
 
 	mem_allocator() {}
 	mem_allocator(const operations* _ops) : ops(_ops) {}
 
-protected:
+public:
 	template<class T>
-	static cause::pair<void*> call_on_mem_allocator_allocate(
+	static cause::pair<void*> call_on_mem_allocator_Allocate(
 	    mem_allocator* x, uptr bytes) {
-		return static_cast<T*>(x)->on_mem_allocator_allocate(bytes);
+		return static_cast<T*>(x)->on_mem_allocator_Allocate(bytes);
 	}
-	static cause::pair<void*> nofunc_mem_allocator_allocate(
+	static cause::pair<void*> nofunc_mem_allocator_Allocate(
 	    mem_allocator*, uptr) {
 		return null_pair(cause::NOFUNC);
 	}
 
 	template<class T>
-	static cause::t call_on_mem_allocator_deallocate(
+	static cause::t call_on_mem_allocator_Deallocate(
 	    mem_allocator* x, void* p) {
-		return static_cast<T*>(x)->on_mem_allocator_deallocate(p);
+		return static_cast<T*>(x)->on_mem_allocator_Deallocate(p);
 	}
-	static cause::t nofunc_mem_allocator_deallocate(
+	static cause::t nofunc_mem_allocator_Deallocate(
 	    mem_allocator*, void*) {
 		return cause::NOFUNC;
 	}
 
 public:
 	cause::pair<void*> allocate(uptr bytes) {
-		return ops->allocate(this, bytes);
+		return ops->Allocate(this, bytes);
 	}
 
 	cause::t deallocate(void* p) {
-		return ops->deallocate(this, p);
+		return ops->Deallocate(this, p);
 	}
 
 protected:

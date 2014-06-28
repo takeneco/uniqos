@@ -1,8 +1,8 @@
-/// @file   kernel/string.cc
+/// @file   string.cc
 /// @brief  Memory ops.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  (C) 2010-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <string.hh>
+#include <core/string.hh>
 #include <string.h>
 
 #include <arch.hh>
-#include <ctype.hh>
+#include <core/ctype.hh>
 
 
 int mem_compare(uptr bytes, const void* mem1, const void* mem2)

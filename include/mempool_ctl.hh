@@ -79,6 +79,10 @@ private:
 public:
 	mem_allocator& shared_mem() { return _shared_mem; }
 
+	const mem_allocator::operations* get_mp_allocator_ops() {
+		return &_mp_allocator_ops;
+	}
+
 private:
 	class shared_mem_allocator : public mem_allocator
 	{
@@ -91,6 +95,8 @@ private:
 	};
 
 	shared_mem_allocator _shared_mem;
+
+	mem_allocator::operations _mp_allocator_ops;
 };
 
 

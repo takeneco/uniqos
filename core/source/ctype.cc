@@ -1,9 +1,9 @@
 /// @file  ctype.cc
 //
-// (C) 2012 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
-#include <ctype.hh>
+#include <core/ctype.hh>
 #include <ctype.h>
 
 

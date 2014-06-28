@@ -1,16 +1,16 @@
-/// @file   mempool.hh
+/// @file   core/mempool.hh
 /// @brief  mempool interface declaration.
 //
 // (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_MEMPOOL_HH_
-#define CORE_INCLUDE_CORE_MEMPOOL_HH_
+#ifndef CORE_MEMPOOL_HH_
+#define CORE_MEMPOOL_HH_
 
 #include <arch.hh>
-#include <chain.hh>
 #include <config.h>
 #include <atomic.hh>
+#include <new_ops.hh>
 
 
 class output_buffer;
@@ -179,6 +179,27 @@ private:
 	node* mempool_nodes[CONFIG_MAX_CPUS];
 
 	char obj_name[32];
+
+// mem_allocator implement
+private:
+	class mp_mem_allocator : public mem_allocator
+	{
+		DISALLOW_COPY_AND_ASSIGN(mp_mem_allocator);
+		friend class mem_allocator;
+
+	public:
+		mp_mem_allocator() {}
+		void init(mempool* _mp);
+
+	private:
+		cause::pair<void*> on_mem_allocator_Allocate(uptr bytes);
+		cause::t on_mem_allocator_Deallocate(void* p);
+
+	private:
+		mempool* mp;
+	};
+	mp_mem_allocator _mem_allocator;
+	operator mem_allocator&() { return _mem_allocator; }
 };
 
 template <class T>

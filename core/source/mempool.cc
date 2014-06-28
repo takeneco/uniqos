@@ -19,11 +19,12 @@
 
 #include <mempool_ctl.hh>
 
-#include <cpu_node.hh>
-#include <log.hh>
+#include <core/cpu_node.hh>
+#include <global_vars.hh>
+#include <core/log.hh>
 #include <new_ops.hh>
 #include <page.hh>
-#include <string.hh>
+#include <core/string.hh>
 
 
 mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
@@ -42,6 +43,8 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 
 	for (cpu_id_t i = 0; i < CONFIG_MAX_CPUS; ++i)
 		mempool_nodes[i] = 0;
+
+	_mem_allocator.init(this);
 }
 
 cause::t mempool::destroy()
@@ -491,6 +494,33 @@ void mempool::page::init(const mempool& pool)
 		void* obj = &memory[objsize * i];
 		free_chain.insert_head(new (obj) memobj);
 	}
+}
+
+void mempool::mp_mem_allocator::init(mempool* _mp)
+{
+	ops = global_vars::core.mempool_ctl_obj->get_mp_allocator_ops();
+	mp = _mp;
+}
+
+cause::pair<void*> mempool::mp_mem_allocator::on_mem_allocator_Allocate(
+    uptr bytes)
+{
+	if (CONFIG_DEBUG_VALIDATE >= 1) {
+		if (mp->obj_size < bytes) {
+			log()(SRCPOS)(" !!!").
+			    u(bytes)("(required size) > ").
+			    u(mp->obj_size)("(object size)");
+			return null_pair(cause::BADARG);
+		}
+	}
+
+	return mp->acquire();
+}
+
+cause::t mempool::mp_mem_allocator::on_mem_allocator_Deallocate(
+    void* p)
+{
+	return mp->release(p);
 }
 
 

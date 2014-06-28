@@ -19,9 +19,9 @@
 
 #include <mempool_ctl.hh>
 
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 #include <global_vars.hh>
-#include <log.hh>
+#include <core/log.hh>
 #include <mem_io.hh>
 #include <new_ops.hh>
 
@@ -50,6 +50,14 @@ mempool_ctl::mempool_ctl(
 
 cause::t mempool_ctl::init()
 {
+	_mp_allocator_ops.init();
+	_mp_allocator_ops.Allocate =
+	    mem_allocator::call_on_mem_allocator_Allocate
+	    <mempool::mp_mem_allocator>;
+	_mp_allocator_ops.Deallocate =
+	    mem_allocator::call_on_mem_allocator_Deallocate
+	    <mempool::mp_mem_allocator>;
+
 	// offpage_mp を生成する。
 	// offpage_mp は offpage mempool を生成するために必要。
 	// offpage_mp 自身を offpage にすることはできない。
@@ -435,7 +443,7 @@ cause::t mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 
 namespace {
 
-cause::pair<void*> shared_mem_allocate(mem_allocator*, uptr bytes)
+cause::pair<void*> shared_mem_Allocate(mem_allocator*, uptr bytes)
 {
 	void* p = global_vars::core.mempool_ctl_obj->shared_allocate(bytes);
 	if (p)
@@ -444,7 +452,7 @@ cause::pair<void*> shared_mem_allocate(mem_allocator*, uptr bytes)
 		return null_pair(cause::NOMEM);
 }
 
-cause::t shared_mem_deallocate(mem_allocator*, void* adr)
+cause::t shared_mem_Deallocate(mem_allocator*, void* adr)
 {
 	global_vars::core.mempool_ctl_obj->shared_deallocate(adr);
 
@@ -456,8 +464,8 @@ cause::t shared_mem_deallocate(mem_allocator*, void* adr)
 void mempool_ctl::shared_mem_allocator::init()
 {
 	_ops.init();
-	_ops.allocate = shared_mem_allocate;
-	_ops.deallocate = shared_mem_deallocate;
+	_ops.Allocate = shared_mem_Allocate;
+	_ops.Deallocate = shared_mem_Deallocate;
 }
 
 
