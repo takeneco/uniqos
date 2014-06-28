@@ -1,7 +1,7 @@
 /// @file   syscall_entry.cc
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2013 KATO Takeshi
+//  (C) 2013-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -16,17 +16,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <basic.hh>
-#include <log.hh>
+#include <core/basic.hh>
+#include <core/cpu_node.hh>
+#include <core/log.hh>
 #include <core/timer.hh>
-#include <cpu_node.hh>
 
-
-namespace {
-
-
-
-}  // namespace
 
 extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 {

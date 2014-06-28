@@ -1,13 +1,12 @@
-/// @file   core/include/core/timer.hh
+/// @file   core/timer.hh
 /// @brief  Timer interfaces.
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_TIMER_HH_
-#define CORE_INCLUDE_CORE_TIMER_HH_
+#ifndef CORE_TIMER_HH_
+#define CORE_TIMER_HH_
 
-#include <basic.hh>
 #include <clock_src.hh> // for tick_timer
 #include <message.hh>
 
@@ -59,3 +58,4 @@ cause::t timer_set(timer_message* m);
 
 
 #endif  // include guard
+

@@ -1,12 +1,12 @@
 /// @file  clock_src.hh
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_CLOCK_SRC_HH_
-#define INCLUDE_CLOCK_SRC_HH_
+#ifndef CORE_CLOCK_SRC_HH_
+#define CORE_CLOCK_SRC_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 class message;

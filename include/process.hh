@@ -1,14 +1,13 @@
-/// @file   core/include/core/process.hh
+/// @file   core/process.hh
 /// @brief  process class declaration.
 //
 // (C) 2013-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_PROCESS_HH_
-#define CORE_INCLUDE_CORE_PROCESS_HH_
+#ifndef CORE_PROCESS_HH_
+#define CORE_PROCESS_HH_
 
 #include <core/basic.hh>
-#include <chain.hh>
 #include <pagetable.hh>
 
 

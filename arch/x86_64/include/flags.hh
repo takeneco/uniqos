@@ -1,13 +1,13 @@
 /// @file  flags.hh
 /// @brief x86_64 hardware flags.
 //
-// (C) 2013 KATO Takeshi
+// (C) 2013-2014 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_FLAGS_HH_
 #define ARCH_X86_64_INCLUDE_FLAGS_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 namespace x86 {
@@ -37,6 +37,7 @@ enum MASK {
 }  // REGFLAGS
 
 }  // namespace x86
+
 
 #endif  // include guard
 

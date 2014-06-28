@@ -1,4 +1,4 @@
-/// @file  arch/x86_64/include/bootinfo.hh
+/// @file  bootinfo.hh
 
 //  UNIQOS  --  Unique Operating System
 //  (C) 2011-2014 KATO Takeshi
@@ -19,7 +19,7 @@
 #ifndef ARCH_X86_64_INCLUDE_BOOTINFO_HH_
 #define ARCH_X86_64_INCLUDE_BOOTINFO_HH_
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
 namespace bootinfo {

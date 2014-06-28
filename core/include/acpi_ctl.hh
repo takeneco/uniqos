@@ -1,6 +1,6 @@
 /// @file  acpi_ctl.hh
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
 #ifndef CORE_INCLUDE_ACPI_CTL_HH_
@@ -10,11 +10,11 @@ extern "C" {
 #include <acpi.h>
 }  // extern "C"
 
-#include <basic.hh>
+#include <core/basic.hh>
 
 
-cause::type acpi_table_init(uptr size, void* buffer);
-cause::type acpi_init();
+cause::t acpi_table_init(uptr size, void* buffer);
+cause::t acpi_init();
 
 namespace acpi {
 
@@ -51,5 +51,5 @@ typedef madt_typed_iterator<ACPI_MADT_IO_APIC, ACPI_MADT_TYPE_IO_APIC>
 }  // namespace acpi
 
 
-#endif  // CORE_INCLUDE_ACPI_CTL_HH_
+#endif  // include guard
 
