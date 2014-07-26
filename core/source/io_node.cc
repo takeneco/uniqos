@@ -2,7 +2,7 @@
 /// @brief  io_node class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  (C) 2010-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <io_node.hh>
+#include <core/io_node.hh>
 
-#include <string.hh>
+#include <core/string.hh>
 
 
 void iovec_iterator::normalize()
@@ -111,9 +111,10 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 
 void io_node::operations::init()
 {
-	seek = io_node::nofunc_io_node_seek;
-	read = io_node::nofunc_io_node_read;
-	write = io_node::nofunc_io_node_write;
+	seek = io_node::nofunc_Seek;
+	read = io_node::nofunc_Read;
+	write = io_node::nofunc_Write;
+	GetDirEntry  = io_node::nofunc_GetDirEntry;
 }
 
 

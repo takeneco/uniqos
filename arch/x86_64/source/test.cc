@@ -1,8 +1,8 @@
 /// @file  test.cc
 
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 #include <global_vars.hh>
-#include <log.hh>
+#include <core/log.hh>
 #include <mempool_ctl.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
@@ -224,7 +224,7 @@ bool test_init()
 {
 	rnd.init(0, 0);
 	test_number = 0;
-	test_number_lock = new (mem_alloc(sizeof (spin_lock))) spin_lock;
+	test_number_lock = new (shared_mem()) spin_lock;
 	return true;
 }
 

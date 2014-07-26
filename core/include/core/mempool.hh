@@ -100,9 +100,9 @@ public:
 	cause::t release(void* ptr);
 	void collect_free_pages();
 
-	void* alloc();             ///< DUPLICATED
-	void* alloc(cpu_id cpuid); ///< DUPLICATED
-	void dealloc(void* ptr);   ///< DUPLICATED
+	void* alloc();             ///< TODO:DUPLICATED
+	void* alloc(cpu_id cpuid); ///< TODO:DUPLICATED
+	void dealloc(void* ptr);   ///< TODO:DUPLICATED
 
 	void inc_shared_count() { shared_count.add(1); }
 	void dec_shared_count() { shared_count.sub(1); }
@@ -181,6 +181,8 @@ private:
 	char obj_name[32];
 
 // mem_allocator implement
+public:
+	operator mem_allocator&() { return _mem_allocator; }
 private:
 	class mp_mem_allocator : public mem_allocator
 	{
@@ -199,7 +201,6 @@ private:
 		mempool* mp;
 	};
 	mp_mem_allocator _mem_allocator;
-	operator mem_allocator&() { return _mem_allocator; }
 };
 
 template <class T>
@@ -230,10 +231,10 @@ extern "C" void     mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 
-void* operator new (uptr, mempool* mp);
-void* operator new [] (uptr, mempool* mp);
+void* operator new (uptr, mempool* mp);  //TODO: DUPLICATED
+void* operator new [] (uptr, mempool* mp);  //TODO: DUPLICATED
 
-inline void operator delete (void* p, mempool* mp) {
+inline void operator delete (void* p, mempool* mp) {  //TODO: DUPLICATED
 	mp->release(p);
 }
 

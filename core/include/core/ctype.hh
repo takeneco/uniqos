@@ -1,13 +1,13 @@
 /// @file  ctype.hh
 /// @brief used by ACPICA
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CTYPE_HH_
-#define CORE_INCLUDE_CTYPE_HH_
+#ifndef CORE_CTYPE_HH_
+#define CORE_CTYPE_HH_
 
-#include <basic.hh>
+#include "basic.hh"
 
 
 namespace ctype {
@@ -39,5 +39,5 @@ inline u8 to_lower(u8 c) { return is_upper(c) ? c + ('a' - 'A') : c; }
 }  // namespace ctype
 
 
-#endif  // CORE_INCLUDE_CTYPE_HH_
+#endif  // include guard
 

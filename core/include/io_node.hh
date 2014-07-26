@@ -4,8 +4,8 @@
 // (C) 2010-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_IO_NODE_HH_
-#define CORE_INCLUDE_CORE_IO_NODE_HH_
+#ifndef CORE_IO_NODE_HH_
+#define CORE_IO_NODE_HH_
 
 #include <core/basic.hh>
 
@@ -56,6 +56,13 @@ public:
 };
 
 
+struct dir_entry
+{
+	u16  rec_len;
+	char name[];
+};
+
+
 // @brief  file like interface base class.
 class io_node
 {
@@ -75,18 +82,22 @@ public:
 	{
 		void init();
 
-		typedef cause::t (*seek_op)(
+		typedef cause::t (*SeekOp)(
 		    io_node* x, seek_whence whence,
 		    offset rel_off, offset* abs_off);
-		seek_op seek;
+		SeekOp seek;
 
-		typedef cause::t (*read_op)(
+		typedef cause::t (*ReadOp)(
 		    io_node* x, offset* off, int iov_cnt, iovec* iov);
-		read_op read;
+		ReadOp read;
 
-		typedef cause::t (*write_op)(
+		typedef cause::t (*WriteOp)(
 		    io_node* x, offset* off, int iov_cnt, const iovec* iov);
-		write_op write;
+		WriteOp write;
+
+		typedef cause::pair<dir_entry*> (*GetDirEntryOP)(
+		    io_node* x, uptr buf_bytes, dir_entry* buf);
+		GetDirEntryOP GetDirEntry;
 	};
 
 	// seek
@@ -95,7 +106,7 @@ public:
 		return static_cast<T*>(x)->
 		    on_io_node_seek(whence, rel_off, abs_off);
 	}
-	static cause::t nofunc_io_node_seek(
+	static cause::t nofunc_Seek(
 	    io_node*, seek_whence, offset, offset*) {
 		return cause::NOFUNC;
 	}
@@ -106,7 +117,7 @@ public:
 		return static_cast<T*>(x)->
 		    on_io_node_read(off, iov_cnt, iov);
 	}
-	static cause::t nofunc_io_node_read(
+	static cause::t nofunc_Read(
 	    io_node*, offset*, int, iovec*) {
 		return cause::NOFUNC;
 	}
@@ -117,9 +128,21 @@ public:
 		return static_cast<T*>(x)->
 		    on_io_node_write(off, iov_cnt, iov);
 	}
-	static cause::t nofunc_io_node_write(
+	static cause::t nofunc_Write(
 	    io_node*, offset*, int, const iovec*) {
 		return cause::NOFUNC;
+	}
+
+	// GetDirEntry
+	template<class T>
+	static cause::pair<dir_entry*> call_on_io_node_GetDirEntry(
+	    io_node* x, uptr buf_bytes, dir_entry* buf) {
+		return static_cast<T*>(x)->
+		    on_io_node_GetDirEntry(buf_bytes, buf);
+	}
+	static cause::pair<dir_entry*> nofunc_GetDirEntry(
+	    io_node*, uptr, dir_entry*) {
+		return null_pair(cause::NOFUNC);
 	}
 
 public:
@@ -131,6 +154,10 @@ public:
 	}
 	cause::t write(offset* off, int iov_cnt, const iovec* iov) {
 		return ops->write(this, off, iov_cnt, iov);
+	}
+	cause::pair<dir_entry*> get_dir_entry(
+	    uptr buf_bytes, dir_entry* buf) {
+		return ops->GetDirEntry(this, buf_bytes, buf);
 	}
 
 protected:

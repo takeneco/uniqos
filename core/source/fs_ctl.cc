@@ -20,19 +20,74 @@
 #include <core/fs_ctl.hh>
 
 #include <core/global_vars.hh>
+#include <core/io_node.hh>
 #include <core/setup.hh>
 #include <core/mempool.hh>
 #include <core/string.hh>
 #include <new_ops.hh>
 
 
+namespace {
+
+uptr filename_length(const char* path)
+{
+	uptr r = 0;
+	while (*path) {
+		if (*path == '/')
+			break;
+		++path;
+	}
+
+	return r;
+}
+
+int filename_compare(const char* name1, const char* name2)
+{
+	for (;;) {
+		if (*name1 != *name2) {
+			if ((*name1 == '\0' || *name1 == '/') &&
+			    (*name2 == '\0' || *name2 == '/'))
+				return 0;
+			return *name1 - *name2;
+		}
+		if (*name1 == '\0' || *name1 == '/')
+			return 0;
+
+		++name1;
+		++name2;
+	}
+}
+
+bool pathname_is_edge(const char* path)
+{
+	if (!*path)
+		return false;
+
+	for (;; ++path) {
+		if (*path == '\0')
+			return true;
+		if (*path == '/')
+			break;
+	}
+
+	while (*path == '/')
+		++path;
+
+	return *path == '\0';
+}
+
+}  // namespace
+
 // fs_ctl::mountpoint
 
 fs_ctl::mountpoint::mountpoint(const char* src, const char* tgt) :
 	mount_obj(nullptr)
 {
-	uptr src_len = str_length(src) + 1;
-	uptr tgt_len = str_length(tgt) + 1;
+	source_char_cn = str_length(src);
+	target_char_cn = str_length(tgt);
+
+	pathname_cn_t src_len = source_char_cn + 1;
+	pathname_cn_t tgt_len = target_char_cn + 1;
 
 	str_copy(src_len, src, &buf[0]);
 	str_copy(tgt_len, tgt, &buf[src_len]);
@@ -55,6 +110,15 @@ cause::pair<fs_ctl::mountpoint*> fs_ctl::mountpoint::create(
 	return make_pair(cause::OK, mp);
 }
 
+cause::t fs_ctl::mountpoint::destroy(mountpoint* mp)
+{
+	mp->~mountpoint();
+	operator delete (mp, mp);
+	mem_dealloc(mp);
+
+	return cause::OK;
+}
+
 // fs_ctl
 
 fs_ctl::fs_ctl()
@@ -63,13 +127,41 @@ fs_ctl::fs_ctl()
 
 cause::t fs_ctl::init()
 {
-	fs_node* _root = new (mem_alloc(sizeof (fs_node))) fs_node;
+	fs_node* _root = new (shared_mem())
+	    fs_node(nullptr, fs_ctl::NODE_UNKNOWN);
 	if (!_root)
 		return cause::NOMEM;
 
 	root = _root;
 
 	return cause::OK;
+}
+
+cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
+{
+	fs_node* cur = root;
+	while (*path) {
+		while (*path == '/')
+			++path;
+
+		auto child = cur->get_child_node(path);
+		if (is_fail(child)) {
+			if ((flags & OPEN_CREATE) && pathname_is_edge(path)) {
+				//auto r = cur->create_child_node(cur, path);
+			}
+		} else if (is_fail(child)) {
+			return cause::null_pair(child.get_cause());
+		}
+
+		cur = child.get_data();
+
+		uptr len = filename_length(path);
+		path += len;
+	}
+
+	if (cur) {}
+
+	return null_pair(cause::NOFUNC);
 }
 
 cause::t fs_ctl::mount(const char* type, const char* source, const char* target)
@@ -83,9 +175,10 @@ cause::t fs_ctl::mount(const char* type, const char* source, const char* target)
 
 		auto r2 = ramfs_driver->mount(source);
 		if (is_fail(r2)) {
-			mp->~mountpoint();
-			operator delete (mp, (void*)nullptr);
-			mem_dealloc(mp);
+			auto r3 = mountpoint::destroy(mp);
+			if (is_fail(r3)) {
+				// TODO:multierror
+			}
 			return r2.get_cause();
 		}
 
@@ -100,13 +193,33 @@ cause::t fs_ctl::mount(const char* type, const char* source, const char* target)
 	}
 }
 
+// TODO:ファイル名の手前のディレクトリまでを返す関数を作る
+
+cause::pair<fs_node*> fs_ctl::get_fs_node(
+    fs_node* base, const char* path, u32 flags)
+{
+	if (base == nullptr)
+		base = root;
+
+	for (;;) {
+		while (*path == '/')
+			++path;
+
+		auto child = base->get_child_node(path);
+
+		uptr len = filename_length(path);
+		path += len;
+	}
+}
+
 
 // fs_driver::operations
 
 void fs_driver::operations::init()
 {
-	mount = fs_driver::nofunc_fs_driver_mount;
+	Mount = fs_driver::nofunc_Mount;
 }
+
 
 fs_ctl* get_fs_ctl()
 {
@@ -115,20 +228,56 @@ fs_ctl* get_fs_ctl()
 
 cause::t fs_ctl_init()
 {
-	fs_ctl* fsctl = new (mem_alloc(sizeof (fs_ctl))) fs_ctl;
+	fs_ctl* fsctl = new (shared_mem()) fs_ctl;
 	if (!fsctl)
 		return cause::NOMEM;
 
 	auto r = fsctl->init();
 	if (is_fail(r)) {
-		fsctl->~fs_ctl();
-		operator delete (fsctl, (void*)nullptr);
-		mem_dealloc(fsctl);
+		// TODO:logging return value
+		new_destroy(fsctl, shared_mem());
 		return r;
 	}
 
 	global_vars::core.fs_ctl_obj = fsctl;
 
 	return cause::OK;
+}
+
+// fs_mount::operations
+
+void fs_mount::operations::init()
+{
+	CreateNode   = fs_mount::nofunc_CreateNode;
+	OpenNode     = fs_mount::nofunc_OpenNode;
+}
+
+
+// fs_node
+
+fs_node::fs_node(fs_mount* mount_owner, u32 _mode) :
+	owner(mount_owner),
+	mode(_mode)
+{
+}
+
+cause::pair<fs_node*> fs_node::create_child_node(u32 mode, const char* name)
+{
+	return owner->create_node(this, mode, name);
+}
+
+cause::pair<fs_node*> fs_node::get_child_node(const char* name)
+{
+	child_node* child;
+	for (child = child_nodes.front(); child; child_nodes.next(child)) {
+		if (0 == filename_compare(child->name, name)) {
+			break;
+		}
+	}
+
+	if (child)
+		return cause::make_pair(cause::OK, child->node);
+	else
+		return cause::null_pair(cause::NOENT);
 }
 

@@ -368,6 +368,8 @@ namespace cause
 		END = 5,
 		/// デバイスが無い。
 		NODEV = 10,
+		/// No such file or directory
+		NOENT = 11,
 
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,

@@ -439,6 +439,12 @@ cause::t mempool_ctl::create_mempool_ctl(mempool_ctl** mpctl)
 	return cause::OK;
 }
 
+mempool_ctl* get_mempool_ctl()
+{
+	return global_vars::core.mempool_ctl_obj;
+}
+
+
 // mempool_ctl::shared_mem_allocator
 
 namespace {

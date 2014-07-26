@@ -99,6 +99,8 @@ private:
 	mem_allocator::operations _mp_allocator_ops;
 };
 
+mempool_ctl* get_mempool_ctl();
+
 
 #endif  // include guard
 
