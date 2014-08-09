@@ -4,8 +4,8 @@
 // (C) 2010-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_STRING_HH_
-#define CORE_INCLUDE_CORE_STRING_HH_
+#ifndef CORE_STRING_HH_
+#define CORE_STRING_HH_
 
 #include <core/basic.hh>
 
@@ -17,6 +17,10 @@ void mem_fill(uptr bytes, u8 c, void* dest);
 
 int str_length(const char* str);
 int str_compare(uptr max, const char* str1, const char* str2);
+inline int str_compare(const char* str1, const char* str2, uptr max) {
+	str_compare(max, str1, str2);
+}
+int str_compare(const char* str1, const char* str2);
 void str_copy(uptr max, const char* src, char* dest);
 void str_concat(uptr max, const char* src, char* dest);
 
@@ -30,5 +34,5 @@ int u_to_binstr(umax n, char s[sizeof n * 8]);
 int u_to_decstr(umax n, char s[sizeof n * 3]);
 
 
-#endif  // Include guard
+#endif  // include guard
 

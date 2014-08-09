@@ -81,27 +81,28 @@ bool pathname_is_edge(const char* path)
 // fs_ctl::mountpoint
 
 fs_ctl::mountpoint::mountpoint(const char* src, const char* tgt) :
-	mount_obj(nullptr)
+	mount_obj(nullptr),
+	down_mountpoint(nullptr)
 {
 	source_char_cn = str_length(src);
 	target_char_cn = str_length(tgt);
 
-	pathname_cn_t src_len = source_char_cn + 1;
-	pathname_cn_t tgt_len = target_char_cn + 1;
+	pathname_cn_t src_len = src ? source_char_cn + 1 : 0;
+	pathname_cn_t tgt_len = tgt ? target_char_cn + 1 : 0;
 
 	str_copy(src_len, src, &buf[0]);
 	str_copy(tgt_len, tgt, &buf[src_len]);
 
-	source = &buf[0];
-	target = &buf[src_len];
+	source = src ? &buf[0] : nullptr;
+	target = tgt ? &buf[src_len] : nullptr;
 }
 
 cause::pair<fs_ctl::mountpoint*> fs_ctl::mountpoint::create(
     const char* source, const char* target)
 {
 	uptr size = sizeof (mountpoint);
-	size += str_length(source) + 1;
-	size += str_length(target) + 1;
+	size += source ? str_length(source) + 1 : 0;
+	size += target ? str_length(target) + 1 : 0;
 
 	mountpoint* mp = new (mem_alloc(size)) mountpoint(source, target);
 	if (!mp)
@@ -164,9 +165,9 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 	return null_pair(cause::NOFUNC);
 }
 
-cause::t fs_ctl::mount(const char* type, const char* source, const char* target)
+cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 {
-	if (str_compare(32, "ramfs", type)) {
+	if (str_compare(32, "ramfs", type) == 0) {
 		auto r1 = mountpoint::create(source, target);
 		if (is_fail(r1))
 			return r1.get_cause();
@@ -193,6 +194,30 @@ cause::t fs_ctl::mount(const char* type, const char* source, const char* target)
 	}
 }
 
+cause::t fs_ctl::unmount(const char* target, u64 flags)
+{
+	mountpoint* target_mp = nullptr;
+	for (mountpoint* mp = mountpoints.back();
+	     mp;
+	     mp = mountpoints.prev(mp))
+	{
+		if (str_compare(target, mp->target) == 0) {
+			target_mp = mp;
+			break;
+		}
+	}
+
+	if (!target_mp)
+		return cause::BADARG;
+
+	mountpoints.remove(target_mp);
+
+	auto r = target_mp->mount_obj->get_driver()->unmount(
+	    target_mp->mount_obj, target_mp->target, flags);
+
+	return r;
+}
+
 // TODO:ファイル名の手前のディレクトリまでを返す関数を作る
 
 cause::pair<fs_node*> fs_ctl::get_fs_node(
@@ -217,7 +242,8 @@ cause::pair<fs_node*> fs_ctl::get_fs_node(
 
 void fs_driver::operations::init()
 {
-	Mount = fs_driver::nofunc_Mount;
+	Mount    = fs_driver::nofunc_Mount;
+	Unmount  = fs_driver::nofunc_Unmount;
 }
 
 
@@ -281,3 +307,20 @@ cause::pair<fs_node*> fs_node::get_child_node(const char* name)
 		return cause::null_pair(cause::NOENT);
 }
 
+
+cause::t sys_mount(
+    const char* source,  ///< source device path
+    const char* target,  ///< mount target path
+    const char* type,    ///< fs type name
+    u64 flags,           ///< mount flags
+    const void* data)    ///< optional data
+{
+	return get_fs_ctl()->mount(source, target, type);
+}
+
+cause::t sys_unmount(
+    const char* target,  ///< unmount taget path
+    u64 flags)
+{
+	return get_fs_ctl()->unmount(target, flags);
+}

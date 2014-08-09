@@ -76,8 +76,10 @@ public:
 	}
 
 	cause::pair<io_node*> open(const char* path, u32 flags);
-	cause::t mount(const char* type,
-	    const char* source, const char* target);
+	cause::t mount(
+	    const char* source, const char* target, const char* type);
+	cause::t unmount(
+	    const char* target, u64 flags);
 
 private:
 	cause::pair<fs_node*> get_fs_node(
@@ -103,6 +105,11 @@ public:
 		typedef cause::pair<fs_mount*> (*MountOP)(
 		    fs_driver* x, const char* dev);
 		MountOP Mount;
+
+		typedef cause::t (*UnmountOP)(
+		    fs_driver* x, fs_mount* mount, const char* target,
+		    u64 flags);
+		UnmountOP Unmount;
 	};
 
 	// mount
@@ -115,9 +122,22 @@ public:
 		return null_pair(cause::NOFUNC);
 	}
 
+	// Unmount
+	template<class T> static cause::t call_on_Unmount(
+	    fs_driver* x, fs_mount* mount, const char* target, u64 flags) {
+		return static_cast<T*>(x)->on_Unmount(mount, target, flags);
+	}
+	static cause::t nofunc_Unmount(
+	    fs_driver*, fs_mount*, const char*, u64) {
+		return cause::NOFUNC;
+	}
+
 public:
 	cause::pair<fs_mount*> mount(const char* dev) {
 		return ops->Mount(this, dev);
+	}
+	cause::t unmount(fs_mount* mount, const char* target, u64 flags) {
+		return ops->Unmount(this, mount, target, flags);
 	}
 
 protected:
@@ -183,6 +203,8 @@ public:
 		return ops->OpenNode(this, node, flags);
 	}
 
+	fs_driver* get_driver() { return driver; }
+
 private:
 	cause::pair<fs_node*> create_node(
 	    fs_node* parent, u32 mode, const char* name) {
@@ -190,13 +212,14 @@ private:
 	}
 
 protected:
-	fs_mount() {}
+	fs_mount(fs_driver* drv) : driver(drv) {}
 
 private:
 	bichain_node<fs_mount> _chain_node;
 
 protected:
 	operations* ops;
+	fs_driver* driver;
 	fs_node* root;
 };
 

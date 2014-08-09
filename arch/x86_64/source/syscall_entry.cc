@@ -22,6 +22,13 @@
 #include <core/timer.hh>
 
 
+cause::t sys_mount(
+    const char* source,
+    const char* target,
+    const char* type,
+    u64 flags,
+    const void* data);
+
 cause::pair<uptr> test_string(const char* str)
 {
 	uptr i;
@@ -33,6 +40,7 @@ cause::pair<uptr> test_string(const char* str)
 
 extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 {
+	cause::pair<uptr> ret;
 	/* data[0] : %rax
 	 * data[1] : %rip
 	 * data[2] : %rdx(3rd param)
@@ -63,9 +71,12 @@ extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 		uptr val = (uptr)data[6];
 
 		log()("mount():src=")(_src)(", tgt=")(_tgt)(", typ=")(_typ)
-		    (", flg=").x(_flg)(", data=").p(_data)()(", 6=").x(val)();
+		    (", flg=").x(_flg)(", data=").p(_data);
+		cause::t r = sys_mount(_src, _tgt, _typ, _flg, _data);
+		ret.set_cause(r);
+		log()(", ret=").u(r)();
 	}
 
-	return cause::pair<uptr>(cause::OK, 0);
+	return ret;
 }
 

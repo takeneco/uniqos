@@ -30,6 +30,7 @@ public:
 	ramfs_driver();
 
 	cause::pair<fs_mount*> on_Mount(const char* dev);
+	cause::t on_Unmount(fs_mount* mount, const char* target, u64 flags);
 
 	const io_node::operations* ref_io_node_ops() { return &io_node_ops; }
 
@@ -43,7 +44,7 @@ class ramfs_mount : public fs_mount
 {
 public:
 	ramfs_mount(ramfs_driver* drv) :
-		driver(drv)
+		fs_mount(drv)
 	{}
 
 	cause::t mount(const char* dev);
@@ -54,10 +55,12 @@ public:
 	    fs_node* node, u32 flags);
 
 private:
+	ramfs_driver* get_driver() {
+		return static_cast<ramfs_driver*>(fs_mount::get_driver());
+	}
 	cause::pair<io_node*> create_io_node();
 
 private:
-	ramfs_driver* driver;
 	mempool* fs_node_mp;
 	mempool* io_node_mp;
 };
@@ -90,6 +93,7 @@ ramfs_driver::ramfs_driver() :
 	self_ops.init();
 
 	self_ops.Mount      = fs_driver::call_on_Mount<ramfs_driver>;
+	self_ops.Unmount    = fs_driver::call_on_Unmount<ramfs_driver>;
 
 	mount_ops.init();
 
@@ -117,6 +121,12 @@ cause::pair<fs_mount*> ramfs_driver::on_Mount(const char* dev)
 	}
 
 	return cause::pair<fs_mount*>(cause::OK, ramfs);
+}
+
+cause::t ramfs_driver::on_Unmount(
+    fs_mount* mount, const char* target, u64 flags)
+{
+	return cause::NOFUNC;
 }
 
 // ramfs_mount
@@ -161,7 +171,7 @@ cause::pair<io_node*> ramfs_mount::on_OpenNode(
 cause::pair<io_node*> ramfs_mount::create_io_node()
 {
 	ramfs_io_node* ion =
-	    new (*io_node_mp) ramfs_io_node(driver->ref_io_node_ops());
+	    new (*io_node_mp) ramfs_io_node(get_driver()->ref_io_node_ops());
 	if (!ion)
 		return null_pair(cause::NOMEM);
 

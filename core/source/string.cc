@@ -94,7 +94,19 @@ int str_compare(uptr max, const char* str1, const char* str2)
 		if (str1[i] != str2[i])
 			return str1[i] - str2[i];
 		if (!str1[i])
-			return 0;
+			break;
+	}
+
+	return 0;
+}
+
+int str_compare(const char* str1, const char* str2)
+{
+	for (uptr i = 0; ; ++i) {
+		if (str1[i] != str2[i])
+			return str1[i] - str2[i];
+		if (!str1[i])
+			break;
 	}
 
 	return 0;
