@@ -26,6 +26,11 @@
 
 int mem_compare(uptr bytes, const void* mem1, const void* mem2)
 {
+	return mem_compare(mem1, mem2, bytes);
+}
+
+int mem_compare(const void* mem1, const void* mem2, uptr bytes)
+{
 	const u8* m1 = static_cast<const u8*>(mem1);
 	const u8* m2 = static_cast<const u8*>(mem2);
 
@@ -39,6 +44,11 @@ int mem_compare(uptr bytes, const void* mem1, const void* mem2)
 }
 
 void mem_move(uptr bytes, const void* src, void* dest)
+{
+	mem_move(src, dest, bytes);
+}
+
+void mem_move(const void* src, void* dest, uptr bytes)
 {
 	const char* s = static_cast<const char*>(src);
 	char* d = static_cast<char*>(dest);
@@ -55,6 +65,11 @@ void mem_move(uptr bytes, const void* src, void* dest)
 
 void mem_copy(uptr bytes, const void* src, void* dest)
 {
+	mem_copy(src, dest, bytes);
+}
+
+void mem_copy(const void* src, void* dest, uptr bytes)
+{
 	const char* s = static_cast<const char*>(src);
 	char* d = static_cast<char*>(dest);
 
@@ -62,11 +77,16 @@ void mem_copy(uptr bytes, const void* src, void* dest)
 		d[i] = s[i];
 }
 
+void mem_fill(uptr bytes, u8 c, void* dest)
+{
+	mem_fill(c, dest, bytes);
+}
+
 /// @def ARCH_PROVIDES_MEM_FILL
 /// arch 専用の mem_fill() を使用する場合に定義する。
 #ifndef ARCH_PROVIDES_MEM_FILL
 
-void mem_fill(uptr bytes, u8 c, void* dest)
+void mem_fill(u8 c, void* dest, uptr bytes)
 {
 	u8* d = static_cast<u8*>(dest);
 
@@ -90,6 +110,11 @@ int str_length(const char* str)
 
 int str_compare(uptr max, const char* str1, const char* str2)
 {
+	return str_compare(str1, str2, max);
+}
+
+int str_compare(const char* str1, const char* str2, uptr max)
+{
 	for (uptr i = 0; i < max ; ++i) {
 		if (str1[i] != str2[i])
 			return str1[i] - str2[i];
@@ -112,7 +137,21 @@ int str_compare(const char* str1, const char* str2)
 	return 0;
 }
 
+void str_copy(const char* src, char* dest)
+{
+	for (uptr i = 0; ; ++i) {
+		dest[i] = src[i];
+		if (!src[i])
+			break;
+	}
+}
+
 void str_copy(uptr max, const char* src, char* dest)
+{
+	str_copy(src, dest, max);
+}
+
+void str_copy(const char* src, char* dest, uptr max)
 {
 	for (uptr i = 0; i < max; ++i) {
 		dest[i] = src[i];
@@ -121,12 +160,32 @@ void str_copy(uptr max, const char* src, char* dest)
 	}
 }
 
-void str_concat(uptr max, const char* src, char* dest)
+void str_concat(const char* src, char* dest)
 {
 	while (*dest)
 		dest++;
 
-	for (uptr i = 0; ; ++i) {
+	for (;;) {
+		if ((*dest++ = *src++) == '\0')
+			break;
+	}
+}
+
+void str_concat(uptr max, const char* src, char* dest)
+{
+	str_concat(src, dest, max);
+}
+
+void str_concat(const char* src, char* dest, uptr max)
+{
+	uptr i = 0;
+
+	while (*dest) {
+		++dest;
+		++i;
+	}
+
+	for ( ; ; ++i) {
 		if (i >= max) {
 			*dest = '\0';
 			break;
@@ -169,6 +228,11 @@ umax str_to_u(u8 base, const char* src, const char** end)
 }
 
 void str_to_upper(int length, char* str)
+{
+	str_to_upper(str, length);
+}
+
+void str_to_upper(char* str, int length)
 {
 	for (int i = 0; i < length && str[i]; ++i) {
 		if (ctype::is_lower(str[i]))
@@ -285,18 +349,18 @@ extern "C" {
 
 int memcmp(const void *s1, const void *s2, unsigned long n)
 {
-	return mem_compare(n, s1, s2);
+	return mem_compare(s1, s2, n);
 }
 
 void *memcpy(void *dest, const void *src, unsigned long n)
 {
-	mem_copy(n, src, dest);
+	mem_copy(src, dest, n);
 	return dest;
 }
 
 void *memset(void *dest, int c, unsigned long n)
 {
-	mem_fill(n, c, dest);
+	mem_fill(c, dest, n);
 	return dest;
 }
 
@@ -307,29 +371,29 @@ unsigned long strlen(const char *s)
 
 int strcmp(const char *str1, const char *str2)
 {
-	return str_compare(0xffffffff, str1, str2);
+	return str_compare(str1, str2);
 }
 
 int strncmp(const char *str1, const char *str2, unsigned long n)
 {
-	return str_compare(n, str1, str2);
+	return str_compare(str1, str2, n);
 }
 
 char *strcpy(char *dest, const char *src)
 {
-	str_copy(0xffffffff, src, dest);
+	str_copy(src, dest);
 	return dest;
 }
 
 char *strncpy(char *dest, const char *src, unsigned long n)
 {
-	str_copy(n, src, dest);
+	str_copy(src, dest, n);
 	return dest;
 }
 
 char *strcat(char *dest, const char *src)
 {
-	str_concat(0xffffffff, src, dest);
+	str_concat(src, dest);
 	return dest;
 }
 

@@ -400,6 +400,12 @@ namespace cause
 			value(_value)
 		{}
 
+		pair<T>& operator = (const T& x) {
+			r = x.r;
+			value = x.r;
+			return *this;
+		}
+
 		operator T& () {
 			return value;
 		}
@@ -430,6 +436,7 @@ namespace cause
 	template<class T> inline pair<T> make_pair(type r, T value) {
 		return pair<T>(r, value);
 	}
+
 	struct _null_pair
 	{
 		_null_pair(type _r) : r(_r) {}
@@ -440,6 +447,18 @@ namespace cause
 	};
 	inline _null_pair null_pair(type r) {
 		return _null_pair(r);
+	}
+
+	struct _zero_pair
+	{
+		_zero_pair(type _r) : r(_r) {}
+		template<class T> operator pair<T> () {
+			return pair<T>(r, 0);
+		}
+		type r;
+	};
+	inline _zero_pair zero_pair(type r) {
+		return _zero_pair(r);
 	}
 }
 

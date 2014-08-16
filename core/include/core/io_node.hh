@@ -87,13 +87,21 @@ public:
 		    offset rel_off, offset* abs_off);
 		SeekOp seek;
 
-		typedef cause::t (*ReadOp)(
-		    io_node* x, offset* off, int iov_cnt, iovec* iov);
-		ReadOp read;
+		typedef cause::pair<uptr> (*ReadOp)(
+		    io_node* x, offset off, void* data, uptr bytes);
+		ReadOp Read;
 
-		typedef cause::t (*WriteOp)(
+		typedef cause::t (*ReadVOp)(
+		    io_node* x, offset* off, int iov_cnt, iovec* iov);
+		ReadVOp read;
+
+		typedef cause::pair<uptr> (*WriteOp)(
+		    io_node* x, offset off, const void* data, uptr bytes);
+		WriteOp Write;
+
+		typedef cause::t (*WriteVOp)(
 		    io_node* x, offset* off, int iov_cnt, const iovec* iov);
-		WriteOp write;
+		WriteVOp write;
 
 		typedef cause::pair<dir_entry*> (*GetDirEntryOP)(
 		    io_node* x, uptr buf_bytes, dir_entry* buf);
@@ -111,24 +119,46 @@ public:
 		return cause::NOFUNC;
 	}
 
-	// read
+	// Read
+	template<class T> static cause::pair<uptr> call_on_Read(
+	    io_node* x, offset off, void* data, uptr bytes) {
+		return static_cast<T*>(x)->
+		    on_Read(off, data, bytes);
+	}
+	static cause::pair<uptr> nofunc_Read(
+	    io_node*, offset, void*, uptr) {
+		return zero_pair(cause::NOFUNC);
+	}
+
+	// readv
 	template<class T> static cause::t call_on_io_node_read(
 	    io_node* x, offset* off, int iov_cnt, iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_read(off, iov_cnt, iov);
 	}
-	static cause::t nofunc_Read(
+	static cause::t nofunc_ReadV(
 	    io_node*, offset*, int, iovec*) {
 		return cause::NOFUNC;
 	}
 
-	// write
+	// Write
+	template<class T> static cause::pair<uptr> call_on_Write(
+	    io_node* x, offset off, const void* data, uptr bytes) {
+		return static_cast<T*>(x)->
+		    on_Write(off, data, bytes);
+	}
+	static cause::pair<uptr> nofunc_Write(
+	    io_node*, offset, const void*, uptr) {
+		return zero_pair(cause::NOFUNC);
+	}
+
+	// writev
 	template<class T> static cause::t call_on_io_node_write(
 	    io_node* x, offset* off, int iov_cnt, const iovec* iov) {
 		return static_cast<T*>(x)->
 		    on_io_node_write(off, iov_cnt, iov);
 	}
-	static cause::t nofunc_Write(
+	static cause::t nofunc_WriteV(
 	    io_node*, offset*, int, const iovec*) {
 		return cause::NOFUNC;
 	}
@@ -149,10 +179,16 @@ public:
 	cause::t seek(seek_whence whence, offset rel_off, offset* abs_off) {
 		return ops->seek(this, whence, rel_off, abs_off);
 	}
-	cause::t read(offset* off, int iov_cnt, iovec* iov) {
+	cause::pair<uptr> read(offset off, void* data, uptr bytes) {
+		return ops->Read(this, off, data, bytes);
+	}
+	cause::t readv(offset* off, int iov_cnt, iovec* iov) {
 		return ops->read(this, off, iov_cnt, iov);
 	}
-	cause::t write(offset* off, int iov_cnt, const iovec* iov) {
+	cause::pair<uptr> write(offset off, const void* data, uptr bytes) {
+		return ops->Write(this, off, data, bytes);
+	}
+	cause::t writev(offset* off, int iov_cnt, const iovec* iov) {
 		return ops->write(this, off, iov_cnt, iov);
 	}
 	cause::pair<dir_entry*> get_dir_entry(

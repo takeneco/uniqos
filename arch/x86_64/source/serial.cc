@@ -22,7 +22,7 @@
 #include <core/io_node.hh>
 #include <core/mempool.hh>
 #include <core/message.hh>
-#include <intr_ctl.hh>
+#include <core/intr_ctl.hh>
 #include <irq_ctl.hh>
 #include <native_ops.hh>
 #include <new_ops.hh>
@@ -134,7 +134,7 @@ public:
 
 public:
 	serial_ctl(u16 _base_port, u16 _irq_num);
-	cause::type configure();
+	cause::t configure();
 
 private:
 	bool buf_is_empty() const {
@@ -154,8 +154,10 @@ private:
 	}
 	buf_entry* get_next_buf();
 	bool is_txfifo_empty() const;
+	cause::pair<uptr> on_Write(offset off, const void* data, uptr bytes);
 	cause::t on_io_node_write(offset* off, int iov_cnt, const iovec* iov);
-	cause::type write_buf(offset* off, iovec_iterator& iov_itr);
+	cause::pair<uptr> write_buf(offset off, const void* data, uptr bytes);
+	cause::t write_buf(offset* off, iovec_iterator& iov_itr);
 
 	void post_write_msg();
 	void on_write_msg();
@@ -186,7 +188,7 @@ serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
 	ops = &serial_ops;
 }
 
-cause::type serial_ctl::configure()
+cause::t serial_ctl::configure()
 {
 	u32 vec = 0xffffffff;
 	arch::irq_interrupt_map(4, &vec);
@@ -230,7 +232,7 @@ cause::type serial_ctl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
-	cause::type r = mempool_acquire_shared(buf_entry::SIZE, &buf_mp);
+	cause::t r = mempool_acquire_shared(buf_entry::SIZE, &buf_mp);
 	if (is_fail(r))
 		return r;
 
@@ -252,6 +254,26 @@ bool serial_ctl::is_txfifo_empty() const
 	const u8 line_status = native::inb(base_port + LINE_STATUS);
 
 	return (line_status & 0x20) != 0;
+}
+
+cause::pair<uptr> serial_ctl::on_Write(
+    offset off, const void* data, uptr bytes)
+{
+	cause::pair<uptr> r;
+	{
+		preempt_disable_section _pds;
+
+		r = write_buf(off, data, bytes);
+
+		if (tx_fifo_queued < DEVICE_TXBUF_SIZE)
+			post_write_msg();
+	}
+
+	if (false /* sync */ && r.get_data() != 0) {
+		sleep_current_thread();
+	}
+
+	return r;
 }
 
 /// @brief  Write to buffer.
@@ -280,11 +302,51 @@ cause::t serial_ctl::on_io_node_write(
 	return r;
 }
 
-cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
+cause::pair<uptr> serial_ctl::write_buf(
+    offset /*off*/, const void* data, uptr bytes)
+{
+	buf_entry* buf = 0;
+	cause::t r = cause::OK;
+	const u8* _data = static_cast<const u8*>(data);
+
+	uptr write_bytes = 0;
+
+	for (uptr i = 0; i < bytes; ++i) {
+		u8 c = *_data++;
+
+		if (c == '\n') {
+			buf = get_next_buf();
+			if (!buf) {
+				r = cause::NOMEM;
+				break;
+			}
+			buf->write(next_write++, '\r');
+		}
+
+		buf = get_next_buf();
+		if (!buf) {
+			r = cause::NOMEM;
+			break;
+		}
+
+		buf->write(next_write++, c);
+		++write_bytes;
+	}
+
+	if (false /* sync */ && buf) {
+		thread_queue& tc = get_cpu_node()->get_thread_ctl();
+		buf->set_bufsize(next_write);
+		buf->set_client(tc.get_running_thread());
+	}
+
+	return make_pair(r, write_bytes);
+}
+
+cause::t serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 {
 	buf_entry* buf = 0;
 	uptr total = 0;
-	cause::type result = cause::OK;
+	cause::t r = cause::OK;
 
 	for (;;) {
 		const u8* c = iov_itr.next_u8();
@@ -294,7 +356,7 @@ cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 		if (*c == '\n') {
 			buf = get_next_buf();
 			if (!buf) {
-				result = cause::NOMEM;
+				r = cause::NOMEM;
 				break;
 			}
 			buf->write(next_write++, '\r');
@@ -302,7 +364,7 @@ cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 
 		buf = get_next_buf();
 		if (!buf) {
-			result = cause::NOMEM;
+			r = cause::NOMEM;
 			break;
 		}
 
@@ -318,7 +380,7 @@ cause::type serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 		buf->set_client(tc.get_running_thread());
 	}
 
-	return result;
+	return r;
 }
 
 void serial_ctl::post_write_msg()
@@ -474,6 +536,9 @@ uptr tmp[(sizeof (serial_ctl) + sizeof (uptr) - 1) / sizeof (uptr)];
 io_node* create_serial()
 {
 	///////
+	serial_ctl::serial_ops.init();
+
+	serial_ctl::serial_ops.Write = io_node::call_on_Write<serial_ctl>;
 	serial_ctl::serial_ops.write = io_node::call_on_io_node_write<serial_ctl>;
 	///////
 

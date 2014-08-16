@@ -2,7 +2,7 @@
 /// @brief  text mode VGA output interface.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2013 KATO Takeshi
+//  (C) 2011-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,11 +17,14 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <vga.hh>
+#include <arch/vga.hh>
 
 
 void text_vga::init(u32 _width, u32 _height, void* _vram)
 {
+	fops.init();
+
+	fops.Write  = call_on_Write<text_vga>;
 	fops.write = call_on_io_node_write<text_vga>;
 	ops = &fops;
 
@@ -30,6 +33,34 @@ void text_vga::init(u32 _width, u32 _height, void* _vram)
 	vram = reinterpret_cast<u8*>(_vram);
 
 	xpos = ypos = 0;
+}
+
+cause::pair<uptr> text_vga::on_Write(
+    offset /*off*/, const void* data, uptr bytes)
+{
+	const u8* _data = static_cast<const u8*>(data);
+
+	uptr wrote_bytes = 0;
+
+	for (uptr i = 0; i < bytes; ++i) {
+		u8 c = *_data++;
+		if (c == '\r')
+			continue;
+		if (c == '\n') {
+			xpos = 0;
+			++ypos;
+			continue;
+		}
+		if (xpos >= width) {
+			xpos = 0;
+			++ypos;
+		}
+		putc(c);
+
+		++wrote_bytes;
+	}
+
+	return make_pair(cause::OK, wrote_bytes);
 }
 
 cause::t text_vga::on_io_node_write(

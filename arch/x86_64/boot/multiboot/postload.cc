@@ -19,7 +19,7 @@
 
 #include "misc.hh"
 
-#include <string.hh>
+#include <core/string.hh>
 
 
 extern u32 stack_start[];
@@ -35,12 +35,12 @@ namespace {
 /// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
 ///          バッファが足りない場合は、store_bytes より大きい値を返す。
-uptr store_adr_map(uptr store_bytes, u8* store)
+uptr store_adr_map(u8* store, uptr store_bytes)
 {
 	if (store_bytes < adr_map_store->info_bytes)
 		return adr_map_store->info_bytes;
 
-	mem_copy(adr_map_store->info_bytes, adr_map_store, store);
+	mem_copy(adr_map_store, store, adr_map_store->info_bytes);
 
 	return adr_map_store->info_bytes;
 }
@@ -51,7 +51,7 @@ uptr store_adr_map(uptr store_bytes, u8* store)
 /// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
 ///          バッファが足りない場合は、store_bytes より大きい値を返す。
-uptr store_multiboot(const u32* mb_info, uptr store_bytes, u8* store)
+uptr store_multiboot(const u32* mb_info, u8* store, uptr store_bytes)
 {
 	u32 mb_bytes = *mb_info;
 
@@ -79,7 +79,7 @@ uptr store_multiboot(const u32* mb_info, uptr store_bytes, u8* store)
 /// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
 ///          バッファが足りない場合は、store_bytes より大きい値を返す。
-uptr store_mem_alloc(uptr store_bytes, u8* store)
+uptr store_mem_alloc(u8* store, uptr store_bytes)
 {
 	bootinfo::mem_alloc* tag_ma =
 	    reinterpret_cast<bootinfo::mem_alloc*>(store);
@@ -122,17 +122,17 @@ uptr store_mem_alloc(uptr store_bytes, u8* store)
 /// @param[out] store  コピー先 bootinfo のバッファ
 /// @return  コピーしたサイズを返す。
 ///          バッファが足りない場合は、store_bytes より大きい値を返す。
-uptr store_mem_work(uptr store_bytes, u8* store)
+uptr store_mem_work(u8* store, uptr store_bytes)
 {
 	if (store_bytes < mem_work_store->info_bytes)
 		return mem_work_store->info_bytes;
 
-	mem_copy(mem_work_store->info_bytes, mem_work_store, store);
+	mem_copy(mem_work_store, store, mem_work_store->info_bytes);
 
 	return mem_work_store->info_bytes;
 }
 
-uptr store_log(uptr store_bytes, u8* store)
+uptr store_log(u8* store, uptr store_bytes)
 {
 	bootinfo::log* tag_log = reinterpret_cast<bootinfo::log*>(store);
 
@@ -144,7 +144,7 @@ uptr store_log(uptr store_bytes, u8* store)
 	iov.base = tag_log->log;
 	iov.bytes = store_bytes - info_bytes;
 	io_node::offset read_bytes = 0;
-	cause::t r = memlog.read(&read_bytes, 1, &iov);
+	cause::t r = memlog.readv(&read_bytes, 1, &iov);
 	if (is_fail(r))
 		return 0;
 
@@ -167,7 +167,7 @@ uptr store_log(uptr store_bytes, u8* store)
 	return info_bytes;
 }
 
-uptr store_first_process(uptr store_bytes, u8* store)
+uptr store_first_process(u8* store, uptr store_bytes)
 {
 	bootinfo::module* tag_mod =
 	    reinterpret_cast<bootinfo::module*>(store);
@@ -184,7 +184,7 @@ uptr store_first_process(uptr store_bytes, u8* store)
 	    4096,
 	    false);
 
-	mem_copy(bundle_size, first_process, p);
+	mem_copy(first_process, p, bundle_size);
 
 	tag_mod->info_type = bootinfo::TYPE_BUNDLE;
 	tag_mod->info_flags = 0;
@@ -224,37 +224,37 @@ bool store_bootinfo(const u32* mb_info)
 	uptr store_bytes = bootinfo::MAX_BYTES;
 	uptr wrote = sizeof (bootinfo::header);
 
-	uptr size = store_adr_map(store_bytes, &store[wrote]);
+	uptr size = store_adr_map(&store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
 	store_bytes -= size;
 
-	size = store_multiboot(mb_info, store_bytes, &store[wrote]);
+	size = store_multiboot(mb_info, &store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
 	store_bytes -= size;
 
-	size = store_mem_alloc(store_bytes, &store[wrote]);
+	size = store_mem_alloc(&store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
 	store_bytes -= size;
 
-	size = store_mem_work(store_bytes, &store[wrote]);
+	size = store_mem_work(&store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
 	store_bytes -= size;
 
-	size = store_log(store_bytes, &store[wrote]);
+	size = store_log(&store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;
 	store_bytes -= size;
 
-	size = store_first_process(store_bytes, &store[wrote]);
+	size = store_first_process(&store[wrote], store_bytes);
 	if (size > store_bytes)
 		return false;
 	wrote += size;

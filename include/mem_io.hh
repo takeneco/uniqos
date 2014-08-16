@@ -1,13 +1,13 @@
 /// @file   include/mem_io.hh
 /// @brief  mem_io class declaration.
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012-2014 KATO Takeshi
 //
 
 #ifndef INCLUDE_MEM_IO_HH_
 #define INCLUDE_MEM_IO_HH_
 
-#include <io_node.hh>
+#include <core/io_node.hh>
 
 
 extern io_node::operations mem_io_node_ops;
@@ -17,10 +17,10 @@ class mem_io : public io_node
 {
 	DISALLOW_COPY_AND_ASSIGN(mem_io);
 
-	friend cause::type mem_io_setup();
+	friend cause::t mem_io_setup();
 
 public:
-	mem_io(uptr bytes, void* _contents);
+	mem_io(void* _contents, uptr bytes);
 
 	template<offset BYTES> mem_io(char (&_contents)[BYTES]) :
 		io_node(&mem_io_node_ops),
@@ -28,15 +28,17 @@ public:
 		capacity_bytes(BYTES)
 	{}
 
-	cause::type on_io_node_seek(
+	cause::t on_io_node_seek(
 	    seek_whence whence, offset rel_off, offset* abs_off);
-	cause::type on_io_node_read(
+	cause::pair<uptr> on_Read(offset off, void* data, uptr bytes);
+	cause::t on_io_node_read(
 	    offset* off, int iov_cnt, iovec* iov);
-	cause::type on_io_node_write(
+	cause::pair<uptr> on_Write(offset off, const void* data, uptr bytes);
+	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
-	static cause::type setup();
+	static cause::t setup();
 
 private:
 	u8* contents;
@@ -49,22 +51,24 @@ class ringed_mem_io : public io_node
 {
 	DISALLOW_COPY_AND_ASSIGN(ringed_mem_io);
 
-	friend cause::type mem_io_setup();
+	friend cause::t mem_io_setup();
 
 public:
-	ringed_mem_io(uptr bytes, void* _contents);
+	ringed_mem_io(void* _contents, uptr bytes);
 
-	cause::type on_io_node_seek(
+	cause::t on_io_node_seek(
 	    seek_whence whence, offset rel_off, offset* abs_off);
-	cause::type on_io_node_read(
+	cause::pair<uptr> on_Read(offset off, void* data, uptr bytes);
+	cause::t on_io_node_read(
 	    offset* off, int iov_cnt, iovec* iov);
-	cause::type on_io_node_write(
+	cause::pair<uptr> on_Write(offset off, const void* data, uptr bytes);
+	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
-	offset offset_normalize(offset off);
+	uoffset offset_normalize(offset off);
 
 private:
-	static cause::type setup();
+	static cause::t setup();
 
 private:
 	u8* contents;

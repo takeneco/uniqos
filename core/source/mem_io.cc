@@ -2,7 +2,7 @@
 /// @brief  mem_io class implements.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 
 #include <mem_io.hh>
 #include <setup.hh>
+#include <core/string.hh>
 
 
 //TODO
@@ -27,7 +28,7 @@ io_node::operations ringed_mem_io_node_ops;
 
 // mem_io
 
-mem_io::mem_io(uptr bytes, void* _contents) :
+mem_io::mem_io(void* _contents, uptr bytes) :
 	io_node(&mem_io_node_ops),
 	contents(static_cast<u8*>(_contents)),
 	capacity_bytes(bytes)
@@ -41,6 +42,19 @@ cause::t mem_io::on_io_node_seek(
 	    capacity_bytes - 1, whence, rel_off, abs_off);
 }
 
+cause::pair<uptr> mem_io::on_Read(offset off, void* data, uptr bytes)
+{
+	offset left_bytes = capacity_bytes - off;
+	if (left_bytes < 0)
+		left_bytes = 0;
+
+	uptr read_bytes = min<uptr>(left_bytes, bytes);
+
+	mem_copy(&contents[off], data, read_bytes);
+
+	return make_pair(cause::OK, read_bytes);
+}
+
 cause::t mem_io::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 {
 	iovec_iterator iov_i(iov_cnt, iov);
@@ -50,6 +64,19 @@ cause::t mem_io::on_io_node_read(offset* off, int iov_cnt, iovec* iov)
 	*off += read_bytes;
 
 	return cause::OK;
+}
+
+cause::pair<uptr> mem_io::on_Write(offset off, const void* data, uptr bytes)
+{
+	offset left_bytes = capacity_bytes - off;
+	if (left_bytes < 0)
+		left_bytes = 0;
+
+	uptr write_bytes = min<uptr>(left_bytes, bytes);
+
+	mem_copy(data, &contents[off], write_bytes);
+
+	return make_pair(cause::OK, write_bytes);
 }
 
 cause::t mem_io::on_io_node_write(
@@ -71,6 +98,8 @@ cause::t mem_io::setup()
 {
 	mem_io_node_ops.init();
 	mem_io_node_ops.seek = call_on_io_node_seek<mem_io>;
+	mem_io_node_ops.Read   = call_on_Read<mem_io>;
+	mem_io_node_ops.Write  = call_on_Write<mem_io>;
 	mem_io_node_ops.read = call_on_io_node_read<mem_io>;
 	mem_io_node_ops.write  = call_on_io_node_write<mem_io>;
 
@@ -80,11 +109,33 @@ cause::t mem_io::setup()
 
 // ringed_mem_io
 
-ringed_mem_io::ringed_mem_io(uptr bytes, void* _contents) :
+ringed_mem_io::ringed_mem_io(void* _contents, uptr bytes) :
 	io_node(&ringed_mem_io_node_ops),
 	contents(static_cast<u8*>(_contents)),
 	capacity_bytes(bytes)
 {
+}
+
+cause::pair<uptr> ringed_mem_io::on_Read(offset off, void* data, uptr bytes)
+{
+	u8* _data = static_cast<u8*>(data);
+
+	uptr read_bytes = 0;
+
+	while (bytes > 0) {
+		const uoffset noff = offset_normalize(off);
+
+		uptr r_bytes = min<uptr>(bytes, capacity_bytes - noff);
+
+		mem_copy(&contents[noff], _data, r_bytes);
+
+		off += r_bytes;
+		_data += r_bytes;
+		bytes -= r_bytes;
+		read_bytes += r_bytes;
+	}
+
+	return make_pair(cause::OK, read_bytes);
 }
 
 cause::t ringed_mem_io::on_io_node_read(
@@ -102,6 +153,29 @@ cause::t ringed_mem_io::on_io_node_read(
 	}
 
 	return cause::OK;
+}
+
+cause::pair<uptr> ringed_mem_io::on_Write(
+    offset off, const void* data, uptr bytes)
+{
+	const u8* _data = static_cast<const u8*>(data);
+
+	uptr write_bytes = 0;
+
+	while (bytes > 0) {
+		const uoffset noff = offset_normalize(off);
+
+		uptr w_bytes = min<uptr>(bytes, capacity_bytes - noff);
+
+		mem_copy(_data, &contents[noff], w_bytes);
+
+		off += w_bytes;
+		_data += w_bytes;
+		bytes -= w_bytes;
+		write_bytes += w_bytes;
+	}
+
+	return make_pair(cause::OK, write_bytes);
 }
 
 cause::t ringed_mem_io::on_io_node_write(
@@ -123,7 +197,7 @@ cause::t ringed_mem_io::on_io_node_write(
 	return cause::OK;
 }
 
-io_node::offset ringed_mem_io::offset_normalize(offset off)
+io_node::uoffset ringed_mem_io::offset_normalize(offset off)
 {
 	off %= capacity_bytes;
 
@@ -136,8 +210,10 @@ io_node::offset ringed_mem_io::offset_normalize(offset off)
 cause::t ringed_mem_io::setup()
 {
 	ringed_mem_io_node_ops.init();
-	ringed_mem_io_node_ops.read = call_on_io_node_read<ringed_mem_io>;
-	ringed_mem_io_node_ops.write  = call_on_io_node_write<ringed_mem_io>;
+	ringed_mem_io_node_ops.Read   = call_on_Read<ringed_mem_io>;
+	ringed_mem_io_node_ops.Write  = call_on_Write<ringed_mem_io>;
+	ringed_mem_io_node_ops.read  = call_on_io_node_read<ringed_mem_io>;
+	ringed_mem_io_node_ops.write = call_on_io_node_write<ringed_mem_io>;
 
 	return cause::OK;
 }

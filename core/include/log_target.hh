@@ -1,25 +1,26 @@
 /// @file  log_target.hh
 //
-// (C) 2008-2013 KATO Takeshi
+// (C) 2008-2014 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_LOG_TARGET_HH_
-#define CORE_INCLUDE_LOG_TARGET_HH_
+#ifndef CORE_LOG_TARGET_HH_
+#define CORE_LOG_TARGET_HH_
 
-#include <io_node.hh>
+#include <core/io_node.hh>
 #include <spinlock.hh>
 
 
 class log_target : public io_node
 {
 public:
-	static cause::type setup();
+	static cause::t setup();
 
 	log_target();
 
 	void install(io_node* target, offset off = 0);
 
-	cause::type on_io_node_write(
+	cause::pair<uptr> on_Write(offset off, const void* data, uptr bytes);
+	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 
 private:
@@ -29,5 +30,5 @@ private:
 };
 
 
-#endif  // CORE_INCLUDE_LOG_TARGET_HH_
+#endif  // include guard
 

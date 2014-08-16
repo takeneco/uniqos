@@ -4,10 +4,9 @@
 // (C) 2011-2014 KATO Takeshi
 //
 
-#ifndef ARCH_X86_64_INCLUDE_VGA_HH_
-#define ARCH_X86_64_INCLUDE_VGA_HH_
+#ifndef X86_64_ARCH_VGA_HH_
+#define X86_64_ARCH_VGA_HH_
 
-#include <core/basic.hh>
 #include <core/io_node.hh>
 
 
@@ -26,6 +25,7 @@ public:
 	text_vga() {}
 	void init(u32 _width, u32 _height, void* _vram);
 
+	cause::pair<uptr> on_Write(offset off, const void* data, uptr bytes);
 	cause::t on_io_node_write(
 	    offset* off, int iov_cnt, const iovec* iov);
 

@@ -70,7 +70,7 @@ uptr iovec_iterator::write(uptr bytes, const void* src)
 		const uptr size =
 		    min(iov[iov_index].bytes - base_offset, bytes);
 		u8* base = reinterpret_cast<u8*>(iov[iov_index].base);
-		mem_copy(size, p, &base[base_offset]);
+		mem_copy(p, &base[base_offset], size);
 
 		p += size;
 		bytes -= size;
@@ -94,7 +94,7 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 		const uptr size =
 		    min(iov[iov_index].bytes - base_offset, bytes);
 		const u8* base = reinterpret_cast<u8*>(iov[iov_index].base);
-		mem_copy(size, &base[base_offset], p);
+		mem_copy(&base[base_offset], p, size);
 
 		p += size;
 		bytes -= size;
@@ -112,8 +112,10 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 void io_node::operations::init()
 {
 	seek = io_node::nofunc_Seek;
-	read = io_node::nofunc_Read;
-	write = io_node::nofunc_Write;
+	read = io_node::nofunc_ReadV;
+	write = io_node::nofunc_WriteV;
+	Read         = io_node::nofunc_Read;
+	Write        = io_node::nofunc_Write;
 	GetDirEntry  = io_node::nofunc_GetDirEntry;
 }
 

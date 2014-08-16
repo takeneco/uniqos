@@ -2,7 +2,7 @@
 /// @brief  Text output utilities.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2014 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include <arch.hh>
 #include <bitops.hh>
-#include <string.hh>
+#include <core/string.hh>
 
 
 namespace {
@@ -763,7 +763,7 @@ void output_buffer::_vec(int iov_cnt, const iovec* iov)
 {
 	_flush();
 
-	info.destination->write(&info.dest_offset, iov_cnt, iov);
+	info.destination->writev(&info.dest_offset, iov_cnt, iov);
 }
 
 void output_buffer::_1vec(uptr bytes, const void* data)
@@ -772,7 +772,7 @@ void output_buffer::_1vec(uptr bytes, const void* data)
 	if (buf_left >= bytes) {
 		// data が buffer に収まる場合は write() せずに
 		// buffer に格納する。
-		mem_copy(bytes, data, &buffer[info.buf_offset]);
+		mem_copy(data, &buffer[info.buf_offset], bytes);
 		info.buf_offset += bytes;
 	} else {
 		// data が buffer に収まらない場合は buffer と data を
@@ -784,7 +784,7 @@ void output_buffer::_1vec(uptr bytes, const void* data)
 		iov[1].bytes = bytes;
 
 		const io_node::offset before_offset = info.dest_offset;
-		info.destination->write(&info.dest_offset, 2, iov);
+		info.destination->writev(&info.dest_offset, 2, iov);
 
 		const uptr write_bytes = info.dest_offset - before_offset;
 		if (write_bytes != info.buf_offset + bytes)
@@ -800,9 +800,9 @@ void output_buffer::_1vec(uptr bytes, const void* data)
 			if (write_bytes < info.buf_offset) {
 				// 出力できなかった buffer の内容を
 				// buffer の先頭に移動する。
-				mem_move(info.buf_offset - write_bytes,
-				         &buffer[write_bytes],
-				         buffer);
+				mem_move(&buffer[write_bytes],
+				         buffer,
+				         info.buf_offset - write_bytes);
 				info.buf_offset -= write_bytes;
 			}
 
@@ -839,7 +839,7 @@ cause::t output_buffer::_flush()
 
 		const io_node::offset before_offset = info.dest_offset;
 		cause::t r =
-		    info.destination->write(&info.dest_offset, 1, &iov);
+		    info.destination->writev(&info.dest_offset, 1, &iov);
 		if (is_fail(r))
 			return r;
 
@@ -847,9 +847,9 @@ cause::t output_buffer::_flush()
 		if (output_bytes == 0)
 			return r;
 		if (output_bytes != info.buf_offset) {
-			mem_move(info.buf_offset - output_bytes,
-			         &buffer[output_bytes],
-			         buffer);
+			mem_move(&buffer[output_bytes],
+			         buffer,
+			         info.buf_offset - output_bytes);
 			info.buf_offset -= output_bytes;
 
 			return cause::OK;
@@ -866,7 +866,7 @@ uptr output_buffer::append(uptr bytes, const void* data)
 	const uptr len =
 	    min(static_cast<uptr>(sizeof buffer - info.buf_offset), bytes);
 
-	mem_copy(len, data, &buffer[info.buf_offset]);
+	mem_copy(data, &buffer[info.buf_offset], len);
 
 	info.buf_offset += len;
 
