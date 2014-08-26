@@ -154,16 +154,16 @@ void output_buffer_s(output_buffer* x, smax num, int width)
 		sign = '+';
 	}
 
-	iovec iov[2];
-	iov[0].base = &sign;
-	iov[0].bytes = 1;
+	char buf[1 + sizeof num * 3];
+	uptr bytes;
 
-	char buf[sizeof num * 3];
-	iov[1].bytes = u_to_decstr(num, buf);
-	iov[1].base = buf;
+	buf[0] = sign;
+	bytes = 1;
 
-	x->_rep(width - (iov[1].bytes + 1), ' ');
-	x->_vec(2, iov);
+	bytes += u_to_decstr(num, &buf[1]);
+
+	x->_rep(width - bytes, ' ');
+	x->_1vec(bytes, buf);
 }
 
 void output_buffer_sf(output_buffer* x, smax num, int width, int prec, u8 flags)
@@ -307,33 +307,20 @@ void output_buffer_src(
     int line,          ///< [in] line number.
     const char* func)  ///< [in] function name. null available.
 {
-	iovec iov[5];
-
-	iov[0].base = const_cast<char*>(path);
-	iov[0].bytes = str_length(path);
-
 	const char sep = ':';
-	iov[1].base = const_cast<char*>(&sep);
-	iov[1].bytes = 1;
+
+	x->_1vec(str_length(path), path);
+
+	x->_1vec(1, &sep);
 
 	char line_buf[10];
-	iov[2].bytes = u_to_decstr(line, line_buf);
-	iov[2].base = line_buf;
+	x->_1vec(u_to_decstr(line, line_buf), line_buf);
 
-	int iov_count;
 	if (func) {
-		iov[3].base = const_cast<char*>(&sep);
-		iov[3].bytes = 1;
+		x->_1vec(1, &sep);
 
-		iov[4].base = const_cast<char*>(func);
-		iov[4].bytes = str_length(func);
-
-		iov_count = 5;
-	} else {
-		iov_count = 3;
+		x->_1vec(str_length(func), func);
 	}
-
-	x->_vec(iov_count, iov);
 }
 
 void output_buffer_hexv(
@@ -761,59 +748,45 @@ output_buffer::output_buffer(io_node* dest, io_node::offset off)
 
 void output_buffer::_vec(int iov_cnt, const iovec* iov)
 {
-	_flush();
-
-	info.destination->writev(&info.dest_offset, iov_cnt, iov);
+	for (int i = 0; i < iov_cnt; ++i)
+		_1vec(iov[i].bytes, iov[i].base);
 }
 
 void output_buffer::_1vec(uptr bytes, const void* data)
 {
+	uptr data_cur;  // 出力済みの data のバイト数。
+
 	const uptr buf_left = sizeof buffer - info.buf_offset;
+
 	if (buf_left >= bytes) {
 		// data が buffer に収まる場合は write() せずに
 		// buffer に格納する。
 		mem_copy(data, &buffer[info.buf_offset], bytes);
 		info.buf_offset += bytes;
+		data_cur = bytes;
+	} else if (bytes < sizeof buffer / 2) {
+		// data が buffer サイズの半分より小さければ、
+		// 途中まで buffer に格納し、_flush() する。
+		mem_copy(data, &buffer[info.buf_offset], buf_left);
+		info.buf_offset += buf_left;
+		data_cur = buf_left;
+		_flush();
 	} else {
-		// data が buffer に収まらない場合は buffer と data を
-		// つないだ iovec で write() する。
-		iovec iov[2];
-		iov[0].base = buffer;
-		iov[0].bytes = info.buf_offset;
-		iov[1].base = const_cast<void*>(data);
-		iov[1].bytes = bytes;
-
-		const io_node::offset before_offset = info.dest_offset;
-		info.destination->writev(&info.dest_offset, 2, iov);
-
-		const uptr write_bytes = info.dest_offset - before_offset;
-		if (write_bytes != info.buf_offset + bytes)
-		{
-			// すべて出力できなかった場合は buffer を更新する。
-
-			// 出力できなかった data のサイズ。
-			const uptr data_left_bytes =
-			    write_bytes > info.buf_offset ?
-			        bytes - (write_bytes - info.buf_offset) :
-			        bytes;
-
-			if (write_bytes < info.buf_offset) {
-				// 出力できなかった buffer の内容を
-				// buffer の先頭に移動する。
-				mem_move(&buffer[write_bytes],
-				         buffer,
-				         info.buf_offset - write_bytes);
-				info.buf_offset -= write_bytes;
-			}
-
-			// 出力できなかった data の内容を buffer に格納する。
-			const u8* data_left = static_cast<const u8*>(data)
-			                    + bytes
-			                    - data_left_bytes;
-			append(data_left_bytes, data_left);
+		// data が大きければ _flush() してから、data を直接出力する。
+		_flush();
+		if (info.buf_offset == 0) {
+			auto r = info.destination->write(
+			    info.dest_offset, data, bytes);
+			info.dest_offset += r.get_data();
+			data_cur = r.get_data();
 		} else {
-			info.buf_offset = 0;
+			data_cur = 0;
 		}
+	}
+
+	if (data_cur != bytes) {
+		const u8* _data = static_cast<const u8*>(data);
+		append(bytes - data_cur, &_data[data_cur]);
 	}
 }
 
@@ -833,19 +806,18 @@ void output_buffer::_rep(int count, char c)
 cause::t output_buffer::_flush()
 {
 	if (info.buf_offset) {
-		iovec iov;
-		iov.base = buffer;
-		iov.bytes = info.buf_offset;
+		auto r = info.destination->write(
+		    info.dest_offset, buffer, info.buf_offset);
 
-		const io_node::offset before_offset = info.dest_offset;
-		cause::t r =
-		    info.destination->writev(&info.dest_offset, 1, &iov);
+		const uptr output_bytes = r.get_data();
+
+		info.dest_offset += output_bytes;
+
 		if (is_fail(r))
-			return r;
+			return r.get_cause();
 
-		const uptr output_bytes = info.dest_offset - before_offset;
 		if (output_bytes == 0)
-			return r;
+			return r.get_cause();
 		if (output_bytes != info.buf_offset) {
 			mem_move(&buffer[output_bytes],
 			         buffer,
