@@ -45,9 +45,9 @@ void output_buffer_vec(output_buffer* x, int iov_cnt, const iovec* iov)
 	x->_vec(iov_cnt, iov);
 }
 
-void output_buffer_1vec(output_buffer* x, uptr bytes, const void* data)
+void output_buffer_1vec(output_buffer* x, const void* data, uptr bytes)
 {
-	x->_1vec(bytes, data);
+	x->_1vec(data, bytes);
 }
 
 /// @brief Output null-terminated string.
@@ -62,7 +62,7 @@ void output_buffer_str(output_buffer* x, const char* str, int width)
 
 	const int len = str_length(str);
 
-	x->_1vec(len, str);
+	x->_1vec(str, len);
 
 	x->_rep(width - len, ' ');
 }
@@ -95,7 +95,7 @@ void output_buffer_strf(
 		x->_rep(width - len, ' ');
 
 	if (len > 0)
-		x->_1vec(len, str);
+		x->_1vec(str, len);
 
 	if (space > 0 && left)
 		x->_rep(width - len, ' ');
@@ -108,7 +108,7 @@ void output_buffer_u(output_buffer* x, umax num, int width)
 	const int len = u_to_decstr(num, buf);
 
 	x->_rep(width - len, ' ');
-	x->_1vec(len, buf);
+	x->_1vec(buf, len);
 }
 
 void output_buffer_uf(output_buffer* x, umax num, int width, int prec, u8 flags)
@@ -129,7 +129,7 @@ void output_buffer_uf(output_buffer* x, umax num, int width, int prec, u8 flags)
 		x->_rep(pads, ' ');
 
 	if (plus || space)
-		x->_1vec(1, plus ? "+" : " ");
+		x->_str(plus ? "+" : " ");
 
 	if (pads > 0 && !left && zero)
 		x->_rep(pads, '0');
@@ -137,7 +137,7 @@ void output_buffer_uf(output_buffer* x, umax num, int width, int prec, u8 flags)
 	if (len < prec)
 		x->_rep(prec - len, '0');
 
-	x->_1vec(len, decstr);
+	x->_1vec(decstr, len);
 
 	if (pads > 0 && left)
 		x->_rep(pads, ' ');
@@ -163,7 +163,7 @@ void output_buffer_s(output_buffer* x, smax num, int width)
 	bytes += u_to_decstr(num, &buf[1]);
 
 	x->_rep(width - bytes, ' ');
-	x->_1vec(bytes, buf);
+	x->_1vec(buf, bytes);
 }
 
 void output_buffer_sf(output_buffer* x, smax num, int width, int prec, u8 flags)
@@ -188,7 +188,7 @@ void output_buffer_sf(output_buffer* x, smax num, int width, int prec, u8 flags)
 	else if (plus)  sign_ch = '+';
 	else if (space) sign_ch = ' ';
 	if (sign_ch)
-		x->_1vec(1, &sign_ch);
+		x->_1vec(&sign_ch, 1);
 
 	if (!left && zero && pads > 0)
 		x->_rep(pads, '0');
@@ -196,7 +196,7 @@ void output_buffer_sf(output_buffer* x, smax num, int width, int prec, u8 flags)
 	if (left && prec > len)
 		x->_rep(prec - len, '0');
 
-	x->_1vec(len, decstr);
+	x->_1vec(decstr, len);
 
 	if (left && pads > 0)
 		x->_rep(pads, ' ');
@@ -209,7 +209,7 @@ void output_buffer_hex(output_buffer* x, umax num, int width)
 	const int len = u_to_hexstr(num, buf);
 
 	x->_rep(width - len, ' ');
-	x->_1vec(len, buf);
+	x->_1vec(buf, len);
 }
 
 void output_buffer_hexf(
@@ -234,7 +234,7 @@ void output_buffer_hexf(
 		x->_rep(pads, ' ');
 
 	if (shape)
-		x->_1vec(2, upper ? "0X" : "0x");
+		x->_str(upper ? "0X" : "0x");
 
 	if (pads > 0 && !left && zero)
 		x->_rep(pads, '0');
@@ -242,7 +242,7 @@ void output_buffer_hexf(
 	if (len < prec)
 		x->_rep(prec - len, '0');
 
-	x->_1vec(len, hexstr);
+	x->_1vec(hexstr, len);
 
 	if (pads > 0 && left)
 		x->_rep(pads, ' ');
@@ -255,7 +255,7 @@ void output_buffer_oct(output_buffer* x, umax num, int width)
 	const int len = u_to_octstr(num, buf);
 
 	x->_rep(width - len, '0');
-	x->_1vec(len, buf);
+	x->_1vec(buf, len);
 }
 
 void output_buffer_octf(
@@ -276,7 +276,7 @@ void output_buffer_octf(
 		x->_rep(pads, ' ');
 
 	if (shape)
-		x->_1vec(1, "0");
+		x->_str("0");
 
 	if (pads > 0 && !left && zero)
 		x->_rep(pads, '0');
@@ -284,7 +284,7 @@ void output_buffer_octf(
 	if (len < prec)
 		x->_rep(prec - len, '0');
 
-	x->_1vec(len, octstr);
+	x->_1vec(octstr, len);
 
 	if (pads > 0 && left)
 		x->_rep(pads, ' ');
@@ -298,7 +298,7 @@ void output_buffer_adr(output_buffer* x, const void* ptr)
 
 	const int len = 1 + u_to_hexstr(reinterpret_cast<uptr>(ptr), &buf[1]);
 
-	x->_1vec(len, buf);
+	x->_1vec(buf, len);
 }
 
 void output_buffer_src(
@@ -307,19 +307,17 @@ void output_buffer_src(
     int line,          ///< [in] line number.
     const char* func)  ///< [in] function name. null available.
 {
-	const char sep = ':';
+	x->_str(path);
 
-	x->_1vec(str_length(path), path);
-
-	x->_1vec(1, &sep);
+	x->_str(":");
 
 	char line_buf[10];
-	x->_1vec(u_to_decstr(line, line_buf), line_buf);
+	x->_1vec(line_buf, u_to_decstr(line, line_buf));
 
 	if (func) {
-		x->_1vec(1, &sep);
+		x->_str(":");
 
-		x->_1vec(str_length(func), func);
+		x->_str(func);
 	}
 }
 
@@ -331,9 +329,6 @@ void output_buffer_hexv(
     int columns,       ///< [in] see output_buffer::x().
     const char* summary) ///< [in] see output_buffer::x().
 {
-	const static char sep = ' ';
-	const static char nl = '\n';
-
 	const u8*       base = static_cast<const u8*>(data);
 
 	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
@@ -378,21 +373,19 @@ void output_buffer_hexv(
 			}
 			char buf[2];
 			u8_to_hexstr(*p, buf);
-			x->_1vec(2, buf);
+			x->_1vec(buf, 2);
 		}
 
 		off += width;
 		if (off == bytes)
 			break;
 
-		const char* p;
 		if (++col < columns) {
-			p = &sep;
+			x->_str(" ");
 		} else {
-			p = &nl;
 			col = 0;
+			x->_str("\n");
 		}
-		x->_1vec(1, p);
 	}
 }
 
@@ -406,8 +399,6 @@ void output_buffer_hexv_py(
     const char* summary, ///< [in] see output_buffer::x().
     const char* suffix)  ///< [in] suffix of variable.
 {
-	const static char sep = ',';
-
 	const u8*       base = static_cast<const u8*>(data);
 
 	const int index_width = up_div<u16>(find_last_setbit(bytes), 4);
@@ -424,7 +415,7 @@ void output_buffer_hexv_py(
 
 	const char* suf = suffix ? suffix : "";
 
-	x->str("### PYTHON STYLE HEX DUMP START ###\n");
+	x->_str("### PYTHON STYLE HEX DUMP START ###\n");
 
 	if (summary) {
 		(*x).str("summary")(suf)("=\"").str(summary).c('\"').
@@ -447,7 +438,7 @@ void output_buffer_hexv_py(
 		if (col == 0)
 			line_off = off;
 
-		x->_1vec(2, "0x");
+		x->_str("0x");
 		for (int i = 0; i < width; ++i) {
 			const u8* p;
 			if (cpu_byte_order) {
@@ -458,14 +449,14 @@ void output_buffer_hexv_py(
 			}
 			char buf[2];
 			u8_to_hexstr(*p, buf);
-			x->_1vec(2, buf);
+			x->_1vec(buf, 2);
 		}
 
 		off += width;
 		if (off == bytes)
 			break;
 
-		x->_1vec(1, &sep);
+		x->_str(",");
 
 		if (++col >= columns) {
 			(*x).str("#").x(line_off, index_width).c('\n');
@@ -609,7 +600,7 @@ void fmt_chr(output_buffer* x, std::va_list va, const field_spec& /*spec*/)
 {
 	const char c = va_arg(va, int);
 
-	x->_1vec(1, &c);
+	x->_1vec(&c, 1);
 }
 
 void fmt_udec(output_buffer* x, std::va_list va, const field_spec& spec)
@@ -667,7 +658,7 @@ void output_buffer_format(
 	while (*fmt) {
 		if (*fmt == '%') {
 			if (raw_out_len != 0) {
-				x->_1vec(raw_out_len, raw_out_pos);
+				x->_1vec(raw_out_pos, raw_out_len);
 				raw_out_len = 0;
 			}
 
@@ -711,11 +702,11 @@ void output_buffer_format(
 				break;
 
 			case '%':
-				x->_1vec(1, "%");
+				x->_str("%");
 				break;
 
 			default:
-				x->_1vec(fmt_end - fmt+1, fmt-1);
+				x->_1vec(fmt-1, fmt_end - fmt+1);
 				x->_flush();
 				break;
 			}
@@ -729,7 +720,7 @@ void output_buffer_format(
 	}
 
 	if (raw_out_len != 0)
-		x->_1vec(raw_out_len, raw_out_pos);
+		x->_1vec(raw_out_pos, raw_out_len);
 }
 
 cause::t output_buffer_flush(output_buffer* x)
@@ -749,10 +740,10 @@ output_buffer::output_buffer(io_node* dest, io_node::offset off)
 void output_buffer::_vec(int iov_cnt, const iovec* iov)
 {
 	for (int i = 0; i < iov_cnt; ++i)
-		_1vec(iov[i].bytes, iov[i].base);
+		_1vec(iov[i].base, iov[i].bytes);
 }
 
-void output_buffer::_1vec(uptr bytes, const void* data)
+void output_buffer::_1vec(const void* data, uptr bytes)
 {
 	uptr data_cur;  // 出力済みの data のバイト数。
 
@@ -786,15 +777,31 @@ void output_buffer::_1vec(uptr bytes, const void* data)
 
 	if (data_cur != bytes) {
 		const u8* _data = static_cast<const u8*>(data);
-		append(bytes - data_cur, &_data[data_cur]);
+		append(&_data[data_cur], bytes - data_cur);
+	}
+}
+
+void output_buffer::_str(const char* s)
+{
+	while (*s) {
+		if (info.buf_offset >= sizeof buffer) {
+			_flush();
+			if (info.buf_offset >= sizeof buffer)
+				break;
+		}
+
+		buffer[info.buf_offset++] = *s++;
 	}
 }
 
 void output_buffer::_rep(int count, char c)
 {
 	while (count > 0) {
-		if (info.buf_offset >= sizeof buffer)
+		if (info.buf_offset >= sizeof buffer) {
 			_flush();
+			if (info.buf_offset >= sizeof buffer)
+				break;
+		}
 
 		buffer[info.buf_offset] = c;
 
@@ -833,7 +840,7 @@ cause::t output_buffer::_flush()
 	return cause::OK;
 }
 
-uptr output_buffer::append(uptr bytes, const void* data)
+uptr output_buffer::append(const void* data, uptr bytes)
 {
 	const uptr len =
 	    min(static_cast<uptr>(sizeof buffer - info.buf_offset), bytes);
