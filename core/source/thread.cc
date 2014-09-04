@@ -18,11 +18,12 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch/thread_ctl.hh>
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 
 
-thread::thread() :
-	owner_cpu(0),
+thread::thread(thread_id tid) :
+	owner_cpu(nullptr),
+	id(tid),
 	state(SLEEPING),
 	anti_sleep(false)
 {
@@ -42,3 +43,4 @@ thread* get_current_thread()
 {
 	return arch::get_current_thread();
 }
+

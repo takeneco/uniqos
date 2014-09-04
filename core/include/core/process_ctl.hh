@@ -17,19 +17,19 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CORE_INCLUDE_CORE_PROCESS_CTL_HH_
-#define CORE_INCLUDE_CORE_PROCESS_CTL_HH_
+#ifndef CORE_PROCESS_CTL_HH_
+#define CORE_PROCESS_CTL_HH_
 
 #include <core/numeric_map.hh>
-#include <process.hh>
+#include <core/process.hh>
 
 
 class process_ctl
 {
 	typedef numeric_map<
-	    pid,
+	    process_id,
 	    process,
-	    &process::get_pid,
+	    &process::get_process_id,
 	    &process::get_process_ctl_node
 	> process_id_map_type;
 
@@ -45,3 +45,4 @@ private:
 
 
 #endif  // include guard
+

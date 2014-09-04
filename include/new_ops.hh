@@ -81,6 +81,16 @@ inline void* operator new (uptr size, mem_allocator& alloc) {
 inline void operator delete (void* p, mem_allocator& alloc) {
 	alloc.deallocate(p);
 }
+inline void* operator new[] (uptr size, mem_allocator& alloc) {
+	auto r = alloc.allocate(size);
+	if (is_ok(r))
+		return r.get_data();
+	else
+		return nullptr;
+}
+inline void operator delete[] (void* p, mem_allocator& alloc) {
+	alloc.deallocate(p);
+}
 template<class T> inline cause::t new_destroy(T* p, mem_allocator& alloc) {
 	p->~T();
 	return alloc.deallocate(p);

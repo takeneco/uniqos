@@ -11,6 +11,7 @@
 
 
 class cpu_node;
+class process;
 
 namespace x86 {
 
@@ -19,7 +20,7 @@ class native_thread : public thread
 	DISALLOW_COPY_AND_ASSIGN(native_thread);
 
 public:
-	native_thread(uptr text, uptr param, uptr stack_size);
+	native_thread(thread_id tid, uptr text, uptr param, uptr stack_size);
 
 	arch::regset* ref_regset() { return &rs; }
 
@@ -36,16 +37,9 @@ public:
 cause::pair<native_thread*> create_thread(
     cpu_node* owner_cpu, uptr text, uptr param);
 
-typedef void (*entry_point)(void* context);
-inline cause::pair<native_thread*> create_thread(
-    cpu_node* owner_cpu,
-    entry_point text,
-    void* param)
-{
-	return create_thread(owner_cpu,
-	    reinterpret_cast<uptr>(text),
-	    reinterpret_cast<uptr>(param));
-}
+typedef void (*thread_entry_point)(void* context);
+cause::pair<native_thread*> create_thread(
+    cpu_node* owner_cpu, thread_entry_point text, void* param);
 
 cause::t destroy_thread(native_thread* t);
 

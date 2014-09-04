@@ -8,10 +8,13 @@
 #define CORE_PROCESS_HH_
 
 #include <core/basic.hh>
+#include <core/io_node.hh>
 #include <pagetable.hh>
 
 
-typedef u32 pid;
+class thread;
+
+typedef u32 process_id;
 
 class process
 {
@@ -23,14 +26,21 @@ public:
 		return process_ctl_node;
 	}
 
-	pid get_pid() const { return id; }
+	process_id get_process_id() const { return id; }
 
-	cause::t init();
+	cause::t init(thread* entry_thread, int iod_nr);
+	cause::t set_io_desc(int iod, io_node* target);
+	cause::pair<thread*> create_thread();
 
 private:
 	bichain_node<process> process_ctl_node;
-	pid id;
+	process_id id;
+
+	int io_desc_nr;
+	io_node** io_desc;
 };
+
+process* get_current_process();
 
 
 #endif  // include guard

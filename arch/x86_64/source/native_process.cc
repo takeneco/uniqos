@@ -18,9 +18,9 @@
 
 #include "native_process.hh"
 
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 #include <native_ops.hh>
-#include <string.hh>
+#include <core/string.hh>
 
 
 namespace x86 {
@@ -30,9 +30,9 @@ native_process::native_process() :
 {
 }
 
-cause::t native_process::init()
+cause::t native_process::init(thread* entry_thread, int iod_nr)
 {
-	cause::t r = process::init();
+	cause::t r = process::init(entry_thread, iod_nr);
 	if (is_fail(r))
 		return r;
 

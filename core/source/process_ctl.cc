@@ -19,9 +19,7 @@
 
 #include <core/process_ctl.hh>
 
-#include <core/numeric_map.hh>
 #include <core/global_vars.hh>
-#include <process.hh>
 
 
 process_ctl::process_ctl()

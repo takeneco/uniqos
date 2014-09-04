@@ -22,7 +22,7 @@
 #include <config.h>
 #include <elf.hh>
 #include <pagetable.hh>
-#include <string.hh>
+#include <core/string.hh>
 
 
 extern const u8 kernel[];
@@ -87,7 +87,7 @@ cause::t load_segm_page(
 	// そのギャップを 0xAA で埋める。
 	if (map_vadr < phe->p_vaddr) {
 		const uptr gap_size = phe->p_vaddr - map_vadr;
-		mem_fill(gap_size, 0xAA, dest);
+		mem_fill(0xAA, dest, gap_size);
 
 		map_vadr += gap_size;
 		dest += gap_size;
@@ -98,7 +98,7 @@ cause::t load_segm_page(
 	const u64 file_offset = phe->p_offset + (map_vadr - phe->p_vaddr);
 	const sptr copy_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_filesz, dest_size);
-	mem_copy(copy_size, kernel + file_offset, dest);
+	mem_copy(kernel + file_offset, dest, copy_size);
 
 	map_vadr += copy_size;
 	dest += copy_size;
@@ -107,13 +107,13 @@ cause::t load_segm_page(
 	// BSS 領域を 0x00 で埋める。
 	const sptr fill_size = min<sptr>(
 	    (phe->p_vaddr - map_vadr) + phe->p_memsz, dest_size);
-	mem_fill(fill_size, 0x00, dest);
+	mem_fill(0x00, dest, fill_size);
 
 	dest += fill_size;
 	dest_size -= fill_size;
 
 	// ページの残りを 0xAA で埋める。
-	mem_fill(dest_size, 0xAA, dest);
+	mem_fill(0xAA, dest, dest_size);
 
 	return cause::OK;
 }
