@@ -24,6 +24,8 @@
 #include <core/process.hh>
 
 
+class mempool;
+
 class process_ctl
 {
 	typedef numeric_map<
@@ -37,10 +39,11 @@ public:
 	process_ctl();
 	~process_ctl();
 
-	cause::t init();
+	cause::t setup();
 
 private:
 	process_id_map_type process_id_map;
+	mempool* io_desc_mp;
 };
 
 

@@ -17,10 +17,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef CORE_INCLUDE_CORE_NUMERIC_MAP_HH_
-#define CORE_INCLUDE_CORE_NUMERIC_MAP_HH_
+#ifndef CORE_NUMERIC_MAP_HH_
+#define CORE_NUMERIC_MAP_HH_
 
-#include <core/basic.hh>
 #include <core/mempool.hh>
 
 
@@ -87,12 +86,12 @@ cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::init(
 	dict_cnt = 1 << dict_size_shifts;
 	dict_mask = dict_cnt - 1;
 
-	cause::t r = mempool_acquire_shared(
-	    sizeof (dict_ent) * dict_cnt, &dict_mp);
-	if (is_fail(r))
-		return r;
+	auto mp = mempool::acquire_shared(sizeof (dict_ent) * dict_cnt);
+	if (is_fail(mp))
+		return mp.cause();
 
-	dict = new (dict_mp) dict_ent[dict_cnt];
+	dict_mp = mp;
+	dict = new (*dict_mp) dict_ent[dict_cnt];
 
 	return cause::OK;
 }
@@ -108,9 +107,9 @@ cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::uninit()
 	for (KEY_TYPE i = 0; i < dict_cnt; ++i)
 		dict[i].~dict_ent();
 
-	operator delete (dict, dict_mp);
+	operator delete (dict, *dict_mp);
 
-	return mempool_release_shared(dict_mp);
+	return mempool::release_shared(dict_mp);
 }
 
 

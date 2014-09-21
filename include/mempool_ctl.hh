@@ -7,37 +7,28 @@
 #define CORE_MEMPOOL_CTL_HH_
 
 #include <core/mempool.hh>
-#include <spinlock.hh>
-#include <new_ops.hh>
+#include <core/spinlock.hh>
 
 
 class mempool_ctl
 {
-	friend cause::t mempool_init();
+	friend cause::t mempool_setup();
 	friend cause::t mempool_post_setup();
 
 	mempool_ctl(mempool* _mempool_mp, mempool* _node_mp, mempool* _own_mp);
-	cause::t init();
+	cause::t setup();
 	cause::t post_setup();
 
 	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
 
 public:
-	enum PAGE_STYLE {
-		ENTRUST,
-		ONPAGE,
-		OFFPAGE,
-	};
-
-public:
-	cause::t shared_mempool(u32 objsize, mempool** mp);
+	cause::pair<mempool*> acquire_shared_mempool(u32 objsize);
 	void release_shared_mempool(mempool* mp);
 
-	cause::t exclusived_mempool(
+	cause::pair<mempool*> exclusived_mempool(
 	    u32 objsize,
 	    arch::page::TYPE page_type,
-	    PAGE_STYLE page_style,
-	    mempool** mp);
+	    mempool::PAGE_STYLE page_style);
 
 	void* shared_allocate(u32 bytes);
 	void shared_deallocate(void* mem);
@@ -53,9 +44,9 @@ private:
 	static cause::t decide_params(
 	    u32* objsize,
 	    arch::page::TYPE* page_type,
-	    PAGE_STYLE* page_style);
+	    mempool::PAGE_STYLE* page_style);
 
-	static cause::t create_mempool_ctl(mempool_ctl** mpctl);
+	static cause::pair<mempool_ctl*> create_mempool_ctl();
 
 private:
 	/// offpage mempool のページ源。
@@ -79,7 +70,7 @@ private:
 public:
 	mem_allocator& shared_mem() { return _shared_mem; }
 
-	const mem_allocator::operations* get_mp_allocator_ops() {
+	const mem_allocator::operations* get_mp_allocator_ops() const {
 		return &_mp_allocator_ops;
 	}
 

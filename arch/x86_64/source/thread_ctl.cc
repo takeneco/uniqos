@@ -18,12 +18,12 @@
 
 #include <arch/thread_ctl.hh>
 
-#include <native_thread.hh>
-#include <global_vars.hh>
+#include "native_cpu_node.hh"
+#include "native_thread.hh"
+#include <arch/global_vars.hh>
+#include <arch/native_ops.hh>
 #include <core/mempool.hh>
-#include <native_cpu_node.hh>
-#include <native_ops.hh>
-#include <new_ops.hh>
+#include <core/new_ops.hh>
 
 
 namespace {
@@ -85,9 +85,11 @@ thread_ctl::thread_ctl() :
 
 cause::t thread_ctl::setup()
 {
-	auto r = mempool_acquire_shared(1 << THREAD_SIZE_SHIFTS, &thread_mp);
-	if (is_fail(r))
-		return r;
+	auto mp = mempool::acquire_shared(1 << THREAD_SIZE_SHIFTS);
+	if (is_fail(mp))
+		return mp.cause();
+
+	thread_mp = mp;
 
 	return cause::OK;
 }
@@ -118,20 +120,18 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 	native_thread* t = new (*thread_mp)
 	    native_thread(get_next_tid(), text, param, 1 << THREAD_SIZE_SHIFTS);
 	if (!t) {
-		return cause::make_pair(cause::NOMEM, t);
+		return make_pair(cause::NOMEM, t);
 	}
 
 	owner_cpu->attach_thread(t);
 
-	return cause::make_pair(cause::OK, t);
+	return make_pair(cause::OK, t);
 }
 
 /// @param[in] t  cpu から detach() された native_thread.
 cause::t thread_ctl::destroy_thread(native_thread* t)
 {
-	t->~native_thread();
-
-	operator delete (t, thread_mp);
+	new_destroy(t, *thread_mp);
 
 	return cause::OK;
 }
@@ -152,14 +152,13 @@ thread_id thread_ctl::get_next_tid()
 /// @pre mempool_init() was successful.
 cause::t thread_ctl_setup()
 {
-	thread_ctl* tc = new (mem_alloc(sizeof (thread_ctl))) thread_ctl;
+	thread_ctl* tc = new (generic_mem()) thread_ctl;
 	if (!tc)
 		return cause::NOMEM;
 
 	auto r = tc->setup();
 	if (is_fail(r)) {
-		tc->~thread_ctl();
-		mem_dealloc(tc);
+		new_destroy(tc, generic_mem());
 		return r;
 	}
 

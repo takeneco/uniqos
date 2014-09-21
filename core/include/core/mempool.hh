@@ -9,8 +9,8 @@
 
 #include <arch.hh>
 #include <config.h>
-#include <atomic.hh>
-#include <new_ops.hh>
+#include <core/atomic.hh>
+#include <core/new_ops.hh>
 
 
 class output_buffer;
@@ -85,10 +85,26 @@ private:
 	typedef bichain<page, &page::bichain_hook> page_bichain;
 
 public:
+	enum PAGE_STYLE {
+		ENTRUST,
+		ONPAGE,
+		OFFPAGE,
+	};
+
+private:
 	mempool(u32 _obj_size,
 	        arch::page::TYPE ptype = arch::page::INVALID,
 	        mempool* _page_pool = 0);
 	cause::t destroy();
+
+public:
+	static cause::pair<mempool*> create_exclusive(
+	    u32 objsize, arch::page::TYPE page_type, PAGE_STYLE page_style);
+	//TODO:implement
+	static cause::t              destroy_exclusive(mempool* mp);
+
+	static cause::pair<mempool*> acquire_shared(u32 objsize);
+	static void                  release_shared(mempool* mp);
 
 	u32 get_obj_size() const { return obj_size; }
 	u32 get_page_objs() const { return page_objs; }
@@ -127,7 +143,7 @@ private:
 		void collect_free_pages(mempool* owner);
 
 	private:
-		void include_dirty_page(page* page);
+		void import_dirty_page(page* page);
 		void back_to_page(memobj* obj, mempool* owner);
 
 	private:
@@ -194,8 +210,8 @@ private:
 		void init(mempool* _mp);
 
 	private:
-		cause::pair<void*> on_mem_allocator_Allocate(uptr bytes);
-		cause::t on_mem_allocator_Deallocate(void* p);
+		cause::pair<void*> on_Allocate(uptr bytes);
+		cause::t on_Deallocate(void* p);
 
 	private:
 		mempool* mp;
@@ -226,17 +242,8 @@ public:
 	}
 };
 
-extern "C" cause::t mempool_acquire_shared(u32 objsize, mempool** mp);
-extern "C" void     mempool_release_shared(mempool* mp);
 void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
-
-void* operator new (uptr, mempool* mp);  //TODO: DUPLICATED
-void* operator new [] (uptr, mempool* mp);  //TODO: DUPLICATED
-
-inline void operator delete (void* p, mempool* mp) {  //TODO: DUPLICATED
-	mp->release(p);
-}
 
 
 #endif  // include guard

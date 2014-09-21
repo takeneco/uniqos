@@ -17,16 +17,16 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+#include <arch/native_ops.hh>
+#include <irq_ctl.hh>
 #include <core/cpu_node.hh>
 #include <core/global_vars.hh>
+#include <core/intr_ctl.hh>
 #include <core/io_node.hh>
 #include <core/mempool.hh>
 #include <core/message.hh>
-#include <core/intr_ctl.hh>
-#include <irq_ctl.hh>
-#include <native_ops.hh>
-#include <new_ops.hh>
-#include <spinlock.hh>
+#include <core/new_ops.hh>
+#include <core/spinlock.hh>
 
 
 namespace {
@@ -232,9 +232,11 @@ cause::t serial_ctl::configure()
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
-	cause::t r = mempool_acquire_shared(buf_entry::SIZE, &buf_mp);
-	if (is_fail(r))
-		return r;
+	auto mp = mempool::acquire_shared(buf_entry::SIZE);
+	if (is_fail(mp))
+		return mp.cause();
+
+	buf_mp = mp;
 
 	return cause::OK;
 }
@@ -269,7 +271,7 @@ cause::pair<uptr> serial_ctl::on_Write(
 			post_write_msg();
 	}
 
-	if (false /* sync */ && r.get_data() != 0) {
+	if (false /* sync */ && r.data() != 0) {
 		sleep_current_thread();
 	}
 
@@ -334,9 +336,8 @@ cause::pair<uptr> serial_ctl::write_buf(
 	}
 
 	if (false /* sync */ && buf) {
-		thread_queue& tc = get_cpu_node()->get_thread_ctl();
 		buf->set_bufsize(next_write);
-		buf->set_client(tc.get_running_thread());
+		buf->set_client(get_current_thread());
 	}
 
 	return make_pair(r, write_bytes);
@@ -375,9 +376,8 @@ cause::t serial_ctl::write_buf(offset* off, iovec_iterator& iov_itr)
 	*off += total;
 
 	if (false /* sync */ && buf) {
-		thread_queue& tc = get_cpu_node()->get_thread_ctl();
 		buf->set_bufsize(next_write);
-		buf->set_client(tc.get_running_thread());
+		buf->set_client(get_current_thread());
 	}
 
 	return r;

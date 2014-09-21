@@ -9,7 +9,7 @@
 #include <core/basic.hh>
 
 
-cause::t mempool_init();
+cause::t mempool_setup();
 cause::t mempool_post_setup();
 cause::t log_init();
 cause::t mem_io_setup();

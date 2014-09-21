@@ -29,16 +29,19 @@ class iovec_iterator
 
 public:
 	iovec_iterator() :
-	    iov(0), iov_cnt(0) {
+		iov(0), iov_cnt(0)
+	{
 		reset();
 	}
 	iovec_iterator(uint _iov_cnt, const iovec* _iov) :
-	    iov(_iov), iov_cnt(_iov_cnt) {
+		iov(_iov), iov_cnt(_iov_cnt)
+	{
 		reset();
 		normalize();
 	}
 	iovec_iterator(const iovec* iov, ucpu num) :
-	    iov(iov), iov_cnt(num) {
+		iov(iov), iov_cnt(num)
+	{
 		reset();
 		normalize();
 	}
@@ -165,10 +168,10 @@ public:
 
 	// GetDirEntry
 	template<class T>
-	static cause::pair<dir_entry*> call_on_io_node_GetDirEntry(
+	static cause::pair<dir_entry*> call_on_GetDirEntry(
 	    io_node* x, uptr buf_bytes, dir_entry* buf) {
 		return static_cast<T*>(x)->
-		    on_io_node_GetDirEntry(buf_bytes, buf);
+		    on_GetDirEntry(buf_bytes, buf);
 	}
 	static cause::pair<dir_entry*> nofunc_GetDirEntry(
 	    io_node*, uptr, dir_entry*) {

@@ -20,6 +20,9 @@
 #include <core/process_ctl.hh>
 
 #include <core/global_vars.hh>
+#include <core/mempool.hh>
+#include <core/new_ops.hh>
+#include <core/setup.hh>
 
 
 process_ctl::process_ctl()
@@ -30,9 +33,15 @@ process_ctl::~process_ctl()
 {
 }
 
-cause::t process_ctl::init()
+cause::t process_ctl::setup()
 {
+	auto mp = mempool::create_exclusive(
+	    sizeof (io_desc), arch::page::INVALID, mempool::ENTRUST);
+	if (is_fail(mp))
+		return mp.get_cause();
+
+	io_desc_mp = mp;
+
 	return process_id_map.init(10);
 }
-
 

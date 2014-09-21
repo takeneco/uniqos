@@ -3,10 +3,10 @@
 // (C) 2012-2014 KATO Takeshi
 //
 
-#ifndef INCLUDE_THREAD_SCHED_HH_
-#define INCLUDE_THREAD_SCHED_HH_
+#ifndef CORE_THREAD_SCHED_HH_
+#define CORE_THREAD_SCHED_HH_
 
-#include <thread.hh>
+#include <core/thread.hh>
 
 
 class cpu_node;
@@ -17,7 +17,8 @@ class thread_sched
 public:
 	thread_sched(cpu_node* _owner_cpu);
 
-	cause::t init();
+	void init();
+
 	cause::t attach_boot_thread(thread* t);
 
 	void attach(thread* t);
@@ -26,7 +27,6 @@ public:
 	thread* sleep_current_thread_np();
 	void ready(thread* t);
 	void ready_np(thread* t);
-	void ready_thread(thread* t);
 
 	thread* get_running_thread() { return running_thread; }
 	void set_running_thread(thread* t);
@@ -45,13 +45,10 @@ private:
 
 	spin_rwlock thread_state_lock;
 
-	typedef bibochain<thread, &thread::chain_node> thread_chain;
+	typedef bibochain<thread, &thread::thread_sched_chainnode> thread_chain;
 	thread_chain ready_queue;
 	thread_chain sleeping_queue;
 };
-
-//TODO
-typedef thread_sched thread_queue;
 
 
 #endif  // include guard

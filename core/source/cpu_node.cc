@@ -17,16 +17,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 
 #include <arch.hh>
-#include <global_vars.hh>
-#include <log.hh>
-#include <page_pool.hh>
+#include <core/global_vars.hh>
+#include <core/log.hh>
+#include <core/page_pool.hh>
 
-// TODO:include from arch
-#include <native_thread.hh>
-#include <native_ops.hh>
 
 /// @class cpu_node
 //
@@ -63,9 +60,7 @@ cause::t cpu_node::set_page_pool(int pri, page_pool* pp)
 
 cause::t cpu_node::setup()
 {
-	cause::t r = threads.init();
-	if (is_fail(r))
-		return r;
+	threads.init();
 
 	return cause::OK;
 }
@@ -116,7 +111,7 @@ void cpu_node::preempt_wait()
 cause::t cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
 {
 	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
-		const cause::type r = page_pools[i]->alloc(page_type, padr);
+		const cause::t r = page_pools[i]->alloc(page_type, padr);
 		if (is_ok(r))
 			return cause::OK;
 	}
@@ -127,7 +122,7 @@ cause::t cpu_node::page_alloc(arch::page::TYPE page_type, uptr* padr)
 cause::t cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
 {
 	for (cpu_id i = 0; i < page_pool_cnt; ++i) {
-		const cause::type r = page_pools[i]->dealloc(page_type, padr);
+		const cause::t r = page_pools[i]->dealloc(page_type, padr);
 		if (is_ok(r)) {
 			return cause::OK;
 		} else if (r == cause::OUTOFRANGE) {

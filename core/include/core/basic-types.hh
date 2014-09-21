@@ -362,10 +362,12 @@ namespace cause
 		NOMEM = 2,
 		/// 引数が不正。
 		BADARG = 3,
+		/// IOが不正。
+		BADIO = 4,
 		/// 範囲外。
-		OUTOFRANGE =4,
+		OUTOFRANGE =5,
 		/// データの終了に到達した。
-		END = 5,
+		END = 6,
 		/// デバイスが無い。
 		NODEV = 10,
 		/// No such file or directory
@@ -395,14 +397,14 @@ namespace cause
 			r(FAIL),
 			value(T())
 		{}
-		pair(type _r, T _value) :
+		pair(type _r, const T& _value) :
 			r(_r),
 			value(_value)
 		{}
 
-		pair<T>& operator = (const T& x) {
+		pair<T>& operator = (const pair<T>& x) {
 			r = x.r;
-			value = x.r;
+			value = x.value;
 			return *this;
 		}
 
@@ -415,11 +417,13 @@ namespace cause
 
 		void set_cause(type _r) { r = _r; }
 		t    get_cause() const { return r; }
+		t    cause() const { return r; }
 		bool is_ok() const { return cause::is_ok(r); }
 		bool is_fail() const { return cause::is_fail(r); }
 
-		void set_data(T _v) { value = _v; }
+		void set_data(const T& _v) { value = _v; }
 		T    get_data() { return value; }
+		const T& data() { return value; }
 		void set_value(T _v) { value = _v; }
 		T    get_value() { return value; }
 

@@ -18,8 +18,8 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <core/fs_ctl.hh>
-#include <mempool_ctl.hh>
-#include <new_ops.hh>
+#include <core/mempool.hh>
+#include <core/new_ops.hh>
 
 
 namespace {
@@ -29,17 +29,26 @@ class ramfs_driver : public fs_driver
 public:
 	ramfs_driver();
 
+	cause::t setup();
+	cause::t teardown();
+
 	cause::pair<fs_mount*> on_Mount(const char* dev);
 	cause::t on_Unmount(fs_mount* mount, const char* target, u64 flags);
 
 	const io_node::operations* ref_io_node_ops() { return &io_node_ops; }
 
+	mempool* get_fs_node_mp() { return fs_node_mp; }
+	mempool* get_io_node_mp() { return io_node_mp; }
+
 private:
 	operations self_ops;
 	fs_mount::operations mount_ops;
 	io_node::operations io_node_ops;
+	mempool* fs_node_mp;
+	mempool* io_node_mp;
 };
 
+/// mount point
 class ramfs_mount : public fs_mount
 {
 public:
@@ -59,12 +68,9 @@ private:
 		return static_cast<ramfs_driver*>(fs_mount::get_driver());
 	}
 	cause::pair<io_node*> create_io_node();
-
-private:
-	mempool* fs_node_mp;
-	mempool* io_node_mp;
 };
 
+/// file node
 class ramfs_node : public fs_node
 {
 public:
@@ -73,6 +79,7 @@ public:
 	{}
 };
 
+/// opened file node
 class ramfs_io_node : public io_node
 {
 public:
@@ -80,7 +87,7 @@ public:
 		io_node(_ops)
 	{}
 
-	cause::pair<dir_entry*> on_io_node_GetDirEntry(
+	cause::pair<dir_entry*> on_GetDirEntry(
 	    uptr buf_bytes, dir_entry* buf);
 };
 
@@ -88,7 +95,9 @@ public:
 // ramfs_driver
 
 ramfs_driver::ramfs_driver() :
-	fs_driver(&self_ops)
+	fs_driver(&self_ops),
+	fs_node_mp(nullptr),
+	io_node_mp(nullptr)
 {
 	self_ops.init();
 
@@ -101,22 +110,48 @@ ramfs_driver::ramfs_driver() :
 
 	io_node_ops.init();
 
-	io_node_ops.GetDirEntry  =
-	    io_node::call_on_io_node_GetDirEntry<ramfs_io_node>;
+	io_node_ops.GetDirEntry  = io_node::call_on_GetDirEntry<ramfs_io_node>;
+}
+
+cause::t ramfs_driver::setup()
+{
+	auto mp = mempool::create_exclusive(
+	    sizeof (ramfs_node),
+	    arch::page::INVALID,
+	    mempool::ENTRUST);
+	if (is_fail(mp))
+		return mp.cause();
+
+	fs_node_mp = mp.data();
+
+	mp = mempool::create_exclusive(
+	    sizeof (ramfs_io_node),
+	    arch::page::INVALID,
+	    mempool::ENTRUST);
+	if (is_fail(mp))
+		return mp.cause();
+
+	io_node_mp = mp.data();
+
+	return cause::OK;
+}
+
+cause::t ramfs_driver::teardown()
+{
+	// TODO:release fs_node_mp,ionode_mp
+	return cause::NOFUNC;
 }
 
 cause::pair<fs_mount*> ramfs_driver::on_Mount(const char* dev)
 {
-	ramfs_mount* ramfs =
-	    new (shared_mem()) ramfs_mount(this);
+	ramfs_mount* ramfs = new (generic_mem()) ramfs_mount(this);
 	if (!ramfs)
 		return null_pair(cause::NOMEM);
 
 	auto r = ramfs->mount(dev);
 	if (is_fail(r)) {
-		ramfs->~ramfs_mount();
-		operator delete (ramfs, shared_mem());
-		mem_dealloc(ramfs);
+		new_destroy(ramfs, generic_mem());
+
 		return null_pair(r);
 	}
 
@@ -133,25 +168,10 @@ cause::t ramfs_driver::on_Unmount(
 
 cause::t ramfs_mount::mount(const char*)
 {
-	auto r = get_mempool_ctl()->exclusived_mempool(
-	    sizeof (ramfs_node),
-	    arch::page::INVALID,
-	    mempool_ctl::ENTRUST,
-	    &fs_node_mp);
-	if (is_fail(r))
-		return r;
-
-	r = get_mempool_ctl()->exclusived_mempool(
-	    sizeof (ramfs_io_node),
-	    arch::page::INVALID,
-	    mempool_ctl::ENTRUST,
-	    &io_node_mp);
-	if (is_fail(r)) {
-		// TODO:release fs_node_mp
-		return r;
-	}
-
-	root = new (*fs_node_mp) ramfs_node(this, fs_ctl::NODE_DIR);
+	root = new (*get_driver()->get_fs_node_mp())
+	    ramfs_node(this, fs_ctl::NODE_DIR);
+	if (!root)
+		return cause::NOMEM;
 
 	return cause::OK;
 }
@@ -170,19 +190,19 @@ cause::pair<io_node*> ramfs_mount::on_OpenNode(
 
 cause::pair<io_node*> ramfs_mount::create_io_node()
 {
-	ramfs_io_node* ion =
-	    new (*io_node_mp) ramfs_io_node(get_driver()->ref_io_node_ops());
+	ramfs_io_node* ion = new (*get_driver()->get_io_node_mp())
+	    ramfs_io_node(get_driver()->ref_io_node_ops());
 	if (!ion)
 		return null_pair(cause::NOMEM);
 
-	return make_pair(cause::OK, static_cast<io_node*>(ion));
+	return cause::make_pair<io_node*>(cause::OK, ion);
 }
 
 // ramfs_node
 
 // ramfs_io_node
 
-cause::pair<dir_entry*> ramfs_io_node::on_io_node_GetDirEntry(
+cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
     uptr buf_bytes, dir_entry* buf)
 {
 	return null_pair(cause::OK);
@@ -193,17 +213,20 @@ cause::pair<dir_entry*> ramfs_io_node::on_io_node_GetDirEntry(
 
 cause::t ramfs_init()
 {
-	ramfs_driver* ramfs_drv =
-	    new (mem_alloc(sizeof (ramfs_driver))) ramfs_driver;
+	ramfs_driver* ramfs_drv = new (generic_mem()) ramfs_driver;
 	if (!ramfs_drv)
 		return cause::NOMEM;
 
-	auto r = get_fs_ctl()->register_ramfs_driver(ramfs_drv);
+	auto r = ramfs_drv->setup();
 	if (is_fail(r)) {
-		ramfs_drv->~ramfs_driver();
-		operator delete (ramfs_drv, (void*)nullptr);
-		mem_dealloc(ramfs_drv);
+		//TODO:return code
+		ramfs_drv->teardown();
+		return r;
 	}
+
+	r = get_fs_ctl()->register_ramfs_driver(ramfs_drv);
+	if (is_fail(r))
+		new_destroy(ramfs_drv, generic_mem());
 
 	return r;
 }

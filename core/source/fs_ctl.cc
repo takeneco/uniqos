@@ -21,10 +21,10 @@
 
 #include <core/global_vars.hh>
 #include <core/io_node.hh>
-#include <core/setup.hh>
 #include <core/mempool.hh>
+#include <core/new_ops.hh>
+#include <core/setup.hh>
 #include <core/string.hh>
-#include <new_ops.hh>
 
 
 namespace {
@@ -90,8 +90,8 @@ fs_ctl::mountpoint::mountpoint(const char* src, const char* tgt) :
 	pathname_cn_t src_len = src ? source_char_cn + 1 : 0;
 	pathname_cn_t tgt_len = tgt ? target_char_cn + 1 : 0;
 
-	str_copy(src_len, src, &buf[0]);
-	str_copy(tgt_len, tgt, &buf[src_len]);
+	str_copy(src, &buf[0], src_len);
+	str_copy(tgt, &buf[src_len], tgt_len);
 
 	source = src ? &buf[0] : nullptr;
 	target = tgt ? &buf[src_len] : nullptr;
@@ -128,7 +128,7 @@ fs_ctl::fs_ctl()
 
 cause::t fs_ctl::init()
 {
-	fs_node* _root = new (shared_mem())
+	fs_node* _root = new (generic_mem())
 	    fs_node(nullptr, fs_ctl::NODE_UNKNOWN);
 	if (!_root)
 		return cause::NOMEM;
@@ -151,10 +151,10 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 				//auto r = cur->create_child_node(cur, path);
 			}
 		} else if (is_fail(child)) {
-			return cause::null_pair(child.get_cause());
+			return cause::null_pair(child.cause());
 		}
 
-		cur = child.get_data();
+		cur = child.data();
 
 		uptr len = filename_length(path);
 		path += len;
@@ -172,7 +172,7 @@ cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 		if (is_fail(r1))
 			return r1.get_cause();
 
-		mountpoint* mp = r1.get_data();
+		mountpoint* mp = r1.data();
 
 		auto r2 = ramfs_driver->mount(source);
 		if (is_fail(r2)) {
@@ -180,10 +180,10 @@ cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 			if (is_fail(r3)) {
 				// TODO:multierror
 			}
-			return r2.get_cause();
+			return r2.cause();
 		}
 
-		mp->mount_obj = r2.get_data();
+		mp->mount_obj = r2.data();
 
 		mountpoints.push_back(mp);
 
@@ -254,14 +254,14 @@ fs_ctl* get_fs_ctl()
 
 cause::t fs_ctl_init()
 {
-	fs_ctl* fsctl = new (shared_mem()) fs_ctl;
+	fs_ctl* fsctl = new (generic_mem()) fs_ctl;
 	if (!fsctl)
 		return cause::NOMEM;
 
 	auto r = fsctl->init();
 	if (is_fail(r)) {
 		// TODO:logging return value
-		new_destroy(fsctl, shared_mem());
+		new_destroy(fsctl, generic_mem());
 		return r;
 	}
 
@@ -324,3 +324,4 @@ cause::t sys_unmount(
 {
 	return get_fs_ctl()->unmount(target, flags);
 }
+

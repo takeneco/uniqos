@@ -23,9 +23,9 @@
 #include <core/intr_ctl.hh>
 #include <core/log.hh>
 #include <core/mempool.hh>
+#include <core/new_ops.hh>
 #include <core/string.hh>
-#include <new_ops.hh>
-#include <native_ops.hh>
+#include <arch/native_ops.hh>
 
 #define UNUSE(a) a=a
 
@@ -445,13 +445,13 @@ AcpiOsCreateCache (
 		    (ReturnCache)(")")();
 	}
 
-	mempool* mp;
-	cause::type r = mempool_acquire_shared(ObjectSize, &mp);
-	if (r == cause::NOMEM)
+	auto r = mempool::acquire_shared(ObjectSize);
+	if (r.cause() == cause::NOMEM)
 		return AE_NO_MEMORY;
 	else if (is_fail(r))
 		return AE_BAD_PARAMETER;
 
+	mempool* mp = r;
 	*ReturnCache = mp;
 
 	if (CONFIG_DEBUG_VERBOSE >= 2) {
@@ -473,7 +473,7 @@ AcpiOsDeleteCache (
 
 	mempool* mp = static_cast<mempool*>(Cache);
 
-	mempool_release_shared(mp);
+	mempool::release_shared(mp);
 
 	return AE_OK;
 }

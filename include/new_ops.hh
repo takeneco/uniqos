@@ -15,8 +15,8 @@ public:
 	struct operations
 	{
 		void init() {
-			Allocate = nofunc_mem_allocator_Allocate;
-			Deallocate = nofunc_mem_allocator_Deallocate;
+			Allocate = nofunc_Allocate;
+			Deallocate = nofunc_Deallocate;
 		}
 
 		typedef cause::pair<void*> (*AllocateOp)(
@@ -33,31 +33,33 @@ public:
 
 public:
 	template<class T>
-	static cause::pair<void*> call_on_mem_allocator_Allocate(
-	    mem_allocator* x, uptr bytes) {
-		return static_cast<T*>(x)->on_mem_allocator_Allocate(bytes);
+	static cause::pair<void*> call_on_Allocate(mem_allocator* x, uptr bytes)
+	{
+		return static_cast<T*>(x)->on_Allocate(bytes);
 	}
-	static cause::pair<void*> nofunc_mem_allocator_Allocate(
-	    mem_allocator*, uptr) {
+	static cause::pair<void*> nofunc_Allocate(mem_allocator*, uptr)
+	{
 		return null_pair(cause::NOFUNC);
 	}
 
 	template<class T>
-	static cause::t call_on_mem_allocator_Deallocate(
-	    mem_allocator* x, void* p) {
-		return static_cast<T*>(x)->on_mem_allocator_Deallocate(p);
+	static cause::t call_on_Deallocate(mem_allocator* x, void* p)
+	{
+		return static_cast<T*>(x)->on_Deallocate(p);
 	}
-	static cause::t nofunc_mem_allocator_Deallocate(
-	    mem_allocator*, void*) {
+	static cause::t nofunc_Deallocate(mem_allocator*, void*)
+	{
 		return cause::NOFUNC;
 	}
 
 public:
-	cause::pair<void*> allocate(uptr bytes) {
+	cause::pair<void*> allocate(uptr bytes)
+	{
 		return ops->Allocate(this, bytes);
 	}
 
-	cause::t deallocate(void* p) {
+	cause::t deallocate(void* p)
+	{
 		return ops->Deallocate(this, p);
 	}
 
@@ -71,32 +73,37 @@ inline void* operator new[](uptr, void* ptr) { return ptr; }
 inline void operator delete  (void*, void*) {}
 inline void operator delete[](void*, void*) {}
 
-inline void* operator new (uptr size, mem_allocator& alloc) {
+inline void* operator new (uptr size, mem_allocator& alloc)
+{
 	auto r = alloc.allocate(size);
 	if (is_ok(r))
 		return r.get_data();
 	else
 		return nullptr;
 }
-inline void operator delete (void* p, mem_allocator& alloc) {
+inline void operator delete (void* p, mem_allocator& alloc)
+{
 	alloc.deallocate(p);
 }
-inline void* operator new[] (uptr size, mem_allocator& alloc) {
+inline void* operator new[] (uptr size, mem_allocator& alloc)
+{
 	auto r = alloc.allocate(size);
 	if (is_ok(r))
 		return r.get_data();
 	else
 		return nullptr;
 }
-inline void operator delete[] (void* p, mem_allocator& alloc) {
+inline void operator delete[] (void* p, mem_allocator& alloc)
+{
 	alloc.deallocate(p);
 }
-template<class T> inline cause::t new_destroy(T* p, mem_allocator& alloc) {
+template<class T> inline cause::t new_destroy(T* p, mem_allocator& alloc)
+{
 	p->~T();
 	return alloc.deallocate(p);
 }
 
-mem_allocator& shared_mem();
+mem_allocator& generic_mem();
 
 
 #endif  // include guard

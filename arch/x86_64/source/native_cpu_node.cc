@@ -16,20 +16,20 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <native_cpu_node.hh>
+#include "native_cpu_node.hh"
 
-#include <bootinfo.hh>
-#include <core/mempool.hh>
-#include <cpu_ctl.hh>
-#include <flags.hh>
-#include <global_vars.hh>
-#include <log.hh>
-#include <native_ops.hh>
-#include <native_thread.hh>
-#include <new_ops.hh>
-#include <page.hh>
-#include <pagetable.hh>
+#include "cpu_ctl.hh"
+#include "flags.hh"
+#include "native_thread.hh"
 #include "page_table.hh"
+#include "pagetable.hh"
+#include "bootinfo.hh"
+#include <arch/native_ops.hh>
+#include <core/log.hh>
+#include <core/mempool.hh>
+#include <core/new_ops.hh>
+#include <core/page.hh>
+#include <global_vars.hh>
 
 
 extern char on_syscall[];
@@ -93,7 +93,7 @@ cause::t native_cpu_node::start_message_loop()
 	auto r = x86::create_thread(
 	    this, &message_loop_entry, this);
 	if (is_fail(r))
-		return r.r;
+		return r.cause();
 	message_thread = r.value;
 
 	ready_thread(message_thread);
@@ -115,10 +115,10 @@ cause::t native_cpu_node::setup_tss()
 {
 	tss.iomap_base = sizeof tss;
 
-	mempool* ist_mp;
-	cause::t r = mempool_acquire_shared(IST_BYTES, &ist_mp);
+	auto r = mempool::acquire_shared(IST_BYTES);
 	if (is_fail(r))
-		return r;
+		return r.cause();
+	mempool* ist_mp = r.data();
 
 	auto ist_intr = ist_mp->acquire();
 	auto ist_trap = ist_mp->acquire();
@@ -128,12 +128,12 @@ cause::t native_cpu_node::setup_tss()
 		if (is_ok(ist_trap))
 			ist_mp->release(ist_trap.value);
 
-		mempool_release_shared(ist_mp);
+		mempool::release_shared(ist_mp);
 
 		return cause::NOMEM;
 	}
 
-	mempool_release_shared(ist_mp);
+	mempool::release_shared(ist_mp);
 
 	tss.set_ist(ist_layout(ist_intr.value), IST_INTR);
 	tss.set_ist(ist_layout(ist_trap.value), IST_TRAP);

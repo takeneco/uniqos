@@ -19,7 +19,7 @@ class native_process : public process
 public:
 	native_process();
 
-	cause::t init(thread* entry_thread, int iod_nr);
+	cause::t setup(thread* entry_thread, int iod_nr);
 
 	page_table& ref_ptbl() { return ptbl; }
 

@@ -3,12 +3,11 @@
 #include <core/cpu_node.hh>
 #include <global_vars.hh>
 #include <core/log.hh>
-#include <mempool_ctl.hh>
-#include <native_ops.hh>
-#include <new_ops.hh>
-#include <page_pool.hh>
-#include <spinlock.hh>
-#include <timer_ctl.hh>
+#include <core/mempool_ctl.hh>
+#include <arch/native_ops.hh>
+#include <core/new_ops.hh>
+#include <core/page_pool.hh>
+#include <core/timer_ctl.hh>
 
 
 void event_drive();
@@ -85,9 +84,9 @@ void wakeup_handler(message* msg)
 
 	//w->data->ready();
 
-	thread_queue& tc = get_cpu_node()->get_thread_ctl();
+	thread_sched& ts = get_cpu_node()->get_thread_ctl();
 	//tc.ready_np(w->data);
-	tc.ready(w->data);
+	ts.ready(w->data);
 
 	w->data = 0;
 }
@@ -101,8 +100,7 @@ void mempool_test()
 	obj_edge oe3("obj3", on2);
 	obj_node on3("type2", oe3);
 
-	thread_queue& tc = get_cpu_node()->get_thread_ctl();
-	thread* th = tc.get_running_thread();
+	thread* th = get_current_thread();
 
 	wakeup wakeupme;
 	wakeupme.handler = wakeup_handler;
@@ -120,13 +118,15 @@ void mempool_test()
 	test_number_lock->unlock();
 
 	mempool* mp[2];
-	cause::type r = mempool_acquire_shared(20, &mp[0]);
-	if (is_fail(r))
-		log()("!!! error r=").u(r)();
+	auto rmp = mempool::acquire_shared(20);
+	if (is_fail(rmp))
+		log()("!!! error r=").u(rmp.cause())();
+	mp[0] = rmp;
 
-	r = mempool_acquire_shared(100, &mp[1]);
-	if (is_fail(r))
-		log()("!!! error r=").u(r)();
+	rmp = mempool::acquire_shared(100);
+	if (is_fail(rmp))
+		log()("!!! error r=").u(rmp.cause())();
+	mp[1] = rmp;
 
 	preempt_disable();
 
@@ -214,8 +214,8 @@ void mempool_test()
 		lg();
 	}
 
-	mempool_release_shared(mp[0]);
-	mempool_release_shared(mp[1]);
+	mempool::release_shared(mp[0]);
+	mempool::release_shared(mp[1]);
 
 	log().p(th)("|TEST:").u(tn)("|sum:").x(n)();
 }
@@ -224,7 +224,7 @@ bool test_init()
 {
 	rnd.init(0, 0);
 	test_number = 0;
-	test_number_lock = new (shared_mem()) spin_lock;
+	test_number_lock = new (generic_mem()) spin_lock;
 	return true;
 }
 

@@ -17,10 +17,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <output_buffer.hh>
+#include <core/output_buffer.hh>
 
 #include <arch.hh>
-#include <bitops.hh>
+#include <core/bitops.hh>
 #include <core/string.hh>
 
 
@@ -768,8 +768,8 @@ void output_buffer::_1vec(const void* data, uptr bytes)
 		if (info.buf_offset == 0) {
 			auto r = info.destination->write(
 			    info.dest_offset, data, bytes);
-			info.dest_offset += r.get_data();
-			data_cur = r.get_data();
+			info.dest_offset += r.data();
+			data_cur = r.data();
 		} else {
 			data_cur = 0;
 		}
@@ -816,22 +816,20 @@ cause::t output_buffer::_flush()
 		auto r = info.destination->write(
 		    info.dest_offset, buffer, info.buf_offset);
 
-		const uptr output_bytes = r.get_data();
+		const uptr output_bytes = r.data();
 
 		info.dest_offset += output_bytes;
 
-		if (is_fail(r))
-			return r.get_cause();
-
 		if (output_bytes == 0)
-			return r.get_cause();
+			return r.cause();
+
 		if (output_bytes != info.buf_offset) {
 			mem_move(&buffer[output_bytes],
 			         buffer,
 			         info.buf_offset - output_bytes);
 			info.buf_offset -= output_bytes;
 
-			return cause::OK;
+			return r.cause();
 		}
 
 		info.buf_offset = 0;

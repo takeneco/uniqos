@@ -17,9 +17,9 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <thread_queue.hh>
+#include <core/thread_sched.hh>
 
-#include <new_ops.hh>
+#include <core/new_ops.hh>
 #include <core/cpu_node.hh>
 
 
@@ -36,9 +36,8 @@ thread_sched::thread_sched(cpu_node* _owner_cpu) :
 {
 }
 
-cause::t thread_sched::init()
+void thread_sched::init()
 {
-	return cause::OK;
 }
 
 /// @brief カーネルの初期化処理用スレッドを関連付ける。

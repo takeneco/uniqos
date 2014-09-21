@@ -17,25 +17,25 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <acpi_ctl.hh>
-#include <bootinfo.hh>
+#include "bootinfo.hh"
+#include "irq_ctl.hh"
+#include "kerninit.hh"
+#include "native_cpu_node.hh"
+#include "native_process.hh"
+#include "native_thread.hh"
+#include <arch/native_ops.hh>
+#include <arch/vga.hh>
+#include <core/acpi_ctl.hh>
+#include <core/clock_src.hh>
 #include <core/intr_ctl.hh>
 #include <core/log.hh>
+#include <core/mem_io.hh>
+#include <core/mempool_ctl.hh>
+#include <core/new_ops.hh>
 #include <core/string.hh>
-#include <native_cpu_node.hh>
+#include <core/timer_ctl.hh>
 #include <global_vars.hh>
-#include <irq_ctl.hh>
-#include "kerninit.hh"
-#include <mem_io.hh>
-#include <mempool_ctl.hh>
-#include <native_ops.hh>
-#include "native_process.hh"
-#include <native_thread.hh>
-#include <new_ops.hh>
-#include <vga.hh>
 
-#include <clock_src.hh>
-#include <timer_ctl.hh>
 
 using namespace x86;
 
@@ -91,11 +91,30 @@ void timer_handler(message* msg)
 	global_vars::core.timer_ctl_obj->set_timer(tmsg);
 }
 
-cause::t create_first_process()
+cause::t create_first_process(io_node* out1)
 {
-	native_process* pr =
-	    new (mem_alloc(sizeof (native_process))) native_process;
-	pr->init();
+	native_process* pr = new (generic_mem()) native_process;
+	if (pr == nullptr) {
+		return cause::NOMEM;
+	}
+
+	auto tr = create_thread(get_cpu_node(), 0x00100000, 0);
+	if (is_fail(tr)) {
+		return tr.r;
+	}
+	native_thread* t = tr.value;
+
+	cause::t r = pr->setup(t, 10);
+	if (is_fail(r)) {
+		log()(SRCPOS)(":r=").u(r)();
+		return r;
+	}
+
+	r = pr->set_io_desc(1, out1);
+	if (is_fail(r)) {
+		log()(SRCPOS)(":r=").u(r)();
+		return r;
+	}
 
 	const bootinfo::module* bundle =
 	    reinterpret_cast<const bootinfo::module*>
@@ -107,15 +126,14 @@ cause::t create_first_process()
 
 	// load text start
 	uptr padr;
-	cause::t r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
+	r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
 	if (is_fail(r)) {
 		return r;
 	}
 
 	void* vadr = arch::map_phys_adr(padr, arch::page::PHYS_L1_SIZE);
 
-	void* src =
-	    arch::map_phys_adr(bundle->mod_start, bundle->mod_bytes);
+	void* src = arch::map_phys_adr(bundle->mod_start, bundle->mod_bytes);
 
 	mem_copy(bundle->mod_bytes, src, vadr);
 
@@ -137,11 +155,6 @@ cause::t create_first_process()
 	    arch::pte::A | arch::pte::D);
 	// alloc stack end
 
-	auto thr = create_thread(get_cpu_node(), 0x00100000, 0);
-	if (is_fail(thr)) {
-		return thr.r;
-	}
-	native_thread* t = thr.value;
 	t->ref_regset()->cr3 = arch::unmap_phys_adr(
 	    pr->ref_ptbl().get_toptable(), arch::page::PHYS_L1);
 	t->ref_regset()->rsp = 0x0000800000000000;
@@ -187,7 +200,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	global_vars::arch.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
 
-	r = mempool_init();
+	r = mempool_setup();
 	if (is_fail(r))
 		return r;
 
@@ -250,7 +263,7 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (memlog_buffer) {
 		io_node* memio =
 		    new (mem_alloc(sizeof (ringed_mem_io)))
-		    ringed_mem_io(MEMLOG_SIZE, memlog_buffer);
+		    ringed_mem_io(memlog_buffer, MEMLOG_SIZE);
 
 		log_install(2, memio);
 
@@ -412,7 +425,7 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 
 	ramfs_init();
 
-	r = create_first_process();
+	r = create_first_process(serial);
 	if (is_fail(r)) {
 		log()("create_first_process() failed")();
 	}

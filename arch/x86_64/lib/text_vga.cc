@@ -42,7 +42,7 @@ cause::pair<uptr> text_vga::on_Write(
 
 	uptr wrote_bytes = 0;
 
-	for (uptr i = 0; i < bytes; ++i) {
+	for (uptr i = 0; i < bytes; ++i, ++wrote_bytes) {
 		u8 c = *_data++;
 		if (c == '\r')
 			continue;
@@ -56,8 +56,6 @@ cause::pair<uptr> text_vga::on_Write(
 			++ypos;
 		}
 		putc(c);
-
-		++wrote_bytes;
 	}
 
 	return make_pair(cause::OK, wrote_bytes);

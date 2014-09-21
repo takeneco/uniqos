@@ -19,8 +19,8 @@
 
 #include <core/process_ctl.hh>
 
-#include <global_vars.hh>
-#include <new_ops.hh>
+#include <core/global_vars.hh>
+#include <core/new_ops.hh>
 
 
 namespace x86 {
@@ -30,7 +30,7 @@ class native_process_ctl : public process_ctl
 public:
 	native_process_ctl();
 
-	cause::t init();
+	cause::t setup();
 
 private:
 };
@@ -40,24 +40,22 @@ native_process_ctl::native_process_ctl()
 {
 }
 
-cause::t native_process_ctl::init()
+cause::t native_process_ctl::setup()
 {
-	return process_ctl::init();
+	return process_ctl::setup();
 }
 
 /// @brief Initialize native_process_ctl.
 /// @pre mempool_init() was successful.
 cause::t native_process_init()
 {
-	native_process_ctl* obj =
-	    new (mem_alloc(sizeof (native_process_ctl))) native_process_ctl;
+	native_process_ctl* obj = new (generic_mem()) native_process_ctl;
 	if (!obj)
 		return cause::NOMEM;
 
-	cause::t r = obj->init();
+	cause::t r = obj->setup();
 	if (is_fail(r)) {
-		obj->~native_process_ctl();
-		mem_dealloc(obj);
+		new_destroy(obj, generic_mem());
 		return r;
 	}
 

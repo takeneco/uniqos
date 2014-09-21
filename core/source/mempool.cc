@@ -17,13 +17,13 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <mempool_ctl.hh>
+#include "mempool_ctl.hh"
 
 #include <core/cpu_node.hh>
-#include <global_vars.hh>
+#include <core/global_vars.hh>
 #include <core/log.hh>
-#include <new_ops.hh>
-#include <page.hh>
+#include <core/new_ops.hh>
+#include <core/page.hh>
 #include <core/string.hh>
 
 
@@ -42,7 +42,7 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
 	obj_name[0] = '\0';
 
 	for (cpu_id_t i = 0; i < CONFIG_MAX_CPUS; ++i)
-		mempool_nodes[i] = 0;
+		mempool_nodes[i] = nullptr;
 
 	_mem_allocator.init(this);
 }
@@ -77,6 +77,27 @@ cause::t mempool::destroy()
 	}
 
 	return cause::OK;
+}
+
+cause::pair<mempool*> mempool::create_exclusive(
+    u32 objsize,
+    arch::page::TYPE page_type,
+    PAGE_STYLE page_style)
+{
+	return global_vars::core.mempool_ctl_obj->exclusived_mempool(
+	    objsize, page_type, page_style);
+}
+
+cause::pair<mempool*> mempool::acquire_shared(u32 objsize)
+{
+	mempool_ctl* mpctl = global_vars::core.mempool_ctl_obj;
+
+	return mpctl->acquire_shared_mempool(objsize);
+}
+
+void mempool::release_shared(mempool* mp)
+{
+	global_vars::core.mempool_ctl_obj->release_shared_mempool(mp);
 }
 
 cause::pair<void*> mempool::acquire()
@@ -137,17 +158,6 @@ void mempool::dealloc(void* ptr)
 
 void mempool::collect_free_pages()
 {
-	/*
-	const sptr SAVE_FREEOBJS = 64;
-
-	const sptr n = freeobj_cnt.load() - SAVE_FREEOBJS;
-	for (sptr i = 0; i < n; ++i) {
-		memobj* obj = free_objs.remove_head();
-		back_to_page(obj);
-		freeobj_cnt.sub(1);
-	}
-	*/
-
 	preempt_disable_section _pds;
 
 	const cpu_id_t cpuid = arch::get_cpu_id();
@@ -157,7 +167,7 @@ void mempool::collect_free_pages()
 
 void mempool::set_obj_name(const char* name)
 {
-	str_copy(sizeof obj_name - 1, name, obj_name);
+	str_copy(name, obj_name, sizeof obj_name - 1);
 
 	obj_name[sizeof obj_name - 1] = '\0';
 }
@@ -253,7 +263,7 @@ void mempool::node::collect_free_pages(mempool* owner)
 	}
 }
 
-void mempool::node::include_dirty_page(page* page)
+void mempool::node::import_dirty_page(page* page)
 {
 	if (page->is_full())
 		free_pages.insert_head(page);
@@ -502,8 +512,7 @@ void mempool::mp_mem_allocator::init(mempool* _mp)
 	mp = _mp;
 }
 
-cause::pair<void*> mempool::mp_mem_allocator::on_mem_allocator_Allocate(
-    uptr bytes)
+cause::pair<void*> mempool::mp_mem_allocator::on_Allocate(uptr bytes)
 {
 	if (CONFIG_DEBUG_VALIDATE >= 1) {
 		if (mp->obj_size < bytes) {
@@ -517,47 +526,8 @@ cause::pair<void*> mempool::mp_mem_allocator::on_mem_allocator_Allocate(
 	return mp->acquire();
 }
 
-cause::t mempool::mp_mem_allocator::on_mem_allocator_Deallocate(
-    void* p)
+cause::t mempool::mp_mem_allocator::on_Deallocate(void* p)
 {
 	return mp->release(p);
 }
 
-
-void* operator new (uptr size, mempool* mp)
-{
-#if CONFIG_DEBUG_VALIDATE >= 1
-	if (size > mp->get_obj_size()) {
-		log()(SRCPOS)
-		    ("!!!!new object size is over the mempool object size.")
-		    ("\nnew object size:").u(size)
-		    (", mempool object size:").u(mp->get_obj_size())();
-		return nullptr;
-	}
-#endif  // CONFIG_DEBUG_VALIDATE
-
-	auto r = mp->acquire();
-	if (is_ok(r))
-		return r.get_value();
-	else
-		return nullptr;
-}
-
-void* operator new [] (uptr size, mempool* mp)
-{
-#if CONFIG_DEBUG_VALIDATE >= 1
-	if (size > mp->get_obj_size()) {
-		log()(SRCPOS)
-		    ("!!!!new object size is over the mempool object size.")
-		    ("\nnew object size:").u(size)
-		    (", mempool object size:").u(mp->get_obj_size())();
-		return nullptr;
-	}
-#endif  // CONFIG_DEBUG_VALIDATE
-
-	auto r = mp->acquire();
-	if (is_ok(r))
-		return r.get_value();
-	else
-		return nullptr;
-}
