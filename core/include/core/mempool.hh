@@ -212,34 +212,12 @@ private:
 	private:
 		cause::pair<void*> on_Allocate(uptr bytes);
 		cause::t on_Deallocate(void* p);
+		cause::pair<uptr> on_GetSize(void* p);
 
 	private:
 		mempool* mp;
 	};
 	mp_mem_allocator _mem_allocator;
-};
-
-template <class T>
-class mempool_for : public mempool
-{
-public:
-	mempool_for(u32 _obj_size,
-	            arch::page::TYPE ptype = arch::page::INVALID,
-	            mempool* _page_pool = 0) :
-		mempool(_obj_size, ptype, _page_pool)
-	{}
-
-	cause::pair<T*> acquire() {
-		auto r = mempool::acquire();
-		return cause::pair<T*>(r.r, r.value);
-	}
-	cause::pair<T*> acquire(cpu_id_t cpuid) {
-		auto r = mempool::acquire(cpuid);
-		return cause::pair<T*>(r.r, r.value);
-	}
-	cause::t release(T* ptr) {
-		return mempool::release(ptr);
-	}
 };
 
 void* mem_alloc(u32 bytes);

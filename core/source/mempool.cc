@@ -531,3 +531,8 @@ cause::t mempool::mp_mem_allocator::on_Deallocate(void* p)
 	return mp->release(p);
 }
 
+cause::pair<uptr> mempool::mp_mem_allocator::on_GetSize(void*)
+{
+	return cause::make_pair<uptr>(cause::OK, mp->get_obj_size());
+}
+

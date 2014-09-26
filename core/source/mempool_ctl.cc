@@ -20,7 +20,7 @@
 #include "mempool_ctl.hh"
 
 #include <core/cpu_node.hh>
-#include <global_vars.hh>
+#include <core/global_vars.hh>
 #include <core/log.hh>
 #include <core/mem_io.hh>
 #include <core/new_ops.hh>
@@ -55,6 +55,8 @@ cause::t mempool_ctl::setup()
 	    mem_allocator::call_on_Allocate<mempool::mp_mem_allocator>;
 	_mp_allocator_ops.Deallocate =
 	    mem_allocator::call_on_Deallocate<mempool::mp_mem_allocator>;
+	_mp_allocator_ops.GetSize =
+	    mem_allocator::call_on_GetSize<mempool::mp_mem_allocator>;
 
 	// offpage_mp を生成する。
 	// offpage_mp は offpage mempool を生成するために必要。
@@ -176,6 +178,13 @@ struct heap
 	u8 mem[];
 };
 
+heap* mem_to_heap(void* mem)
+{
+	uptr memadr = reinterpret_cast<uptr>(mem);
+
+	return reinterpret_cast<heap*>(memadr - sizeof (mempool*));
+}
+
 }  // namespace
 
 void* mempool_ctl::shared_allocate(u32 bytes)
@@ -207,9 +216,7 @@ void* mempool_ctl::shared_allocate(u32 bytes)
 
 void mempool_ctl::shared_deallocate(void* mem)
 {
-	uptr memadr = reinterpret_cast<uptr>(mem);
-
-	heap* h = reinterpret_cast<heap*>(memadr - sizeof (mempool*));
+	heap* h = mem_to_heap(mem);
 	mempool* mp = h->mp;
 
 	mp->dealloc(h);
@@ -465,6 +472,16 @@ cause::t shared_mem_Deallocate(mem_allocator*, void* adr)
 	return cause::OK;
 }
 
+cause::pair<uptr> shared_mem_GetSize(mem_allocator*, void* mem)
+{
+	heap* h = mem_to_heap(mem);
+
+	mempool* mp = h->mp;
+
+	return cause::make_pair<uptr>(
+	    cause::OK, mp->get_obj_size() - sizeof *h);
+}
+
 }  // namespace
 
 void mempool_ctl::shared_mem_allocator::init()
@@ -472,6 +489,7 @@ void mempool_ctl::shared_mem_allocator::init()
 	_ops.init();
 	_ops.Allocate = shared_mem_Allocate;
 	_ops.Deallocate = shared_mem_Deallocate;
+	_ops.GetSize    = shared_mem_GetSize;
 }
 
 
@@ -510,12 +528,6 @@ cause::t mempool_post_setup()
 }
 
 mem_allocator& generic_mem()
-{
-	return global_vars::core.mempool_ctl_obj->shared_mem();
-}
-
-//TODO:OBSOLATED
-mem_allocator& shared_mem()
 {
 	return global_vars::core.mempool_ctl_obj->shared_mem();
 }

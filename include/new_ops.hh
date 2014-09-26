@@ -17,6 +17,7 @@ public:
 		void init() {
 			Allocate = nofunc_Allocate;
 			Deallocate = nofunc_Deallocate;
+			GetSize = nofunc_GetSize;
 		}
 
 		typedef cause::pair<void*> (*AllocateOp)(
@@ -26,6 +27,10 @@ public:
 		typedef cause::t (*DeallocateOp)(
 		    mem_allocator* x, void* p);
 		DeallocateOp Deallocate;
+
+		typedef cause::pair<uptr> (*GetSizeOp)(
+		    mem_allocator* x, void* p);
+		GetSizeOp GetSize;
 	};
 
 	mem_allocator() {}
@@ -52,6 +57,16 @@ public:
 		return cause::NOFUNC;
 	}
 
+	template<class T>
+	static cause::pair<uptr> call_on_GetSize(mem_allocator* x, void* p)
+	{
+		return static_cast<T*>(x)->on_GetSize(p);
+	}
+	static cause::pair<uptr> nofunc_GetSize(mem_allocator*, void*)
+	{
+		return zero_pair(cause::NOFUNC);
+	}
+
 public:
 	cause::pair<void*> allocate(uptr bytes)
 	{
@@ -61,6 +76,11 @@ public:
 	cause::t deallocate(void* p)
 	{
 		return ops->Deallocate(this, p);
+	}
+
+	cause::pair<uptr> get_size(void* p)
+	{
+		return ops->GetSize(this, p);
 	}
 
 protected:
