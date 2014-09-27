@@ -2,17 +2,35 @@
 # (C) 2013-2014 KATO Takeshi
 #
 
-# control pch
 import waflib
+
+
+# control pch
 class pchxx(waflib.Task.Task):
 	run_str = '${CXX} ${CXXFLAGS} ${CPPPATH_ST:INCPATHS} ${DEFINES_ST:DEFINES} ${CXX_SRC_F}${SRC} ${CXX_TGT_F}${TGT}'
 	scan = waflib.Tools.c_preproc.scan
 	ext_out = ['.hh']
-	color = 'BLUE'
+	color = 'PINK'
 @waflib.TaskGen.extension('.hh')
 def pchxx_hook(x, node):
 	exts = { 'clang':'.hh.pch', 'gcc':'.hh.gch' }
 	x.create_task('pchxx', node, node.change_ext(exts[x.env.C_COMPILER]))
+
+
+# control linker options
+@waflib.TaskGen.before_method('apply_link')
+@waflib.TaskGen.feature('linker_opts')
+def apply_linker_opts(x):
+	x.linkflags = x.to_list(getattr(x, 'linkflags', []))
+	if hasattr(x, 'linker_script'):
+		node = x.path.find_node(x.linker_script)
+		opt = '-Wl,-T' + node.abspath()
+		x.linkflags.append(opt)
+		x.bld.add_manual_dependency(x.target, node)
+	if hasattr(x, 'mapfile'):
+		node = x.path.find_or_declare(x.mapfile)
+		opt = '-Wl,-Map,' + node.abspath()
+		x.linkflags.append(opt)
 
 
 def options(x):
