@@ -22,59 +22,275 @@
 #include <core/cpu_node.hh>
 #include <core/global_vars.hh>
 #include <core/log.hh>
-#include <core/new_ops.hh>
 #include <core/page.hh>
 #include <core/string.hh>
 
 
-mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool)
-:   obj_size(normalize_obj_size(_obj_size)),
-    page_type(ptype == arch::page::INVALID ? auto_page_type(obj_size) : ptype),
-    page_size(arch::page::size_of_type(page_type)),
-    page_objs((page_size - sizeof (page)) / obj_size),
-    total_obj_size(page_objs * obj_size),
-    alloc_cnt(0),
-    page_cnt(0),
-    freeobj_cnt(0),
-    shared_count(0),
-    page_pool(_page_pool)
+// mempool::page
+
+/// mempool::page は thread safe ではないので呼び出し元の mempool::node で
+/// ロック制御する必要がある。
+
+mempool::page::page() :
+	acquire_cnt(0)
+{
+}
+
+bool mempool::page::is_full() const
+{
+	return free_chain.is_empty();
+}
+
+bool mempool::page::is_free() const
+{
+	return acquire_cnt == 0;
+}
+
+u8* mempool::page::get_memory()
+{
+	return memory;
+}
+
+/// @brief Initialize as onpage.
+void mempool::page::init_as_onpage(const mempool& pool)
+{
+	memory = onpage_get_memory();
+
+	init(pool);
+}
+
+/// @brief Initialize as offpage.
+void mempool::page::init_as_offpage(const mempool& pool, void* _memory)
+{
+	memory = reinterpret_cast<u8*>(_memory);
+
+	init(pool);
+}
+
+/// @brief  memobj を1つ確保する。
+//
+/// 空き memobj が無い mempool::page で acquire() を呼び出してはならない。
+mempool::memobj* mempool::page::acquire()
+{
+	++acquire_cnt;
+
+	return free_chain.remove_head();
+}
+
+/// @brief  memobj を1つ開放する。
+bool mempool::page::release(const mempool& pool, memobj* obj)
+{
+	const void* page_head = memory;
+	const void* page_tail = memory + pool.get_page_size();
+
+	if (!(page_head <= obj && obj < page_tail))
+		return false;
+
+	--acquire_cnt;
+
+	free_chain.insert_head(obj);
+
+	return true;
+}
+
+void mempool::page::dump(output_buffer& lt)
+{
+	lt("memory:")(memory)(", acquire_cnt:").u(acquire_cnt)();
+
+	lt("{");
+	for (memobj* obj = free_chain.head(); obj; obj = free_chain.next(obj)) {
+		lt(obj)(",");
+	}
+	lt("}")();
+}
+
+void mempool::page::init(const mempool& owner)
+{
+	const u32 objsize = owner.get_obj_size();
+	const u32 objcnt = owner.get_page_objs();
+
+	for (u32 i = 0; i < objcnt; ++i) {
+		void* obj = &memory[objsize * i];
+		free_chain.insert_head(new (obj) memobj);
+	}
+}
+
+
+// mempool::node
+
+mempool::node::node() :
+	freeobj_cnt(0)
+{
+}
+
+/// memobj を１つ確保する。
+/// @return 確保した memobj のメモリへのポインタを返す。
+///         memobj の確保に失敗した場合は nullptr を返す。
+//
+/// 失敗した場合は、push_page() で新しい page を追加してから呼び直せば、
+/// 新しいページから memobj が確保される。
+void* mempool::node::acquire()
+{
+	spin_lock_section _sls(lock);
+
+	memobj* obj = free_objs.pop_front();
+	if (obj) {
+		--freeobj_cnt;
+	} else {
+		page* pg = free_pages.front();
+		if (pg == 0)
+			return 0;
+
+		obj = pg->acquire();
+
+		if (pg->is_full()) {
+			free_pages.pop_front(); // == pg
+			full_pages.push_front(pg);
+		}
+	}
+
+	return obj;
+}
+
+/// memobj を解放する。
+void mempool::node::release(void* ptr)
+{
+	memobj* obj = new (ptr) memobj;
+
+	spin_lock_section _sls(lock);
+
+	free_objs.push_front(obj);
+
+	++freeobj_cnt;
+}
+
+void mempool::node::push_page(page* new_page)
+{
+	lock.lock();
+
+	free_pages.push_front(new_page);
+
+	lock.unlock();
+}
+
+/// free_objs から memobj を１つ解放する。
+/// @return free_objs が空か、memobj の解放に成功すると nullptr を返す。
+///         memobj の解放に失敗すると失敗した memobj へのポインタを返す。
+///         失敗したときは memobj が他の node に属している。
+//
+/// 失敗した場合に返される memobj は free_objs から外されている。
+mempool::memobj* mempool::node::pop_freeobj(mempool* owner)
+{
+	lock.lock();
+
+	memobj* obj = free_objs.pop_front();
+
+	// back_to_page() は独自にロックしているので、ここで unlock する。
+	lock.unlock();
+
+	if (obj == nullptr || back_to_page(obj, owner))
+		return nullptr;
+	else
+		return obj;
+}
+
+void mempool::node::collect_free_pages(mempool* owner)
+{
+	const sptr SAVE_FREEOBJS = 64;
+
+	const sptr n = freeobj_cnt - SAVE_FREEOBJS;
+	for (sptr i = 0; i < n; ++i) {
+		memobj* obj = free_objs.remove_head();
+		if (back_to_page(obj, owner))
+			--freeobj_cnt;
+		else
+			free_objs.pop_front();
+	}
+}
+
+/// mempool::page から確保した memobj を元の mempool::page へ戻す。
+/// @param[in] owner  ページのサイズ情報へのアクセスとページの解放に使用する
+/// @retval true   obj の解放に成功した。
+/// @retval false  obj の解放に失敗した。obj は別のnodeに属している。
+bool mempool::node::back_to_page(memobj* obj, mempool* owner)
+{
+	spin_lock_section _sls(lock);
+
+	for (page* pg = free_pages.front(); pg; pg = free_pages.next(pg)) {
+		if (pg->release(*owner, obj)) {
+			if (pg->is_free()) {
+				free_pages.remove(pg);
+				owner->delete_page(pg);
+			}
+			return true;
+		}
+	}
+
+	for (page* pg = full_pages.front(); pg; pg = full_pages.next(pg)) {
+		if (pg->release(*owner, obj)) {
+			full_pages.remove(pg);
+			free_pages.push_front(pg);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+void mempool::node::import_dirty_page(page* page)
+{
+	lock.lock();
+
+	if (page->is_full())
+		free_pages.push_front(page);
+	else
+		full_pages.push_front(page);
+
+	lock.unlock();
+}
+
+
+// mempool
+
+mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool) :
+	obj_size(normalize_obj_size(_obj_size)),
+	page_type(ptype == arch::page::INVALID ?
+	          auto_page_type(obj_size) : ptype),
+	page_size(arch::page::size_of_type(page_type)),
+	page_objs((page_size - sizeof (page)) / obj_size),
+	alloc_cnt(0),
+	page_cnt(0),
+	shared_count(0),
+	page_pool(_page_pool)
 {
 	obj_name[0] = '\0';
 
 	for (cpu_id_t i = 0; i < CONFIG_MAX_CPUS; ++i)
 		mempool_nodes[i] = nullptr;
+}
 
-	_mem_allocator.init(this);
+void mempool::setup_mem_allocator(const mem_allocator::operations* ops)
+{
+	_mem_allocator.init(ops, this);
 }
 
 cause::t mempool::destroy()
 {
-	for (;;) {
-		memobj* obj = free_objs.remove_head();
-		back_to_page(obj);
-		freeobj_cnt.sub(1);
-	}
-
 	if (alloc_cnt.load() != 0 ||
 	    page_cnt.load() != 0 ||
-	    freeobj_cnt.load() != 0 ||
-	    shared_count.load() != 0 ||
-	    free_objs.head() != 0 ||
-	    free_pages.head() != 0 ||
-	    full_pages.head() != 0)
+	    shared_count.load() != 0)
 	{
 		log()("FAULT:")
-		(__FILE__, __LINE__, __func__)("Bad operation.")()
+		(SRCPOS)("(): Bad operation.")()
 		("| alloc_cnt: ").u(alloc_cnt.load())
 		(", page_cnt: ").u(page_cnt.load())()
-		("| freeobj_cnt: ").u(freeobj_cnt.load())
-		(", shared_count: ").u(shared_count.load())()
-		("| free_objs.head(): ")(free_objs.head())()
-		("| free_pages.head(): ")(free_pages.head())()
-		("| full_pages.head(): ")(full_pages.head())();
+		(", shared_count: ").u(shared_count.load())();
 
 		return cause::FAIL;
 	}
+
+	if (collect_all_freeobjs())
+		return cause::FAIL;
 
 	return cause::OK;
 }
@@ -84,8 +300,14 @@ cause::pair<mempool*> mempool::create_exclusive(
     arch::page::TYPE page_type,
     PAGE_STYLE page_style)
 {
-	return global_vars::core.mempool_ctl_obj->exclusived_mempool(
+	return global_vars::core.mempool_ctl_obj->create_exclusived_mp(
 	    objsize, page_type, page_style);
+}
+
+/// @retval FAIL  未解放のメモリがある。
+cause::t mempool::destroy_exclusive(mempool* mp)
+{
+	return global_vars::core.mempool_ctl_obj->destroy_exclusived_mp(mp);
 }
 
 cause::pair<mempool*> mempool::acquire_shared(u32 objsize)
@@ -133,7 +355,7 @@ void* mempool::alloc()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id_t cpuid = arch::get_cpu_id();
+	const cpu_id cpuid = arch::get_cpu_id();
 
 	void* r = _alloc(cpuid);
 
@@ -160,9 +382,47 @@ void mempool::collect_free_pages()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id_t cpuid = arch::get_cpu_id();
+	const cpu_id cpuid = arch::get_cpu_id();
 
 	mempool_nodes[cpuid]->collect_free_pages(this);
+}
+
+void mempool::collect_one_freeobj()
+{
+	cpu_id cur_cpuid = arch::get_cpu_id();
+
+	memobj* obj = mempool_nodes[cur_cpuid]->pop_freeobj(this);
+
+	if (obj)
+		back_to_page(cur_cpuid, obj);
+}
+
+/// freeobj をすべて回収する。
+/// @retval true   freeobj をすべて回収した。
+/// @retval false  回収されなかった freeobj がある。
+//
+/// この関数の実行中に freeobj が増えると戻り値が false になる場合がある。
+bool mempool::collect_all_freeobjs()
+{
+	const cpu_id cpu_num = get_cpu_node_count();
+
+	for (cpu_id cpu = 0; cpu < cpu_num; ++cpu) {
+
+		sptr objcnt = mempool_nodes[cpu]->get_freeobj_cnt();
+		for (sptr i = 0; i < objcnt; ++i) {
+
+			memobj* obj = mempool_nodes[cpu]->pop_freeobj(this);
+			if (obj)
+				back_to_page(cpu, obj);
+		}
+	}
+
+	for (cpu_id cpu = 0; cpu < cpu_num; ++cpu) {
+		if (0 != mempool_nodes[cpu]->get_freeobj_cnt())
+			return false;
+	}
+
+	return true;
 }
 
 void mempool::set_obj_name(const char* name)
@@ -179,27 +439,14 @@ void mempool::dump(output_buffer& ob, uint level)
 		("\npage_type   : ").u(page_type, 12)
 		(" |page_size      : ").u(page_size, 12)
 		("\npage_objs   : ").u(page_objs, 12)
-		(" |total_obj_size : ").u(total_obj_size, 12)
 		("\nalloc_cnt   : ").s(alloc_cnt.load(), 12)
-		(" |page_cnt       : ").s(page_cnt.load(), 12)
-		("\nfreeobj_cnt : ").u(freeobj_cnt.load(), 12)();
+		(" |page_cnt       : ").s(page_cnt.load(), 12)();
 	}
 
 	if (level >= 2) {
 		for (int i = 0; i < CONFIG_MAX_CPUS; ++i) {
 			node* nd = mempool_nodes[i];
 			ob("nd[").u(i)("]=")(nd)();
-		}
-	}
-
-	if (level >= 3) {
-		ob("---- free_pages ----")();
-
-		for (page* pg = free_pages.head();
-		     pg;
-		     pg = free_pages.next(pg))
-		{
-			pg->dump(ob);
 		}
 	}
 }
@@ -209,93 +456,7 @@ void mempool::dump_table(output_buffer& ob)
 	ob.str(obj_name, 14)(' ').
 	   u(obj_size, 11)(' ').
 	   u(alloc_cnt.load(), 11)(' ').
-	   u(page_cnt.load(), 11)(' ').
-	   u(freeobj_cnt.load(), 11)();
-}
-
-void* mempool::node::alloc()
-{
-	memobj* obj = free_objs.remove_head();
-	if (obj) {
-		--freeobj_cnt;
-	} else {
-		page* pg = free_pages.head();
-		if (pg == 0)
-			return 0;
-
-		obj = pg->alloc();
-
-		if (pg->is_full()) {
-			free_pages.remove_head(); // remove pg
-			full_pages.insert_head(pg);
-		}
-	}
-
-	++alloc_cnt;
-
-	return obj;
-}
-
-void mempool::node::dealloc(void* ptr)
-{
-	memobj* obj = new (ptr) memobj;
-
-	free_objs.insert_head(obj);
-
-	--alloc_cnt;
-	++freeobj_cnt;
-}
-
-void mempool::node::supply_page(page* new_page)
-{
-	free_pages.insert_head(new_page);
-}
-
-void mempool::node::collect_free_pages(mempool* owner)
-{
-	const sptr SAVE_FREEOBJS = 64;
-
-	const sptr n = freeobj_cnt - SAVE_FREEOBJS;
-	for (sptr i = 0; i < n; ++i) {
-		memobj* obj = free_objs.remove_head();
-		back_to_page(obj, owner);
-		freeobj_cnt -= 1;
-	}
-}
-
-void mempool::node::import_dirty_page(page* page)
-{
-	if (page->is_full())
-		free_pages.insert_head(page);
-	else
-		full_pages.insert_head(page);
-
-	++page_cnt;
-	alloc_cnt += page->count_alloc();
-}
-
-/// @param[in] owner  ページのサイズ情報へのアクセスとページの開放に使用する
-void mempool::node::back_to_page(memobj* obj, mempool* owner)
-{
-	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
-		if (pg->free(*owner, obj)) {
-			if (pg->is_free()) {
-				free_pages.remove(pg);
-				owner->delete_page(pg);
-			}
-			return;
-		}
-	}
-
-	for (page* pg = full_pages.head(); pg; pg = full_pages.next(pg)) {
-		if (pg->free(*owner, obj)) {
-			full_pages.remove(pg);
-			free_pages.insert_head(pg);
-			return;
-		}
-	}
-
-	log()("!!!!")(SRCPOS)("() no matched page: obj:")(obj)();
+	   u(page_cnt.load(), 11)(' ')();
 }
 
 arch::page::TYPE mempool::auto_page_type(u32 objsize)
@@ -323,15 +484,15 @@ void* mempool::_alloc(cpu_id_t cpuid)
 
 	node* nd = mempool_nodes[cpuid];
 
-	void* r = nd->alloc();
+	void* r = nd->acquire();
 	if (!r) {
 		page* pg = new_page(cpuid);
 		if (UNLIKELY(!pg))
 			return 0;
 
-		nd->supply_page(pg);
+		nd->push_page(pg);
 
-		r = nd->alloc();
+		r = nd->acquire();
 
 #if CONFIG_DEBUG_VALIDATE
 		if (!r)
@@ -349,17 +510,9 @@ void mempool::_dealloc(void* ptr)
 {
 	const int cpuid = arch::get_cpu_id();
 
-	mempool_nodes[cpuid]->dealloc(ptr);
+	mempool_nodes[cpuid]->release(ptr);
 
 	alloc_cnt.sub(1);
-}
-
-void mempool::attach(page* pg)
-{
-	if (pg->is_full())
-		full_pages.insert_head(pg);
-	else
-		free_pages.insert_head(pg);
 }
 
 mempool::page* mempool::new_page(int cpuid)
@@ -379,10 +532,10 @@ mempool::page* mempool::new_page(int cpuid)
 			return 0;
 		}
 
-		pg->init_offpage(*this, mem);
+		pg->init_as_offpage(*this, mem);
 	} else {
 		pg = new (mem) page;
-		pg->init_onpage(*this);
+		pg->init_as_onpage(*this);
 	}
 
 	page_cnt.add(1);
@@ -411,27 +564,25 @@ void mempool::delete_page(page* pg)
 	page_cnt.sub(1);
 }
 
-void mempool::back_to_page(memobj* obj)
+void mempool::back_to_page(cpu_id src_cpuid, memobj* obj)
 {
-	for (page* pg = free_pages.head(); pg; pg = free_pages.next(pg)) {
-		if (pg->free(*this, obj)) {
-			if (pg->is_free()) {
-				free_pages.remove(pg);
-				delete_page(pg);
-			}
-			return;
-		}
-	}
+	const cpu_id last_cpu = get_cpu_node_count() - 1;
+	cpu_id cpuid = src_cpuid;
+	for (;;) {
+		if (cpuid > 0)
+			--cpuid;
+		else
+			cpuid = last_cpu;
 
-	for (page* pg = full_pages.head(); pg; pg = full_pages.next(pg)) {
-		if (pg->free(*this, obj)) {
-			full_pages.remove(pg);
-			free_pages.insert_head(pg);
-			return;
+		if (cpuid == src_cpuid) {
+			log()(SRCPOS)
+			    ("(): !!!freeobj source not found.");
+			break;
 		}
-	}
 
-	log()("FAULT:")(__func__)("() no matched page: obj:")(obj)();
+		if (mempool_nodes[cpuid]->back_to_page(obj, this))
+			break;
+	}
 }
 
 void mempool::set_node(int i, node* nd)
@@ -439,76 +590,18 @@ void mempool::set_node(int i, node* nd)
 	mempool_nodes[i] = nd;
 }
 
-
-// mempool::page
-
-
-/// @brief initialize as onpage.
-void mempool::page::init_onpage(const mempool& pool)
+auto mempool::get_node(int i) -> node*
 {
-	memory = onpage_get_memory();
-
-	init(pool);
+	return mempool_nodes[i];
 }
 
-/// @brief initialize as offpage.
-void mempool::page::init_offpage(const mempool& pool, void* _memory)
+// mempool::mp_mem_allocator
+
+void mempool::mp_mem_allocator::init(
+    const mem_allocator::operations* _ops,
+    mempool* _mp)
 {
-	memory = reinterpret_cast<u8*>(_memory);
-
-	init(pool);
-}
-
-/// @brief  memobj を1つ確保する。
-//
-/// 空き memobj が無い mempool::page で alloc() を呼び出してはならない。
-mempool::memobj* mempool::page::alloc()
-{
-	++alloc_cnt;
-
-	return free_chain.remove_head();
-}
-
-/// @brief  memobj を1つ開放する。
-bool mempool::page::free(const mempool& pool, memobj* obj)
-{
-	const void* obj_beg = memory;
-	const void* obj_end = memory + pool.get_total_obj_size();
-
-	if (!(obj_beg <= obj && obj < obj_end))
-		return false;
-
-	--alloc_cnt;
-
-	free_chain.insert_head(obj);
-
-	return true;
-}
-
-void mempool::page::dump(output_buffer& lt)
-{
-	lt("memory:")(memory)(", alloc_cnt:").u(alloc_cnt)();
-
-	lt("{");
-	for (memobj* obj = free_chain.head(); obj; obj = free_chain.next(obj)) {
-		lt(obj)(",");
-	}
-	lt("}")();
-}
-
-void mempool::page::init(const mempool& pool)
-{
-	const u32 objsize = pool.get_obj_size();
-
-	for (int i = pool.get_page_objs() - 1; i >= 0; --i) {
-		void* obj = &memory[objsize * i];
-		free_chain.insert_head(new (obj) memobj);
-	}
-}
-
-void mempool::mp_mem_allocator::init(mempool* _mp)
-{
-	ops = global_vars::core.mempool_ctl_obj->get_mp_allocator_ops();
+	ops = _ops;
 	mp = _mp;
 }
 

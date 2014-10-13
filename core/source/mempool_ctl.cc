@@ -39,16 +39,45 @@ void mem_dealloc(void* mem)
 
 // mempool_ctl
 
-mempool_ctl::mempool_ctl(
-    mempool* _mempool_mp, mempool* _node_mp, mempool* _own_mp) :
-	offpage_mp(0),
-	mempool_mp(_mempool_mp),
-	node_mp(_node_mp),
-	own_mp(_own_mp)
+mempool_ctl::mempool_ctl() :
+	mempool_mp(nullptr),
+	node_mp(nullptr),
+	offpage_mp(nullptr)
 {
 }
 
 cause::t mempool_ctl::setup()
+{
+	cause::t r = setup_mp();
+	if (is_fail(r))
+		return r;
+
+	r = setup_shared_mp();
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
+}
+
+void mempool_ctl::move_to(mempool_ctl* dest)
+{
+	dest->mempool_mp = this->mempool_mp;
+	this->mempool_mp = nullptr;
+
+	dest->node_mp = this->node_mp;
+	this->node_mp = nullptr;
+
+	dest->offpage_mp = this->offpage_mp;
+	this->offpage_mp = nullptr;
+
+	this->shared_chain.move_to(&dest->shared_chain);
+
+	this->exclusived_chain.move_to(&dest->exclusived_chain);
+
+	dest->after_move();
+}
+
+void mempool_ctl::after_move()
 {
 	_mp_allocator_ops.init();
 	_mp_allocator_ops.Allocate =
@@ -58,24 +87,32 @@ cause::t mempool_ctl::setup()
 	_mp_allocator_ops.GetSize =
 	    mem_allocator::call_on_GetSize<mempool::mp_mem_allocator>;
 
-	// offpage_mp を生成する。
-	// offpage_mp は offpage mempool を生成するために必要。
-	// offpage_mp 自身を offpage にすることはできない。
-	auto mp = exclusived_mempool(
-	    sizeof (mempool::page), arch::page::INVALID, mempool::ONPAGE);
-	if (is_fail(mp))
-		return mp.cause();
+	_shared_mem.init();
 
-	offpage_mp = mp;
+	mempool_mp->setup_mem_allocator(&_mp_allocator_ops);
+	node_mp->setup_mem_allocator(&_mp_allocator_ops);
 
-	cause::t r = init_shared();
+	for (mempool* mp = shared_chain.front();
+	     mp;
+	     mp = shared_chain.next(mp))
+	{
+		mp->setup_mem_allocator(&_mp_allocator_ops);
+	}
+}
+
+cause::t mempool_ctl::teardown()
+{
+	cause::t r = teardown_shared_mp();
 	if (is_fail(r))
 		return r;
 
-	_shared_mem.init();
+	r = teardown_mp();
+	if (is_fail(r))
+		return r;
 
 	return cause::OK;
 }
+
 
 /// @brief shared mempool に名前をつける。
 /// @pre mem_io が使用可能であること。
@@ -115,6 +152,7 @@ void mempool_ctl::release_shared_mempool(mempool* mp)
 {
 	mp->dec_shared_count();
 
+	// TODO:解放できていない。
 	if (mp->get_shared_count() == 0 && mp->get_alloc_cnt() == 0) 
 		mp->destroy();
 }
@@ -122,9 +160,9 @@ void mempool_ctl::release_shared_mempool(mempool* mp)
 /// @brief  用途限定の mempool を生成する。
 //
 /// pate_type に INVALID を指定すると objsize に合わせて自動で選択する。
-cause::pair<mempool*> mempool_ctl::exclusived_mempool(
-    u32 objsize,                ///< [in] オブジェクトサイズ。
-    arch::page::TYPE page_type, ///< [in] ページタイプを指定する。
+cause::pair<mempool*> mempool_ctl::create_exclusived_mp(
+    u32 objsize,                    ///< [in] オブジェクトサイズ。
+    arch::page::TYPE page_type,     ///< [in] ページタイプを指定する。
     mempool::PAGE_STYLE page_style) ///< [in] ONPAGE/OFFPAGE/ENTRUSTを指定する。
 {
 	cause::t r = decide_params(&objsize, &page_type, &page_style);
@@ -152,6 +190,8 @@ cause::pair<mempool*> mempool_ctl::exclusived_mempool(
 		new_mp->set_node(i, nd);
 	}
 
+	new_mp->setup_mem_allocator(&_mp_allocator_ops);
+
 	exclusived_chain_lock.wlock();
 
 	mempool* mp;
@@ -168,6 +208,28 @@ cause::pair<mempool*> mempool_ctl::exclusived_mempool(
 	exclusived_chain_lock.un_wlock();
 
 	return make_pair(cause::OK, new_mp);
+}
+
+cause::t mempool_ctl::destroy_exclusived_mp(mempool* mp)
+{
+	cause::t r = mp->destroy();
+	if (is_fail(r))
+		return r;
+
+	destroy_mp(mp);
+
+	exclusived_chain_lock.wlock();
+
+	exclusived_chain.remove(mp);
+
+	exclusived_chain_lock.un_wlock();
+
+	mp->~mempool();
+	operator delete (mp, mp);
+
+	mempool_mp->release(mp);
+
+	return cause::OK;
 }
 
 namespace {
@@ -236,10 +298,68 @@ void mempool_ctl::dump(output_buffer& ob)
 	}
 }
 
-cause::t mempool_ctl::init_shared()
+cause::t mempool_ctl::setup_mp()
+{
+	const int cpuid = arch::get_cpu_id();
+
+	// mempool を作成するための一時的な mempool。
+	mempool tmp_mempool_mp(sizeof (mempool), arch::page::L1, 0);
+
+	mempool::page* mempool_pg = tmp_mempool_mp.new_page(cpuid);
+	if (!mempool_pg)
+		return cause::NOMEM;
+
+	// ここではまだ mem_allocator は使えないため、placement new を使う。
+
+	mempool_mp = new (mempool_pg->acquire())
+	    mempool(sizeof (mempool), arch::page::L1, 0);
+
+	node_mp = new (mempool_pg->acquire())
+	    mempool(sizeof (mempool::node), arch::page::L1, 0);
+
+	if (!mempool_mp || !node_mp)
+		return cause::NOMEM;
+
+	const int cpu_num = get_cpu_node_count();
+	for (int i = 0; i < cpu_num; ++i) {
+		mempool::page* node_pg = node_mp->new_page(i);
+		if (!node_pg)
+			return cause::NOMEM;
+
+		// node_mp->mempool_nodes を初期化する。
+		mempool::node* node = new (node_pg->acquire()) mempool::node;
+		if (!node)
+			return cause::NOMEM;
+		node_mp->set_node(i, node);
+
+		node->import_dirty_page(node_pg);
+
+		// mempool_mp->mempool_nodes を初期化する。
+		node = new (node_pg->acquire()) mempool::node;
+		if (!node)
+			return cause::NOMEM;
+		mempool_mp->set_node(i, node);
+
+		if (i == cpuid)
+			node->import_dirty_page(mempool_pg);
+	}
+
+	// offpage_mp を生成する。
+	// offpage_mp は offpage mempool を生成するために必要。
+	// offpage_mp 自身を offpage にすることはできない。
+	auto mp = create_exclusived_mp(
+	    sizeof (mempool::page), arch::page::INVALID, mempool::ONPAGE);
+	if (is_fail(mp))
+		return mp.cause();
+	offpage_mp = mp.data();
+
+	return cause::OK;
+}
+
+cause::t mempool_ctl::setup_shared_mp()
 {
 	for (uptr size = sizeof (cpu_word) * 4;
-	          size <= 0x100000;
+	          size <= sizeof (cpu_word) * 0x20000;
 	          size *= 2)
 	{
 		mempool* mp;
@@ -255,6 +375,44 @@ cause::t mempool_ctl::init_shared()
 			return r;
 
 		mp->inc_shared_count();
+	}
+
+	return cause::OK;
+}
+
+cause::t mempool_ctl::teardown_mp()
+{
+	cause::t r = destroy_exclusived_mp(offpage_mp);
+	if (is_fail(r))
+		return r;
+
+	const int cpu_num = get_cpu_node_count();
+	for (int i = 0; i < cpu_num; ++i) {
+	}
+
+	mempool_mp->release(mempool_mp);
+	mempool_mp->release(node_mp);
+
+	mempool_mp->destroy();
+	node_mp->destroy();
+
+	destroy_mp(mempool_mp);
+	destroy_mp(node_mp);
+
+	mempool_mp->~mempool();
+	node_mp->~mempool();
+
+	operator delete (mempool_mp, mempool_mp);
+	operator delete (node_mp, node_mp);
+}
+
+cause::t mempool_ctl::teardown_shared_mp()
+{
+	for (mempool* mp = shared_chain.front();
+	              mp;
+	              mp = shared_chain.next(mp))
+	{
+		destroy_shared(mp);
 	}
 
 	return cause::OK;
@@ -321,6 +479,36 @@ cause::t mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 	return cause::OK;
 }
 
+void mempool_ctl::destroy_shared(mempool* mp)
+{
+	// TODO: return value
+	mp->destroy();
+
+	shared_chain.remove(mp);
+
+	destroy_mp(mp);
+
+	mp->~mempool();
+	operator delete (mp, mp);
+
+	mempool_mp->release(mp);
+}
+
+void mempool_ctl::destroy_mp(mempool* mp)
+{
+	const cpu_id cpu_num = get_cpu_node_count();
+	for (cpu_id i = 0; i < cpu_num; ++i) {
+		mempool::node* nd = mp->get_node(i);
+		if (nd) {
+			nd->~node();
+			operator delete (nd, nd);
+
+			node_mp->release(nd);
+			mp->set_node(i, nullptr);
+		}
+	}
+}
+
 /// @brief  mempool を生成するときのパラメータを決定する。
 /// @param[in,out] objsize  必要なオブジェクトサイズを入力すると、生成する
 ///                         mempool のオブジェクトサイズが返される。
@@ -377,75 +565,6 @@ cause::t mempool_ctl::decide_params(
 	return cause::OK;
 }
 
-/// @brief mempool_ctl を生成する。
-//
-/// mempool を使って mempool_ctl を生成するために、mempool も生成する。
-/// mempool に含まれる mempool:node も生成する。
-cause::pair<mempool_ctl*> mempool_ctl::create_mempool_ctl()
-{
-	const int cpuid = arch::get_cpu_id();
-
-	// mempool を作成するための一時的な mempool。
-	mempool tmp_mempool_mp(sizeof (mempool), arch::page::L1, 0);
-	mempool::page* mempool_pg = tmp_mempool_mp.new_page(cpuid);
-	if (!mempool_pg)
-		return null_pair(cause::NOMEM);
-
-	// ここではまだ mem_allocator は使えないため、placement new を使う。
-
-	mempool* node_mp = new (mempool_pg->alloc())
-	    mempool(sizeof (mempool::node), arch::page::L1, 0);
-	if (!node_mp)
-		return null_pair(cause::NOMEM);
-
-	mempool* mempool_mp = new (mempool_pg->alloc())
-	    mempool(sizeof (mempool), arch::page::L1, 0);
-	if (!mempool_mp)
-		return null_pair(cause::NOMEM);
-
-	mempool* ctl_mp = new (mempool_pg->alloc())
-	    mempool(sizeof (mempool_ctl), arch::page::L1, 0);
-	if (!ctl_mp)
-		return null_pair(cause::NOMEM);
-
-	const int cpu_num = get_cpu_node_count();
-	for (int i = 0; i < cpu_num; ++i) {
-		mempool::page* node_pg = node_mp->new_page(i);
-		if (!node_pg)
-			return null_pair(cause::NOMEM);
-
-		// node_mp->mempool_nodes を初期化する。
-		mempool::node* node = new (node_pg->alloc()) mempool::node;
-		if (!node)
-			return null_pair(cause::NOMEM);
-		node_mp->set_node(i, node);
-
-		node->import_dirty_page(node_pg);
-
-		// mempool_mp->mempool_nodes を初期化する。
-		node = new (node_pg->alloc()) mempool::node;
-		if (!node)
-			return null_pair(cause::NOMEM);
-		mempool_mp->set_node(i, node);
-
-		if (i == cpuid)
-			node->import_dirty_page(mempool_pg);
-
-		// ctl_mp->mempool_nodes を初期化する。
-		node = new (node_pg->alloc()) mempool::node;
-		if (!node)
-			return null_pair(cause::NOMEM);
-		ctl_mp->set_node(i, node);
-	}
-
-	mempool_ctl* mpc =
-	    new (ctl_mp->alloc()) mempool_ctl(mempool_mp, node_mp, ctl_mp);
-	if (!mpc)
-		return null_pair(cause::NOMEM);
-
-	return make_pair(cause::OK, mpc);
-}
-
 mempool_ctl* get_mempool_ctl()
 {
 	return global_vars::core.mempool_ctl_obj;
@@ -487,36 +606,35 @@ cause::pair<uptr> shared_mem_GetSize(mem_allocator*, void* mem)
 void mempool_ctl::shared_mem_allocator::init()
 {
 	_ops.init();
-	_ops.Allocate = shared_mem_Allocate;
+	_ops.Allocate   = shared_mem_Allocate;
 	_ops.Deallocate = shared_mem_Deallocate;
 	_ops.GetSize    = shared_mem_GetSize;
 }
 
 
-extern "C" cause::pair<mempool*> mempool_acquire_shared(u32 objsize)
-{
-	mempool_ctl* mpctl = global_vars::core.mempool_ctl_obj;
-
-	return mpctl->acquire_shared_mempool(objsize);
-}
-
-extern "C" void mempool_release_shared(mempool* mp)
-{
-	global_vars::core.mempool_ctl_obj->release_shared_mempool(mp);
-}
-
 /// @pre cpu_node instances are available.
 cause::t mempool_setup()
 {
-	auto mpctl = mempool_ctl::create_mempool_ctl();
-	if (is_fail(mpctl))
-		return mpctl.cause();
+	// 最初にスタック上に mempool_ctl を作成してから、
+	// ヒープに mempool_ctl を作成し、中身を移動する。
 
-	global_vars::core.mempool_ctl_obj = mpctl.data();
-
-	auto r = mpctl.data()->setup();
-	if (is_fail(r))
+	mempool_ctl tmp_mpctl;
+	cause::t r = tmp_mpctl.setup();
+	if (is_fail(r)) {
+		tmp_mpctl.teardown();
 		return r;
+	}
+
+	void* buf = tmp_mpctl.shared_allocate(sizeof (mempool_ctl));
+	mempool_ctl* mpctl = new (buf) mempool_ctl();
+	if (!mpctl) {
+		tmp_mpctl.teardown();
+		return cause::NOMEM;;
+	}
+
+	tmp_mpctl.move_to(mpctl);
+
+	global_vars::core.mempool_ctl_obj = mpctl;
 
 	return cause::OK;
 }

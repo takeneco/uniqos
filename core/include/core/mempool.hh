@@ -11,6 +11,7 @@
 #include <config.h>
 #include <core/atomic.hh>
 #include <core/new_ops.hh>
+#include <core/spinlock.hh>
 
 
 class output_buffer;
@@ -42,27 +43,16 @@ private:
 	class page
 	{
 	public:
-		page() :
-			alloc_cnt(0)
-		{}
+		page();
 
-		bool is_full() const {
-			return free_chain.is_empty();
-		}
-		bool is_free() const {
-			return alloc_cnt == 0;
-		}
-		u8* get_memory() {
-			return memory;
-		}
-		u32 count_alloc() const {
-			return alloc_cnt;
-		}
+		bool is_full() const;
+		bool is_free() const;
+		u8* get_memory();
 
-		void init_onpage(const mempool& pool);
-		void init_offpage(const mempool& pool, void* _memory);
-		memobj* alloc();
-		bool free(const mempool& pool, memobj* obj);
+		void init_as_onpage(const mempool& pool);
+		void init_as_offpage(const mempool& pool, void* _memory);
+		memobj* acquire();
+		bool release(const mempool& pool, memobj* obj);
 
 		void dump(output_buffer& lt);
 
@@ -76,13 +66,45 @@ private:
 
 	private:
 		chain<memobj, &memobj::chain_hook> free_chain;
-		u32 alloc_cnt;
+		u32 acquire_cnt;
 
 		u8* memory;
 
 		bichain_node<page> _chain_node;
 	};
 	typedef bichain<page, &page::bichain_hook> page_bichain;
+
+	class node
+	{
+		friend class mempool_ctl;
+
+	private:
+		node();
+
+	public:
+		void* acquire();
+		void release(void* ptr);
+
+		sptr get_freeobj_cnt() const { return freeobj_cnt; }
+
+		void push_page(page* new_page);
+		memobj* pop_freeobj(mempool* owner);
+		void collect_free_pages(mempool* owner);
+		bool back_to_page(memobj* obj, mempool* owner);
+
+	private:
+		void import_dirty_page(page* page);
+
+	private:
+		sptr freeobj_cnt;
+
+		obj_chain free_objs;
+
+		page_bichain free_pages;
+		page_bichain full_pages;
+
+		spin_lock lock;
+	};
 
 public:
 	enum PAGE_STYLE {
@@ -95,30 +117,33 @@ private:
 	mempool(u32 _obj_size,
 	        arch::page::TYPE ptype = arch::page::INVALID,
 	        mempool* _page_pool = 0);
+	void setup_mem_allocator(const mem_allocator::operations* ops);
 	cause::t destroy();
 
 public:
 	static cause::pair<mempool*> create_exclusive(
 	    u32 objsize, arch::page::TYPE page_type, PAGE_STYLE page_style);
-	//TODO:implement
 	static cause::t              destroy_exclusive(mempool* mp);
 
 	static cause::pair<mempool*> acquire_shared(u32 objsize);
 	static void                  release_shared(mempool* mp);
 
 	u32 get_obj_size() const { return obj_size; }
+	uptr get_page_size() const { return page_size; }
 	u32 get_page_objs() const { return page_objs; }
-	uptr get_total_obj_size() const { return total_obj_size; }
 	sptr get_alloc_cnt() const { return alloc_cnt.load(); }
 
 	cause::pair<void*> acquire();
 	cause::pair<void*> acquire(cpu_id_t cpuid);
 	cause::t release(void* ptr);
-	void collect_free_pages();
 
 	void* alloc();             ///< TODO:DUPLICATED
 	void* alloc(cpu_id cpuid); ///< TODO:DUPLICATED
 	void dealloc(void* ptr);   ///< TODO:DUPLICATED
+
+	void collect_free_pages();
+	void collect_one_freeobj();
+	bool collect_all_freeobjs();
 
 	void inc_shared_count() { shared_count.add(1); }
 	void dec_shared_count() { shared_count.sub(1); }
@@ -132,32 +157,6 @@ public:
 	bichain_node<mempool>& chain_hook() { return _chain_node; }
 
 private:
-	class node
-	{
-		friend class mempool_ctl;
-	public:
-		void* alloc();
-		void dealloc(void* ptr);
-
-		void supply_page(page* new_page);
-		void collect_free_pages(mempool* owner);
-
-	private:
-		void import_dirty_page(page* page);
-		void back_to_page(memobj* obj, mempool* owner);
-
-	private:
-		sptr alloc_cnt;
-		sptr page_cnt;
-		sptr freeobj_cnt;
-
-		obj_chain free_objs;
-
-		page_bichain free_pages;
-		page_bichain full_pages;
-	};
-
-private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 	static u32 normalize_obj_size(u32 objsize);
 
@@ -167,26 +166,20 @@ private:
 	void attach(page* pg);
 	page* new_page(int cpuid);
 	void delete_page(page* pg);
-	void back_to_page(memobj* obj);
+	void back_to_page(cpu_id src_cpu, memobj* obj);
 
 	void set_node(int i, node* nd);
+	auto get_node(int i) -> node*;
 
 private:
 	const u32              obj_size;
 	const arch::page::TYPE page_type;
 	const uptr             page_size;
 	const u32              page_objs;  ///< ページの中にあるオブジェクト数
-	const uptr             total_obj_size;  ///< obj_size * page_objs
 
 	atomic<sptr>           alloc_cnt;
 	atomic<sptr>           page_cnt;
-	atomic<sptr>           freeobj_cnt;
 	atomic<sptr>           shared_count;
-
-	obj_chain free_objs;
-
-	page_bichain free_pages;
-	page_bichain full_pages;
 
 	mempool* const page_pool;
 
@@ -207,7 +200,7 @@ private:
 
 	public:
 		mp_mem_allocator() {}
-		void init(mempool* _mp);
+		void init(const mem_allocator::operations* _ops, mempool* _mp);
 
 	private:
 		cause::pair<void*> on_Allocate(uptr bytes);
