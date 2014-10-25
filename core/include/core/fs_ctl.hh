@@ -7,7 +7,6 @@
 #ifndef CORE_FS_CTL_HH_
 #define CORE_FS_CTL_HH_
 
-#include <core/basic.hh>
 #include <core/io_node.hh>
 
 
@@ -19,78 +18,6 @@ class io_node;
 typedef u16 pathname_cn_t;  ///< pathname char count type.
 const pathname_cn_t PATHNAME_MAX = 0xffff;
 const pathname_cn_t NAME_MAX = 4096;
-
-class fs_ctl
-{
-	DISALLOW_COPY_AND_ASSIGN(fs_ctl);
-
-	friend class fs_node;
-
-private:
-	class mountpoint
-	{
-	private:
-		mountpoint(const char* src, const char* tgt);
-
-	public:
-		static cause::pair<mountpoint*> create(
-		    const char* source, const char* target);
-		static cause::t destroy(mountpoint* mp);
-
-		fs_mount*   mount_obj;
-		const char* source;
-		const char* target;
-
-		/// Enable if multi mount sources exist for same mount target.
-		mountpoint* down_mountpoint;
-
-		bichain_node<mountpoint> _chain_node;
-		bichain_node<mountpoint>& chain_hook() { return _chain_node; }
-
-		pathname_cn_t source_char_cn;  ///< source char count.
-		pathname_cn_t target_char_cn;  ///< target char count.
-
-		char buf[0];
-	};
-
-public:
-	enum NODE_MODE {
-		NODE_UNKNOWN,
-		NODE_DIR,
-		NODE_REG,
-	};
-	enum OPEN_FLAGS {
-		OPEN_CREATE   = 0x01,
-		OPEN_WRITE    = 0x02,
-	};
-
-public:
-	fs_ctl();
-
-public:
-	cause::t init();
-
-	cause::t register_ramfs_driver(fs_driver* drv) {
-		ramfs_driver = drv;
-		return cause::OK;
-	}
-
-	cause::pair<io_node*> open(const char* path, u32 flags);
-	cause::t mount(
-	    const char* source, const char* target, const char* type);
-	cause::t unmount(
-	    const char* target, u64 flags);
-
-private:
-	cause::pair<fs_node*> get_fs_node(
-	    fs_node* base, const char* path, u32 flags);
-
-private:
-	fs_driver* ramfs_driver;
-	/// mount point list
-	bibochain<mountpoint, &mountpoint::chain_hook> mountpoints;
-	fs_node* root;
-};
 
 
 class fs_driver
@@ -212,17 +139,49 @@ private:
 	}
 
 protected:
-	fs_mount(fs_driver* drv) : driver(drv) {}
+	fs_mount(fs_driver* drv, const operations* _ops) :
+		ops(_ops), driver(drv)
+	{}
 
 private:
 	bichain_node<fs_mount> _chain_node;
 
 protected:
-	operations* ops;
+	const operations* ops;
 	fs_driver* driver;
 	fs_node* root;
 };
 
+class mount_info
+{
+private:
+	mount_info(const char* src, const char* tgt);
+
+public:
+	static cause::pair<mount_info*> create(
+	    const char* source, const char* target);
+	static cause::t destroy(mount_info* mp);
+
+	bichain_node<mount_info>& fs_ctl_chainnode() {
+		return _fs_ctl_chainnode;
+	}
+	bichain_node<mount_info>& fs_node_chainnode() {
+		return _fs_node_chainnode;
+	}
+
+	fs_mount*   mount_obj;
+	const char* source;
+	const char* target;
+
+	pathname_cn_t source_char_cn;  ///< source char count.
+	pathname_cn_t target_char_cn;  ///< target char count.
+
+private:
+	bichain_node<mount_info> _fs_ctl_chainnode;
+	bichain_node<mount_info> _fs_node_chainnode;
+
+	char buf[0];
+};
 
 class fs_node
 {
@@ -238,6 +197,8 @@ class fs_node
 			return _child_chain_node;
 		}
 
+		static uptr calc_size(const char* name);
+
 		fs_node* node;
 		char name[0];
 	};
@@ -245,9 +206,12 @@ class fs_node
 public:
 	fs_node(fs_mount* owner, u32 _mode);
 
-	fs_mount* get_mount() { return owner; }
-	bool is_dir() const { return mode == fs_ctl::NODE_DIR; }
-	bool is_regular() const { return mode == fs_ctl::NODE_REG; }
+	fs_mount* get_owner() { return owner; }
+	bool is_dir() const;
+	bool is_regular() const;
+
+	void insert_mount(mount_info* mi);
+	void remove_mount(mount_info* mi);
 
 	cause::pair<fs_node*> create_child_node(u32 mode, const char* name);
 	cause::pair<io_node*> open(u32 flags) {
@@ -255,12 +219,88 @@ public:
 	}
 
 	cause::pair<fs_node*> get_child_node(const char* name);
+	cause::t append_child_node(const char* name, fs_node* fsn);
 
 private:
 	fs_mount* owner;
 	u32 mode;
 
+	bichain<mount_info, &mount_info::fs_node_chainnode> mounts;
 	chain<child_node, &child_node::child_chain_hook> child_nodes;
+};
+
+
+class fs_rootfs_drv : public fs_driver
+{
+	DISALLOW_COPY_AND_ASSIGN(fs_rootfs_drv);
+
+public:
+	fs_rootfs_drv();
+
+private:
+	fs_driver::operations fs_driver_ops;
+};
+
+class fs_rootfs_mnt : public fs_mount
+{
+	DISALLOW_COPY_AND_ASSIGN(fs_rootfs_mnt);
+
+public:
+	fs_rootfs_mnt(fs_rootfs_drv* drv);
+
+private:
+	fs_mount::operations fs_mount_ops;
+
+	fs_node root_node;
+};
+
+class fs_ctl
+{
+	DISALLOW_COPY_AND_ASSIGN(fs_ctl);
+
+	friend class fs_node;
+
+public:
+	enum NODE_MODE {
+		NODE_UNKNOWN,
+		NODE_DIR,
+		NODE_REG,
+	};
+	enum OPEN_FLAGS {
+		OPEN_CREATE   = 0x01,
+		OPEN_WRITE    = 0x02,
+	};
+
+public:
+	fs_ctl();
+
+public:
+	cause::t setup();
+
+	cause::t register_ramfs_driver(fs_driver* drv) {
+		ramfs_driver = drv;
+		return cause::OK;
+	}
+
+	cause::pair<io_node*> open(const char* path, u32 flags);
+	cause::t close(io_node* ion);
+	cause::t mount(
+	    const char* source, const char* target, const char* type);
+	cause::t unmount(
+	    const char* target, u64 flags);
+
+private:
+	cause::pair<fs_node*> get_fs_node(
+	    fs_node* base, const char* path, u32 flags);
+
+private:
+	fs_driver* ramfs_driver;
+	/// mount point list
+	bibochain<mount_info, &mount_info::fs_ctl_chainnode> mountpoints;
+	fs_node* root;
+
+	fs_rootfs_drv rootfs_drv;
+	fs_rootfs_mnt rootfs_mnt;
 };
 
 

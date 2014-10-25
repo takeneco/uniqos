@@ -19,7 +19,6 @@
 
 #include <core/fs_ctl.hh>
 #include <core/mempool.hh>
-#include <core/new_ops.hh>
 
 
 namespace {
@@ -35,6 +34,7 @@ public:
 	cause::pair<fs_mount*> on_Mount(const char* dev);
 	cause::t on_Unmount(fs_mount* mount, const char* target, u64 flags);
 
+	const fs_mount::operations* get_fs_mount_ops() { return &mount_ops; }
 	const io_node::operations* ref_io_node_ops() { return &io_node_ops; }
 
 	mempool* get_fs_node_mp() { return fs_node_mp; }
@@ -53,7 +53,7 @@ class ramfs_mount : public fs_mount
 {
 public:
 	ramfs_mount(ramfs_driver* drv) :
-		fs_mount(drv)
+		fs_mount(drv, drv->get_fs_mount_ops())
 	{}
 
 	cause::t mount(const char* dev);
@@ -74,9 +74,10 @@ private:
 class ramfs_node : public fs_node
 {
 public:
-	ramfs_node(fs_mount* owner, u32 mode) :
-		fs_node(owner, mode)
-	{}
+	ramfs_node(fs_mount* owner, u32 mode);
+
+private:
+	u8* blocks[8];
 };
 
 /// opened file node
@@ -87,8 +88,10 @@ public:
 		io_node(_ops)
 	{}
 
+
 	cause::pair<dir_entry*> on_GetDirEntry(
 	    uptr buf_bytes, dir_entry* buf);
+
 };
 
 
@@ -106,7 +109,8 @@ ramfs_driver::ramfs_driver() :
 
 	mount_ops.init();
 
-	mount_ops.OpenNode  = fs_mount::call_on_OpenNode<ramfs_mount>;
+	mount_ops.CreateNode  = fs_mount::call_on_CreateNode<ramfs_mount>;
+	mount_ops.OpenNode    = fs_mount::call_on_OpenNode<ramfs_mount>;
 
 	io_node_ops.init();
 
@@ -169,7 +173,7 @@ cause::t ramfs_driver::on_Unmount(
 cause::t ramfs_mount::mount(const char*)
 {
 	root = new (*get_driver()->get_fs_node_mp())
-	    ramfs_node(this, fs_ctl::NODE_DIR);
+	           ramfs_node(this, fs_ctl::NODE_DIR);
 	if (!root)
 		return cause::NOMEM;
 
@@ -177,9 +181,22 @@ cause::t ramfs_mount::mount(const char*)
 }
 
 cause::pair<fs_node*> ramfs_mount::on_CreateNode(
-    fs_node* parent, u32 mode, const char* name)
+    fs_node* parent,
+    u32 mode,
+    const char* name)
 {
-	return make_pair(cause::OK, (fs_node*)0);
+	fs_node* fsn = new (*get_driver()->get_fs_node_mp())
+	                   ramfs_node(this, fs_ctl::NODE_REG);
+	if (!fsn)
+		return null_pair(cause::NOMEM);
+
+	auto r = parent->append_child_node(name, fsn);
+	if (is_fail(r)) {
+		// TODO:delete fsn
+		return null_pair(r);
+	}
+
+	return make_pair(cause::OK, fsn);
 }
 
 cause::pair<io_node*> ramfs_mount::on_OpenNode(
@@ -199,6 +216,13 @@ cause::pair<io_node*> ramfs_mount::create_io_node()
 }
 
 // ramfs_node
+
+ramfs_node::ramfs_node(fs_mount* owner, u32 mode) :
+	fs_node(owner, mode)
+{
+	for (int i = 0; i < num_of_array(blocks); ++i)
+		blocks[i] = nullptr;
+}
 
 // ramfs_io_node
 
