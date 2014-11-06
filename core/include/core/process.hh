@@ -33,12 +33,13 @@ public:
 	}
 
 	process_id get_process_id() const { return id; }
-	cause::pair<io_desc*> get_io_desc(int i);
 
 	cause::t setup(thread* entry_thread, int iod_nr);
 	cause::t set_io_desc_nr(int nr);
 
-	cause::t set_io_desc(int iod, io_node* target);
+	cause::pair<io_desc*> get_io_desc(int i);
+	cause::t set_io_desc(int iod, io_node* target, io_node::offset off);
+	cause::pair<int> append_io_desc(io_node* io, io_node::offset off);
 
 private:
 	bibochain<thread, &thread::process_chainnode> child_thread_chain;

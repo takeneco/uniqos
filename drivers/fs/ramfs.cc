@@ -19,9 +19,13 @@
 
 #include <core/fs_ctl.hh>
 #include <core/mempool.hh>
+#include <core/string.hh>
 
 
 namespace {
+
+class ramfs_node;
+class ramfs_io_node;
 
 class ramfs_driver : public fs_driver
 {
@@ -38,60 +42,85 @@ public:
 	const io_node::operations* ref_io_node_ops() { return &io_node_ops; }
 
 	mempool* get_fs_node_mp() { return fs_node_mp; }
-	mempool* get_io_node_mp() { return io_node_mp; }
 
 private:
 	operations self_ops;
 	fs_mount::operations mount_ops;
 	io_node::operations io_node_ops;
 	mempool* fs_node_mp;
-	mempool* io_node_mp;
 };
 
 /// mount point
 class ramfs_mount : public fs_mount
 {
 public:
-	ramfs_mount(ramfs_driver* drv) :
-		fs_mount(drv, drv->get_fs_mount_ops())
-	{}
+	ramfs_mount(ramfs_driver* drv);
+
+	ramfs_driver* get_driver() {
+		return static_cast<ramfs_driver*>(fs_mount::get_driver());
+	}
+	mempool* get_block_mp() { return block_mp; }
 
 	cause::t mount(const char* dev);
 
 	cause::pair<fs_node*> on_CreateNode(
-	    fs_node* parent, u32 mode, const char* name);
+	    fs_node* parent, const char* name, u32 flags);
+	cause::pair<fs_node*> on_GetChildNode(
+	    fs_node* parent, const char* childname);
 	cause::pair<io_node*> on_OpenNode(
 	    fs_node* node, u32 flags);
+	cause::t on_CloseNode(
+	    io_node* ion);
 
 private:
-	ramfs_driver* get_driver() {
-		return static_cast<ramfs_driver*>(fs_mount::get_driver());
-	}
-	cause::pair<io_node*> create_io_node();
-};
-
-/// file node
-class ramfs_node : public fs_node
-{
-public:
-	ramfs_node(fs_mount* owner, u32 mode);
+	cause::pair<io_node*> create_io_node(ramfs_node* fsn);
+	cause::t destroy_io_node(ramfs_io_node* ion);
 
 private:
-	u8* blocks[8];
+	mempool* block_mp;
 };
 
 /// opened file node
 class ramfs_io_node : public io_node
 {
 public:
-	ramfs_io_node(const operations* _ops) :
-		io_node(_ops)
-	{}
+	ramfs_io_node(const operations* _ops, ramfs_node* _fsn);
 
+	cause::pair<uptr> on_Read(
+	    io_node::offset off, void* data, uptr bytes);
+	cause::pair<uptr> on_Write(
+	    io_node::offset off, const void* data, uptr bytes);
 
 	cause::pair<dir_entry*> on_GetDirEntry(
 	    uptr buf_bytes, dir_entry* buf);
 
+private:
+	ramfs_node* fsnode;
+};
+
+/// file node
+class ramfs_node : public fs_node
+{
+	friend class ramfs_io_node;
+
+public:
+	ramfs_node(ramfs_mount* owner, u32 flags);
+
+	ramfs_mount* get_owner() {
+		return static_cast<ramfs_mount*>(fs_node::get_owner());
+	}
+	ramfs_io_node* get_io_node() {
+		return &ramfs_ion;
+	}
+
+	cause::t cleanup();
+
+	cause::pair<uptr> read(uptr off, void* data, uptr bytes);
+	cause::pair<uptr> write(uptr off, const void* data, uptr bytes);
+
+private:
+	ramfs_io_node ramfs_ion;
+	u8* blocks[8];
 };
 
 
@@ -99,8 +128,7 @@ public:
 
 ramfs_driver::ramfs_driver() :
 	fs_driver(&self_ops),
-	fs_node_mp(nullptr),
-	io_node_mp(nullptr)
+	fs_node_mp(nullptr)
 {
 	self_ops.init();
 
@@ -111,10 +139,13 @@ ramfs_driver::ramfs_driver() :
 
 	mount_ops.CreateNode  = fs_mount::call_on_CreateNode<ramfs_mount>;
 	mount_ops.OpenNode    = fs_mount::call_on_OpenNode<ramfs_mount>;
+	mount_ops.CloseNode   = fs_mount::call_on_CloseNode<ramfs_mount>;
 
 	io_node_ops.init();
 
 	io_node_ops.GetDirEntry  = io_node::call_on_GetDirEntry<ramfs_io_node>;
+	io_node_ops.Read         = io_node::call_on_Read<ramfs_io_node>;
+	io_node_ops.Write        = io_node::call_on_Write<ramfs_io_node>;
 }
 
 cause::t ramfs_driver::setup()
@@ -127,15 +158,6 @@ cause::t ramfs_driver::setup()
 		return mp.cause();
 
 	fs_node_mp = mp.data();
-
-	mp = mempool::create_exclusive(
-	    sizeof (ramfs_io_node),
-	    arch::page::INVALID,
-	    mempool::ENTRUST);
-	if (is_fail(mp))
-		return mp.cause();
-
-	io_node_mp = mp.data();
 
 	return cause::OK;
 }
@@ -170,6 +192,12 @@ cause::t ramfs_driver::on_Unmount(
 
 // ramfs_mount
 
+ramfs_mount::ramfs_mount(ramfs_driver* drv) :
+	fs_mount(drv, drv->get_fs_mount_ops()),
+	block_mp(nullptr)
+{
+}
+
 cause::t ramfs_mount::mount(const char*)
 {
 	root = new (*get_driver()->get_fs_node_mp())
@@ -177,59 +205,167 @@ cause::t ramfs_mount::mount(const char*)
 	if (!root)
 		return cause::NOMEM;
 
+	auto mp = mempool::acquire_shared(8196);
+	if (is_fail(mp))
+		return mp.cause();
+
+	block_mp = mp.data();
+
 	return cause::OK;
 }
 
 cause::pair<fs_node*> ramfs_mount::on_CreateNode(
-    fs_node* parent,
-    u32 mode,
-    const char* name)
+    fs_node* /*parent*/,
+    const char* /*name*/,
+    u32 flags)
 {
+	if ((flags & fs_ctl::OPEN_CREATE) == 0)
+		return null_pair(cause::NOENT);
+
 	fs_node* fsn = new (*get_driver()->get_fs_node_mp())
-	                   ramfs_node(this, fs_ctl::NODE_REG);
+	                   ramfs_node(this, flags);
 	if (!fsn)
 		return null_pair(cause::NOMEM);
-
-	auto r = parent->append_child_node(name, fsn);
-	if (is_fail(r)) {
-		// TODO:delete fsn
-		return null_pair(r);
-	}
 
 	return make_pair(cause::OK, fsn);
 }
 
+cause::pair<fs_node*> ramfs_mount::on_GetChildNode(
+    fs_node* parent,
+    const char* childname)
+{
+}
+
 cause::pair<io_node*> ramfs_mount::on_OpenNode(
-    fs_node* node, u32 flags)
+    fs_node* fsn, u32 flags)
 {
-	return make_pair(cause::OK, (io_node*)0);
+	ramfs_node* ramfsn = static_cast<ramfs_node*>(fsn);
+
+	return cause::pair<io_node*>(cause::OK, ramfsn->get_io_node());
 }
 
-cause::pair<io_node*> ramfs_mount::create_io_node()
+cause::t ramfs_mount::on_CloseNode(
+    io_node* /*ion*/)
 {
-	ramfs_io_node* ion = new (*get_driver()->get_io_node_mp())
-	    ramfs_io_node(get_driver()->ref_io_node_ops());
-	if (!ion)
-		return null_pair(cause::NOMEM);
-
-	return cause::make_pair<io_node*>(cause::OK, ion);
+	return cause::OK;
 }
 
-// ramfs_node
-
-ramfs_node::ramfs_node(fs_mount* owner, u32 mode) :
-	fs_node(owner, mode)
-{
-	for (int i = 0; i < num_of_array(blocks); ++i)
-		blocks[i] = nullptr;
-}
 
 // ramfs_io_node
+
+ramfs_io_node::ramfs_io_node(const operations* _ops, ramfs_node* _fsn) :
+	io_node(_ops),
+	fsnode(_fsn)
+{
+}
+
+cause::pair<uptr> ramfs_io_node::on_Read(
+    io_node::offset off, void* data, uptr bytes)
+{
+	return fsnode->read(off, data, bytes);
+}
+
+cause::pair<uptr> ramfs_io_node::on_Write(
+    io_node::offset off, const void* data, uptr bytes)
+{
+	return fsnode->write(off, data, bytes);
+}
 
 cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
     uptr buf_bytes, dir_entry* buf)
 {
 	return null_pair(cause::OK);
+}
+
+
+// ramfs_node
+
+ramfs_node::ramfs_node(ramfs_mount* owner, u32 flags) :
+	fs_node(owner, flags),
+	ramfs_ion(owner->get_driver()->ref_io_node_ops(), this)
+{
+	for (int i = 0; i < num_of_array(blocks); ++i)
+		blocks[i] = nullptr;
+}
+
+cause::t ramfs_node::cleanup()
+{
+	mempool* block_mp = get_owner()->get_block_mp();
+
+	for (int i = 0; i < num_of_array(blocks); ++i) {
+		if (blocks[i]) {
+			auto r = block_mp->release(blocks[i]);
+		}
+	}
+
+	return cause::OK;
+}
+
+cause::pair<uptr> ramfs_node::read(uptr off, void* data, uptr bytes)
+{
+	mempool* block_mp = get_owner()->get_block_mp();
+	const uptr block_size = block_mp->get_obj_size();
+
+	const uptr start_blk = off / block_size;
+
+	u8* _data = static_cast<u8*>(data);
+	uptr read_bytes = 0;
+	for (uptr blk = start_blk;
+	     blk < (num_of_array(blocks) - 1) && bytes > 0;
+	     ++blk)
+	{
+		uptr start = off - block_size * blk;
+		uptr size = min(bytes, block_size - start);
+		if (!blocks[blk]) {
+			mem_fill(0, _data, size);
+		} else {
+			mem_copy(&blocks[blk][start], _data, size);
+
+			off += size;
+			_data += size;
+			bytes -= size;
+			read_bytes += size;
+		}
+	}
+
+	return make_pair(cause::OK, read_bytes);
+}
+
+cause::pair<uptr> ramfs_node::write(uptr off, const void* data, uptr bytes)
+{
+	mempool* block_mp = get_owner()->get_block_mp();
+	const uptr block_size = block_mp->get_obj_size();
+
+	const uptr start_blk = off / block_size;
+
+	const u8* _data = static_cast<const u8*>(data);
+	uptr write_bytes = 0;
+	for (uptr blk = start_blk;
+	     blk < (num_of_array(blocks) - 1) && bytes > 0;
+	     ++blk)
+	{
+		u8* block;
+		if (!blocks[blk]) {
+			auto b = block_mp->acquire();
+			if (is_fail(b))
+				return make_pair(cause::NOMEM, write_bytes);
+
+			blocks[blk] = static_cast<u8*>(b.data());
+			mem_fill(0, blocks[blk], block_size);
+		}
+		block = blocks[blk];
+
+		uptr start = off - block_size * blk;
+		uptr size = min(bytes, block_size - start);
+		mem_copy(_data, &block[start], size);
+
+		off += size;
+		_data += size;
+		bytes -= size;
+		write_bytes += size;
+	}
+
+	return make_pair(cause::OK, write_bytes);
 }
 
 }  // namespace

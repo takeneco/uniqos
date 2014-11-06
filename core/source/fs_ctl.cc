@@ -56,7 +56,7 @@ int nodename_compare(const char* name1, const char* name2)
 	}
 }
 
-bool nodename_is_file(const char* path)
+bool nodename_is_not_dir(const char* path)
 {
 	if (!*path)
 		return false;
@@ -69,7 +69,7 @@ bool nodename_is_file(const char* path)
 	}
 }
 
-bool pathname_is_edge(const char* path)
+bool nodename_is_end(const char* path)
 {
 	if (!*path)
 		return false;
@@ -108,7 +108,9 @@ fs_ctl* get_fs_ctl()
 void fs_mount::operations::init()
 {
 	CreateNode   = fs_mount::nofunc_CreateNode;
+	GetChildNode = fs_mount::nofunc_GetChildNode;
 	OpenNode     = fs_mount::nofunc_OpenNode;
+	CloseNode    = fs_mount::nofunc_CloseNode;
 }
 
 
@@ -181,22 +183,52 @@ void fs_node::remove_mount(mount_info* mi)
 	mounts.remove(mi);
 }
 
-cause::pair<fs_node*> fs_node::create_child_node(u32 mode, const char* name)
+cause::pair<fs_node*> fs_node::create_child_node(const char* name, u32 flags)
 {
-	return owner->create_node(this, mode, name);
+	auto child_fsn = owner->create_node(this, name, flags);
+	if (is_fail(child_fsn))
+		return child_fsn;
+
+	child_node* child =
+	    new (mem_alloc(child_node::calc_size(name))) child_node;
+	if (!child) {
+		// TODO: destroy child_fsn
+		return null_pair(cause::NOMEM);
+	}
+
+	child->node = child_fsn.data();
+	str_copy(name, child->name);
+
+	child_nodes.push_front(child);
+
+	return child_fsn;
 }
 
-cause::pair<fs_node*> fs_node::get_child_node(const char* name)
+fs_node* fs_node::get_mounted_node()
+{
+	mount_info* mnt = mounts.front();
+	if (mnt)
+		return mnt->mount_obj->get_root_node();
+
+	return nullptr;
+}
+
+cause::pair<fs_node*> fs_node::get_child_node(const char* name, u32 flags)
 {
 	child_node* child;
-	for (child = child_nodes.front(); child; child_nodes.next(child)) {
-		if (0 == nodename_compare(child->name, name)) {
+	for (child = child_nodes.front();
+	     child;
+	     child = child_nodes.next(child))
+	{
+		if (0 == nodename_compare(child->name, name))
 			break;
-		}
 	}
 
 	if (child)
 		return cause::make_pair(cause::OK, child->node);
+
+	if (flags & fs_ctl::OPEN_CREATE)
+		return create_child_node(name, flags);
 	else
 		return cause::null_pair(cause::NOENT);
 }
@@ -262,13 +294,17 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 	fs_node* cur = root;
 
 	while (*path) {
+		fs_node* cur2 = cur->get_mounted_node();
+		if (cur2)
+			cur = cur2;
+
 		while (*path == '/')
 			++path;
 
-		if (pathname_is_edge(path))
+		if (nodename_is_end(path))
 			break;
 
-		auto child = cur->get_child_node(path);
+		auto child = cur->get_child_node(path, 0);
 		if (is_fail(child))
 			return null_pair(child.cause());
 		cur = child.data();
@@ -277,16 +313,9 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 		path += len;
 	}
 
-	auto target_node = cur->get_child_node(path);
-	if (is_fail(target_node)) {
-		if ((flags & OPEN_CREATE) && nodename_is_file(path)) {
-			target_node = cur->create_child_node(0, path);
-			if (is_fail(target_node))
-				return null_pair(target_node.cause());
-		} else {
-			return null_pair(target_node.cause());
-		}
-	}
+	auto target_node = cur->get_child_node(path, flags);
+	if (is_fail(target_node))
+		return null_pair(target_node.cause());
 
 	return target_node.data()->open(flags);
 }
@@ -374,7 +403,7 @@ cause::pair<fs_node*> fs_ctl::get_fs_node(
 		if (*path == '\0')
 			break;
 
-		auto child = cur->get_child_node(path);
+		auto child = cur->get_child_node(path, 0);
 		if (is_fail(child))
 			return null_pair(child.cause());
 

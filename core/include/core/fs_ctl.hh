@@ -94,28 +94,48 @@ public:
 		void init();
 
 		typedef cause::pair<fs_node*> (*CreateNodeOP)(
-		    fs_mount* x, fs_node* parent, u32 mode, const char* name);
+		    fs_mount* x, fs_node* parent, const char* name, u32 flags);
 		CreateNodeOP CreateNode;
+
+		typedef cause::pair<fs_node*> (*GetChildNodeOP)(
+		    fs_mount* x, fs_node* parent, const char* childname);
+		GetChildNodeOP GetChildNode;
 
 		typedef cause::pair<io_node*> (*OpenNodeOP)(
 		    fs_mount* x, fs_node* node, u32 flags);
 		OpenNodeOP OpenNode;
+
+		typedef cause::t (*CloseNodeOP)(
+		    fs_mount* x, io_node* ion);
+		CloseNodeOP CloseNode;
 	};
 
 	// CreateNode
-	template<class T>
+	template <class T>
 	static cause::pair<fs_node*> call_on_CreateNode(
-	    fs_mount* x, fs_node* parent, u32 mode, const char* name) {
+	    fs_mount* x, fs_node* parent, const char* name, u32 flags) {
 		return static_cast<T*>(x)->
-		    on_CreateNode(parent, mode, name);
+		    on_CreateNode(parent, name, flags);
 	}
 	static cause::pair<fs_node*> nofunc_CreateNode(
-	    fs_mount*, fs_node*, u32, const char*) {
+	    fs_mount*, fs_node*, const char*, u32) {
+		return null_pair(cause::NOFUNC);
+	}
+
+	// GetChildNode
+	template <class T>
+	static cause::pair<fs_node*> call_on_GetChildNode(
+	    fs_mount* x, fs_node* parent, const char* childname) {
+		return static_cast<T*>(x)->
+		    on_GetChildNode(parent, childname);
+	}
+	static cause::pair<fs_node*> nofunc_GetChildNode(
+	    fs_mount*, fs_node*, const char*) {
 		return null_pair(cause::NOFUNC);
 	}
 
 	// OpenNode
-	template<class T>
+	template <class T>
 	static cause::pair<io_node*> call_on_OpenNode(
 	    fs_mount* x, fs_node* node, u32 flags) {
 		return static_cast<T*>(x)->
@@ -126,6 +146,18 @@ public:
 		return null_pair(cause::NOFUNC);
 	}
 
+	// CloseNode
+	template <class T>
+	static cause::t call_on_CloseNode(
+	    fs_mount* x, io_node* ion) {
+		return static_cast<T*>(x)->
+		    on_CloseNode(ion);
+	}
+	static cause::t nofunc_CloseNode(
+	    fs_mount*, io_node*) {
+		return cause::NOFUNC;
+	}
+
 	cause::pair<io_node*> open_node(fs_node* node, u32 flags) {
 		return ops->OpenNode(this, node, flags);
 	}
@@ -134,8 +166,8 @@ public:
 
 private:
 	cause::pair<fs_node*> create_node(
-	    fs_node* parent, u32 mode, const char* name) {
-		return ops->CreateNode(this, parent, mode, name);
+	    fs_node* parent, const char* name, u32 flags) {
+		return ops->CreateNode(this, parent, name, flags);
 	}
 
 protected:
@@ -213,12 +245,13 @@ public:
 	void insert_mount(mount_info* mi);
 	void remove_mount(mount_info* mi);
 
-	cause::pair<fs_node*> create_child_node(u32 mode, const char* name);
+	cause::pair<fs_node*> create_child_node(const char* name, u32 flags);
 	cause::pair<io_node*> open(u32 flags) {
 		return owner->open_node(this, flags);
 	}
 
-	cause::pair<fs_node*> get_child_node(const char* name);
+	fs_node* get_mounted_node();
+	cause::pair<fs_node*> get_child_node(const char* name, u32 flags);
 	cause::t append_child_node(const char* name, fs_node* fsn);
 
 private:

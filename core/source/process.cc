@@ -19,8 +19,8 @@
 
 #include <core/process.hh>
 
-#include <core/io_node.hh>
 #include <core/new_ops.hh>
+#include <core/process_ctl.hh>
 #include <core/thread.hh>
 
 
@@ -32,18 +32,6 @@ process::process() :
 
 process::~process()
 {
-}
-
-//TODO: 返した後でio_descが開放されないようにする必要がある。
-cause::pair<io_desc*> process::get_io_desc(int i)
-{
-	if (i >= io_desc_nr || i < 0)
-		return null_pair(cause::BADIO);
-
-	if (!io_desc_array[i])
-		return null_pair(cause::BADIO);
-
-	return make_pair(cause::OK, io_desc_array[i]);
 }
 
 cause::t process::setup(thread* entry_thread, int iod_nr)
@@ -67,10 +55,24 @@ cause::t process::setup(thread* entry_thread, int iod_nr)
 /*
 cause::t process::set_io_desc_nr(int nr)
 {
+TODO:
 sharedmempoolからメモリの実サイズ情報を取得
 }
 */
-cause::t process::set_io_desc(int iod, io_node* target)
+
+//TODO: 返した後でio_descが開放されないようにする必要がある。
+cause::pair<io_desc*> process::get_io_desc(int iod)
+{
+	if (iod >= io_desc_nr || iod < 0)
+		return null_pair(cause::BADIO);
+
+	if (!io_desc_array[iod])
+		return null_pair(cause::BADIO);
+
+	return make_pair(cause::OK, io_desc_array[iod]);
+}
+
+cause::t process::set_io_desc(int iod, io_node* target, io_node::offset off)
 {
 	if (io_desc_nr <= iod)
 		return cause::OUTOFRANGE;
@@ -78,11 +80,41 @@ cause::t process::set_io_desc(int iod, io_node* target)
 		// TODO:close io_desc[iod]
 	}
 
-	//TODO:
-	//io_desc_array[iod] = target;
+	io_desc* iodesc = new (*get_process_ctl()->io_desc_pool()) io_desc;
+	if (!iodesc)
+		return cause::NOMEM;
+
+	iodesc->io = target;
+	iodesc->off = off;
+	io_desc_array[iod] = iodesc;
 
 	return cause::OK;
 }
+
+/// @brief 空き iod を探して io_node をセットする。
+/// @return iod を返す。
+cause::pair<int> process::append_io_desc(io_node* io, io_node::offset off)
+{
+	int iod;
+	for (iod = 0; iod < io_desc_nr; ++iod) {
+		if (!io_desc_array[iod])
+			break;
+	}
+
+	if (iod >= io_desc_nr)
+		return zero_pair(cause::MAXIO);
+
+	io_desc* iodesc = new (*get_process_ctl()->io_desc_pool()) io_desc;
+	if (!iodesc)
+		return zero_pair(cause::NOMEM);
+
+	iodesc->io = io;
+	iodesc->off = off;
+	io_desc_array[iod] = iodesc;
+
+	return make_pair(cause::OK, iod);
+}
+
 
 process* get_current_process()
 {
@@ -91,14 +123,53 @@ process* get_current_process()
 	return t->get_owner_process();
 }
 
+#include <core/fs_ctl.hh>
+
+cause::pair<uptr> sys_open(const char* path, u32 flags)
+{
+	fs_ctl* fsctl = get_fs_ctl();
+
+	auto ion = fsctl->open(path, flags);
+	if (is_fail(ion)) {
+		return zero_pair(ion.cause());
+	}
+
+	process* pr = get_current_process();
+
+	auto iod = pr->append_io_desc(ion.data(), 0);
+	if (is_fail(iod)) {
+		return zero_pair(iod.cause());
+	}
+
+	return cause::pair<uptr>(cause::OK, iod.data());
+}
+
+cause::pair<uptr> sys_close(u32 iod)
+{
+	process* pr = get_current_process();
+
+	auto iodesc = pr->get_io_desc(iod);
+	if (is_fail(iodesc))
+		return zero_pair(iodesc.cause());
+
+	//io_node::close(iodesc.data()->io);
+
+	cause::t r = pr->set_io_desc(iod, nullptr, 0);
+	if (is_fail(r)) {
+		return zero_pair(r);
+	}
+
+	return zero_pair(cause::OK);
+}
 
 cause::pair<uptr> sys_write(int iod, const void* buf, uptr bytes)
 {
 	auto r = get_current_process()->get_io_desc(iod);
 	if (is_fail(r))
-		return zero_pair(r.get_cause());
+		return zero_pair(r.cause());
 
-	io_desc* target = r.get_data();
+	io_desc* target = r.data();
+
 	return target->io->write(target->off, buf, bytes);
 }
 
