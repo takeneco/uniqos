@@ -1,12 +1,25 @@
-/// @file atomic.hh
-//
-// (C) 2012-2013 KATO Takeshi
-//
+/// @file util/atomic.hh
 
-#ifndef CORE_INCLUDE_ATOMIC_HH_
-#define CORE_INCLUDE_ATOMIC_HH_
+//  UNIQOS  --  Unique Operating System
+//  (C) 2012-2014 KATO Takeshi
+//
+//  UNIQOS is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  UNIQOS is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <atomic_ops.hh>
+#ifndef UTIL_ATOMIC_HH_
+#define UTIL_ATOMIC_HH_
+
+#include <arch/atomic_ops.hh>
 
 
 namespace arch {
@@ -161,11 +174,17 @@ public:
 	void sub(T v) {
 		arch::atomic_sub(v, &val);
 	}
+	void inc() {
+		arch::atomic_add(1, &val);
+	}
+	void dec() {
+		arch::atomic_sub(1, &val);
+	}
 
 private:
 	volatile T val;
 };
 
 
-#endif  // CORE_INCLUDE_ATOMIC_HH_
+#endif  // include guard
 

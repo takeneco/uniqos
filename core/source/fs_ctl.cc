@@ -22,7 +22,7 @@
 #include <core/global_vars.hh>
 #include <core/mempool.hh>
 #include <core/setup.hh>
-#include <core/string.hh>
+#include <util/string.hh>
 
 
 namespace {
@@ -89,9 +89,9 @@ bool nodename_is_end(const char* path)
 
 }  // namespace
 
-// fs_driver::operations
+// fs_driver::interfaces
 
-void fs_driver::operations::init()
+void fs_driver::interfaces::init()
 {
 	Mount    = fs_driver::nofunc_Mount;
 	Unmount  = fs_driver::nofunc_Unmount;
@@ -103,9 +103,9 @@ fs_ctl* get_fs_ctl()
 	return global_vars::core.fs_ctl_obj;
 }
 
-// fs_mount::operations
+// fs_mount::interfaces
 
-void fs_mount::operations::init()
+void fs_mount::interfaces::init()
 {
 	CreateNode   = fs_mount::nofunc_CreateNode;
 	GetChildNode = fs_mount::nofunc_GetChildNode;
@@ -157,6 +157,7 @@ cause::t mount_info::destroy(mount_info* mp)
 
 // fs_node
 
+#include <core/log.hh>
 fs_node::fs_node(fs_mount* mount_owner, u32 _mode) :
 	owner(mount_owner),
 	mode(_mode)
@@ -175,14 +176,64 @@ bool fs_node::is_regular() const
 
 void fs_node::insert_mount(mount_info* mi)
 {
+	spin_wlock_section _sws(mounts_lock);
+
 	mounts.push_front(mi);
 }
 
 void fs_node::remove_mount(mount_info* mi)
 {
+	spin_wlock_section _sws(mounts_lock);
+
 	mounts.remove(mi);
 }
 
+fs_node* fs_node::get_mounted_node()
+{
+	// TODO:返した値が解放されないように、関数の外までロック範囲を広げる
+	// 必要がある。
+	spin_rlock_section _srs(mounts_lock);
+
+	mount_info* mnt = mounts.front();
+	if (mnt)
+		return mnt->mount_obj->get_root_node();
+
+	return nullptr;
+}
+
+cause::pair<fs_node*> fs_node::get_child_node(const char* name, u32 flags)
+{
+	// TODO:返した値が解放されないように、関数の外までロック範囲を広げる
+	// 必要がある。
+
+	auto child = search_child_node(name);
+
+	if (child.cause() == cause::NOENT &&
+	   (flags & fs_ctl::OPEN_CREATE))
+	{
+		child = create_child_node(name, flags);
+	}
+
+	return child;
+}
+
+cause::pair<fs_node*> fs_node::search_child_node(const char* name)
+{
+	spin_rlock_section _srs(child_nodes_lock);
+
+	child_node* child;
+	for (child = child_nodes.front();
+	     child;
+	     child = child_nodes.next(child))
+	{
+		if (0 == nodename_compare(child->name, name))
+			return cause::make_pair(cause::OK, child->node);
+	}
+
+	return null_pair(cause::NOENT);
+}
+
+/// @brief create child_node instance and set its members.
 cause::pair<fs_node*> fs_node::create_child_node(const char* name, u32 flags)
 {
 	auto child_fsn = owner->create_node(this, name, flags);
@@ -199,52 +250,13 @@ cause::pair<fs_node*> fs_node::create_child_node(const char* name, u32 flags)
 	child->node = child_fsn.data();
 	str_copy(name, child->name);
 
+	child_nodes_lock.wlock();
 	child_nodes.push_front(child);
+	child_nodes_lock.un_wlock();
 
 	return child_fsn;
 }
 
-fs_node* fs_node::get_mounted_node()
-{
-	mount_info* mnt = mounts.front();
-	if (mnt)
-		return mnt->mount_obj->get_root_node();
-
-	return nullptr;
-}
-
-cause::pair<fs_node*> fs_node::get_child_node(const char* name, u32 flags)
-{
-	child_node* child;
-	for (child = child_nodes.front();
-	     child;
-	     child = child_nodes.next(child))
-	{
-		if (0 == nodename_compare(child->name, name))
-			break;
-	}
-
-	if (child)
-		return cause::make_pair(cause::OK, child->node);
-
-	if (flags & fs_ctl::OPEN_CREATE)
-		return create_child_node(name, flags);
-	else
-		return cause::null_pair(cause::NOENT);
-}
-
-cause::t fs_node::append_child_node(const char* name, fs_node* fsn)
-{
-	child_node* child = new (mem_alloc(child_node::calc_size(name)))
-	    child_node;
-	if (!child)
-		return cause::NOMEM;
-
-	child->node = fsn;
-	str_copy(name, child->name);
-
-	return cause::OK;
-}
 
 // fs_node::child_node
 
@@ -346,7 +358,9 @@ cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 
 		target_node.data()->insert_mount(mp);
 
+		mountpoints_lock.wlock();
 		mountpoints.push_front(mp);
+		mountpoints_lock.un_wlock();
 
 		return cause::OK;
 	}
@@ -357,6 +371,8 @@ cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 
 cause::t fs_ctl::unmount(const char* target, u64 flags)
 {
+	spin_wlock_section _sws(mountpoints_lock);
+	
 	mount_info* target_mp = nullptr;
 	for (mount_info* mp = mountpoints.front();
 	     mp;

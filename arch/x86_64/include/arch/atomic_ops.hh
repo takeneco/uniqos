@@ -16,8 +16,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ARCH_X86_64_INCLUDE_ARCH_ATOMIC_OPS_HH_
-#define ARCH_X86_64_INCLUDE_ARCH_ATOMIC_OPS_HH_
+#ifndef ARCH_ATOMIC_OPS_HH_
+#define ARCH_ATOMIC_OPS_HH_
 
 #include <core/basic.hh>
 

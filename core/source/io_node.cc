@@ -19,7 +19,7 @@
 
 #include <core/io_node.hh>
 
-#include <core/string.hh>
+#include <util/string.hh>
 
 
 void iovec_iterator::normalize()
@@ -107,13 +107,14 @@ uptr iovec_iterator::read(uptr bytes, void* dest)
 	return total;
 }
 
-// io_node::operations
+// io_node::interfaces
 
-void io_node::operations::init()
+void io_node::interfaces::init()
 {
 	seek = io_node::nofunc_Seek;
 	read = io_node::nofunc_ReadV;
 	write = io_node::nofunc_WriteV;
+	Close        = io_node::nofunc_Close;
 	Read         = io_node::nofunc_Read;
 	Write        = io_node::nofunc_Write;
 	GetDirEntry  = io_node::nofunc_GetDirEntry;

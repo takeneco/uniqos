@@ -19,7 +19,7 @@
 
 #include <core/fs_ctl.hh>
 #include <core/mempool.hh>
-#include <core/string.hh>
+#include <util/string.hh>
 
 
 namespace {
@@ -33,20 +33,20 @@ public:
 	ramfs_driver();
 
 	cause::t setup();
-	cause::t teardown();
+	cause::t unsetup();
 
 	cause::pair<fs_mount*> on_Mount(const char* dev);
 	cause::t on_Unmount(fs_mount* mount, const char* target, u64 flags);
 
-	const fs_mount::operations* get_fs_mount_ops() { return &mount_ops; }
-	const io_node::operations* ref_io_node_ops() { return &io_node_ops; }
+	const fs_mount::interfaces* get_fs_mount_ifs() { return &mount_ifs; }
+	const io_node::interfaces* ref_io_node_ifs() { return &io_node_ifs; }
 
 	mempool* get_fs_node_mp() { return fs_node_mp; }
 
 private:
-	operations self_ops;
-	fs_mount::operations mount_ops;
-	io_node::operations io_node_ops;
+	interfaces self_ifs;
+	fs_mount::interfaces mount_ifs;
+	io_node::interfaces io_node_ifs;
 	mempool* fs_node_mp;
 };
 
@@ -84,8 +84,9 @@ private:
 class ramfs_io_node : public io_node
 {
 public:
-	ramfs_io_node(const operations* _ops, ramfs_node* _fsn);
+	ramfs_io_node(const interfaces* _ops, ramfs_node* _fsn);
 
+	static cause::t on_Close(ramfs_io_node* x);
 	cause::pair<uptr> on_Read(
 	    io_node::offset off, void* data, uptr bytes);
 	cause::pair<uptr> on_Write(
@@ -113,13 +114,14 @@ public:
 		return &ramfs_ion;
 	}
 
-	cause::t cleanup();
+	cause::t destroy();
 
 	cause::pair<uptr> read(uptr off, void* data, uptr bytes);
 	cause::pair<uptr> write(uptr off, const void* data, uptr bytes);
 
 private:
 	ramfs_io_node ramfs_ion;
+	uptr size_bytes;
 	u8* blocks[8];
 };
 
@@ -127,25 +129,26 @@ private:
 // ramfs_driver
 
 ramfs_driver::ramfs_driver() :
-	fs_driver(&self_ops),
+	fs_driver(&self_ifs),
 	fs_node_mp(nullptr)
 {
-	self_ops.init();
+	self_ifs.init();
 
-	self_ops.Mount      = fs_driver::call_on_Mount<ramfs_driver>;
-	self_ops.Unmount    = fs_driver::call_on_Unmount<ramfs_driver>;
+	self_ifs.Mount      = fs_driver::call_on_Mount<ramfs_driver>;
+	self_ifs.Unmount    = fs_driver::call_on_Unmount<ramfs_driver>;
 
-	mount_ops.init();
+	mount_ifs.init();
 
-	mount_ops.CreateNode  = fs_mount::call_on_CreateNode<ramfs_mount>;
-	mount_ops.OpenNode    = fs_mount::call_on_OpenNode<ramfs_mount>;
-	mount_ops.CloseNode   = fs_mount::call_on_CloseNode<ramfs_mount>;
+	mount_ifs.CreateNode  = fs_mount::call_on_CreateNode<ramfs_mount>;
+	mount_ifs.OpenNode    = fs_mount::call_on_OpenNode<ramfs_mount>;
+	mount_ifs.CloseNode   = fs_mount::call_on_CloseNode<ramfs_mount>;
 
-	io_node_ops.init();
+	io_node_ifs.init();
 
-	io_node_ops.GetDirEntry  = io_node::call_on_GetDirEntry<ramfs_io_node>;
-	io_node_ops.Read         = io_node::call_on_Read<ramfs_io_node>;
-	io_node_ops.Write        = io_node::call_on_Write<ramfs_io_node>;
+	io_node_ifs.Close        = io_node::call_on_Close<ramfs_io_node>;
+	io_node_ifs.Read         = io_node::call_on_Read<ramfs_io_node>;
+	io_node_ifs.Write        = io_node::call_on_Write<ramfs_io_node>;
+	io_node_ifs.GetDirEntry  = io_node::call_on_GetDirEntry<ramfs_io_node>;
 }
 
 cause::t ramfs_driver::setup()
@@ -162,7 +165,7 @@ cause::t ramfs_driver::setup()
 	return cause::OK;
 }
 
-cause::t ramfs_driver::teardown()
+cause::t ramfs_driver::unsetup()
 {
 	// TODO:release fs_node_mp,ionode_mp
 	return cause::NOFUNC;
@@ -193,7 +196,7 @@ cause::t ramfs_driver::on_Unmount(
 // ramfs_mount
 
 ramfs_mount::ramfs_mount(ramfs_driver* drv) :
-	fs_mount(drv, drv->get_fs_mount_ops()),
+	fs_mount(drv, drv->get_fs_mount_ifs()),
 	block_mp(nullptr)
 {
 }
@@ -253,10 +256,15 @@ cause::t ramfs_mount::on_CloseNode(
 
 // ramfs_io_node
 
-ramfs_io_node::ramfs_io_node(const operations* _ops, ramfs_node* _fsn) :
-	io_node(_ops),
+ramfs_io_node::ramfs_io_node(const interfaces* _ifs, ramfs_node* _fsn) :
+	io_node(_ifs),
 	fsnode(_fsn)
 {
+}
+
+cause::t ramfs_io_node::on_Close(ramfs_io_node* x)
+{
+	return cause::OK;
 }
 
 cause::pair<uptr> ramfs_io_node::on_Read(
@@ -282,13 +290,14 @@ cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
 
 ramfs_node::ramfs_node(ramfs_mount* owner, u32 flags) :
 	fs_node(owner, flags),
-	ramfs_ion(owner->get_driver()->ref_io_node_ops(), this)
+	ramfs_ion(owner->get_driver()->ref_io_node_ifs(), this),
+	size_bytes(0)
 {
 	for (int i = 0; i < num_of_array(blocks); ++i)
 		blocks[i] = nullptr;
 }
 
-cause::t ramfs_node::cleanup()
+cause::t ramfs_node::destroy()
 {
 	mempool* block_mp = get_owner()->get_block_mp();
 
@@ -315,7 +324,13 @@ cause::pair<uptr> ramfs_node::read(uptr off, void* data, uptr bytes)
 	     ++blk)
 	{
 		uptr start = off - block_size * blk;
+		if (start >= size_bytes)
+			break;
+
 		uptr size = min(bytes, block_size - start);
+		if ((start + size) >= size_bytes)
+			size = size_bytes - off;
+
 		if (!blocks[blk]) {
 			mem_fill(0, _data, size);
 		} else {
@@ -363,6 +378,9 @@ cause::pair<uptr> ramfs_node::write(uptr off, const void* data, uptr bytes)
 		_data += size;
 		bytes -= size;
 		write_bytes += size;
+
+		if (off > size_bytes)
+			size_bytes = off;
 	}
 
 	return make_pair(cause::OK, write_bytes);
@@ -380,7 +398,7 @@ cause::t ramfs_init()
 	auto r = ramfs_drv->setup();
 	if (is_fail(r)) {
 		//TODO:return code
-		ramfs_drv->teardown();
+		ramfs_drv->unsetup();
 		return r;
 	}
 

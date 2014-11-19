@@ -81,35 +81,47 @@ public:
 		OFFSET_MIN = S64(-0x8000000000000000),
 	};
 
-	struct operations
+	struct interfaces
 	{
 		void init();
 
-		typedef cause::t (*SeekOp)(
+		typedef cause::t (*CloseIF)(
+		    io_node* x);
+		CloseIF Close;
+
+		typedef cause::t (*SeekIF)(
 		    io_node* x, seek_whence whence,
 		    offset rel_off, offset* abs_off);
-		SeekOp seek;
+		SeekIF seek;
 
-		typedef cause::pair<uptr> (*ReadOp)(
+		typedef cause::pair<uptr> (*ReadIF)(
 		    io_node* x, offset off, void* data, uptr bytes);
-		ReadOp Read;
+		ReadIF Read;
 
-		typedef cause::t (*ReadVOp)(
+		typedef cause::t (*ReadVIF)(
 		    io_node* x, offset* off, int iov_cnt, iovec* iov);
-		ReadVOp read;
+		ReadVIF read;
 
-		typedef cause::pair<uptr> (*WriteOp)(
+		typedef cause::pair<uptr> (*WriteIF)(
 		    io_node* x, offset off, const void* data, uptr bytes);
-		WriteOp Write;
+		WriteIF Write;
 
-		typedef cause::t (*WriteVOp)(
+		typedef cause::t (*WriteVIF)(
 		    io_node* x, offset* off, int iov_cnt, const iovec* iov);
-		WriteVOp write;
+		WriteVIF write;
 
-		typedef cause::pair<dir_entry*> (*GetDirEntryOP)(
+		typedef cause::pair<dir_entry*> (*GetDirEntryIF)(
 		    io_node* x, uptr buf_bytes, dir_entry* buf);
-		GetDirEntryOP GetDirEntry;
+		GetDirEntryIF GetDirEntry;
 	};
+
+	// Close
+	template<class T> static cause::t call_on_Close(io_node* x) {
+		return static_cast<T*>(x)->on_Close(static_cast<T*>(x));
+	}
+	static cause::t nofunc_Close(io_node*) {
+		return cause::NOFUNC;
+	}
 
 	// seek
 	template<class T> static cause::t call_on_io_node_seek(
@@ -179,36 +191,39 @@ public:
 	}
 
 public:
+	static cause::t close(io_node* x) {
+		return x->ifs->Close(x);
+	}
 	cause::t seek(seek_whence whence, offset rel_off, offset* abs_off) {
-		return ops->seek(this, whence, rel_off, abs_off);
+		return ifs->seek(this, whence, rel_off, abs_off);
 	}
 	cause::pair<uptr> read(offset off, void* data, uptr bytes) {
-		return ops->Read(this, off, data, bytes);
+		return ifs->Read(this, off, data, bytes);
 	}
 	cause::t readv(offset* off, int iov_cnt, iovec* iov) {
-		return ops->read(this, off, iov_cnt, iov);
+		return ifs->read(this, off, iov_cnt, iov);
 	}
 	cause::pair<uptr> write(offset off, const void* data, uptr bytes) {
-		return ops->Write(this, off, data, bytes);
+		return ifs->Write(this, off, data, bytes);
 	}
 	cause::t writev(offset* off, int iov_cnt, const iovec* iov) {
-		return ops->write(this, off, iov_cnt, iov);
+		return ifs->write(this, off, iov_cnt, iov);
 	}
 	cause::pair<dir_entry*> get_dir_entry(
 	    uptr buf_bytes, dir_entry* buf) {
-		return ops->GetDirEntry(this, buf_bytes, buf);
+		return ifs->GetDirEntry(this, buf_bytes, buf);
 	}
 
 protected:
 	io_node() {}
-	io_node(const operations* _ops) : ops(_ops) {}
+	io_node(const interfaces* _ifs) : ifs(_ifs) {}
 
 	cause::t usual_seek(
 	    offset upper_limit, seek_whence whence,
 	    offset rel_off, offset* abs_off);
 
 protected:
-	const operations* ops;
+	const interfaces* ifs;
 };
 
 
