@@ -2,7 +2,7 @@
 /// @brief Page control initialize.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2014 KATO Takeshi
+//  (C) 2010-2015 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -36,19 +36,23 @@
 
 #include <page_ctl.hh>
 
-#include <acpi_ctl.hh>
-#include <arch.hh>
+#include <arch/native_ops.hh>
 #include <bootinfo.hh>
 #include <cheap_alloc.hh>
 #include <config.h>
+#include <core/log.hh>
+#include <core/page.hh>
+#include <core/page_pool.hh>
 #include <global_vars.hh>
-#include <log.hh>
 #include <mpspec.hh>
 #include <native_cpu_node.hh>
-#include <native_ops.hh>
-#include <page.hh>
-#include <page_pool.hh>
 #include "page_table.hh"
+
+#if CONFIG_ACPI
+# include <core/acpi_ctl.hh>
+#endif  // CONFIG_ACPI
+
+#define SEGINIT __attribute__((section(".text.init")))
 
 
 namespace {
@@ -178,13 +182,15 @@ cause::t setup_heap(tmp_alloc* heap)
 
 	cause::t r = load_avail(&sep);
 	if (is_fail(r)) {
-		log()("!!! Available memory detection failed.")();
+		// unavailable
+		//log()("!!! Available memory detection failed.")();
 		return r;
 	}
 
 	r = load_allocated(heap);
 	if (is_fail(r)) {
-		log()("!!! Could not detect alloced memory.")();
+		// unavailable
+		//log()("!!! Could not detect alloced memory.")();
 		return r;
 	}
 
@@ -325,50 +331,6 @@ cause::t setup_pam2(u64 padr_end, tmp_alloc* heap)
 	return cause::OK;
 }
 
-cause::t init_kern_space()
-{
-	arch::pte* cr3 = static_cast<arch::pte*>(
-	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
-
-	x86::page_table pg_tbl(cr3);
-
-	for (uptr padr = KERNEL_ADR_SPACE_START;
-	     padr < KERNEL_ADR_SPACE_END;
-	     padr += arch::page::PHYS_L4_SIZE)
-	{
-		auto r = pg_tbl.declare_table(padr, arch::page::PHYS_L4);
-
-		if (is_fail(r))
-			return r.r;
-	}
-
-	return cause::OK;
-}
-
-/// @brief ACPI のインタフェースで CPU を数える。
-cause::t count_cpus_by_acpi(tmp_alloc* heap, cpu_id* cpucnt)
-{
-#if CONFIG_ACPI
-	void* acpi_buffer = heap->alloc(SLOTM_ANY,
-	                                arch::page::L1_SIZE,  // size
-	                                arch::page::L1_SIZE,  // align
-	                                true);                // forget
-	if (!acpi_buffer)
-		return cause::NOMEM;
-
-	cause::t r = acpi_table_init(
-	    arch::page::L1_SIZE,
-	    arch::map_phys_adr(acpi_buffer, arch::page::L1_SIZE));
-	if (is_fail(r))
-		return r;
-
-#else  // CONFIG_ACPI
-	return cause::FAIL;
-
-#endif  // CONFIG_ACPI
-	return cause::FAIL;
-}
-
 /// @brief ヒープから 1 ページ分のメモリを確保する。
 //
 /// ページのサイズは計算して決める。
@@ -423,189 +385,86 @@ void* allocate_tmp_alloc(tmp_alloc* heap)
 	return arch::map_phys_adr(p, tmp_alloc_pagesz);
 }
 
-/// @return mpspec の情報からCPUの数を数えて返す。
-int count_cpus(const mpspec& mps)
-{
-	int cpu_num = 0;
-
-	mpspec::processor_iterator proc_itr(&mps);
-	for (;;) {
-		const mpspec::processor_entry* pe = proc_itr.get_next();
-		if (!pe)
-			break;
-		++cpu_num;
-	}
-
-	return cpu_num;
-}
-
-/// @brief メモリを切り出す。
-//
-/// *ar の範囲をページアライメントに合わせて両端を切り落とし、
-/// それでも assign_bytes より大きければ、あまりを切り落とす。
-/// @retval true  成功した。
-/// @retval false 割り当てられるページが無いため失敗した。
-///               この場合は *ar には戻り値が設定されない。
-bool cut_ram(uptr assign_bytes, adr_range* ar)
-{
-	const uptr page_size = arch::page::PHYS_L1_SIZE;
-
-	const uptr low = up_align(ar->low_adr(), page_size);
-	if (low < ar->low_adr())
-		return false;
-
-	const uptr high = down_align(ar->high_adr() + 1, page_size) - 1;
-	if (high > ar->high_adr())
-		return false;
-
-	const uptr bytes = high - low + 1;
-	if (bytes < page_size)
-		return false;
-
-	ar->set_ab(low, min(bytes, assign_bytes));
-
-	return true;
-}
-
-/// @brief avail_ram から node_ram へメモリを移す
-//
-/// avail_ram から *assign_bytes を上限として node_ram へ移す。
-/// node_ram へ移されたメモリは avail_ram から除外し、移したメモリサイズを
-/// *assign_bytes から減算する。
-/// @retval true  成功した。
-/// @retval false 失敗した。
-/// @note この関数が失敗する状況からソフトで復旧するのは難しい。
-bool assign_ram_piece(
-    uptr* assign_bytes,
-    tmp_alloc* avail_ram,
-    tmp_alloc* node_ram)
+// freeメモリだけを src から dest へ移動する。
+// allocメモリは移動しない。
+bool move_free_range(
+    uptr start_adr, uptr end_adr, tmp_alloc* src, tmp_alloc* dest)
 {
 	tmp_alloc::enum_desc ed;
+	src->enum_free(SLOTM_ANY, &ed);
 
-	avail_ram->enum_free(1 << 0, &ed);
+	for (;;) {
+		adr_range tmp_ar;
+		if (!src->enum_free_next(&ed, &tmp_ar))
+			break;
 
-	adr_range ar;
-	if (!avail_ram->enum_free_next(&ed, &ar))
-		return false;
+		uptr low_adr = tmp_ar.low_adr();
+		uptr high_adr = tmp_ar.high_adr();
+		if (low_adr < start_adr)
+			low_adr = start_adr;
+		if (high_adr > end_adr)
+			high_adr = end_adr;
 
-	if (!cut_ram(*assign_bytes, &ar)) {
-		// 半端なページを捨てる
-		if (!avail_ram->reserve(1 << 0, ar, true))
+		if (low_adr > high_adr)
+			continue;
+
+		if (!dest->add_free(0, adr_range::gen_lh(low_adr, high_adr)))
 			return false;
-
-		return true;
 	}
 
-	if (!node_ram->add_free(0, ar))
-		return false;
-
-	*assign_bytes -= ar.bytes();
-
-	if (!avail_ram->reserve(1 << 0, ar, true))
+	if (!src->reserve(SLOTM_ANY, adr_range::gen_lh(start_adr, end_adr), true))
 		return false;
 
 	return true;
 }
 
-bool assign_ram(uptr assign_bytes, tmp_alloc* avail_ram, tmp_alloc* node_ram)
+u32 acpi_count_memory_affinity(ACPI_TABLE_SRAT* srat)
 {
-	do {
-		if (!assign_ram_piece(&assign_bytes, avail_ram, node_ram))
-			return false;
-	} while (assign_bytes >= arch::page::L1_SIZE);
+	acpi::subtable_enumerator subtbl_enum(srat);
+	u32 cnt = 0;
 
-	return true;
-}
-
-cause::t _proj_free_mem(
-    uptr free_adr,               ///< [in] 空きメモリのアドレス
-    uptr free_bytes,             ///< [in] 空きメモリのサイズ
-    const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
-          tmp_alloc* node_heap)  ///< [in,out] メモリ割当先ノードのヒープ
-{
-	tmp_alloc::enum_desc ed;
-	node_ram->enum_free(1 << 0, &ed);
-
-	const uptr free_l = free_adr;
-	const uptr free_h = free_adr + free_bytes - 1;
-
-	for (;;) {
-		uptr ram_adr, ram_bytes;
-		if (!node_ram->enum_free_next(&ed, &ram_adr, &ram_bytes))
-			break;
-
-		const uptr ram_l = ram_adr;
-		const uptr ram_h = ram_adr + ram_bytes - 1;
-		uptr add_l, add_h;
-
-		if (test_overlap(ram_l, ram_h, free_l, free_h, &add_l, &add_h))
-		{
-			const uptr add_adr = add_l;
-			const uptr add_bytes = add_h - add_l + 1;
-			if (!node_heap->add_free(0, add_adr, add_bytes))
-				return cause::FAIL;
-		}
+	for (auto* e = subtbl_enum.next(ACPI_SRAT_TYPE_MEMORY_AFFINITY);
+	     e;
+	     e = subtbl_enum.next(ACPI_SRAT_TYPE_MEMORY_AFFINITY))
+	{
+		++cnt;
 	}
 
-	return cause::OK;
+	return cnt;
 }
 
-/// @brief ノードに割り当てられたメモリ中の空きメモリを node_heap へ追加する。
-//
-/// @retval cause::OK    成功した。
-/// @retval cause::FAIL  node_heap のエントリがあふれた。
-cause::t proj_free_mem(
-    const tmp_alloc* heap,       ///< [in] 空きメモリ情報
-    const tmp_alloc* node_ram,   ///< [in] ノードに割り当てられたメモリ情報
-          tmp_alloc* node_heap)  ///< [in,out] メモリ割当先ノードのヒープ
+cause::pair<page_pool*> create_page_pool(
+    uptr base_adr,
+    uptr length,
+    u32 proximity_domain,
+    tmp_alloc* aff_heap)
 {
+	// calc page_pool working buffer size.
+	page_pool tmp_pp(proximity_domain);
+	tmp_pp.add_range(adr_range::gen_ab(base_adr, length));
+	uptr buf_bytes = tmp_pp.calc_workbuf_bytes();
+
+	//TODO:SLOTM_ANY
+	void* pp_mem = aff_heap->alloc(SLOTM_ANY,
+	    sizeof (page_pool) + buf_bytes,
+	    arch::BASIC_TYPE_ALIGN,
+	    false);
+	if (!pp_mem)
+		return null_pair(cause::NOMEM);
+	void* pp_vadr =
+	    arch::map_phys_adr(pp_mem, sizeof (page_pool) + buf_bytes);
+	page_pool* pp = new (pp_vadr) page_pool(proximity_domain);
+
+	pp->copy_range_from(tmp_pp);
+
+	if (!pp->init(buf_bytes, pp + 1))
+		return null_pair(cause::UNKNOWN);
+
 	tmp_alloc::enum_desc ed;
-	heap->enum_free(SLOTM_ANY, &ed);
-
+	aff_heap->enum_free(SLOTM_ANY, &ed);
 	for (;;) {
 		uptr adr, bytes;
-		const bool end = heap->enum_free_next(&ed, &adr, &bytes);
-		if (!end)
-			break;
-
-		const cause::t r =
-		    _proj_free_mem(adr, bytes, node_ram, node_heap);
-		if (is_fail(r))
-			return r;
-	}
-
-	return cause::OK;
-}
-
-cause::t load_page_pool(
-    const tmp_alloc* node_ram,
-    tmp_alloc* node_heap,
-    page_pool* pp)
-{
-	tmp_alloc::enum_desc ed;
-	node_ram->enum_free(1 << 0, &ed);
-
-	for (;;) {
-		uptr adr, bytes;
-		if (!node_ram->enum_free_next(&ed, &adr, &bytes))
-			break;
-
-		cause::t r = pp->add_range(adr_range::gen_ab(adr, bytes));
-		if (is_fail(r))
-			return r;
-	}
-
-	uptr workarea_bytes = pp->calc_workarea_bytes();
-	void* workarea_mem = node_heap->alloc(
-	    1 << 0, workarea_bytes, arch::BASIC_TYPE_ALIGN, false);
-	if (!pp->init(workarea_bytes,
-	              arch::map_phys_adr(workarea_mem, workarea_bytes)))
-		return cause::FAIL;
-
-	node_heap->enum_free(1 << 0, &ed);
-	for (;;) {
-		uptr adr, bytes;
-		if (!node_heap->enum_free_next(&ed, &adr, &bytes))
+		if (!aff_heap->enum_free_next(&ed, &adr, &bytes))
 			break;
 
 		pp->load_free_range(adr, bytes);
@@ -613,12 +472,142 @@ cause::t load_page_pool(
 
 	pp->build();
 
+	return make_pair(cause::OK, pp);
+}
+
+/// allocate global_vars::core.page_pool_objs
+/// and set global_vars::core.page_pool_nr
+cause::t allocate_page_pool_array(tmp_alloc* heap, u32 nr)
+{
+	void* pp_array_mem = heap->alloc(
+	    SLOTM_ANY,
+	    sizeof (page_pool*[nr]),
+	    arch::BASIC_TYPE_ALIGN,
+	    false);
+	if (!pp_array_mem)
+		return cause::NOMEM;
+
+	void* pp_array_vadr =
+	    arch::map_phys_adr(pp_array_mem, sizeof (page_pool*[nr]));
+	page_pool** pp_array = new (pp_array_vadr) page_pool*[nr];
+
+	global_vars::core.page_pool_objs = pp_array;
+	global_vars::core.page_pool_nr = nr;
+
 	return cause::OK;
+}
+
+cause::t setup_page_pool_by_srat(tmp_alloc* heap)
+{
+#if CONFIG_ACPI
+
+	// initialize ACPI table.
+
+	void* acpi_buffer = heap->alloc(SLOTM_ANY,
+	                                arch::page::L1_SIZE,  // size
+	                                arch::page::L1_SIZE,  // align
+	                                true);                // forget
+	if (!acpi_buffer)
+		return cause::NOMEM;
+
+	cause::t r = acpi::table_init(
+	    reinterpret_cast<uptr>(acpi_buffer),
+	    arch::page::L1);
+	if (is_fail(r))
+		return r;
+
+	// get SRAT table.
+	ACPI_TABLE_SRAT* srat;
+	char sig_srat[] = ACPI_SIG_SRAT;
+	ACPI_STATUS as = AcpiGetTable(
+	    sig_srat, 0, reinterpret_cast<ACPI_TABLE_HEADER**>(&srat));
+	if (ACPI_FAILURE(as))
+		return cause::FAIL;
+
+	// create page_pool array.
+
+	u32 memaff_nr = acpi_count_memory_affinity(srat);
+	if (memaff_nr == 0)
+		return cause::FAIL;
+
+	r = allocate_page_pool_array(heap, memaff_nr);
+	if (is_fail(r))
+		return r;
+
+	void* aff_heap_mem = allocate_tmp_alloc(heap);
+
+	acpi::subtable_enumerator subtbl_enum(srat);
+	for (u32 i = 0; i < memaff_nr; ++i) {
+		// create page_pool instances.
+
+		auto* mem_aff = reinterpret_cast<ACPI_SRAT_MEM_AFFINITY*>(
+		    subtbl_enum.next(ACPI_SRAT_TYPE_MEMORY_AFFINITY));
+
+		tmp_alloc* aff_heap = new (aff_heap_mem) tmp_alloc;
+
+		if (!move_free_range(
+		    mem_aff->BaseAddress,
+		    mem_aff->BaseAddress + mem_aff->Length - 1,
+		    heap,
+		    aff_heap))
+		{
+			return cause::FAIL;
+		}
+
+		auto pp = create_page_pool(
+		    mem_aff->BaseAddress,
+		    mem_aff->Length,
+		    mem_aff->ProximityDomain,
+		    aff_heap);
+		if (is_fail(pp))
+			return pp.cause();
+
+		global_vars::core.page_pool_objs[i] = pp.data();
+
+		aff_heap->~tmp_alloc();
+		operator delete(aff_heap, aff_heap_mem);
+	}
+
+	//TODO: free aff_heap_mem
+
+#endif  // CONFIG_ACPI
+	return cause::FAIL;
+}
+
+cause::t setup_page_pool_by_bootinfo(tmp_alloc* heap)
+{
+	cause::t r = allocate_page_pool_array(heap, 1);
+	if (is_fail(r))
+		return r;
+
+	uptr padr_end = search_padr_end();
+
+	auto pp = create_page_pool(0, padr_end, 0, heap);
+	if (is_fail(pp))
+		return pp.cause();
+
+	global_vars::core.page_pool_objs[0] = pp.data();
+
+	return cause::OK;
+}
+
+cause::t setup_page_pool(tmp_alloc* heap)
+{
+	cause::t r = setup_page_pool_by_srat(heap);
+	if (is_ok(r))
+		return r;
+
+	r = setup_page_pool_by_bootinfo(heap);
+	if (is_ok(r))
+		return r;
+
+	return cause::FAIL;
 }
 
 /// @brief  page_pool から1ページを割り当てて native_cpu_node を作る。
 /// @retval r=cause::OK Succeeds, value is pointer to native_cpu_node.
-cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
+cause::pair<x86::native_cpu_node*> create_native_cpu_node(
+    page_pool* pp, cpu_id cpunode_id)
 {
 	typedef cause::pair<x86::native_cpu_node*> ret_type;
 
@@ -650,7 +639,7 @@ cause::pair<x86::native_cpu_node*> create_native_cpu_node(page_pool* pp)
 
 	void* buf = arch::map_phys_adr(page_adr, arch::page::PHYS_L1_SIZE);
 
-	x86::native_cpu_node* ncn = new (buf) x86::native_cpu_node;
+	x86::native_cpu_node* ncn = new (buf) x86::native_cpu_node(cpunode_id);
 
 	return ret_type(cause::OK, ncn);
 }
@@ -661,73 +650,97 @@ void set_page_pool_to_cpu_node(cpu_id cpu_node_id)
 
 	cpu_node* cn = global_vars::core.cpu_node_objs[cpu_node_id];
 
-	const int n = global_vars::core.page_pool_cnt;
+	const int n = global_vars::core.page_pool_nr;
 	cn->set_page_pool_cnt(n);
 
-	int pp_id = cpu_node_id;
 	for (int i = 0; i < n; ++i) {
-		cn->set_page_pool(i, pps[pp_id]);
-		if (++pp_id >= n)
-			pp_id = 0;
+		cn->set_page_pool(i, pps[i]);
 	}
 }
 
-cause::t create_cpu_nodes()
+cause::t setup_cpu_node_by_mpspec()
 {
-	const int n = global_vars::core.cpu_node_cnt;
-	for (int i = 0; i < n; ++i) {
-		page_pool* pp = global_vars::core.page_pool_objs[i];
-		auto rcn = create_native_cpu_node(pp);
-		if (is_fail(rcn))
-			return rcn.r;
-		global_vars::core.cpu_node_objs[i] = rcn.value;
+	mpspec mps;
+	cause::t r = mps.load();
+	if (is_fail(r))
+		return r;
 
+	page_pool* pp = global_vars::core.page_pool_objs[0];
+
+	mpspec::processor_iterator proc_itr(&mps);
+	cpu_id proc_nr = 0;
+	for (;;) {
+		const mpspec::processor_entry* pe = proc_itr.get_next();
+		if (!pe)
+			break;
+
+		auto rcn = create_native_cpu_node(pp, pe->localapic_id);
+		if (is_fail(rcn))
+			return rcn.cause();
+
+		global_vars::core.cpu_node_objs[proc_nr] = rcn.data();
+
+		++proc_nr;
+	}
+
+	global_vars::core.cpu_node_nr = proc_nr;
+
+	return cause::OK;
+}
+
+cause::t setup_cpu_node_one()
+{
+	global_vars::core.cpu_node_nr = 1;
+
+	page_pool* pp = global_vars::core.page_pool_objs[0];
+	auto rcn = create_native_cpu_node(pp, arch::get_cpu_lapic_id());
+	if (is_fail(rcn))
+		return rcn.cause();
+
+	global_vars::core.cpu_node_objs[0] = rcn.data();
+
+	return cause::OK;
+}
+
+cause::t setup_cpu_node()
+{
+	cause::t r = setup_cpu_node_by_mpspec();
+	if (is_ok(r))
+		return r;
+
+	r = setup_cpu_node_one();
+	if (is_ok(r))
+		return r;
+
+	return cause::FAIL;
+}
+
+cause::t setup_cpu_page()
+{
+	cpu_id n = global_vars::core.cpu_node_nr;
+	for (cpu_id i = 0; i < n; ++i) {
 		set_page_pool_to_cpu_node(i);
 	}
 
 	return cause::OK;
 }
 
-/// @brief  Local APIC ID を振りなおす。
-//
-/// Local APIC ID が 0 から始まる連番になるようにする。
-cause::t renumber_cpu_ids(const mpspec& mps)
+cause::t init_kern_space()
 {
-	const int cpu_cnt = get_cpu_node_count();
-	cpu_node** const cns = global_vars::core.cpu_node_objs;
+	arch::pte* cr3 = static_cast<arch::pte*>(
+	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
 
-	int left = cpu_cnt;
+	x86::page_table pg_tbl(cr3);
 
-	// ID が cpu_cnt 以下の CPU は ID を変更せずに登録する。
-	for (mpspec::processor_iterator proc_itr(&mps); ; ) {
-		const mpspec::processor_entry* pe = proc_itr.get_next();
-		if (!pe)
-			break;
+	for (uptr padr = KERNEL_ADR_SPACE_START;
+	     padr < KERNEL_ADR_SPACE_END;
+	     padr += arch::page::PHYS_L4_SIZE)
+	{
+		auto r = pg_tbl.declare_table(padr, arch::page::PHYS_L4);
 
-		const u8 id = pe->localapic_id;
-		if (id < cpu_cnt) {
-			static_cast<x86::native_cpu_node*>(cns[id])->set_original_lapic_id(id);
-			--left;
-		}
+		if (is_fail(r))
+			return r.r;
 	}
-
-	int cns_i = 0;
-	for (mpspec::processor_iterator proc_itr(&mps); ; ) {
-		const mpspec::processor_entry* pe = proc_itr.get_next();
-		if (!pe)
-			break;
-
-		const u8 id = pe->localapic_id;
-		if (id >= cpu_cnt) {
-			while (static_cast<x86::native_cpu_node*>(cns[cns_i])->original_lapic_id_is_enable())
-				++cns_i;
-			static_cast<x86::native_cpu_node*>(cns[cns_i])->set_original_lapic_id(id);
-			--left;
-		}
-	}
-
-	if (left != 0)
-		return cause::FAIL;
 
 	return cause::OK;
 }
@@ -750,87 +763,20 @@ cause::t cpu_page_init()
 	if (is_fail(r))
 		return r;
 
-	cpu_id cpucnt;
-	r = count_cpus_by_acpi(&heap, &cpucnt);
-
-	// PAM1 が利用可能になれば mpspec をロード可能になる。
-	mpspec mps;
-	r = mps.load();
-	if (is_fail(r)) {
-		// TODO: mpspec が無い場合は単一CPUとして処理する。
+	r = setup_page_pool(&heap);
+	if (is_fail(r))
 		return r;
-	}
 
-	global_vars::core.cpu_node_cnt = min(count_cpus(mps), CONFIG_MAX_CPUS);
-	global_vars::core.page_pool_cnt = global_vars::core.cpu_node_cnt;
-
-	// init gvar
 	for (int i = 0; i < CONFIG_MAX_CPUS; ++i)
 		global_vars::core.cpu_node_objs[i] = 0;
 
-	const uptr page_pool_objs_sz =
-	    sizeof (page_pool*) * global_vars::core.cpu_node_cnt;
-	global_vars::core.page_pool_objs =
-	    new (arch::map_phys_adr(heap.alloc(
-	        SLOTM_ANY,
-	        page_pool_objs_sz,
-	        arch::BASIC_TYPE_ALIGN,
-	        false), page_pool_objs_sz)
-	    ) page_pool*[global_vars::core.cpu_node_cnt];
-
-	tmp_alloc* avail_ram = new (allocate_tmp_alloc(&heap)) tmp_alloc;
-	if (!avail_ram)
-		return cause::NOMEM;
-
-	tmp_separator sep(avail_ram);
-	sep.set_slot_range(0, 0, UPTR_MAX);
-	r = load_avail(&sep);
-	if (is_fail(r)) {
-		log()("!!! Available memory detection failed.")();
-		return r;
-	}
-
-	// TODO:free
-	void* node_ram_mem = allocate_tmp_alloc(&heap);
-	void* node_heap_mem = allocate_tmp_alloc(&heap);
-
-	for (int i = 0; i < global_vars::core.page_pool_cnt; ++i) {
-		// 未割り当てのメモリサイズを未割り当てのCPU数で割る
-		const uptr assign_bytes =
-		    avail_ram->total_free_bytes(1 << 0) /
-		    (global_vars::core.cpu_node_cnt - i);
-
-		tmp_alloc* node_ram = new (node_ram_mem) tmp_alloc;
-		tmp_alloc* node_heap = new (node_heap_mem) tmp_alloc;
-
-		if (!assign_ram(assign_bytes, avail_ram, node_ram))
-			log()("!! Page assign to node failed.")();
-		proj_free_mem(&heap, node_ram, node_heap);
-
-		void* pp_mem = node_heap->alloc(1 << 0, sizeof (page_pool), arch::BASIC_TYPE_ALIGN, false);
-		page_pool* pp = new (arch::map_phys_adr(pp_mem, sizeof (page_pool))) page_pool;
-		global_vars::core.page_pool_objs[i] = pp;
-
-		r = load_page_pool(node_ram, node_heap, pp);
-		if (is_fail(r))
-			return r;
-
-		node_ram->~tmp_alloc();
-		node_heap->~tmp_alloc();
-		operator delete(node_ram, node_ram_mem);
-		operator delete(node_heap, node_heap_mem);
-	}
-
-	r = create_cpu_nodes();
+	r = setup_cpu_node();
 	if (is_fail(r))
 		return r;
 
-	r = renumber_cpu_ids(mps);
+	r = setup_cpu_page();
 	if (is_fail(r))
 		return r;
-
-	page_heap_dealloc(node_ram_mem);
-	page_heap_dealloc(node_heap_mem);
 
 	r = init_kern_space();
 	if (is_fail(r))
