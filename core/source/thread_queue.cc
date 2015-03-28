@@ -1,15 +1,15 @@
 // @file   thread_sched.cc
 // @brief  thread_sched class implements.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2012-2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -19,16 +19,21 @@
 
 #include <core/thread_sched.hh>
 
-#include <core/new_ops.hh>
 #include <core/cpu_node.hh>
+#include <core/new_ops.hh>
 
+/** @class thread_sched
+ *
+ * thread_sched は実行する thread を選択するだけなので、thread を切り替える
+ * 処理は別の場所で実装する必要がある。
+ */
 
-namespace {
-
-const uptr STACK_SIZE = 0x1000;
-
-}
-
+/** @brief thread_sched によるスケジューリングのはじめ方
+ *
+ * 2通りの方法がある。
+ * (1) start()
+ * (2) attach_boot_thread()
+ */
 
 thread_sched::thread_sched(cpu_node* _owner_cpu) :
 	owner_cpu(_owner_cpu),
@@ -40,12 +45,24 @@ void thread_sched::init()
 {
 }
 
+cause::pair<thread*> thread_sched::start()
+{
+	running_thread = ready_queue.remove_head();
+
+	if (running_thread)
+		return make_pair(cause::OK, running_thread);
+	else
+		return null_pair(cause::FAIL);
+}
+
 /// @brief カーネルの初期化処理用スレッドを関連付ける。
 //
 /// 何もスレッドが無い状態で呼び出さなければならない。
 cause::t thread_sched::attach_boot_thread(thread* t)
 {
+	t->owner_cpu_node_id = owner_cpu->get_cpu_node_id();
 	t->owner_cpu = owner_cpu;
+	t->state = thread::READY;
 
 	running_thread = t;
 
@@ -54,6 +71,7 @@ cause::t thread_sched::attach_boot_thread(thread* t)
 
 void thread_sched::attach(thread* t)
 {
+	t->owner_cpu_node_id = owner_cpu->get_cpu_node_id();
 	t->owner_cpu = owner_cpu;
 
 	thread_state_lock.wlock();
@@ -193,5 +211,26 @@ void thread_sched::_ready(thread* t)
 	} else {
 		t->anti_sleep = true;
 	}
+}
+
+#include <core/log.hh>
+void thread_sched::dump()
+{
+	log(1)("run=")(running_thread)();
+	log(1)("sleep:");
+	for(auto i = sleeping_queue.front();
+            i;
+	    i = sleeping_queue.next(i))
+	{
+		log(1)(" ")(i);
+	}
+	log(1)()("ready:");
+	for(auto i = ready_queue.front();
+            i;
+	    i = ready_queue.next(i))
+	{
+		log(1)(" ")(i);
+	}
+	log(1)()("--- thread_sched dump end ---")();
 }
 

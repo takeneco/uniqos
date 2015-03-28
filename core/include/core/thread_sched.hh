@@ -1,6 +1,6 @@
-/// @file  thread_sched.hh
+/// @file  core/thread_sched.hh
 //
-// (C) 2012-2014 KATO Takeshi
+// (C) 2012-2015 KATO Takeshi
 //
 
 #ifndef CORE_THREAD_SCHED_HH_
@@ -19,6 +19,7 @@ public:
 
 	void init();
 
+	cause::pair<thread*> start();
 	cause::t attach_boot_thread(thread* t);
 
 	void attach(thread* t);
@@ -35,6 +36,7 @@ public:
 
 	thread* exit_thread(thread* t);
 
+void dump();
 private:
 	void _ready(thread* t);
 

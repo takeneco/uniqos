@@ -1,12 +1,12 @@
 /// @file  native_cpu_node.hh
 //
-// (C) 2013-2014 KATO Takeshi
+// (C) 2013-2015 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_CPU_NODE_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_CPU_NODE_HH_
 
-#include <cpu_node.hh>
+#include <core/cpu_node.hh>
 #include <cpu_idte.hh>
 #include <regset.hh>
 
@@ -22,9 +22,10 @@ public:
 	class IDT;
 
 public:
-	native_cpu_node();
+	native_cpu_node(cpu_id cpunode_id);
 
 	cause::t setup();
+	cause::t start_thread_sched();
 	cause::t attach_boot_thread(thread* t);
 	cause::t start_message_loop();
 

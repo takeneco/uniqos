@@ -1,14 +1,14 @@
 /// @file   native_cpu_node.cc
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2013-2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -53,7 +53,8 @@ namespace x86 {
 
 // x86::native_cpu_node
 
-native_cpu_node::native_cpu_node() :
+native_cpu_node::native_cpu_node(cpu_id cpunode_id) :
+	cpu_node(cpunode_id),
 	preempt_disable_cnt(0)
 {
 }
@@ -83,6 +84,28 @@ cause::t native_cpu_node::setup()
 	return cause::OK;
 }
 
+/// @brief  thread_shced によるスケジューリングを開始する。
+//
+/// @note  This function is not return if succeeds.
+cause::t native_cpu_node::start_thread_sched()
+{
+	thread* th1 = get_current_thread();
+
+	auto r = threads.start();
+	if (is_fail(r))
+		return r.cause();
+
+	thread* th2 = r.data();
+
+	load_running_thread(th2);
+
+	native_switch_regset(
+	    static_cast<x86::native_thread*>(th2)->ref_regset(),
+	    static_cast<x86::native_thread*>(th1)->ref_regset());
+
+	return cause::FAIL;
+}
+
 cause::t native_cpu_node::attach_boot_thread(thread* t)
 {
 	return threads.attach_boot_thread(t);
@@ -94,7 +117,8 @@ cause::t native_cpu_node::start_message_loop()
 	    this, &message_loop_entry, this);
 	if (is_fail(r))
 		return r.cause();
-	message_thread = r.value;
+
+	message_thread = r.data();
 
 	ready_thread(message_thread);
 
@@ -402,6 +426,7 @@ void exit_boot_thread_handler(message* m)
 /// Must to be call from boot thread.
 void native_cpu_node::exit_boot_thread()
 {
+get_cpu_node()->get_thread_ctl().dump();
 	arch::intr_disable();
 
 	// dec_preempt_disable() に対応して使用する。
@@ -423,6 +448,7 @@ void native_cpu_node::exit_boot_thread()
 	etm->data = boot_thr;
 	post_soft_message(etm);
 
+get_cpu_node()->get_thread_ctl().dump();
 	// この後、コンテキストスイッチするので、preempt_disable を解除し
 	// なければならない。
 	// しかし、割込みが発生するとスレッドが切り替わってスレッドが開放
@@ -491,7 +517,7 @@ void native_cpu_node::_sleep_current_thread()
 
 x86::native_cpu_node* get_native_cpu_node()
 {
-	const cpu_id id = arch::get_cpu_id();
+	const cpu_id id = arch::get_cpu_node_id();
 
 	return static_cast<x86::native_cpu_node*>(
 	    global_vars::core.cpu_node_objs[id]);

@@ -2,7 +2,7 @@
 /// @brief Call kernel initialize funcs.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2010-2014 KATO Takeshi
+//  (C) 2010-2015 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -49,6 +49,11 @@ io_node* create_serial();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
 cause::t ramfs_init();
+void kern_init2(void* context);
+
+namespace arch {
+void imitate_thread();
+}  // namespace arch
 
 void disable_intr_from_8259A()
 {
@@ -83,12 +88,24 @@ void disable_intr_from_8259A()
 }
 
 namespace {
+
+struct boot_context
+{
+	native_thread* first_thr;
+	native_thread* boot_thr;
+};
+
 void timer_handler(message* msg)
 {
 	log()("MSG:")(msg)();
 	timer_message* tmsg = static_cast<timer_message*>(msg);
 	//tmsg->nanosec_delay = 1000000000;
 	global_vars::core.timer_ctl_obj->set_timer(tmsg);
+}
+
+cause::pair<native_thread*> create_first_thread()
+{
+	return create_thread(get_cpu_node(), 0x00100000, 0);
 }
 
 cause::t create_first_process(io_node* out1)
@@ -110,7 +127,7 @@ cause::t create_first_process(io_node* out1)
 		return r;
 	}
 
-	r = pr->set_io_desc(1, out1);
+	r = pr->set_io_desc(1, out1, 0);
 	if (is_fail(r)) {
 		log()(SRCPOS)(":r=").u(r)();
 		return r;
@@ -183,19 +200,26 @@ cause::t create_first_process(io_node* out1)
 	return cause::OK;
 }
 
+cause::t fail_msg(const char* func, uint line, cause::t r)
+{
+	log()(func)('(').u(line)("): failed(").u(r)(").")();
+	return r;
+}
+
 }  // namespace
 
 text_vga vga_dev;
-extern "C" int kern_init(u64 bootinfo_adr)
+extern "C" cause::t kern_init(u64 bootinfo_adr)
 {
+	arch::imitate_thread();
+
+	disable_intr_from_8259A();
+
 	global_vars::arch.bootinfo = reinterpret_cast<void*>(bootinfo_adr);
-	global_vars::core.log_target_objs = 0;
 
 	cause::t r = cpu_page_init();
 	if (is_fail(r))
 		return r;
-
-	preempt_disable();
 
 	global_vars::arch.bootinfo =
 	    arch::map_phys_adr(bootinfo_adr, bootinfo::MAX_BYTES);
@@ -208,42 +232,63 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
-	//vga_dev.init(80, 25, (void*)0xb8000);
 	vga_dev.init(80, 25, arch::map_phys_adr(0xb8000, 4096));
 	log_install(0, &vga_dev);
 	log_install(1, &vga_dev);
 
-	r = mem_io_setup();
-	if (is_fail(r))
-		return r;
-
-	disable_intr_from_8259A();
-
 	r = x86::thread_ctl_setup();
 	if (is_fail(r))
-		return r;
-
-	r = x86::native_process_init();
-	if (is_fail(r))
-		return r;
+		return fail_msg(__func__, __LINE__, r);
 
 	r = x86::cpu_ctl_setup();
 	if (is_fail(r))
-		return r;
+		return fail_msg(__func__, __LINE__, r);
 
 	r = x86::cpu_setup();
 	if (is_fail(r))
-		return r;
+		return fail_msg(__func__, __LINE__, r);
 
-	r = create_boot_thread();
-	if (is_fail(r))
-		return r;
+	auto first_thr = create_first_thread();
+	if (is_fail(first_thr))
+		return fail_msg(__func__, __LINE__, first_thr.cause());
 
-	r = intr_setup();
+	boot_context* bc = new (generic_mem()) boot_context;
+	if (!bc)
+		return fail_msg(__func__, __LINE__, cause::NOMEM);
+
+	auto boot_thr2 =
+	    create_thread(get_cpu_node(), kern_init2, bc);
+	if (is_fail(boot_thr2))
+		return fail_msg(__func__, __LINE__, boot_thr2.cause());
+
+	bc->first_thr = first_thr.data();
+
+	boot_thr2.data()->ready();
+
+	return x86::get_native_cpu_node()->start_thread_sched();
+}
+
+namespace {
+
+cause::t kern_setup(void* context)
+{
+	preempt_disable();
+
+	boot_context* bc = static_cast<boot_context*>(context);
+
+	//TODO: release boot thread
+	// メモリ空間が違うので解放方法も特殊
+	//destroy_thread(bc->boot_thr);
+
+	cause::t r = intr_setup();
 	if (is_fail(r))
 		return r;
 
 	r = irq_setup();
+	if (is_fail(r))
+		return r;
+
+	r = device_ctl_init();
 	if (is_fail(r))
 		return r;
 
@@ -258,18 +303,22 @@ extern "C" int kern_init(u64 bootinfo_adr)
 	if (is_fail(r))
 		return r;
 
+	r = mem_io_setup();
+	if (is_fail(r))
+		return fail_msg(__func__, __LINE__, r);
+
 	const int MEMLOG_SIZE = 8192 - 16;
 	void* memlog_buffer = mem_alloc(MEMLOG_SIZE);
 	if (memlog_buffer) {
 		io_node* memio =
-		    new (mem_alloc(sizeof (ringed_mem_io)))
+		    new (generic_mem())
 		    ringed_mem_io(memlog_buffer, MEMLOG_SIZE);
 
 		log_install(2, memio);
 
 		global_vars::core.memlog_buffer = memlog_buffer;
 	}
-log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
+log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE)();
 
 	preempt_enable();
 
@@ -282,7 +331,7 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 		log().write(bootlog->info_bytes - sizeof *bootlog, bootlog->log);
 	}
 
-	r = acpi_init();
+	r = acpi::init();
 	if (is_fail(r))
 		return r;
 
@@ -425,15 +474,29 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE);
 
 	ramfs_init();
 
+	r = x86::native_process_init();
+	if (is_fail(r))
+		return r;
+
 	r = create_first_process(serial);
 	if (is_fail(r)) {
 		log()("create_first_process() failed")();
 	}
 	log()("create_first_process() succeeded")();
 
+	pci_setup();
+	//ata_setup();
+
+for(;;)asm("hlt");
 	get_native_cpu_node()->exit_boot_thread();
 	sleep_current_thread();
 
-	return 0;
+	//return 0;
 }
 
+}  // namespace
+
+void kern_init2(void* context)
+{
+	kern_setup(context);
+}
