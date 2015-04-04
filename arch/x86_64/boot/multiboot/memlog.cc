@@ -3,7 +3,7 @@
 /// @details カーネルへログを渡するためにメモリ上にログを書く。
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  (C) 2011-2015 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -28,17 +28,17 @@ enum {
 	HEAPSLOTM = SLOTM_BOOTHEAP | SLOTM_NORMAL,
 };
 
-io_node::operations memlog_ops;
+io_node::interfaces memlog_ifs;
 
 }  // namespace
 
 cause::t memlog_file::setup()
 {
-	memlog_ops.init();
+	memlog_ifs.init();
 
-	memlog_ops.seek  = call_on_io_node_seek<memlog_file>;
-	memlog_ops.read  = call_on_io_node_read<memlog_file>;
-	memlog_ops.write = call_on_io_node_write<memlog_file>;
+	memlog_ifs.seek  = call_on_io_node_seek<memlog_file>;
+	memlog_ifs.read  = call_on_io_node_read<memlog_file>;
+	memlog_ifs.write = call_on_io_node_write<memlog_file>;
 
 	return cause::OK;
 }
@@ -53,7 +53,7 @@ cause::t memlog_file::open()
 
 	size = 0;
 
-	io_node::ops = &memlog_ops;
+	io_node::ifs = &memlog_ifs;
 
 	return cause::OK;
 }
