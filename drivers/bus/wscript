@@ -1,0 +1,19 @@
+#
+# (C) 2014-2015 KATO Takeshi
+#
+
+
+pci_name = 'pci'
+
+def configure(x):
+	#if x.env['CONFIG_PCI']:
+	x.env.append_value('KERNEL_LINK_USE', pci_name)
+
+def build(x):
+	#if x.env['CONFIG_PCI']:
+	x.objects(
+		    target   = pci_name,
+		    source   = 'pci.cc',
+		    use      = ['KERNEL'],
+		)
+

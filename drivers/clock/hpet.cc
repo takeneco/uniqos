@@ -2,7 +2,7 @@
 /// @brief HPET timer driver.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  (C) 2012-2015 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
-#include <clock_src.hh>
+#include <core/clock_src.hh>
 #include <config.h>
 #include <core/cpu_node.hh>
 #include <core/global_vars.hh>
@@ -27,11 +27,9 @@
 #include <core/mempool.hh>
 #include <core/message.hh>
 #include <irq_ctl.hh>
-#include "mpspec.hh"
-#include <new_ops.hh>
 
 #if CONFIG_ACPI
-#  include <acpi_ctl.hh>
+#  include <core/acpi_ctl.hh>
 #endif  // CONFIG_ACPI
 
 
@@ -234,7 +232,8 @@ namespace {
 cause::t hpet_detect_acpi(hpet** dev)
 {
 	ACPI_TABLE_HPET* hpet_entry;
-	ACPI_STATUS r = AcpiGetTable(ACPI_SIG_HPET, 0,
+	char sig[] = ACPI_SIG_HPET;
+	ACPI_STATUS r = AcpiGetTable(sig, 0,
 	    reinterpret_cast<ACPI_TABLE_HEADER**>(&hpet_entry));
 	if (ACPI_FAILURE(r))
 		return cause::FAIL;
