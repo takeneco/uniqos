@@ -1,18 +1,31 @@
-/// @file  memcell.hh
+/// @file  core/memcell.hh
 /// @brief Physical memory management.
-//
-// (C) 2011-2014 KATO Takeshi
-//
 
-#ifndef INCLUDE_MEMCELL_HH_
-#define INCLUDE_MEMCELL_HH_
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
+//
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
+//
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef CORE_MEMCELL_HH_
+#define CORE_MEMCELL_HH_
 
 #include <arch.hh>
 #include <core/bitmap.hh>
 #include <core/chain.hh>
-#include <new_ops.hh>
+#include <core/new_ops.hh>
 
-#include <output_buffer.hh>
+#include <core/output_buffer.hh>
 
 
 /////////////////////////////////////////////////////////////////////
@@ -85,8 +98,7 @@ private:
 		/// 予約ページのビットは false
 		int_bitset<CELLTYPE> table;
 
-		bichain_node<cell> _chain_node;
-		bichain_node<cell>& chain_hook() { return _chain_node; }
+		chain_node<cell> chain_node;
 	};
 	enum {
 		BITMAP_BITS = int_bitset<CELLTYPE>::BITS,
@@ -98,12 +110,12 @@ private:
 		// やりたいのは、
 		// free_pattern = (1 << pages_in_cell()) - 1
 		// なのだが、
-		// IA のシフト命令はレジスタ幅以上のシフトができない。
+		// IA-CPU のシフト命令はレジスタ幅以上のシフトができない。
 		free_pattern =
 		    (CELLTYPE(-1) >> (BITMAP_BITS - pages_in_cell()));
 	}
 
-	typedef bichain<cell, &cell::chain_hook> cell_chain;
+	typedef front_chain<cell, &cell::chain_node> cell_chain;
 
 	/// 空きページを含む cell
 	cell_chain free_chain;
@@ -132,7 +144,7 @@ private:
 	}
 
 	///
-	/// transform between address, page, cell
+	/// transform between address, page and cell
 	///
 
 	page_t up_align_page(uptr adr) const {
@@ -214,10 +226,7 @@ public:
 		}
 
 		if (level >= 2) {
-			for (cell* c = free_chain.head();
-			     c;
-			     c = free_chain.next(c))
-			{
+			for (auto c : free_chain) {
 				lt.x(get_page_adr(c,0))
 				("-").x(get_page_adr(c,cell_size_bits))
 				(":").x(c->table.get_raw())();
@@ -349,7 +358,7 @@ void mem_cell_base<CELLTYPE>::build_free_chain()
 
 	for (cell_t i = cell_count - 1; i >= 0; --i) {
 		if (!cell_table[i].table.is_false_all()) {
-			free_chain.insert_head(&cell_table[i]);
+			free_chain.push_front(&cell_table[i]);
 
 			for (int j = 0; j < pic; ++j) {
 				if (cell_table[i].table.is_true(j))
@@ -397,7 +406,7 @@ cause::t mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 	cell* c;
 
 	for (;;) {
-		c = free_chain.head();
+		c = free_chain.front();
 		if (c)
 			break;
 
@@ -411,7 +420,7 @@ cause::t mem_cell_base<CELLTYPE>::_reserve_1page(uptr* padr)
 	--free_pages;
 
 	if (c->table.is_false_all())
-		free_chain.remove_head();
+		free_chain.pop_front();
 
 	*padr = get_page_adr(c, offset);
 
@@ -429,7 +438,7 @@ cause::t mem_cell_base<CELLTYPE>::_free_1page(uptr padr)
 
 	cell& c = get_cell(padr);
 	if (c.table.is_false_all())
-		free_chain.insert_head(&c);
+		free_chain.push_front(&c);
 
 	const page_t page_of_c = page_of_cell(down_align_page(padr));
 
@@ -466,7 +475,7 @@ bool mem_cell_base<CELLTYPE>::import_uplevel_page()
 
 	c.table.set_raw(free_pattern);
 
-	free_chain.insert_head(&c);
+	free_chain.push_front(&c);
 
 	free_pages += pages_in_cell();
 

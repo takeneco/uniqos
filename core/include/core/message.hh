@@ -1,21 +1,18 @@
 /// @file   message.hh
 /// @brief  kernel internal message.
 //
-// (C) 2011-2014 KATO Takeshi
+// (C) 2011-2015 KATO Takeshi
 //
 
-#ifndef CORE_INCLUDE_CORE_MESSAGE_HH_
-#define CORE_INCLUDE_CORE_MESSAGE_HH_
+#ifndef CORE_MESSAGE_HH_
+#define CORE_MESSAGE_HH_
 
 #include <core/chain.hh>
 
 
 class message
 {
-	chain_node<message> chain_node_;
 public:
-	chain_node<message>& chain_hook() { return chain_node_; }
-
 	typedef void (*handler_type)(message* msg);
 
 	message()
@@ -29,6 +26,7 @@ public:
 	{
 	}
 
+	forward_chain_node<message> msgq_chain_node;
 	handler_type handler;
 };
 

@@ -1,10 +1,23 @@
-/// @file  intr_ctl.hh
-//
-// (C) 2011-2014 KATO Takeshi
-//
+/// @file  core/intr_ctl.hh
 
-#ifndef CORE_INCLUDE_CORE_INTR_CTL_HH_
-#define CORE_INCLUDE_CORE_INTR_CTL_HH_
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
+//
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
+//
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+#ifndef CORE_INTR_CTL_HH_
+#define CORE_INTR_CTL_HH_
 
 #include <arch.hh>
 #include "arch_specs.hh"
@@ -16,15 +29,14 @@
 /// このクラスのインスタンスは割り込みベクタ毎に生成する必要がある。
 class intr_handler
 {
-	chain_node<intr_handler> _chain_node;
+	friend class intr_ctl;
+	forward_chain_node<intr_handler> chain_node;
 
 public:
 	typedef void (*handler_type)(intr_handler* handler);
 
 	intr_handler() {}
 	intr_handler(handler_type _handler) : handler(_handler) {}
-
-	chain_node<intr_handler>& chain_hook() { return _chain_node; }
 
 	handler_type handler;
 };
@@ -50,9 +62,8 @@ public:
 /// @note  must init by constructor.
 class intr_ctl
 {
-	typedef
-	    chain<intr_handler, &intr_handler::chain_hook>
-	    intr_handler_chain;
+	typedef front_forward_chain<intr_handler, &intr_handler::chain_node>
+	        intr_handler_chain;
 
 	typedef void (* post_intr_handler)();
 

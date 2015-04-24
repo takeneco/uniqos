@@ -2,7 +2,7 @@
 /// @brief Physical page management.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  (C) 2012-2015 KATO Takeshi
 //
 //  UNIQOS is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -17,9 +17,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <global_vars.hh>
 #include <page_ctl.hh>
-#include <pagetable.hh>
+#include <arch/pagetable.hh>
 
 
 namespace arch {
@@ -85,76 +84,6 @@ void page_ctl::detect_paging_features()
 	(";padr_width=").u(u8(padr_width))
 	(";vadr_width=").u(u8(vadr_width))();
 */
-}
-
-page_ctl::page_ctl()
-{
-	page_base[0].set_params(12, 0);
-	page_base[1].set_params(18, &page_base[0]);
-	page_base[2].set_params(21, &page_base[1]);
-	page_base[3].set_params(27, &page_base[2]);
-	page_base[4].set_params(30, &page_base[3]);
-}
-
-/// @brief 物理メモリの管理に必要なデータエリアのサイズを返す。
-//
-/// @param[in] _pmem_end 物理アドレスの終端アドレス。
-/// @return ワークエリアのサイズをバイト数で返す。
-uptr page_ctl::calc_workarea_size(uptr _pmem_end)
-{
-	return page_base[4].calc_buf_size(_pmem_end);
-}
-
-/// @param[in] _pmem_end 物理メモリの終端アドレス。
-/// @param[in] buf  calc_workarea_size() が返したサイズのメモリへのポインタ。
-/// @return true を返す。
-bool page_ctl::init(uptr _pmem_end, void* buf)
-{
-	pmem_end = _pmem_end;
-
-	page_base[4].set_buf(buf, _pmem_end);
-
-	detect_paging_features();
-
-	return true;
-}
-
-bool page_ctl::load_free_range(u64 adr, u64 bytes)
-{
-	page_base[4].free_range(adr, adr + bytes - 1);
-
-	return true;
-}
-
-void page_ctl::build()
-{
-	page_base[4].build_free_chain();
-}
-
-cause::type page_ctl::alloc(arch::page::TYPE page_type, uptr* padr)
-{
-	return page_base[page_type].reserve_1page(padr);
-}
-
-cause::type page_ctl::free(arch::page::TYPE page_type, uptr padr)
-{
-	return page_base[page_type].free_1page(padr);
-}
-
-void page_ctl::dump(output_buffer& ob, uint level)
-{
-	for (int i = 0; i < 5; ++i) {
-		page_base[i].dump(pmem_end, ob, level);
-	}
-
-	ob("lev      free_pages      alloc_pages")();
-
-	for (int i = 0; i < 5; ++i) {
-		ob("L").u(i + 1);
-		ob(" ").x(page_base[i].get_free_pages());
-		ob(" ").x(page_base[i].get_alloc_pages());
-		ob.endl();
-	}
 }
 
 }  // namespace arch

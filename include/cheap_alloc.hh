@@ -1,15 +1,15 @@
 /// @file   cheap_alloc.hh
 /// @brief  cheap address allocation implement.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -17,10 +17,10 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef INCLUDE_CHEAP_ALLOC_HH_
-#define INCLUDE_CHEAP_ALLOC_HH_
+#ifndef UTIL_CHEAP_ALLOC_HH_
+#define UTIL_CHEAP_ALLOC_HH_
 
-#include <output_buffer.hh>
+#include <core/output_buffer.hh>
 
 
 /// @brief  簡単なメモリ管理の実装
@@ -99,11 +99,10 @@ private:
 		uptr adr;
 		uptr bytes;  ///< unused if bytes == 0.
 
-		bichain_node<range> _chain_node;
-		bichain_node<range>& chain_hook() { return _chain_node; }
+		chain_node<range> chain_node;
 	};
 
-	typedef bichain<range, &range::chain_hook> range_chain;
+	typedef front_chain<range, &range::chain_node> range_chain;
 
 	struct adr_slot
 	{
@@ -155,7 +154,7 @@ bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, const adr_range& ar)
 	if (ent == 0)
 		return false;
 
-	slots[slot].free_ranges.insert_head(ent);
+	slots[slot].free_ranges.push_front(ent);
 
 	return true;
 }
@@ -170,7 +169,7 @@ bool cheap_alloc<BUF_COUNT>::add_free(slot_index slot, uptr adr, uptr bytes)
 	if (ent == 0)
 		return false;
 
-	slots[slot].free_ranges.insert_head(ent);
+	slots[slot].free_ranges.push_front(ent);
 
 	return true;
 }
@@ -302,7 +301,7 @@ bool cheap_alloc<BUF_COUNT>::enum_free_next(
 			    slots[i].free_ranges.next(x->range_node);
 		else
 			x->range_node =
-			    slots[i].free_ranges.head();
+			    slots[i].free_ranges.front();
 
 		if (x->range_node)
 			break;
@@ -351,7 +350,7 @@ bool cheap_alloc<BUF_COUNT>::enum_alloc_next(
 			    slots[i].alloc_ranges.next(x->range_node);
 		else
 			x->range_node =
-			    slots[i].alloc_ranges.head();
+			    slots[i].alloc_ranges.front();
 
 		if (x->range_node)
 			break;
@@ -448,7 +447,7 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 	uptr r_head = adr;
 	uptr r_tail = adr + bytes - 1;
 
-	for (range* ent = slot->free_ranges.head(); ent; )
+	for (range* ent = slot->free_ranges.front(); ent; )
 	{
 		// e_head, e_tail : 発見した空きメモリの範囲
 		uptr e_head = ent->adr;
@@ -463,13 +462,13 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 				range* alloc = new_range(adr, bytes);
 				if (!alloc)
 					return false;
-				slot->alloc_ranges.insert_head(alloc);
+				slot->alloc_ranges.push_front(alloc);
 			}
 
 			range* free2 = new_range(r_tail + 1, e_tail - r_tail);
 			if (!free2)
 				return false;
-			slot->free_ranges.insert_head(free2);
+			slot->free_ranges.push_front(free2);
 
 			ent->bytes = r_head - e_head;
 			break;
@@ -484,7 +483,7 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 				    e_head, min(r_tail, e_tail) - e_head + 1);
 				if (!alloc)
 					return false;
-				slot->alloc_ranges.insert_head(alloc);
+				slot->alloc_ranges.push_front(alloc);
 			}
 
 			e_head = r_tail + 1;
@@ -500,7 +499,7 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 				range* alloc = new_range(h, e_tail - h + 1);
 				if (!alloc)
 					return false;
-				slot->alloc_ranges.insert_head(alloc);
+				slot->alloc_ranges.push_front(alloc);
 			}
 
 			e_tail = r_head - 1;
@@ -523,14 +522,15 @@ bool cheap_alloc<BUF_COUNT>::_reserve(
 }
 
 /// @brief  空きメモリを割り当てる。
-/// @param[in] bytes     メモリサイズ。
-/// @param[in] align     アライメント。
+/// @param[in]    bytes  メモリサイズ。
+/// @param[in]    align  アライメント。
 ///                      アライメントを考慮する必要がなければ 1 を指定する。
-/// @param[in] forget    Forget this address range.
+/// @param[in]   forget  If true, this function forget this address range was
+///                      allocated.
 /// @param[in,out] slot  Address slot. Must not be null.
-/// @param[out] adr      Alloced address.
-/// @retval true  成功した。
-/// @retval false 失敗した。
+/// @param[out]     adr  Alloced address.
+/// @retval true  Succeeded.
+/// @retval false Failed.
 //
 /// - forget = false ならば slot->free_ranges から割り当てたメモリは
 ///   slot->alloc_ranges に格納する。
@@ -545,17 +545,16 @@ bool cheap_alloc<BUF_COUNT>::_alloc(
     uptr* adr)
 {
 	uptr align_gap;
-	range* ent;
-	for (ent = slot->free_ranges.head();
-	     ent;
-	     ent = slot->free_ranges.next(ent))
-	{
-		if (ent->bytes < bytes)
-			continue;
+	range* ent = nullptr;
 
-		align_gap = up_align(ent->adr, align) - ent->adr;
-		if ((ent->bytes - align_gap) >= bytes)
+	for (auto e : slot->free_ranges) {
+		if (e->bytes < bytes)
+			continue;
+		align_gap = up_align(e->adr, align) - e->adr;
+		if ((e->bytes - align_gap) >= bytes) {
+			ent = e;
 			break;
+		}
 	}
 	if (!ent)
 		return false;
@@ -564,14 +563,14 @@ bool cheap_alloc<BUF_COUNT>::_alloc(
 		*adr = ent->adr;
 		slot->free_ranges.remove(ent);
 		if (forget == false)
-			slot->alloc_ranges.insert_head(ent);
+			slot->alloc_ranges.push_front(ent);
 	} else {
 		if (align_gap != 0) {
 			range* rng = new_range(ent->adr, align_gap);
 			if (!rng)
 				return false;
 
-			slot->free_ranges.insert_head(rng);
+			slot->free_ranges.push_front(rng);
 
 			ent->adr += align_gap;
 			ent->bytes -= align_gap;
@@ -583,7 +582,7 @@ bool cheap_alloc<BUF_COUNT>::_alloc(
 			if (!rng)
 				return false;
 
-			slot->alloc_ranges.insert_head(rng);
+			slot->alloc_ranges.push_front(rng);
 		}
 
 		ent->adr += bytes;
@@ -599,12 +598,10 @@ bool cheap_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 	// 割り当て済みリストから p を探す。
 
 	uptr adr = reinterpret_cast<uptr>(p);
-	range* ent;
-	for (ent = slot->alloc_ranges.head();
-	     ent;
-	     ent = slot->alloc_ranges.next(ent))
-	{
-		if (ent->adr == adr) {
+	range* ent = nullptr;
+	for (auto e : slot->alloc_ranges) {
+		if (e->adr == adr) {
+			ent = e;
 			slot->alloc_ranges.remove(ent);
 			break;
 		}
@@ -617,14 +614,11 @@ bool cheap_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 	// p と p の直後のアドレスを結合して ent とする。
 
 	uptr tail = adr + ent->bytes;
-	for (range* ent2 = slot->free_ranges.head();
-	     ent2;
-	     ent2 = slot->free_ranges.next(ent2))
-	{
-		if (ent2->adr == tail) {
-			ent->bytes += ent2->bytes;
-			slot->free_ranges.remove(ent2);
-			ent2->unset();
+	for (auto e : slot->free_ranges) {
+		if (e->adr == tail) {
+			ent->bytes += e->bytes;
+			slot->free_ranges.remove(e);
+			e->unset();
 			break;
 		}
 	}
@@ -633,20 +627,17 @@ bool cheap_alloc<BUF_COUNT>::_free(void* p, adr_slot* slot)
 	// p と p の前のアドレスを結合する。
 
 	adr = ent->adr;
-	for (range* ent2 = slot->free_ranges.head();
-	     ent2;
-	     ent2 = slot->free_ranges.next(ent2))
-	{
-		if ((ent2->adr + ent2->bytes) == adr) {
-			ent2->bytes += ent->bytes;
+	for (auto e : slot->free_ranges) {
+		if ((e->adr + e->bytes) == adr) {
+			e->bytes += ent->bytes;
 			ent->unset();
-			ent = 0;
+			ent = nullptr;
 			break;
 		}
 	}
 
 	if (ent)
-		slot->free_ranges.insert_head(ent);
+		slot->free_ranges.push_front(ent);
 
 	return true;
 }

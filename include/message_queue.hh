@@ -1,18 +1,16 @@
 /// @file   message_queue.hh
 //
-// (C) 2011-2013 KATO Takeshi
+// (C) 2011-2015 KATO Takeshi
 //
 
-#ifndef INCLUDE_MESSAGE_QUEUE_HH_
-#define INCLUDE_MESSAGE_QUEUE_HH_
+#ifndef CORE_MESSAGE_QUEUE_HH_
+#define CORE_MESSAGE_QUEUE_HH_
 
-#include <message.hh>
+#include <core/message.hh>
 
 
 class message_queue
 {
-	bochain<message, &message::chain_hook> msg_chain;
-
 public:
 	message_queue();
 	~message_queue();
@@ -21,11 +19,14 @@ public:
 	message* pop() { return msg_chain.pop_front(); }
 
 	bool probe() {
-		return msg_chain.head() != 0;
+		return msg_chain.front() != 0;
 	}
 
 	bool deliv_np();
 	bool deliv_all_np();
+
+private:
+	forward_chain<message, &message::msgq_chain_node> msg_chain;
 };
 
 

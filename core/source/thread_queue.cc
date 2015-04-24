@@ -2,12 +2,12 @@
 // @brief  thread_sched class implements.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  (C) 2012-2015 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
 //  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -47,7 +47,7 @@ void thread_sched::init()
 
 cause::pair<thread*> thread_sched::start()
 {
-	running_thread = ready_queue.remove_head();
+	running_thread = ready_queue.pop_front();
 
 	if (running_thread)
 		return make_pair(cause::OK, running_thread);
@@ -77,9 +77,9 @@ void thread_sched::attach(thread* t)
 	thread_state_lock.wlock();
 
 	if (t->state == thread::SLEEPING)
-		sleeping_queue.insert_tail(t);
+		sleeping_queue.push_back(t);
 	else
-		ready_queue.insert_tail(t);
+		ready_queue.push_back(t);
 
 	thread_state_lock.un_wlock();
 }
@@ -111,10 +111,10 @@ thread* thread_sched::sleep_current_thread_np()
 		}
 
 		prev_run->state = thread::SLEEPING;
-		sleeping_queue.insert_tail(prev_run);
+		sleeping_queue.push_back(prev_run);
 	}
 
-	running_thread = ready_queue.remove_head();
+	running_thread = ready_queue.pop_front();
 	// message_thread が常に READY なので 0 にならない。
 
 	return running_thread;
@@ -155,7 +155,7 @@ void thread_sched::set_running_thread(thread* t)
 
 	spin_wlock_section_np _tsl_sec(thread_state_lock);
 
-	ready_queue.insert_tail(running_thread);
+	ready_queue.push_back(running_thread);
 
 	ready_queue.remove(t);
 	running_thread = t;
@@ -170,11 +170,11 @@ thread* thread_sched::switch_next_thread()
 {
 	spin_wlock_section_np _swl_sec(thread_state_lock);
 
-	thread* next_thr = ready_queue.remove_head();
+	thread* next_thr = ready_queue.pop_front();
 	if (!next_thr)
 		return 0;
 
-	ready_queue.insert_tail(running_thread);
+	ready_queue.push_back(running_thread);
 
 	running_thread = next_thr;
 
@@ -189,7 +189,7 @@ thread* thread_sched::exit_thread(thread* t)
 
 	if (t->state == thread::READY) {
 		if (t == running_thread)
-			running_thread = ready_queue.remove_head();
+			running_thread = ready_queue.pop_front();
 		else
 			ready_queue.remove(t);
 	} else {
@@ -206,7 +206,7 @@ void thread_sched::_ready(thread* t)
 
 	if (t->state == thread::SLEEPING) {
 		sleeping_queue.remove(t);
-		ready_queue.insert_tail(t);
+		ready_queue.push_back(t);
 		t->state = thread::READY;
 	} else {
 		t->anti_sleep = true;

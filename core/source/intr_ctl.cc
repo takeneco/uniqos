@@ -1,15 +1,15 @@
 /// @file   intr_ctl.cc
 /// @brief  Interrupt control.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2010-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2010-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -19,8 +19,7 @@
 
 #include <core/global_vars.hh>
 #include <core/mempool.hh>
-#include <intr_ctl.hh>
-#include <new_ops.hh>
+#include <core/intr_ctl.hh>
 
 
 /// @brief 割り込み発生時に呼ばれる。
@@ -44,7 +43,7 @@ cause::t intr_ctl::install_handler(arch::intr_id vec, intr_handler* h)
 	if (!h || !h->handler)
 		return cause::INVALID_PARAMS;
 
-	handler_table[vec].handler_chain.insert_head(h);
+	handler_table[vec].handler_chain.push_front(h);
 
 	return cause::OK;
 }
@@ -59,11 +58,9 @@ cause::t intr_ctl::set_post_handler(arch::intr_id vec, post_intr_handler h)
 void intr_ctl::call_interrupt(u32 vector)
 {
 	intr_task& it = handler_table[vector];
-	intr_handler_chain& ihc = it.handler_chain;
-	for (intr_handler* ih = ihc.head(); ih; ih = ihc.next(ih))
-	{
+
+	for (auto ih : it.handler_chain)
 		ih->handler(ih);
-	}
 
 	if (it.post_handler)
 		handler_table[vector].post_handler();
@@ -71,7 +68,7 @@ void intr_ctl::call_interrupt(u32 vector)
 
 cause::t intr_setup()
 {
-	intr_ctl* intrc = new (mem_alloc(sizeof (intr_ctl))) intr_ctl;
+	intr_ctl* intrc = new (generic_mem()) intr_ctl;
 	if (!intrc)
 		return cause::NOMEM;
 

@@ -1,17 +1,29 @@
 /// @file   core/mempool.hh
 /// @brief  mempool interface declaration.
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-// (C) 2011-2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef CORE_MEMPOOL_HH_
 #define CORE_MEMPOOL_HH_
 
 #include <arch.hh>
 #include <config.h>
-#include <core/atomic.hh>
 #include <core/new_ops.hh>
-#include <core/spinlock.hh>
+#include <util/spinlock.hh>
 
 
 class output_buffer;
@@ -32,13 +44,11 @@ class mempool
 	friend class mempool_ctl;
 
 private:
-	class memobj
+	struct memobj
 	{
-		chain_node<memobj> _chain_node;
-	public:
-		chain_node<memobj>& chain_hook() { return _chain_node; }
+		forward_chain_node<memobj> chain_node;
 	};
-	typedef chain<memobj, &memobj::chain_hook> obj_chain;
+	typedef front_forward_chain<memobj, &memobj::chain_node> obj_chain;
 
 	class page
 	{
@@ -56,8 +66,6 @@ private:
 
 		void dump(output_buffer& lt);
 
-		bichain_node<page>& bichain_hook() { return _chain_node; }
-
 	private:
 		u8* onpage_get_memory() {
 			return reinterpret_cast<u8*>(this + 1);
@@ -65,14 +73,15 @@ private:
 		void init(const mempool& pool);
 
 	private:
-		chain<memobj, &memobj::chain_hook> free_chain;
+		obj_chain free_chain;
 		u32 acquire_cnt;
 
 		u8* memory;
 
-		bichain_node<page> _chain_node;
+	public:
+		chain_node<page> chain_node;
 	};
-	typedef bichain<page, &page::bichain_hook> page_bichain;
+	typedef front_chain<page, &page::chain_node> page_bichain;
 
 	class node
 	{
@@ -117,7 +126,7 @@ private:
 	mempool(u32 _obj_size,
 	        arch::page::TYPE ptype = arch::page::INVALID,
 	        mempool* _page_pool = 0);
-	void setup_mem_allocator(const mem_allocator::operations* ops);
+	void setup_mem_allocator(const mem_allocator::interfaces* ops);
 	cause::t destroy();
 
 public:
@@ -154,8 +163,6 @@ public:
 	void dump(output_buffer& ob, uint level);
 	void dump_table(output_buffer& ob);
 
-	bichain_node<mempool>& chain_hook() { return _chain_node; }
-
 private:
 	static arch::page::TYPE auto_page_type(u32 objsize);
 	static u32 normalize_obj_size(u32 objsize);
@@ -183,7 +190,7 @@ private:
 
 	mempool* const page_pool;
 
-	bichain_node<mempool> _chain_node;
+	chain_node<mempool> chain_node;
 
 	node* mempool_nodes[CONFIG_MAX_CPUS];
 
@@ -200,7 +207,7 @@ private:
 
 	public:
 		mp_mem_allocator() {}
-		void init(const mem_allocator::operations* _ops, mempool* _mp);
+		void init(const mem_allocator::interfaces* _ifs, mempool* _mp);
 
 	private:
 		cause::pair<void*> on_Allocate(uptr bytes);

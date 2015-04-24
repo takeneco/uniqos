@@ -71,10 +71,8 @@ spin_lock* test_number_lock;
 }  // namespace
 
 struct data {
-	chain_node<data> link;
+	forward_chain_node<data> link;
 	uptr size;
-
-	chain_node<data>& chain_hook() { return link; }
 };
 
 typedef timer_message_with<thread*> wakeup;
@@ -134,7 +132,7 @@ void mempool_test()
 	rnd.dump(lg);
 	lg();
 
-	for (int i = 0; i < global_vars::core.page_pool_cnt; ++i) {
+	for (uint i = 0; i < global_vars::core.page_pool_nr; ++i) {
 		global_vars::core.page_pool_objs[i]->dump(lg, 1);
 	}
 
@@ -146,7 +144,7 @@ void mempool_test()
 	preempt_enable();
 
 	const int N = 15;
-	chain<data, &data::chain_hook> ch[2][N];
+	front_forward_chain<data, &data::link> ch[2][N];
 
 	int n;
 	int cnts[2][N] = {{0}};
@@ -159,7 +157,7 @@ void mempool_test()
 			break;
 
 		for (int i = 0; i < N; ++i) {
-			data* q = ch[mpi][i].head();
+			data* q = ch[mpi][i].front();
 			for (; q; q = ch[mpi][i].next(q)) {
 				if (p == q) {
 					log()("!!! n=").x(n)(" / i=").u(i)();
@@ -172,7 +170,7 @@ void mempool_test()
 
 		u32 idx = rnd(N);
 
-		ch[mpi][idx].insert_head(p);
+		ch[mpi][idx].push_front(p);
 		++cnts[mpi][idx];
 
 		if (0==(n&0xff)&&!wakeupme.data) {
@@ -195,7 +193,7 @@ void mempool_test()
 		for (int i = 0; i < N; ++i) {
 			int cnt;
 			for (cnt = 0;; ++cnt) {
-				data* d = ch[mpi][i].remove_head();
+				data* d = ch[mpi][i].pop_front();
 				if (!d)
 					break;
 				mp[mpi]->dealloc(d);

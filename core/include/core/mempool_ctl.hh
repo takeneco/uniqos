@@ -1,7 +1,20 @@
 /// @file   mempool_ctl.hh
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-// (C) 2011-2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef CORE_SOURCE_MEMPOOL_CTL_HH_
 #define CORE_SOURCE_MEMPOOL_CTL_HH_
@@ -16,10 +29,10 @@ public:
 	cause::t setup();
 	void move_to(mempool_ctl* dest);
 	void after_move();
-	cause::t teardown();
+	cause::t unsetup();
 	cause::t post_setup();
 
-	typedef bibochain<mempool, &mempool::chain_hook> mempool_chain;
+	typedef chain<mempool, &mempool::chain_node> mempool_chain;
 
 public:
 	cause::pair<mempool*> acquire_shared_mempool(u32 objsize);
@@ -38,9 +51,9 @@ public:
 
 private:
 	cause::t setup_mp();
-	cause::t teardown_mp();
+	cause::t unsetup_mp();
 	cause::t setup_shared_mp();
-	cause::t teardown_shared_mp();
+	cause::t unsetup_shared_mp();
 
 	mempool* find_shared(u32 objsize);
 	cause::t create_shared(u32 objsize, mempool** new_mp);
@@ -71,24 +84,24 @@ private:
 public:
 	mem_allocator& shared_mem() { return _shared_mem; }
 
-	const mem_allocator::operations* get_mp_allocator_ops() const {
-		return &_mp_allocator_ops;
+	const mem_allocator::interfaces* get_mp_allocator_ifs() const {
+		return &_mp_allocator_ifs;
 	}
 
 private:
 	class shared_mem_allocator : public mem_allocator
 	{
 	public:
-		shared_mem_allocator() : mem_allocator(&_ops) {}
+		shared_mem_allocator() : mem_allocator(&_ifs) {}
 		void init();
 
 	private:
-		operations _ops;
+		interfaces _ifs;
 	};
 
 	shared_mem_allocator _shared_mem;
 
-	mem_allocator::operations _mp_allocator_ops;
+	mem_allocator::interfaces _mp_allocator_ifs;
 };
 
 mempool_ctl* get_mempool_ctl();

@@ -2,12 +2,12 @@
 /// @brief Memory pool controller.
 
 //  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  (C) 2011-2015 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
 //  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -79,34 +79,34 @@ void mempool_ctl::move_to(mempool_ctl* dest)
 
 void mempool_ctl::after_move()
 {
-	_mp_allocator_ops.init();
-	_mp_allocator_ops.Allocate =
+	_mp_allocator_ifs.init();
+	_mp_allocator_ifs.Allocate =
 	    mem_allocator::call_on_Allocate<mempool::mp_mem_allocator>;
-	_mp_allocator_ops.Deallocate =
+	_mp_allocator_ifs.Deallocate =
 	    mem_allocator::call_on_Deallocate<mempool::mp_mem_allocator>;
-	_mp_allocator_ops.GetSize =
+	_mp_allocator_ifs.GetSize =
 	    mem_allocator::call_on_GetSize<mempool::mp_mem_allocator>;
 
 	_shared_mem.init();
 
-	mempool_mp->setup_mem_allocator(&_mp_allocator_ops);
-	node_mp->setup_mem_allocator(&_mp_allocator_ops);
+	mempool_mp->setup_mem_allocator(&_mp_allocator_ifs);
+	node_mp->setup_mem_allocator(&_mp_allocator_ifs);
 
 	for (mempool* mp = shared_chain.front();
 	     mp;
 	     mp = shared_chain.next(mp))
 	{
-		mp->setup_mem_allocator(&_mp_allocator_ops);
+		mp->setup_mem_allocator(&_mp_allocator_ifs);
 	}
 }
 
-cause::t mempool_ctl::teardown()
+cause::t mempool_ctl::unsetup()
 {
-	cause::t r = teardown_shared_mp();
+	cause::t r = unsetup_shared_mp();
 	if (is_fail(r))
 		return r;
 
-	r = teardown_mp();
+	r = unsetup_mp();
 	if (is_fail(r))
 		return r;
 
@@ -118,10 +118,7 @@ cause::t mempool_ctl::teardown()
 /// @pre mem_io が使用可能であること。
 cause::t mempool_ctl::post_setup()
 {
-	for (mempool* mp = shared_chain.head();
-	     mp;
-	     mp = shared_chain.next(mp))
-	{
+	for (mempool* mp : shared_chain) {
 		const u32 obj_size = mp->get_obj_size();
 
 		char obj_name[sizeof mp->obj_name];
@@ -190,7 +187,7 @@ cause::pair<mempool*> mempool_ctl::create_exclusived_mp(
 		new_mp->set_node(i, nd);
 	}
 
-	new_mp->setup_mem_allocator(&_mp_allocator_ops);
+	new_mp->setup_mem_allocator(&_mp_allocator_ifs);
 
 	exclusived_chain_lock.wlock();
 
@@ -203,7 +200,7 @@ cause::pair<mempool*> mempool_ctl::create_exclusived_mp(
 		}
 	}
 	if (!mp)
-		exclusived_chain.insert_tail(new_mp);
+		exclusived_chain.push_back(new_mp);
 
 	exclusived_chain_lock.un_wlock();
 
@@ -254,10 +251,7 @@ void* mempool_ctl::shared_allocate(u32 bytes)
 	const u32 size = mempool::normalize_obj_size(bytes + sizeof (mempool*));
 
 	mempool* pool = 0;
-	for (mempool* mp = shared_chain.head();
-	     mp;
-	     mp = shared_chain.next(mp))
-	{
+	for (mempool* mp : shared_chain) {
 		if (mp->get_obj_size() >= size) {
 			pool = mp;
 			break;
@@ -290,17 +284,15 @@ void mempool_ctl::shared_deallocate(void* mem)
 void mempool_ctl::dump(output_buffer& ob)
 {
 	ob("name              obj_size   alloc_cnt    page_cnt freeobj_cnt")();
-	for (mempool* mp = shared_chain.head();
-	     mp;
-	     mp = shared_chain.next(mp))
-	{
+	for (mempool* mp : shared_chain)
 		mp->dump_table(ob);
-	}
 }
 
 cause::t mempool_ctl::setup_mp()
 {
-	const int cpuid = arch::get_cpu_id();
+	//const int cpuid = arch::get_cpu_node_id();
+	// TODO:実行中の cpu_node_id を 0 と仮定している。
+	const int cpuid = 0;
 
 	// mempool を作成するための一時的な mempool。
 	mempool tmp_mempool_mp(sizeof (mempool), arch::page::L1, 0);
@@ -380,7 +372,7 @@ cause::t mempool_ctl::setup_shared_mp()
 	return cause::OK;
 }
 
-cause::t mempool_ctl::teardown_mp()
+cause::t mempool_ctl::unsetup_mp()
 {
 	cause::t r = destroy_exclusived_mp(offpage_mp);
 	if (is_fail(r))
@@ -404,9 +396,11 @@ cause::t mempool_ctl::teardown_mp()
 
 	operator delete (mempool_mp, mempool_mp);
 	operator delete (node_mp, node_mp);
+
+	return cause::OK;
 }
 
-cause::t mempool_ctl::teardown_shared_mp()
+cause::t mempool_ctl::unsetup_shared_mp()
 {
 	for (mempool* mp = shared_chain.front();
 	              mp;
@@ -421,10 +415,7 @@ cause::t mempool_ctl::teardown_shared_mp()
 /// @brief  Find existing shared mem_cache.
 mempool* mempool_ctl::find_shared(u32 objsize)
 {
-	for (mempool* mp = shared_chain.head();
-	     mp;
-	     mp = shared_chain.next(mp))
-	{
+	for (mempool* mp : shared_chain) {
 		if (mp->get_obj_size() >= objsize)
 			return mp;
 	}
@@ -468,13 +459,12 @@ cause::t mempool_ctl::create_shared(u32 objsize, mempool** new_mp)
 	     mp = shared_chain.next(mp))
 	{
 		if (objsize < mp->get_obj_size()) {
-			shared_chain.insert_prev(mp, *new_mp);
-
+			shared_chain.insert_before(mp, *new_mp);
 			return cause::OK;
 		}
 	}
 
-	shared_chain.insert_tail(*new_mp);
+	shared_chain.push_back(*new_mp);
 
 	return cause::OK;
 }
@@ -605,10 +595,10 @@ cause::pair<uptr> shared_mem_GetSize(mem_allocator*, void* mem)
 
 void mempool_ctl::shared_mem_allocator::init()
 {
-	_ops.init();
-	_ops.Allocate   = shared_mem_Allocate;
-	_ops.Deallocate = shared_mem_Deallocate;
-	_ops.GetSize    = shared_mem_GetSize;
+	_ifs.init();
+	_ifs.Allocate   = shared_mem_Allocate;
+	_ifs.Deallocate = shared_mem_Deallocate;
+	_ifs.GetSize    = shared_mem_GetSize;
 }
 
 
@@ -621,14 +611,14 @@ cause::t mempool_setup()
 	mempool_ctl tmp_mpctl;
 	cause::t r = tmp_mpctl.setup();
 	if (is_fail(r)) {
-		tmp_mpctl.teardown();
+		tmp_mpctl.unsetup();
 		return r;
 	}
 
 	void* buf = tmp_mpctl.shared_allocate(sizeof (mempool_ctl));
 	mempool_ctl* mpctl = new (buf) mempool_ctl();
 	if (!mpctl) {
-		tmp_mpctl.teardown();
+		tmp_mpctl.unsetup();
 		return cause::NOMEM;;
 	}
 

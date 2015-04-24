@@ -1,15 +1,15 @@
 /// @file  mempool.cc
 /// @brief Memory pooler.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -23,7 +23,7 @@
 #include <core/global_vars.hh>
 #include <core/log.hh>
 #include <core/page.hh>
-#include <core/string.hh>
+#include <util/string.hh>
 
 
 // mempool::page
@@ -74,7 +74,7 @@ mempool::memobj* mempool::page::acquire()
 {
 	++acquire_cnt;
 
-	return free_chain.remove_head();
+	return free_chain.pop_front();
 }
 
 /// @brief  memobj を1つ開放する。
@@ -88,7 +88,7 @@ bool mempool::page::release(const mempool& pool, memobj* obj)
 
 	--acquire_cnt;
 
-	free_chain.insert_head(obj);
+	free_chain.push_front(obj);
 
 	return true;
 }
@@ -98,9 +98,10 @@ void mempool::page::dump(output_buffer& lt)
 	lt("memory:")(memory)(", acquire_cnt:").u(acquire_cnt)();
 
 	lt("{");
-	for (memobj* obj = free_chain.head(); obj; obj = free_chain.next(obj)) {
+
+	for (auto obj : free_chain)
 		lt(obj)(",");
-	}
+
 	lt("}")();
 }
 
@@ -111,7 +112,7 @@ void mempool::page::init(const mempool& owner)
 
 	for (u32 i = 0; i < objcnt; ++i) {
 		void* obj = &memory[objsize * i];
-		free_chain.insert_head(new (obj) memobj);
+		free_chain.push_front(new (obj) memobj);
 	}
 }
 
@@ -200,7 +201,7 @@ void mempool::node::collect_free_pages(mempool* owner)
 
 	const sptr n = freeobj_cnt - SAVE_FREEOBJS;
 	for (sptr i = 0; i < n; ++i) {
-		memobj* obj = free_objs.remove_head();
+		memobj* obj = free_objs.pop_front();
 		if (back_to_page(obj, owner))
 			--freeobj_cnt;
 		else
@@ -269,9 +270,9 @@ mempool::mempool(u32 _obj_size, arch::page::TYPE ptype, mempool* _page_pool) :
 		mempool_nodes[i] = nullptr;
 }
 
-void mempool::setup_mem_allocator(const mem_allocator::operations* ops)
+void mempool::setup_mem_allocator(const mem_allocator::interfaces* ifs)
 {
-	_mem_allocator.init(ops, this);
+	_mem_allocator.init(ifs, this);
 }
 
 cause::t mempool::destroy()
@@ -326,7 +327,7 @@ cause::pair<void*> mempool::acquire()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id_t cpuid = arch::get_cpu_id();
+	const cpu_id_t cpuid = arch::get_cpu_node_id();
 
 	void* r = _alloc(cpuid);
 
@@ -355,7 +356,7 @@ void* mempool::alloc()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id cpuid = arch::get_cpu_id();
+	const cpu_id cpuid = arch::get_cpu_node_id();
 
 	void* r = _alloc(cpuid);
 
@@ -382,14 +383,14 @@ void mempool::collect_free_pages()
 {
 	preempt_disable_section _pds;
 
-	const cpu_id cpuid = arch::get_cpu_id();
+	const cpu_id cpuid = arch::get_cpu_node_id();
 
 	mempool_nodes[cpuid]->collect_free_pages(this);
 }
 
 void mempool::collect_one_freeobj()
 {
-	cpu_id cur_cpuid = arch::get_cpu_id();
+	cpu_id cur_cpuid = arch::get_cpu_node_id();
 
 	memobj* obj = mempool_nodes[cur_cpuid]->pop_freeobj(this);
 
@@ -508,7 +509,7 @@ void* mempool::_alloc(cpu_id_t cpuid)
 
 void mempool::_dealloc(void* ptr)
 {
-	const int cpuid = arch::get_cpu_id();
+	const int cpuid = arch::get_cpu_node_id();
 
 	mempool_nodes[cpuid]->release(ptr);
 
@@ -598,10 +599,10 @@ auto mempool::get_node(int i) -> node*
 // mempool::mp_mem_allocator
 
 void mempool::mp_mem_allocator::init(
-    const mem_allocator::operations* _ops,
+    const mem_allocator::interfaces* _ifs,
     mempool* _mp)
 {
-	ops = _ops;
+	ifs = _ifs;
 	mp = _mp;
 }
 

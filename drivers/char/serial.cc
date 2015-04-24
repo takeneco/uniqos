@@ -1,15 +1,15 @@
 /// @file  serial.cc
 /// @brief serial port.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -59,7 +59,7 @@ class buf_entry
 		    buf_size(buf_entry::BUF_SIZE)
 		{}
 
-		bichain_node<buf_entry> chain_node;
+		chain_node<buf_entry> chain_node;
 		thread* client_thread;
 		uptr buf_size;
 	} f;
@@ -73,7 +73,7 @@ public:
 	};
 
 public:
-	bichain_node<buf_entry>& chain_hook() { return f.chain_node; }
+	chain_node<buf_entry>& chain_hook() { return f.chain_node; }
 
 	void write(u32 i, u8 c) { buf()[i] = c; }
 	u8 read(u32 i) { return buf()[i]; }
@@ -100,7 +100,7 @@ class serial_ctl : public io_node
 	const u16 base_port;
 	const u16 irq_num;
 
-	bibochain<buf_entry, &buf_entry::chain_hook> buf_queue;
+	fchain<buf_entry, &buf_entry::chain_hook> buf_queue;
 
 	/// バッファに書くときは buf_queue->head() の next_write に書く。
 	u32 next_write;
@@ -130,7 +130,7 @@ class serial_ctl : public io_node
 
 public:
 	/// @todo: do not use global var.
-	static io_node::operations serial_ops;
+	static io_node::interfaces serial_ifs;
 
 public:
 	serial_ctl(u16 _base_port, u16 _irq_num);
@@ -138,7 +138,7 @@ public:
 
 private:
 	bool buf_is_empty() const {
-		const buf_entry* h = buf_queue.head();
+		const buf_entry* h = buf_queue.front();
 		return (h == 0) ||
 		       (next_write == next_read && buf_queue.next(h) == 0);
 	}
@@ -147,7 +147,7 @@ private:
 		if (buf == 0)
 			return 0;
 		write_queue_lock.lock();
-		buf_queue.insert_head(buf);
+		buf_queue.push_front(buf);
 		write_queue_lock.unlock();
 		next_write = 0;
 		return buf;
@@ -175,7 +175,7 @@ public:
 };
 
 //TODO:
-io_node::operations serial_ctl::serial_ops;
+io_node::interfaces serial_ctl::serial_ifs;
 
 serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
 	base_port(_base_port),
@@ -185,7 +185,7 @@ serial_ctl::serial_ctl(u16 _base_port, u16 _irq_num) :
 	tx_fifo_queued(0),
 	intr_pending(false)
 {
-	ops = &serial_ops;
+	ifs = &serial_ifs;
 }
 
 cause::t serial_ctl::configure()
@@ -243,7 +243,7 @@ cause::t serial_ctl::configure()
 
 buf_entry* serial_ctl::get_next_buf()
 {
-	buf_entry* buf = buf_queue.head();
+	buf_entry* buf = buf_queue.front();
 
 	if (buf == 0 || next_write >= buf->get_bufsize())
 		buf = buf_append();
@@ -435,9 +435,9 @@ void serial_ctl::post_intr_msg()
 
 void serial_ctl::on_intr_msg()
 {
-	intr_msg_lock.lock_np();
+	intr_msg_lock.lock();
 	intr_posted = false;
-	intr_msg_lock.unlock_np();
+	intr_msg_lock.unlock();
 
 	intr_pending = false;
 
@@ -493,8 +493,8 @@ void serial_ctl::transmit()
 		return;
 	}
 
-	buf_entry* buf = buf_queue.tail();
-	bool buf_is_last = buf == buf_queue.head();
+	buf_entry* buf = buf_queue.back();
+	bool buf_is_last = buf == buf_queue.front();
 
 	int i;
 	for (i = tx_fifo_queued; i < DEVICE_TXBUF_SIZE; ++i) {
@@ -515,12 +515,12 @@ void serial_ctl::transmit()
 				client->ready();
 			}
 
-			buf_entry* tmp = buf_queue.remove_tail();
 			write_queue_lock.lock();
-			buf_mp->dealloc(tmp);
+			buf_entry* tmp = buf_queue.pop_back();
 			write_queue_lock.unlock();
-			buf = buf_queue.tail();
-			buf_is_last = buf == buf_queue.head();
+			buf_mp->dealloc(tmp);
+			buf = buf_queue.back();
+			buf_is_last = buf == buf_queue.front();
 			next_read = 0;
 		}
 	}
@@ -536,13 +536,12 @@ uptr tmp[(sizeof (serial_ctl) + sizeof (uptr) - 1) / sizeof (uptr)];
 io_node* create_serial()
 {
 	///////
-	serial_ctl::serial_ops.init();
+	serial_ctl::serial_ifs.init();
 
-	serial_ctl::serial_ops.Write = io_node::call_on_Write<serial_ctl>;
-	serial_ctl::serial_ops.write = io_node::call_on_io_node_write<serial_ctl>;
+	serial_ctl::serial_ifs.Write = io_node::call_on_Write<serial_ctl>;
+	serial_ctl::serial_ifs.write = io_node::call_on_io_node_write<serial_ctl>;
 	///////
 
-	//void* mem = memory::alloc(sizeof (serial_ctl));
 	void* mem = tmp;
 	serial_ctl* serial = new (mem) serial_ctl(0x03f8, 4);
 
