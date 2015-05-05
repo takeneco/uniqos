@@ -1,15 +1,15 @@
 /// @file   string.cc
 /// @brief  Memory ops.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2010-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2010-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -17,7 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <core/string.hh>
+#include <util/string.hh>
 #include <string.h>
 
 #include <arch.hh>
@@ -108,12 +108,12 @@ int str_length(const char* str)
 	return len;
 }
 
-int str_compare(uptr max, const char* str1, const char* str2)
+sint str_compare(uptr max, const char* str1, const char* str2)
 {
 	return str_compare(str1, str2, max);
 }
 
-int str_compare(const char* str1, const char* str2, uptr max)
+sint str_compare(const char* str1, const char* str2, uptr max)
 {
 	for (uptr i = 0; i < max ; ++i) {
 		if (str1[i] != str2[i])
@@ -125,7 +125,7 @@ int str_compare(const char* str1, const char* str2, uptr max)
 	return 0;
 }
 
-int str_compare(const char* str1, const char* str2)
+sint str_compare(const char* str1, const char* str2)
 {
 	for (uptr i = 0; ; ++i) {
 		if (str1[i] != str2[i])
