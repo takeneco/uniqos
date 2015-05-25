@@ -1,7 +1,7 @@
 /// @file  core/global_vars.hh
 /// @brief Global variables declaration.
 //
-// (C) 2013-2014 KATO Takeshi
+// (C) 2013-2015 KATO Takeshi
 //
 
 #ifndef CORE_GLOBAL_VARS_HH_
@@ -12,6 +12,7 @@
 
 
 class cpu_node;
+class device_ctl;
 class driver_ctl;
 class fs_ctl;
 class intr_ctl;
@@ -21,6 +22,7 @@ class module_ctl;
 class page_pool;
 class process_ctl;
 class timer_ctl;
+class vadr_pool;
 
 namespace global_vars {
 
@@ -30,16 +32,18 @@ struct _core
 	void*              memlog_buffer;
 
 	/// page_pool_objs のエントリ数
-	int                page_pool_cnt;
+	u32                page_pool_nr;
 
 	/// log_target_objs のエントリ数
 	int                log_target_cnt;
 
 	/// カーネルが認識している CPU の数
 	/// @note システムに搭載されている CPU の数ではない
-	cpu_id_t           cpu_node_cnt;
+	cpu_id_t           cpu_node_nr;
 
 	cpu_node*          cpu_node_objs[CONFIG_MAX_CPUS];
+
+	device_ctl*        device_ctl_obj;
 
 	driver_ctl*        driver_ctl_obj;
 
@@ -58,6 +62,8 @@ struct _core
 	process_ctl*       process_ctl_obj;
 
 	timer_ctl*         timer_ctl_obj;
+
+	vadr_pool*         vadr_pool_obj;
 };
 
 extern _core core;

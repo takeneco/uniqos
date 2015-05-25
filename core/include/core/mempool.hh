@@ -20,7 +20,7 @@
 #ifndef CORE_MEMPOOL_HH_
 #define CORE_MEMPOOL_HH_
 
-#include <arch.hh>
+#include <arch/pagetable.hh>
 #include <config.h>
 #include <core/new_ops.hh>
 #include <util/spinlock.hh>

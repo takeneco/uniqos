@@ -1,15 +1,15 @@
 /// @file   pagetable.hh
 /// @brief  64bit paging table ops.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2010-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2010-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -20,8 +20,8 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
+#include <arch/pagetable.hh>
 #include <core/basic.hh>
-#include <arch.hh>
 
 
 class log_target;

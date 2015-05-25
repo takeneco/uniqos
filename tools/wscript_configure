@@ -1,5 +1,5 @@
 #
-# (C) 2012-2014 KATO Takeshi
+# (C) 2012-2015 KATO Takeshi
 #
 
 import os.path
@@ -36,6 +36,9 @@ def load_config(x, cf):
 
 	# 0:disable / 1:enable HPET.
 	def_config(x, cf, 'HPET', 0)
+
+	# 0:disable / 1:enable AHCI.
+	def_config(x, cf, 'AHCI', 0)
 
 	# 0:disable / 1:enable ramfs.
 	def_config(x, cf, 'RAMFS', 0)

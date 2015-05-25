@@ -1,15 +1,15 @@
 /// @file  apic.cc
 /// @brief Control APIC.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2010-2013 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2010-2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -19,9 +19,9 @@
 
 #include <arch.hh>
 #include <arch/mem_ops.hh>
-#include <global_vars.hh>
-#include <intr_ctl.hh>
-#include <log.hh>
+#include <core/global_vars.hh>
+#include <core/intr_ctl.hh>
+#include <core/log.hh>
 
 
 namespace {
@@ -85,7 +85,7 @@ void timer_handler(intr_handler*)
 	write_reg(0, LOCAL_APIC_EOI);
 }
 
-cause::type local_apic_init()
+cause::t local_apic_init()
 {
 	log()("LAPIC version:").x(read_reg(LOCAL_APIC_VERSION))();
 
@@ -144,7 +144,7 @@ void post_ipi(u8 vec, u64 flags)
 
 namespace arch {
 
-cause::type apic_init()
+cause::t apic_init()
 {
 	return local_apic_init();
 }
@@ -182,7 +182,14 @@ void lapic_post_startup_ipi(u8 vec)
 
 namespace arch {
 
-int get_cpu_id()
+_cpu_id get_cpu_node_id()
+{
+	const u32 id = read_reg(LOCAL_APIC_ID);
+
+	return id >> 24;
+}
+
+_cpu_id get_cpu_lapic_id()
 {
 	const u32 id = read_reg(LOCAL_APIC_ID);
 

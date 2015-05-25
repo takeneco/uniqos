@@ -1,6 +1,6 @@
 /// @file  native_thread.hh
 //
-// (C) 2013-2014 KATO Takeshi
+// (C) 2013-2015 KATO Takeshi
 //
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_THREAD_HH_
@@ -20,6 +20,7 @@ class native_thread : public thread
 	DISALLOW_COPY_AND_ASSIGN(native_thread);
 
 public:
+	native_thread(thread_id tid);
 	native_thread(thread_id tid, uptr text, uptr param, uptr stack_size);
 
 	arch::regset* ref_regset() { return &rs; }

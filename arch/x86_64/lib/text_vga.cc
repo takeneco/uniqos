@@ -1,15 +1,15 @@
 /// @file   text_vga.cc
 /// @brief  text mode VGA output interface.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -22,11 +22,11 @@
 
 void text_vga::init(u32 _width, u32 _height, void* _vram)
 {
-	fops.init();
+	_ifs.init();
 
-	fops.Write  = call_on_Write<text_vga>;
-	fops.write = call_on_io_node_write<text_vga>;
-	ops = &fops;
+	_ifs.Write  = call_on_Write<text_vga>;
+	_ifs.write = call_on_io_node_write<text_vga>;
+	ifs = &_ifs;
 
 	width = _width;
 	height = _height;

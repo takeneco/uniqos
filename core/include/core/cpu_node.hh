@@ -1,16 +1,29 @@
-/// @file  cpu_node.hh
+/// @file  core/cpu_node.hh
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2012-2015 KATO Takeshi
 //
-// (C) 2012-2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef CORE_CPU_NODE_HH_
 #define CORE_CPU_NODE_HH_
 
-#include <arch.hh>
-#include <core/basic.hh>
+#include <arch/pagetable.hh>
 #include <config.h>
-#include <message_queue.hh>
-#include <thread_queue.hh>
+#include <core/basic.hh>
+#include <core/message_queue.hh>
+#include <core/thread_sched.hh>
 
 
 class page_pool;
@@ -21,12 +34,14 @@ class cpu_node
 	DISALLOW_COPY_AND_ASSIGN(cpu_node);
 
 public:
-	cpu_node();
+	cpu_node(cpu_id cpunode_id);
 
 	cause::t set_page_pool_cnt(int cnt);
 	cause::t set_page_pool(int pri, page_pool* pp);
 
 	cause::t setup();
+
+	cpu_id get_cpu_node_id() const { return cpu_node_id; }
 
 	void     attach_thread(thread* t);
 	cause::t detach_thread(thread* t);
@@ -44,6 +59,7 @@ private:
 	static void preempt_wait();
 
 protected:
+	cpu_id       cpu_node_id;
 	thread_sched threads;
 	cpu_id_t     page_pool_cnt;
 	page_pool* page_pools[CONFIG_MAX_CPUS];

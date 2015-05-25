@@ -1,7 +1,7 @@
 /// @file   vga.hh
 /// @brief  declare of text_vga (and graph_vga).
 //
-// (C) 2011-2014 KATO Takeshi
+// (C) 2011-2015 KATO Takeshi
 //
 
 #ifndef X86_64_ARCH_VGA_HH_
@@ -12,7 +12,7 @@
 
 class text_vga : public io_node
 {
-	io_node::operations fops;
+	io_node::interfaces _ifs;
 
 	u32 width;
 	u32 height;
