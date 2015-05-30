@@ -26,6 +26,27 @@
 namespace arch {
 namespace page {
 
+const u64 REVERSED_FLAGS = PAGE_DISABLE | READ_ONLY | DENY_USER;
+
+u64 decode_flags(pageflags flags)
+{
+	u64 native_flags =
+	    ( flags & ~REVERSED_FLAGS) |
+	    (~flags &  REVERSED_FLAGS);
+
+	return native_flags;
+}
+
+pageflags encode_flags(u64 native_flags)
+{
+	pageflags flags = static_cast<pageflags>(
+	    ( native_flags & ~REVERSED_FLAGS) |
+	    (~native_flags &  REVERSED_FLAGS)
+	);
+
+	return flags;
+}
+
 cause::t _map(uptr vadr, uptr padr, arch::page::TYPE page_type, u64 page_flags)
 {
 	x86::page_table pgtbl(reinterpret_cast<pte*>(native::get_cr3()));

@@ -1,8 +1,7 @@
 /* @file    arch/x86_64/kernel/kernel.ld
- * @author  KATO Takeshi
  * @brief   カーネル本体のリンカスクリプト。
  *
- * (C) 2009-2013 Kato Takeshi.
+ * (C) 2009-2015 KATO Takeshi
  */
 
 OUTPUT_FORMAT(elf64-x86-64)
@@ -15,6 +14,7 @@ SECTIONS {
 	.text : { *(.text.entry) *(.text) }
 	.rodata : { *(.rodata) }
 	.data : { *(.data) }
+	.text.init : { *(.text.init) }
 
 	. = 0xffffffffffffe000;
 	.bss : { *(.bss) }

@@ -77,7 +77,8 @@ enum {
 	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
 
-enum PAGE_FLAGS : u16 {
+using pageflags = u16;
+enum PAGE_FLAGS : pageflags {
 	PAGE_DISABLE  = 1 << 0,  // bit reversed
 	READ_ONLY     = 1 << 1,  // bit reversed
 	DENY_USER     = 1 << 2,  // bit reversed
@@ -112,14 +113,14 @@ inline TYPE type_of_size(uptr size)
 	else                      return INVALID;
 }
 
-u64 decode_flags(u32 flags);
-u32 encode_flags(u64 native_flags);
+u64       decode_flags(pageflags flags);
+pageflags encode_flags(u64 native_flags);
 cause::t _map(uptr vadr, uptr padr, TYPE page_type, u64 page_flags);
 cause::t unmap(uptr vadr, arch::page::TYPE page_type);
 
-inline cause::t map(uptr vadr, uptr padr, TYPE page_type, u16 page_flags)
+inline cause::t map(uptr vadr, uptr padr, TYPE page_type, pageflags flags)
 {
-	return _map(vadr, padr, page_type, decode_flags(page_flags));
+	return _map(vadr, padr, page_type, decode_flags(flags));
 }
 
 
