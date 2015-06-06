@@ -21,6 +21,7 @@
 #define CORE_VADR_POOL_HH_
 
 #include <core/mempool.hh>
+#include <core/pagetbl.hh>
 #include <core/spinlock.hh>
 
 
@@ -31,8 +32,8 @@ class vadr_pool
 		chain_node<resource>  _chain_node;
 		adr_range             vadr_range;
 		adr_range             padr_range;
-		arch::page::pageflags page_flags;
-		arch::page::TYPE      page_type;
+		page_flags            pageflags;
+		page_level            pagelevel;
 		u32                   ref_cnt;
 
 		uptr get_vadr(uptr padr);
@@ -47,14 +48,15 @@ public:
 	cause::t unsetup();
 
 	cause::pair<void*> assign(
-	    uptr padr, uptr bytes, arch::page::pageflags flags);
+	    uptr padr, uptr bytes, page_flags flags);
 	cause::t revoke(void* vadr);
 
 private:
 	cause::pair<resource*> assign_by_assign(
-	    uptr padr, uptr bytes, arch::page::pageflags flags);
+	    uptr padr, uptr bytes, page_flags flags);
 	cause::pair<resource*> assign_by_pool(
-	    uptr padr, uptr bytes, arch::page::pageflags flags);
+	    uptr padr, uptr bytes, page_flags flags);
+	cause::pair<resource*> cut_resource(uptr page_size);
 	cause::t merge_pool(resource* res);
 
 private:

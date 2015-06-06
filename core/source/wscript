@@ -1,46 +1,50 @@
 # architecture independent kernel codes.
 #
-# (C) 2011-2014 KATO Takeshi
+# (C) 2011-2015 KATO Takeshi
 #
 
 
 kern_sources = [
-    'build_info.cc',
-    'clock_src.cc',
-    'cpu_node.cc',
-    'ctype.cc',
-    'fs_ctl.cc',
-    'intr_ctl.cc',
-    'io_node.cc',
-    'kern_log.cc',
-    'log_target.cc',
-    'mem_io.cc',
-    'mempool.cc',
-    'mempool_ctl.cc',
-    'message_queue.cc',
-    'output_buffer.cc',
-    'page.cc',
-    'page_pool.cc',
-    'pic_dev.cc',
-    'process.cc',
-    'process_ctl.cc',
-    'spinlock.cc',
-    'spinrwlock.cc',
-    'string.cc',
-    'thread.cc',
-    'thread_queue.cc',
-    'timer_ctl.cc',
-    'timer_liner_q.cc',
+ 'build_info.cc',
+ 'clock_src.cc',
+ 'cpu_node.cc',
+ 'ctype.cc',
+ 'device_ctl.cc',
+ 'driver_ctl.cc',
+ 'fs_ctl.cc',
+ 'intr_ctl.cc',
+ 'io_node.cc',
+ 'kern_log.cc',
+ 'log_target.cc',
+ 'mem_io.cc',
+ 'mempool.cc',
+ 'mempool_ctl.cc',
+ 'message_queue.cc',
+ 'output_buffer.cc',
+ 'page.cc',
+ 'page_pool.cc',
+ 'pagetbl.cc',
+ 'pic_dev.cc',
+ 'process.cc',
+ 'process_ctl.cc',
+ 'spinlock.cc',
+ 'spinrwlock.cc',
+ 'string.cc',
+ 'thread.cc',
+ 'thread_queue.cc',
+ 'timer_ctl.cc',
+ 'timer_liner_q.cc',
+ 'vadr_pool.cc',
 ]
 
 
 mb_sources = [
-    'ctype.cc',      # necessary to link with string.cc in g++.
-    'io_node.cc',
-    'log_target.cc',
-    'output_buffer.cc',
-    'spinlock.cc',
-    'string.cc',
+ 'ctype.cc',      # necessary to link with string.cc in g++.
+ 'io_node.cc',
+ 'log_target.cc',
+ 'output_buffer.cc',
+ 'spinlock.cc',
+ 'string.cc',
 ]
 
 

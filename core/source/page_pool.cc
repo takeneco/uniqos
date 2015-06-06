@@ -1,16 +1,27 @@
 /// @file  page_pool.cc
 /// @brief Physical page pool.
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
-#include <page_pool.hh>
+#include <core/page_pool.hh>
 
-#include <log.hh>
+#include <core/log.hh>
 
 
-page_pool::page_pool() :
-	page_range_cnt(0)
+/** page_pool initialize how to
+ * 1. Call constructor.
+ * 2. Set page range by add_range() or copy_range_from().
+ * 3. Calc buf size by calc_workbuf_bytes().
+ * 4. Allocate buf and call init().
+ * 5. Mark free memory range by load_free_range().
+ * 6. Create free page chain by build().
+ * 7. Use it.
+ */
+
+page_pool::page_pool(u32 _proximity_domain) :
+	page_range_cnt(0),
+	proximity_domain(_proximity_domain)
 {
 	page_base[0].set_params(arch::page::bits_of_level(0), 0);
 
@@ -22,7 +33,7 @@ page_pool::page_pool() :
 }
 
 /// @brief  管理対象物理メモリの範囲を追加する。
-cause::type page_pool::add_range(const adr_range& add)
+cause::t page_pool::add_range(const adr_range& add)
 {
 	if (page_range_cnt >= num_of_array(page_ranges)) {
 		log()("!!!page_pool: too many page_ranges entry.")();
@@ -52,9 +63,21 @@ cause::type page_pool::add_range(const adr_range& add)
 	return cause::OK;
 }
 
+/// @brief  Copy page range from other instance.
+void page_pool::copy_range_from(const page_pool& src)
+{
+	adr_offset = src.adr_offset;
+	pool_bytes = src.pool_bytes;
+
+	page_range_cnt = src.page_range_cnt;
+
+	for (uint i = 0; i < page_range_cnt; ++i)
+		page_ranges[i].set(src.page_ranges[i]);
+}
+
 /// @brief 物理メモリの管理に必要なデータエリアのサイズを返す。
 /// @return 必要なデータエリアのサイズをバイト数で返す。
-uptr page_pool::calc_workarea_bytes()
+uptr page_pool::calc_workbuf_bytes()
 {
 	return page_base[arch::page::HIGHEST].calc_buf_size(pool_bytes);
 }
@@ -83,16 +106,16 @@ void page_pool::build()
 	page_base[arch::page::HIGHEST].build_free_chain();
 }
 
-cause::type page_pool::alloc(arch::page::TYPE page_type, uptr* padr)
+cause::t page_pool::alloc(page_level level, uptr* padr)
 {
 	uptr _padr;
-	const cause::type r = page_base[page_type].reserve_1page(&_padr);
+	const cause::t r = page_base[level].reserve_1page(&_padr);
 
 	*padr = _padr + adr_offset;
 	return r;
 }
 
-cause::type page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
+cause::t page_pool::dealloc(page_level level, uptr padr)
 {
 	bool hit = false;
 	for (uint i = 0; i < page_range_cnt; ++i) {
@@ -106,7 +129,7 @@ cause::type page_pool::dealloc(arch::page::TYPE page_type, uptr padr)
 
 	padr -= adr_offset;
 
-	return page_base[page_type].free_1page(padr);
+	return page_base[level].free_1page(padr);
 }
 
 void page_pool::dump(output_buffer& ob, uint level)

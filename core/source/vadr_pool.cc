@@ -1,5 +1,5 @@
 /// @file   vadr_pool.cc
-/// @brief  virtual address pool.
+/// @brief  Virtual address pool.
 
 //  Uniqos  --  Unique Operating System
 //  (C) 2015 KATO Takeshi
@@ -20,8 +20,6 @@
 #include <core/vadr_pool.hh>
 
 #include <arch.hh>
-#include <arch/native_ops.hh>
-#include <arch/pagetable.hh>
 #include <core/global_vars.hh>
 #include <core/log.hh>
 #include <core/new_ops.hh>
@@ -88,7 +86,7 @@ cause::t vadr_pool::unsetup()
 
 /// @brief 仮想アドレスを物理アドレスにマップし、仮想アドレスを返す。
 cause::pair<void*> vadr_pool::assign(
-    uptr padr, uptr bytes, arch::page::pageflags flags)
+    uptr padr, uptr bytes, page_flags flags)
 {
 	spin_lock_section _sls(lock);
 
@@ -105,6 +103,7 @@ cause::pair<void*> vadr_pool::assign(
 	                 reinterpret_cast<void*>(res->get_vadr(padr)));
 }
 
+/// @brief 仮想アドレスを返却する。
 cause::t vadr_pool::revoke(void* vadr)
 {
 	spin_lock_section _sls(lock);
@@ -126,10 +125,11 @@ cause::t vadr_pool::revoke(void* vadr)
 
 	if (res->ref_cnt == 0) {
 		assign_chain.remove(res);
-		cause::t r = arch::page::unmap(res->vadr_range.low_adr(),
-		                               res->page_type);
+		cause::t r = page_unmap(nullptr,
+		                        res->vadr_range.low_adr(),
+		                        res->pagelevel);
 		if (is_fail(r))
-			log()(SRCPOS)("!!! arch::page::unmap() failed.")();
+			log()(SRCPOS)("!!! page_unmap() failed.")();
 
 		r = merge_pool(res);
 		if (is_fail(r))
@@ -143,7 +143,7 @@ cause::t vadr_pool::revoke(void* vadr)
 /// @retval cause::OK   Succeeded.
 /// @retval cause::FAIL Not found.
 auto vadr_pool::assign_by_assign(
-    uptr padr, uptr bytes, arch::page::pageflags flags)
+    uptr padr, uptr bytes, page_flags flags)
 -> cause::pair<resource*>
 {
 	uptr padr_low = padr;
@@ -151,7 +151,7 @@ auto vadr_pool::assign_by_assign(
 	for (resource* res : assign_chain) {
 		if (res->padr_range.test(padr_low) &&
 		    res->padr_range.test(padr_high) &&
-		    res->page_flags == flags)
+		    res->pageflags == flags)
 		{
 			++res->ref_cnt;
 			return make_pair(cause::OK, res);
@@ -162,20 +162,54 @@ auto vadr_pool::assign_by_assign(
 }
 
 auto vadr_pool::assign_by_pool(
-    uptr padr, uptr bytes, arch::page::pageflags page_flags)
+    uptr padr, uptr bytes, page_flags flags)
 -> cause::pair<resource*>
 {
-	arch::page::TYPE page_type = arch::page::PHYS_L2;
+	page_level level = arch::page::PHYS_L2;
 
-	int page_bits = arch::page::bits_of_level(page_type);
+	int page_bits = arch::page::bits_of_level(level);
 	uptr page_size = UPTR(1) << page_bits;
 	uptr page_mask = ~(page_size - 1);
-	uptr page_start = padr & page_mask;
-	uptr page_end = page_start + page_size -1;
+	uptr page_low = padr & page_mask;
+	uptr page_high = page_low + page_size -1;
 
-	if ((padr + bytes) > page_end)
+	if ((padr + bytes) > page_high)
 		return null_pair(cause::BADARG);
 
+	auto _res = cut_resource(page_size);
+	if (is_fail(_res))
+		return _res;
+
+	resource* res = _res.data();
+	res->padr_range.set_ab(page_low, page_size);
+	res->pagelevel = level;
+	res->pageflags = flags;
+	res->ref_cnt = 1;
+	cause::t r = page_map(
+	    nullptr,
+	    res->vadr_range.low_adr(),
+	    res->padr_range.low_adr(),
+	    res->pagelevel,
+	    res->pageflags);
+	if (is_fail(r)) {
+		cause::t r2 = merge_pool(res);
+		if (is_fail(r2))
+			log()(SRCPOS)("vadr_pool::merge_pool() failed.")();
+		return null_pair(r);
+	}
+
+	assign_chain.push_front(res);
+
+	return make_pair(cause::OK, res);
+}
+
+/// @brief  pool_chainからpage_sizeだけ切り出す。
+/// @retval cause::OK     Succeeded.
+/// @retval cause::NODEV  pool_chainに空きアドレスが無い。
+/// @retval cause::MEM    管理用メモリが無い。
+auto vadr_pool::cut_resource(uptr page_size)
+-> cause::pair<resource*>
+{
 	resource* res = nullptr;
 	uptr low;  // assign low vadr
 	uptr high; // assign high vadr
@@ -215,6 +249,8 @@ auto vadr_pool::assign_by_pool(
 		                             res->vadr_range.high_adr());
 	}
 
+	res->vadr_range.set_lh(low, high);
+
 	if (pool_low)
 		pool_chain.push_front(pool_low);
 
@@ -222,25 +258,6 @@ auto vadr_pool::assign_by_pool(
 		pool_chain.push_front(pool_high);
 
 	pool_chain.remove(res);
-
-	res->vadr_range.set_lh(low, high);
-	res->padr_range.set_ab(page_start, page_size);
-	res->page_type = page_type;
-	res->page_flags = page_flags;
-	res->ref_cnt = 1;
-	cause::t r = arch::page::map(
-	    res->vadr_range.low_adr(),
-	    res->padr_range.low_adr(),
-	    res->page_type,
-	    res->page_flags);
-	if (is_fail(r)) {
-		cause::t r2 = merge_pool(res);
-		if (is_fail(r2))
-			log()(SRCPOS)("vadr_pool::merge_pool() failed.")();
-		return null_pair(r);
-	}
-
-	assign_chain.push_front(res);
 
 	return make_pair(cause::OK, res);
 }

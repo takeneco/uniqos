@@ -46,7 +46,7 @@
 #include <global_vars.hh>
 #include <mpspec.hh>
 #include <native_cpu_node.hh>
-#include "page_table.hh"
+#include "native_pagetbl.hh"
 
 #if CONFIG_ACPI
 # include <core/acpi_ctl.hh>
@@ -730,7 +730,7 @@ cause::t init_kern_space()
 	arch::pte* cr3 = static_cast<arch::pte*>(
 	    arch::map_phys_adr(native::get_cr3(), arch::page::PHYS_L1_SIZE));
 
-	x86::page_table pg_tbl(cr3);
+	x86::native_page_table pg_tbl(cr3);
 
 	for (uptr padr = KERNEL_ADR_SPACE_START;
 	     padr < KERNEL_ADR_SPACE_END;

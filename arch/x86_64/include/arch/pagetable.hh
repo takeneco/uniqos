@@ -1,5 +1,5 @@
-/// @file  arch/pagetable.hh
-/// @brief page table interfaces.
+/// @file  arch/pagetbl.hh
+/// @brief Page table interfaces.
 
 //  Uniqos  --  Unique Operating System
 //  (C) 2015 KATO Takeshi
@@ -17,8 +17,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef ARCH_PAGETABLE_HH_
-#define ARCH_PAGETABLE_HH_
+#ifndef ARCH_PAGETBL_HH_
+#define ARCH_PAGETBL_HH_
 
 #include <core/basic.hh>
 #include <arch.hh>
@@ -27,8 +27,10 @@
 namespace arch {
 namespace page {
 
+struct page_table;
+
 /// Page type
-enum TYPE {
+enum LEVEL : s8 {
 	INVALID = -1,
 
 	L1 = 0,
@@ -46,6 +48,7 @@ enum TYPE {
 	PHYS_L4 = L7,
 	PHYS_HIGHEST = PHYS_L4,
 };
+using TYPE = LEVEL;
 
 enum {
 	LEVEL_COUNT = HIGHEST + 1,
@@ -77,23 +80,26 @@ enum {
 	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
 
-using pageflags = u16;
-enum PAGE_FLAGS : pageflags {
-	PAGE_DISABLE  = 1 << 0,  // bit reversed
+using page_flags = u16;
+enum PAGE_FLAGS : page_flags
+{
+	DISABLE       = 1 << 0,  // bit reversed
 	READ_ONLY     = 1 << 1,  // bit reversed
 	DENY_USER     = 1 << 2,  // bit reversed
 	WRITE_THROUGH = 1 << 3,
-	CACHE_DISALBE = 1 << 4,
+	CACHE_DISABLE = 1 << 4,
 
 	ACCESSED      = 1 << 5,
 	DIRTIED       = 1 << 6,
+
+	GLOBAL        = 1 << 8,
 };
 
 int bits_of_level(unsigned int page_type);
 
-inline uptr size_of_type(TYPE pt)
+inline uptr size_of_type(LEVEL pl)
 {
-	switch (pt) {
+	switch (pl) {
 	case L1: return L1_SIZE;
 	case L2: return L2_SIZE;
 	case L3: return L3_SIZE;
@@ -103,7 +109,7 @@ inline uptr size_of_type(TYPE pt)
 	}
 }
 
-inline TYPE type_of_size(uptr size)
+inline LEVEL type_of_size(uptr size)
 {
 	if (size <= L1_SIZE)      return L1;
 	else if (size <= L2_SIZE) return L2;
@@ -113,16 +119,18 @@ inline TYPE type_of_size(uptr size)
 	else                      return INVALID;
 }
 
-u64       decode_flags(pageflags flags);
-pageflags encode_flags(u64 native_flags);
-cause::t _map(uptr vadr, uptr padr, TYPE page_type, u64 page_flags);
-cause::t unmap(uptr vadr, arch::page::TYPE page_type);
+u64        decode_flags(page_flags flags);
+page_flags encode_flags(u64 native_flags);
 
-inline cause::t map(uptr vadr, uptr padr, TYPE page_type, pageflags flags)
-{
-	return _map(vadr, padr, page_type, decode_flags(flags));
-}
+page_table* get_table();
 
+cause::t map(
+    page_table* tbl, uptr vadr, uptr padr, LEVEL page_type, page_flags flags);
+
+cause::t unmap(
+    page_table* tbl, uptr vadr, LEVEL page_type);
+
+void clear_tlb(void* vadr);
 
 }  // namespace page
 }  // namespace arch
