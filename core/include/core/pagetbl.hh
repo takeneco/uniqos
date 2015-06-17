@@ -23,7 +23,7 @@
 #include <arch/pagetbl.hh>
 
 
-using page_table = arch::page::page_table;
+//using page_table = arch::page::page_table;
 using page_level = arch::page::LEVEL;
 using page_flags = arch::page::page_flags;
 
@@ -39,6 +39,30 @@ enum PAGE_FLAGS {
 
 	PAGE_GLOBAL        = arch::page::GLOBAL,
 };
+
+struct PAGE_TRAITS
+{
+	enum FALGS {
+		PHYSICAL = 1 << 0,
+	};
+
+	page_level level;
+	u8         size_bits;
+	u8         flags;
+
+	bool is_physical_page() const { return (flags & PHYSICAL) != 0; }
+};
+
+struct PAGE_TRAITS_ARRAY
+{
+	int          traits_nr;
+
+	/// ページサイズで昇順に並べておく必要がある。
+	PAGE_TRAITS* traits_array;
+};
+
+uptr page_size_of_level(page_level level);
+page_level page_level_of_size(uptr size);
 
 cause::t page_map(
     page_table* pgtbl,

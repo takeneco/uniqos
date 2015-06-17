@@ -22,21 +22,39 @@
 #include <core/cpu_node.hh>
 
 
-cause::t page_alloc(arch::page::TYPE page_type, uptr* padr)
+cause::pair<uptr> page_alloc(page_level page_type)
+{
+	const cpu_id cpuid = arch::get_cpu_node_id();
+
+	return page_alloc(cpuid, page_type);
+}
+
+cause::pair<uptr> page_alloc(cpu_id cpuid, page_level page_type)
+{
+	cpu_node* cpu = get_cpu_node(cpuid);
+
+	uptr padr;
+	cause::t r = cpu->page_alloc(page_type, &padr);
+
+	return make_pair(r, padr);
+}
+
+
+cause::t page_alloc(page_level page_type, uptr* padr)
 {
 	const cpu_id cpuid = arch::get_cpu_node_id();
 
 	return page_alloc(cpuid, page_type, padr);
 }
 
-cause::t page_alloc(cpu_id cpuid, arch::page::TYPE page_type, uptr* padr)
+cause::t page_alloc(cpu_id cpuid, page_level page_type, uptr* padr)
 {
 	cpu_node* cpu = get_cpu_node(cpuid);
 
 	return cpu->page_alloc(page_type, padr);
 }
 
-cause::t page_dealloc(arch::page::TYPE page_type, uptr padr)
+cause::t page_dealloc(page_level page_type, uptr padr)
 {
 	cpu_node* cpu = get_cpu_node();
 

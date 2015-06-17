@@ -7,12 +7,15 @@
 #ifndef CORE_PAGE_HH_
 #define CORE_PAGE_HH_
 
-#include <arch/pagetable.hh>
+#include <core/pagetbl.hh>
 
 
-cause::t page_alloc(arch::page::TYPE page_type, uptr* padr);
-cause::t page_alloc(cpu_id cpuid, arch::page::TYPE page_type, uptr* padr);
-cause::t page_dealloc(arch::page::TYPE page_type, uptr padr);
+cause::pair<uptr> page_alloc(page_level page_type);
+cause::pair<uptr> page_alloc(cpu_id cpuid, page_level page_type);
+
+cause::t page_alloc(page_level page_type, uptr* padr);
+cause::t page_alloc(cpu_id cpuid, page_level page_type, uptr* padr);
+cause::t page_dealloc(page_level page_type, uptr padr);
 
 
 #endif  // include guard

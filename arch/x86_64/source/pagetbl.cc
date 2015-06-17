@@ -17,7 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <arch/pagetbl.hh>
+#include <core/pagetbl.hh>
 
 #include <core/cpu_node.hh>
 #include "native_pagetbl.hh"
@@ -27,7 +27,25 @@
 namespace arch {
 namespace page {
 
+PAGE_TRAITS page_traits_array[] = {
+	{ L1, L1_SIZE_BITS, PAGE_TRAITS::PHYSICAL, },
+	{ L2, L2_SIZE_BITS,                     0, },
+	{ L3, L3_SIZE_BITS, PAGE_TRAITS::PHYSICAL, },
+	{ L4, L4_SIZE_BITS,                     0, },
+	{ L5, L5_SIZE_BITS, PAGE_TRAITS::PHYSICAL, },
+};
+
 const u64 REVERSED_FLAGS = DISABLE | READ_ONLY | DENY_USER;
+
+
+const PAGE_TRAITS_ARRAY get_page_traits()
+{
+	PAGE_TRAITS_ARRAY pta;
+	pta.traits_nr = num_of_array(page_traits_array);
+	pta.traits_array = page_traits_array;
+
+	return pta;
+}
 
 page_table* get_table()
 {

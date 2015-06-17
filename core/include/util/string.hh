@@ -20,9 +20,9 @@ void mem_fill(uptr bytes, u8 c, void* dest);  // OBSOLETED
 void mem_fill(u8 c, void* dest, uptr bytes);
 
 int str_length(const char* str);
-int str_compare(uptr max, const char* str1, const char* str2);  // OBSOLETED
-int str_compare(const char* str1, const char* str2, uptr max);
-int str_compare(const char* str1, const char* str2);
+sint str_compare(uptr max, const char* str1, const char* str2);  // OBSOLETED
+sint str_compare(const char* str1, const char* str2, uptr max);
+sint str_compare(const char* str1, const char* str2);
 void str_copy(const char* src, char* dest);
 void str_copy(uptr max, const char* src, char* dest);  // OBSOLETED
 void str_copy(const char* src, char* dest, uptr max);

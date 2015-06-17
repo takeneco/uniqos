@@ -30,7 +30,7 @@ typedef smax_      smax;
 typedef umax_      umax;
 
 typedef unsigned int uint;
-typedef unsigned int sint;
+typedef   signed int sint;
 
 #if 16 < ARCH_ADR_BITS && ARCH_ADR_BITS <= 32
 # define UPTR(n) suffix_u32(n)
@@ -368,6 +368,8 @@ namespace cause
 		OUTOFRANGE =5,
 		/// データの終了に到達した。
 		END = 6,
+		// IO数の上限に達した。
+		MAXIO = 7,
 		/// デバイスが無い。
 		NODEV = 10,
 		/// No such file or directory
@@ -383,8 +385,8 @@ namespace cause
 		/// バグ
 		UNKNOWN = 0xffff,
 	};
-	typedef type t;
 
+	typedef type t;
 	typedef type stype;
 	typedef u32 ftype;
 	inline bool is_ok(type x) { return x == OK; }
@@ -416,8 +418,8 @@ namespace cause
 		}
 
 		void set_cause(type _r) { r = _r; }
-		t    get_cause() const { return r; }
-		t    cause() const { return r; }
+		type get_cause() const { return r; }
+		type cause() const { return r; }
 		bool is_ok() const { return cause::is_ok(r); }
 		bool is_fail() const { return cause::is_fail(r); }
 

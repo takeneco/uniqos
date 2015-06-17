@@ -24,10 +24,11 @@
 #include <arch.hh>
 
 
+struct page_table;
+struct PAGE_TRAITS_ARRAY;
+
 namespace arch {
 namespace page {
-
-struct page_table;
 
 /// Page type
 enum LEVEL : s8 {
@@ -118,6 +119,8 @@ inline LEVEL type_of_size(uptr size)
 	else if (size <= L5_SIZE) return L5;
 	else                      return INVALID;
 }
+
+const PAGE_TRAITS_ARRAY get_page_traits();
 
 u64        decode_flags(page_flags flags);
 page_flags encode_flags(u64 native_flags);

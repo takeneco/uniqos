@@ -6,7 +6,7 @@
 #ifndef CORE_PAGE_POOL_HH_
 #define CORE_PAGE_POOL_HH_
 
-#include <arch/pagetable.hh>
+#include <core/pagetbl.hh>
 #include <core/memcell.hh>
 
 

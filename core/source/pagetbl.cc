@@ -19,8 +19,31 @@
 
 #include <core/pagetbl.hh>
 
-#include <arch/pagetbl.hh>
 
+uptr page_size_of_level(page_level level)
+{
+	PAGE_TRAITS_ARRAY pta = arch::page::get_page_traits();
+
+	if (0 <= level && level < pta.traits_nr)
+		return UPTR(1) << pta.traits_array[level].size_bits;
+	else
+		return 0;
+}
+
+page_level page_level_of_size(uptr size)
+{
+	PAGE_TRAITS_ARRAY pta = arch::page::get_page_traits();
+
+	for (int level = 0; level < pta.traits_nr; ++level) {
+		uptr page_size = UPTR(1) << pta.traits_array[level].size_bits;
+		if (page_size >= size) {
+			// この値は level と同じはず。
+			return pta.traits_array[level].level;
+		}
+	}
+
+	return static_cast<page_level>(-1);
+}
 
 /// @brief Set page table map.
 //

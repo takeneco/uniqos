@@ -1,15 +1,15 @@
 /// @file   core/include/core/numeric_map.hh
 /// @brief  numeric_map class declaration and definition.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -29,18 +29,18 @@
 /// @tparam KEY       キーの値を返す VAL_TYPE のメンバ関数。
 ///                   キーと値は１対１で対応しなければならず、そのキーは
 ///                   値のメンバ関数 KEY を介して参照できなければならない。
-/// @tparam CHAIN_NODE  VAL_TYPE は numeric_map による管理のために bichain_node
+/// @tparam CHAIN_NODE  VAL_TYPE は numeric_map による管理のために chain_node
 ///                     をメンバ変数として持つ必要がある。そのメンバ変数を参照
 ///                     する VAL_TYPE のメンバ関数。
 template<
     class KEY_TYPE,
     class VAL_TYPE,
     KEY_TYPE (VAL_TYPE::* KEY)() const,
-    bichain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
+    chain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
 >
 class numeric_map
 {
-	typedef bichain<VAL_TYPE, CHAIN_NODE> dict_ent;
+	typedef front_fchain<VAL_TYPE, CHAIN_NODE> dict_ent;
 
 public:
 	cause::t init(int dict_size_shifts);
@@ -78,7 +78,7 @@ template<
     class KEY_TYPE,
     class VAL_TYPE,
     KEY_TYPE (VAL_TYPE::* KEY)() const,
-    bichain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
+    chain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
 >
 cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::init(
     int dict_size_shifts)
@@ -100,7 +100,7 @@ template<
     class KEY_TYPE,
     class VAL_TYPE,
     KEY_TYPE (VAL_TYPE::* KEY)() const,
-    bichain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
+    chain_node<VAL_TYPE>& (VAL_TYPE::* CHAIN_NODE)()
 >
 cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::uninit()
 {
