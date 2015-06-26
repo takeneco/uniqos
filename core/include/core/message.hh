@@ -7,7 +7,7 @@
 #ifndef CORE_MESSAGE_HH_
 #define CORE_MESSAGE_HH_
 
-#include <core/chain.hh>
+#include <util/chain.hh>
 
 
 class message

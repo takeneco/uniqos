@@ -1,6 +1,6 @@
 # @brief  x86_64固有カーネルコード
 #
-# (C) 2011-2014 KATO Takeshi
+# (C) 2011 KATO Takeshi
 #
 
 
@@ -23,7 +23,7 @@ kern_sources = [
     'on_syscall.S',
     'page_ctl.cc',
     'page_ctl_init.cc',
-    'page_table.cc',
+    'pagetbl.cc',
     'string.cc',
     'bootinfo.cc',
     'spinlock_ops.cc',
@@ -41,7 +41,6 @@ kern_sources = [
 
 
 def configure(x):
-	x.find_program('lzma', var='LZMA')
 	x.find_program('objcopy', var='OBJCOPY')
 
 
@@ -77,8 +76,4 @@ def build(x):
 	    linkflags     = kern_linkflags,
 	    linker_script = 'kernel.lds',
 	    mapfile       = 'kernel.map')
-
-	#x(  target   = 'kernel.bin.lzma',
-	#    source   = 'kernel.bin',
-	#    rule     = '${LZMA} -c ${SRC} > ${TGT}')
 

@@ -22,7 +22,6 @@
 
 #include <arch.hh>
 #include <core/bitmap.hh>
-#include <core/chain.hh>
 #include <core/new_ops.hh>
 
 #include <core/output_buffer.hh>

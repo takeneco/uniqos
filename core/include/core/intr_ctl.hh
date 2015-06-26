@@ -21,7 +21,6 @@
 
 #include <arch.hh>
 #include "arch_specs.hh"
-#include <core/chain.hh>
 
 
 /// @brief 割り込み発生時に呼ばれる関数。
@@ -88,5 +87,5 @@ public:
 };
 
 
-#endif  // Include guard
+#endif  // include guard
 

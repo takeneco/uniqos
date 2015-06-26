@@ -20,10 +20,10 @@
 #ifndef CORE_MEMPOOL_HH_
 #define CORE_MEMPOOL_HH_
 
-#include <arch/pagetable.hh>
+#include <arch/pagetbl.hh>
 #include <config.h>
 #include <core/new_ops.hh>
-#include <util/spinlock.hh>
+#include <core/spinlock.hh>
 
 
 class output_buffer;

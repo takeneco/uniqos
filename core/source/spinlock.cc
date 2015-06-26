@@ -7,7 +7,7 @@
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
 //  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -78,6 +78,11 @@ bool spin_lock::try_lock()
 		local_preempt_enable();
 
 	return r;
+}
+
+bool spin_lock::try_lock_np()
+{
+	return _try_lock();
 }
 
 void spin_lock::unlock()

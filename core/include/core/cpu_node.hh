@@ -19,7 +19,7 @@
 #ifndef CORE_CPU_NODE_HH_
 #define CORE_CPU_NODE_HH_
 
-#include <arch/pagetable.hh>
+#include <arch/pagetbl.hh>
 #include <config.h>
 #include <core/basic.hh>
 #include <core/message_queue.hh>

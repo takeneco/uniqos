@@ -1,14 +1,14 @@
-/// @file util/spinlock.hh
+/// @file core/spinlock.hh
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2012-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -16,8 +16,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef UTIL_SPINLOCK_HH_
-#define UTIL_SPINLOCK_HH_
+#ifndef CORE_SPINLOCK_HH_
+#define CORE_SPINLOCK_HH_
 
 #include <util/atomic.hh>
 #include <arch/spinlock_ops.hh>
@@ -46,6 +46,7 @@ public:
 	void lock();
 	void lock_np();
 	bool try_lock();
+	bool try_lock_np();
 
 	void unlock();
 	void unlock_np();

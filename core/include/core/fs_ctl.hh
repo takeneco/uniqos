@@ -85,7 +85,7 @@ class fs_mount
 
 public:
 
-	bichain_node<fs_mount>& chain_hook() { return _chain_node; }
+	chain_node<fs_mount>& chain_hook() { return _chain_node; }
 
 	fs_node* get_root_node() { return root; }
 
@@ -177,7 +177,7 @@ protected:
 	{}
 
 private:
-	bichain_node<fs_mount> _chain_node;
+	chain_node<fs_mount> _chain_node;
 
 protected:
 	const interfaces* ifs;
@@ -197,10 +197,10 @@ public:
 	    const char* source, const char* target);
 	static cause::t destroy(mount_info* mp);
 
-	bichain_node<mount_info>& fs_ctl_chainnode() {
+	chain_node<mount_info>& fs_ctl_chainnode() {
 		return _fs_ctl_chainnode;
 	}
-	bichain_node<mount_info>& fs_node_chainnode() {
+	chain_node<mount_info>& fs_node_chainnode() {
 		return _fs_node_chainnode;
 	}
 
@@ -212,8 +212,8 @@ public:
 	pathname_cn_t target_char_cn;  ///< target char count.
 
 private:
-	bichain_node<mount_info> _fs_ctl_chainnode;
-	bichain_node<mount_info> _fs_node_chainnode;
+	chain_node<mount_info> _fs_ctl_chainnode;
+	chain_node<mount_info> _fs_node_chainnode;
 
 	char buf[0];
 };
@@ -227,8 +227,8 @@ class fs_node
 	public:
 		child_node() {}
 
-		chain_node<child_node> _child_chain_node;
-		chain_node<child_node>& child_chain_hook() {
+		forward_chain_node<child_node> _child_chain_node;
+		forward_chain_node<child_node>& child_chain_hook() {
 			return _child_chain_node;
 		}
 
@@ -263,8 +263,9 @@ private:
 	fs_mount* owner;
 	u32 mode;
 
-	bichain<mount_info, &mount_info::fs_node_chainnode> mounts;
-	chain<child_node, &child_node::child_chain_hook> child_nodes;
+	front_fchain<mount_info, &mount_info::fs_node_chainnode> mounts;
+	front_forward_fchain<child_node, &child_node::child_chain_hook>
+	    child_nodes;
 
 	spin_rwlock mounts_lock;
 	spin_rwlock child_nodes_lock;
@@ -337,7 +338,7 @@ private:
 private:
 	fs_driver* ramfs_driver;
 	/// mount point list
-	bibochain<mount_info, &mount_info::fs_ctl_chainnode> mountpoints;
+	fchain<mount_info, &mount_info::fs_ctl_chainnode> mountpoints;
 
 	spin_rwlock mountpoints_lock;
 
