@@ -1,4 +1,4 @@
-/// @file   new_ops.hh
+/// @file   core/new_ops.hh
 //
 // (C) 2010,2013-2014 KATO Takeshi
 //
@@ -12,7 +12,7 @@
 class mem_allocator
 {
 public:
-	struct operations
+	struct interfaces
 	{
 		void init() {
 			Allocate = nofunc_Allocate;
@@ -20,21 +20,21 @@ public:
 			GetSize = nofunc_GetSize;
 		}
 
-		typedef cause::pair<void*> (*AllocateOp)(
+		typedef cause::pair<void*> (*AllocateIF)(
 		    mem_allocator* x, uptr bytes);
-		AllocateOp Allocate;
+		AllocateIF Allocate;
 
-		typedef cause::t (*DeallocateOp)(
+		typedef cause::t (*DeallocateIF)(
 		    mem_allocator* x, void* p);
-		DeallocateOp Deallocate;
+		DeallocateIF Deallocate;
 
-		typedef cause::pair<uptr> (*GetSizeOp)(
+		typedef cause::pair<uptr> (*GetSizeIF)(
 		    mem_allocator* x, void* p);
-		GetSizeOp GetSize;
+		GetSizeIF GetSize;
 	};
 
 	mem_allocator() {}
-	mem_allocator(const operations* _ops) : ops(_ops) {}
+	mem_allocator(const interfaces* _ifs) : ifs(_ifs) {}
 
 public:
 	template<class T>
@@ -70,30 +70,30 @@ public:
 public:
 	cause::pair<void*> allocate(uptr bytes)
 	{
-		return ops->Allocate(this, bytes);
+		return ifs->Allocate(this, bytes);
 	}
 
 	cause::t deallocate(void* p)
 	{
-		return ops->Deallocate(this, p);
+		return ifs->Deallocate(this, p);
 	}
 
 	cause::pair<uptr> get_size(void* p)
 	{
-		return ops->GetSize(this, p);
+		return ifs->GetSize(this, p);
 	}
 
 protected:
-	const operations* ops;
+	const interfaces* ifs;
 };
 
-inline void* operator new  (uptr, void* ptr) { return ptr; }
-inline void* operator new[](uptr, void* ptr) { return ptr; }
+inline void* operator new  (uptr, void* ptr) throw() { return ptr; }
+inline void* operator new[](uptr, void* ptr) throw() { return ptr; }
 
 inline void operator delete  (void*, void*) {}
 inline void operator delete[](void*, void*) {}
 
-inline void* operator new (uptr size, mem_allocator& alloc)
+inline void* operator new (uptr size, mem_allocator& alloc) throw()
 {
 	auto r = alloc.allocate(size);
 	if (is_ok(r))
@@ -105,7 +105,7 @@ inline void operator delete (void* p, mem_allocator& alloc)
 {
 	alloc.deallocate(p);
 }
-inline void* operator new[] (uptr size, mem_allocator& alloc)
+inline void* operator new[] (uptr size, mem_allocator& alloc) throw()
 {
 	auto r = alloc.allocate(size);
 	if (is_ok(r))
@@ -119,8 +119,12 @@ inline void operator delete[] (void* p, mem_allocator& alloc)
 }
 template<class T> inline cause::t new_destroy(T* p, mem_allocator& alloc)
 {
-	p->~T();
-	return alloc.deallocate(p);
+	if (p) {
+		p->~T();
+		return alloc.deallocate(p);
+	}
+
+	return cause::OK;
 }
 
 mem_allocator& generic_mem();

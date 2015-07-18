@@ -1,14 +1,14 @@
 /// @file   core/timer.hh
 /// @brief  Timer interfaces.
 //
-// (C) 2013-2014 KATO Takeshi
+// (C) 2013-2015 KATO Takeshi
 //
 
 #ifndef CORE_TIMER_HH_
 #define CORE_TIMER_HH_
 
-#include <clock_src.hh> // for tick_timer
-#include <message.hh>
+#include <core/clock_src.hh> // for tick_timer
+#include <core/message.hh>
 
 
 enum { TICK_HZ = 1000000000, };
@@ -17,7 +17,7 @@ class timer_message : public message
 {
 	friend class timer_ctl;
 
-	typedef bichain_node<timer_message> chain_node_type;
+	typedef chain_node<timer_message> chain_node_type;
 
 	chain_node_type _chain_node;
 

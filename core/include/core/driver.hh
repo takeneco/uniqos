@@ -22,6 +22,7 @@
 
 #include <core/basic.hh>
 #include <core/spinlock.hh>
+#include <util/atomic.hh>
 
 
 /// Driver base class

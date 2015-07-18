@@ -10,7 +10,7 @@ extern "C" {
 #include <acpi.h>
 }  // extern "C"
 
-#include <arch/pagetable.hh>
+#include <arch/pagetbl.hh>
 
 
 namespace acpi {

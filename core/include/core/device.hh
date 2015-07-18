@@ -21,7 +21,8 @@
 #define CORE_DEVICE_HH_
 
 #include <core/basic.hh>
-#include <util/spinlock.hh>
+#include <core/spinlock.hh>
+#include <util/foreach.hh>
 
 
 /// @brief  Device base class
@@ -57,86 +58,28 @@ public:
 	bus_device(const char* device_name) :
 		device(device_name)
 	{}
-
-private:
 };
 
 
-// TODO: move to util
-template <class CHAIN, class EXPORT_TYPE=typename CHAIN::data_t>
-class locked_chain_iterator
+class device_ctl
 {
-	class iterator;
-	using data_t = typename CHAIN::data_t;
+	friend cause::t device_ctl_setup();
+
+private:
+	device_ctl();
 
 public:
-	locked_chain_iterator(data_t* _start, spin_rwlock* _lock) :
-		start(_start),
-		lock(_lock)
-	{
-		if (lock)
-			lock->rlock();
-	}
-	locked_chain_iterator(locked_chain_iterator&& src) :
-		start(src.start),
-		lock(src.lock)
-	{
-		src.lock = nullptr;
-	}
-
-	~locked_chain_iterator()
-	{
-		if (lock)
-			lock->un_rlock();
-	}
-
-	iterator begin() {
-		return iterator(start);
-	}
-	iterator end() {
-		return iterator(nullptr);
-	}
+	cause::t append_bus_device(bus_device* dev);
+	cause::t remove_bus_device(bus_device* dev);
+	locked_chain_iterator<device::iterative_chain, bus_device>
+	    each_bus_devices();
 
 private:
-	data_t* start;
-	spin_rwlock* lock;
+	device::iterative_chain bus_chain;
+	spin_rwlock bus_chain_lock;
 };
 
-template <class CHAIN, class EXPORT_TYPE>
-class locked_chain_iterator<CHAIN, EXPORT_TYPE>::iterator
-{
-	using chain_t = CHAIN;
-	using export_t = EXPORT_TYPE;
-
-public:
-	iterator(data_t* start) :
-		current(start)
-	{}
-	iterator(iterator&& src) {
-		current = src.current;
-	}
-
-	export_t* operator * () {
-		return static_cast<export_t*>(current);
-	}
-	export_t* operator ++ () {
-		current = chain_t::next(current);
-		return static_cast<export_t*>(current);
-	}
-	bool operator == (const iterator& itr) const {
-		return current == itr.current;
-	}
-	bool operator != (const iterator& itr) const {
-		return current != itr.current;
-	}
-
-private:
-	data_t* current;
-};
-
-cause::t bus_device_append(bus_device* dev);
-cause::t bus_device_remove(bus_device* dev);
-locked_chain_iterator<device::iterative_chain, bus_device> bus_device_iterate();
+device_ctl* get_device_ctl();
 
 
 #endif  // include guard

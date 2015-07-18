@@ -1,7 +1,7 @@
 /// @file   core/process.hh
 /// @brief  process class declaration.
 //
-// (C) 2013-2014 KATO Takeshi
+// (C) 2013-2015 KATO Takeshi
 //
 
 #ifndef CORE_PROCESS_HH_
@@ -10,7 +10,6 @@
 #include <core/basic.hh>
 #include <core/io_node.hh>
 #include <core/thread.hh>
-#include <arch/pagetable.hh>
 
 
 typedef u32 process_id;
@@ -28,7 +27,7 @@ public:
 	process();
 	~process();
 
-	bichain_node<process>& get_process_ctl_node() {
+	chain_node<process>& get_process_ctl_node() {
 		return process_ctl_node;
 	}
 
@@ -38,12 +37,13 @@ public:
 	cause::t set_io_desc_nr(int nr);
 
 	cause::pair<io_desc*> get_io_desc(int i);
+	cause::t clear_io_desc(int iod);
 	cause::t set_io_desc(int iod, io_node* target, io_node::offset off);
 	cause::pair<int> append_io_desc(io_node* io, io_node::offset off);
 
 private:
-	bibochain<thread, &thread::process_chainnode> child_thread_chain;
-	bichain_node<process> process_ctl_node;
+	fchain<thread, &thread::process_chainnode> child_thread_chain;
+	chain_node<process> process_ctl_node;
 	process_id id;
 
 	int io_desc_nr;

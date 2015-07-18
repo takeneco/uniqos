@@ -1,15 +1,15 @@
-/// @file   core/include/core/process_ctl.hh
+/// @file   core/process_ctl.hh
 /// @brief  process_ctl class declaration.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -41,10 +41,14 @@ public:
 
 	cause::t setup();
 
+	mempool* io_desc_pool() { return io_desc_mp; } 
+
 private:
 	process_id_map_type process_id_map;
 	mempool* io_desc_mp;
 };
+
+process_ctl* get_process_ctl();
 
 
 #endif  // include guard

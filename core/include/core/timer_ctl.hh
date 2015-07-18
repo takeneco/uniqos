@@ -1,18 +1,31 @@
-/// @file  timer_ctl.hh
+/// @file  core/timer_ctl.hh
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2012-2015 KATO Takeshi
 //
-// (C) 2012-2013 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /// タイマデバイスが刻む時刻を clock と呼び、
 /// カーネル内時刻を tick と呼ぶことにする。
 
-#ifndef INCLUDE_TIMER_CTL_HH_
-#define INCLUDE_TIMER_CTL_HH_
+#ifndef CORE_TIMER_CTL_HH_
+#define CORE_TIMER_CTL_HH_
 
-#include <clock_src.hh>
+#include <core/clock_src.hh>
 #include <config.h>
 #include <core/timer.hh>
-#include <spinlock.hh>
+#include <core/spinlock.hh>
 
 
 class output_buffer;
@@ -109,7 +122,7 @@ public:
 	void dump(output_buffer& ob);
 };
 
-cause::type get_jiffy_tick(tick_time* tick);
+cause::t get_jiffy_tick(tick_time* tick);
 
 
 #endif  // include guard
