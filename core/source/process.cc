@@ -1,15 +1,15 @@
 /// @file   process.cc
 /// @brief  process class implementation.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2013-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2013 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -70,6 +70,20 @@ cause::pair<io_desc*> process::get_io_desc(int iod)
 		return null_pair(cause::BADIO);
 
 	return make_pair(cause::OK, io_desc_array[iod]);
+}
+
+cause::t process::clear_io_desc(int iod)
+{
+	if (io_desc_nr <= iod)
+		return cause::OUTOFRANGE;
+	if (io_desc_array[iod] == nullptr)
+		return cause::BADIO;
+
+	new_destroy(io_desc_array[iod], *get_process_ctl()->io_desc_pool());
+
+	io_desc_array[iod] = nullptr;
+
+	return cause::OK;
 }
 
 cause::t process::set_io_desc(int iod, io_node* target, io_node::offset off)
@@ -152,24 +166,42 @@ cause::pair<uptr> sys_close(u32 iod)
 	if (is_fail(iodesc))
 		return zero_pair(iodesc.cause());
 
-	//io_node::close(iodesc.data()->io);
+	io_node::close(iodesc.data()->io);
 
-	cause::t r = pr->set_io_desc(iod, nullptr, 0);
-	if (is_fail(r)) {
+	cause::t r = pr->clear_io_desc(iod);
+	if (is_fail(r))
 		return zero_pair(r);
-	}
 
 	return zero_pair(cause::OK);
 }
 
 cause::pair<uptr> sys_write(int iod, const void* buf, uptr bytes)
 {
-	auto r = get_current_process()->get_io_desc(iod);
-	if (is_fail(r))
-		return zero_pair(r.cause());
+	auto _iodesc = get_current_process()->get_io_desc(iod);
+	if (is_fail(_iodesc))
+		return zero_pair(_iodesc.cause());
 
-	io_desc* target = r.data();
+	io_desc* target = _iodesc.data();
 
-	return target->io->write(target->off, buf, bytes);
+	auto off = target->io->write(target->off, buf, bytes);
+
+	target->off += off.data();
+
+	return off;
+}
+
+cause::pair<uptr> sys_read(int iod, void* buf, uptr bytes)
+{
+	auto _iodesc = get_current_process()->get_io_desc(iod);
+	if (is_fail(_iodesc))
+		return zero_pair(_iodesc.cause());
+
+	io_desc* target = _iodesc.data();
+
+	auto off = target->io->read(target->off, buf, bytes);
+
+	target->off += off.data();
+
+	return off;
 }
 

@@ -1,15 +1,15 @@
 /// @file   cpu_node.cc
 /// @brief  cpu_node class implementation.
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2012-2015 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -35,7 +35,8 @@
 ///     ページ割り当てが可能になる。mempool によるメモリ割り当ても可能。
 /// (3) 各CPU から setup() を呼び出す。
 
-cpu_node::cpu_node() :
+cpu_node::cpu_node(cpu_id cpunode_id) :
+	cpu_node_id(cpunode_id),
 	threads(this)
 {
 }
@@ -138,12 +139,12 @@ cause::t cpu_node::page_dealloc(arch::page::TYPE page_type, uptr padr)
 
 cpu_id get_cpu_node_count()
 {
-	return global_vars::core.cpu_node_cnt;
+	return global_vars::core.cpu_node_nr;
 }
 
 cpu_node* get_cpu_node()
 {
-	const cpu_id id = arch::get_cpu_id();
+	const cpu_id id = arch::get_cpu_node_id();
 
 	return global_vars::core.cpu_node_objs[id];
 }

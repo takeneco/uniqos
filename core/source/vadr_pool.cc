@@ -112,7 +112,7 @@ cause::t vadr_pool::revoke(void* vadr)
 
 	resource* res = nullptr;
 	for (resource* _res : assign_chain) {
-		if(res->vadr_range.test(_vadr)) {
+		if(_res->vadr_range.test(_vadr)) {
 			res = _res;
 			break;
 		}
