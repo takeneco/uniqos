@@ -19,10 +19,8 @@ class timer_message : public message
 
 	typedef chain_node<timer_message> chain_node_type;
 
-	chain_node_type _chain_node;
-
 public:
-	chain_node_type& chain_hook() { return _chain_node; }
+	chain_node_type timer_store_chain_node;
 
 	tick_time nanosec_delay;
 
@@ -57,5 +55,5 @@ public:
 cause::t timer_set(timer_message* m);
 
 
-#endif  // include guard
+#endif  // CORE_TIMER_HH_
 

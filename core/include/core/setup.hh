@@ -15,6 +15,7 @@ cause::t log_init();
 cause::t mem_io_setup();
 cause::t intr_setup();
 cause::t device_ctl_setup();
+cause::t devnode_setup();
 cause::t driver_ctl_setup();
 cause::t timer_setup();
 cause::t module_ctl_init();

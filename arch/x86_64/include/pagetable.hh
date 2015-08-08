@@ -20,7 +20,7 @@
 #ifndef ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 #define ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 
-#include <arch/pagetable.hh>
+#include <arch/pagetbl.hh>
 #include <core/basic.hh>
 
 

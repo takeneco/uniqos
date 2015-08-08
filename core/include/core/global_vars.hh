@@ -13,6 +13,7 @@
 
 class cpu_node;
 class device_ctl;
+class dev_node_ctl;
 class driver_ctl;
 class fs_ctl;
 class intr_ctl;
@@ -45,6 +46,8 @@ struct _core
 
 	device_ctl*        device_ctl_obj;
 
+	dev_node_ctl*     dev_node_ctl_obj;
+
 	driver_ctl*        driver_ctl_obj;
 
 	fs_ctl*            fs_ctl_obj;
@@ -71,5 +74,5 @@ extern _core core;
 }  // namespace global_vars
 
 
-#endif  // include guard
+#endif  // CORE_GLOBAL_VARS_HH_
 

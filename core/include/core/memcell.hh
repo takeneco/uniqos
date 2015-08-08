@@ -21,7 +21,7 @@
 #define CORE_MEMCELL_HH_
 
 #include <arch.hh>
-#include <core/bitmap.hh>
+#include <core/int_bitset.hh>
 #include <core/new_ops.hh>
 
 #include <core/output_buffer.hh>
@@ -530,5 +530,5 @@ inline void memcell_test(output_buffer& lt)
 }
 
 
-#endif  // include guard
+#endif  // CORE_MEMCELL_HH_
 
