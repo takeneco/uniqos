@@ -1,15 +1,15 @@
 /// @file  drivers/fs/ramfs.cc
 /// @brief ramfs driver.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -18,11 +18,12 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <core/fs_ctl.hh>
-#include <core/mempool.hh>
 #include <util/string.hh>
 
 
 namespace {
+
+const char driver_name_ramfs[] = "ramfs";
 
 class ramfs_node;
 class ramfs_io_node;
@@ -42,12 +43,14 @@ public:
 	const io_node::interfaces* ref_io_node_ifs() { return &io_node_ifs; }
 
 	mempool* get_fs_node_mp() { return fs_node_mp; }
+	mempool* get_fs_dev_node_mp() { return fs_dev_node_mp; }
 
 private:
 	interfaces self_ifs;
 	fs_mount::interfaces mount_ifs;
 	io_node::interfaces io_node_ifs;
 	mempool* fs_node_mp;
+	mempool* fs_dev_node_mp;
 };
 
 /// mount point
@@ -65,6 +68,8 @@ public:
 
 	cause::pair<fs_node*> on_CreateNode(
 	    fs_node* parent, const char* name, u32 flags);
+	cause::pair<fs_dev_node*> on_CreateDevNode(
+	    fs_node* parent, const char* name, devnode_no no, u32 flags);
 	cause::pair<fs_node*> on_GetChildNode(
 	    fs_node* parent, const char* childname);
 	cause::pair<io_node*> on_OpenNode(
@@ -84,8 +89,9 @@ private:
 class ramfs_io_node : public io_node
 {
 public:
-	ramfs_io_node(const interfaces* _ops, ramfs_node* _fsn);
+	ramfs_io_node(const interfaces* _ops, fs_node* _fsn);
 
+public:
 	static cause::t on_Close(ramfs_io_node* x);
 	cause::pair<uptr> on_Read(
 	    io_node::offset off, void* data, uptr bytes);
@@ -96,7 +102,7 @@ public:
 	    uptr buf_bytes, dir_entry* buf);
 
 private:
-	ramfs_node* fsnode;
+	fs_node* fsnode;
 };
 
 /// file node
@@ -125,12 +131,30 @@ private:
 	u8* blocks[8];
 };
 
+/// directory node
+class ramfs_dir_node : public fs_dir_node
+{
+public:
+	ramfs_dir_node(ramfs_mount* owner);
+
+	ramfs_mount* get_owner() {
+		return static_cast<ramfs_mount*>(fs_node::get_owner());
+	}
+	ramfs_io_node* get_io_node() {
+		return &ramfs_ion;
+	}
+
+private:
+	ramfs_io_node ramfs_ion;
+};
+
 
 // ramfs_driver
 
 ramfs_driver::ramfs_driver() :
-	fs_driver(&self_ifs),
-	fs_node_mp(nullptr)
+	fs_driver(&self_ifs, driver_name_ramfs),
+	fs_node_mp(nullptr),
+	fs_dev_node_mp(nullptr)
 {
 	self_ifs.init();
 
@@ -139,9 +163,10 @@ ramfs_driver::ramfs_driver() :
 
 	mount_ifs.init();
 
-	mount_ifs.CreateNode  = fs_mount::call_on_CreateNode<ramfs_mount>;
-	mount_ifs.OpenNode    = fs_mount::call_on_OpenNode<ramfs_mount>;
-	mount_ifs.CloseNode   = fs_mount::call_on_CloseNode<ramfs_mount>;
+	mount_ifs.CreateNode    = fs_mount::call_on_CreateNode<ramfs_mount>;
+	mount_ifs.CreateDevNode = fs_mount::call_on_CreateDevNode<ramfs_mount>;
+	mount_ifs.OpenNode      = fs_mount::call_on_OpenNode<ramfs_mount>;
+	mount_ifs.CloseNode     = fs_mount::call_on_CloseNode<ramfs_mount>;
 
 	io_node_ifs.init();
 
@@ -161,6 +186,12 @@ cause::t ramfs_driver::setup()
 		return mp.cause();
 
 	fs_node_mp = mp.data();
+
+	mp = mempool::acquire_shared(sizeof (fs_dev_node));
+	if (is_fail(mp))
+		return mp.cause();
+
+	fs_dev_node_mp = mp.data();
 
 	return cause::OK;
 }
@@ -204,7 +235,7 @@ ramfs_mount::ramfs_mount(ramfs_driver* drv) :
 cause::t ramfs_mount::mount(const char*)
 {
 	root = new (*get_driver()->get_fs_node_mp())
-	           ramfs_node(this, fs_ctl::NODE_DIR);
+	           ramfs_dir_node(this);
 	if (!root)
 		return cause::NOMEM;
 
@@ -226,11 +257,25 @@ cause::pair<fs_node*> ramfs_mount::on_CreateNode(
 		return null_pair(cause::NOENT);
 
 	fs_node* fsn = new (*get_driver()->get_fs_node_mp())
-	                   ramfs_node(this, flags);
+	                   ramfs_node(this, /*flags*/fs_ctl::NODE_REG);
 	if (!fsn)
 		return null_pair(cause::NOMEM);
 
 	return make_pair(cause::OK, fsn);
+}
+
+cause::pair<fs_dev_node*> ramfs_mount::on_CreateDevNode(
+    fs_node* parent,
+    const char*,
+    devnode_no no,
+    u32 flags)
+{
+	fs_dev_node* node = new (*get_driver()->get_fs_dev_node_mp())
+	                        fs_dev_node(this, no);
+	if (!node)
+		return null_pair(cause::NOMEM);
+
+	return make_pair(cause::OK, node);
 }
 
 cause::pair<fs_node*> ramfs_mount::on_GetChildNode(
@@ -256,7 +301,7 @@ cause::t ramfs_mount::on_CloseNode(
 
 // ramfs_io_node
 
-ramfs_io_node::ramfs_io_node(const interfaces* _ifs, ramfs_node* _fsn) :
+ramfs_io_node::ramfs_io_node(const interfaces* _ifs, fs_node* _fsn) :
 	io_node(_ifs),
 	fsnode(_fsn)
 {
@@ -270,13 +315,23 @@ cause::t ramfs_io_node::on_Close(ramfs_io_node* x)
 cause::pair<uptr> ramfs_io_node::on_Read(
     io_node::offset off, void* data, uptr bytes)
 {
-	return fsnode->read(off, data, bytes);
+	if (fsnode->is_regular()) {
+		return static_cast<ramfs_node*>(fsnode)->
+		       read(off, data, bytes);
+	} else {
+		return zero_pair(cause::FAIL);
+	}
 }
 
 cause::pair<uptr> ramfs_io_node::on_Write(
     io_node::offset off, const void* data, uptr bytes)
 {
-	return fsnode->write(off, data, bytes);
+	if (fsnode->is_regular()) {
+		return static_cast<ramfs_node*>(fsnode)->
+		       write(off, data, bytes);
+	} else {
+		return zero_pair(cause::FAIL);
+	}
 }
 
 cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
@@ -386,6 +441,14 @@ cause::pair<uptr> ramfs_node::write(uptr off, const void* data, uptr bytes)
 	return make_pair(cause::OK, write_bytes);
 }
 
+// ramfs_dir_node
+
+ramfs_dir_node::ramfs_dir_node(ramfs_mount* owner) :
+	fs_dir_node(owner),
+	ramfs_ion(owner->get_driver()->ref_io_node_ifs(), this)
+{
+}
+
 }  // namespace
 
 
@@ -402,7 +465,7 @@ cause::t ramfs_init()
 		return r;
 	}
 
-	r = get_fs_ctl()->register_ramfs_driver(ramfs_drv);
+	r = get_fs_ctl()->register_fs_driver(ramfs_drv);
 	if (is_fail(r))
 		new_destroy(ramfs_drv, generic_mem());
 

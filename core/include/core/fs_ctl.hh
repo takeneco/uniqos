@@ -1,19 +1,34 @@
 /// @file   core/fs_ctl.hh
 /// @brief  filesystem interface declaration.
+/// ファイルシステムのドライバはこのヘッダファイルをincludeする必要がある。
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2014 KATO Takeshi
 //
-// (C) 2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef CORE_FS_CTL_HH_
 #define CORE_FS_CTL_HH_
 
-#include <core/io_node.hh>
-#include <util/spinlock.hh>
+#include <core/devnode.hh>
+#include <core/spinlock.hh>
 
 
 class fs_driver;
 class fs_mount;
 class fs_node;
+class fs_dev_node;
 class io_node;
 
 typedef u16 pathname_cn_t;  ///< pathname char count type.
@@ -61,6 +76,9 @@ public:
 	}
 
 public:
+	const char* get_name() const {
+		return fs_driver_name;
+	}
 	cause::pair<fs_mount*> mount(const char* dev) {
 		return ifs->Mount(this, dev);
 	}
@@ -69,11 +87,16 @@ public:
 	}
 
 protected:
-	fs_driver() {}
-	fs_driver(interfaces* _ifs) : ifs(_ifs) {}
+	fs_driver(interfaces* _ifs, const char* name);
+
+public:
+	chain_node<fs_driver> _fs_ctl_chain_node;
 
 protected:
 	const interfaces* ifs;
+
+private:
+	const char* fs_driver_name;
 };
 
 
@@ -95,8 +118,19 @@ public:
 		void init();
 
 		typedef cause::pair<fs_node*> (*CreateNodeIF)(
-		    fs_mount* x, fs_node* parent, const char* name, u32 flags);
+		    fs_mount* x,
+		    fs_node* parent,
+		    const char* name,
+		    u32 flags);
 		CreateNodeIF CreateNode;
+
+		typedef cause::pair<fs_dev_node*> (*CreateDevNodeIF)(
+		    fs_mount* x,
+		    fs_node* parent,
+		    const char* name,
+		    devnode_no no,
+		    u32 flags);
+		CreateDevNodeIF CreateDevNode;
 
 		typedef cause::pair<fs_node*> (*GetChildNodeIF)(
 		    fs_mount* x, fs_node* parent, const char* childname);
@@ -120,6 +154,19 @@ public:
 	}
 	static cause::pair<fs_node*> nofunc_CreateNode(
 	    fs_mount*, fs_node*, const char*, u32) {
+		return null_pair(cause::NOFUNC);
+	}
+
+	// CreateDevNode
+	template <class T>
+	static cause::pair<fs_dev_node*> call_on_CreateDevNode(
+	    fs_mount* x,
+	    fs_node* parent, const char* name, devnode_no no, u32 flags) {
+		return static_cast<T*>(x)->
+		    on_CreateDevNode(parent, name, no, flags);
+	}
+	static cause::pair<fs_dev_node*> nofunc_CreateDevNode(
+	    fs_mount*, fs_node*, const char*, devnode_no, u32) {
 		return null_pair(cause::NOFUNC);
 	}
 
@@ -185,24 +232,17 @@ protected:
 	fs_node* root;
 };
 
-class mount_info
+class fs_mount_info
 {
-	DISALLOW_COPY_AND_ASSIGN(mount_info);
+	DISALLOW_COPY_AND_ASSIGN(fs_mount_info);
 
 private:
-	mount_info(const char* src, const char* tgt);
+	fs_mount_info(const char* src, const char* tgt);
 
 public:
-	static cause::pair<mount_info*> create(
+	static cause::pair<fs_mount_info*> create(
 	    const char* source, const char* target);
-	static cause::t destroy(mount_info* mp);
-
-	chain_node<mount_info>& fs_ctl_chainnode() {
-		return _fs_ctl_chainnode;
-	}
-	chain_node<mount_info>& fs_node_chainnode() {
-		return _fs_node_chainnode;
-	}
+	static cause::t destroy(fs_mount_info* mp);
 
 	fs_mount*   mount_obj;
 	const char* source;
@@ -211,9 +251,8 @@ public:
 	pathname_cn_t source_char_cn;  ///< source char count.
 	pathname_cn_t target_char_cn;  ///< target char count.
 
-private:
-	chain_node<mount_info> _fs_ctl_chainnode;
-	chain_node<mount_info> _fs_node_chainnode;
+	chain_node<fs_mount_info> fs_ctl_chain_node;
+	chain_node<fs_mount_info> fs_node_chain_node;
 
 	char buf[0];
 };
@@ -245,8 +284,8 @@ public:
 	bool is_dir() const;
 	bool is_regular() const;
 
-	void insert_mount(mount_info* mi);
-	void remove_mount(mount_info* mi);
+	void insert_mount(fs_mount_info* mi);
+	void remove_mount(fs_mount_info* mi);
 
 	cause::pair<io_node*> open(u32 flags) {
 		return owner->open_node(this, flags);
@@ -263,7 +302,7 @@ private:
 	fs_mount* owner;
 	u32 mode;
 
-	front_fchain<mount_info, &mount_info::fs_node_chainnode> mounts;
+	front_chain<fs_mount_info, &fs_mount_info::fs_node_chain_node> mounts;
 	front_forward_fchain<child_node, &child_node::child_chain_hook>
 	    child_nodes;
 
@@ -271,6 +310,24 @@ private:
 	spin_rwlock child_nodes_lock;
 };
 
+class fs_dir_node : public fs_node
+{
+public:
+	fs_dir_node(fs_mount* owner);
+
+public:
+};
+
+class fs_dev_node : public fs_node
+{
+public:
+	fs_dev_node(fs_mount* owner, devnode_no no);
+
+public:
+
+private:
+	devnode_no node_no;
+};
 
 class fs_rootfs_drv : public fs_driver
 {
@@ -307,6 +364,7 @@ public:
 		NODE_UNKNOWN,
 		NODE_DIR,
 		NODE_REG,
+		NODE_DEV,
 	};
 	enum OPEN_FLAGS {
 		OPEN_CREATE   = 0x01,
@@ -319,10 +377,8 @@ public:
 public:
 	cause::t setup();
 
-	cause::t register_ramfs_driver(fs_driver* drv) {
-		ramfs_driver = drv;
-		return cause::OK;
-	}
+	cause::t register_fs_driver(fs_driver* drv);
+	cause::pair<fs_driver*> get_fs_driver(const char* driver_name);
 
 	cause::pair<io_node*> open(const char* path, u32 flags);
 	cause::t close(io_node* ion);
@@ -336,9 +392,11 @@ private:
 	    fs_node* base, const char* path, u32 flags);
 
 private:
-	fs_driver* ramfs_driver;
 	/// mount point list
-	fchain<mount_info, &mount_info::fs_ctl_chainnode> mountpoints;
+	chain<fs_mount_info, &fs_mount_info::fs_ctl_chain_node> mountpoints;
+
+	/// driver list
+	front_chain<fs_driver, &fs_driver::_fs_ctl_chain_node> fs_driver_chain;
 
 	spin_rwlock mountpoints_lock;
 
@@ -352,5 +410,5 @@ private:
 fs_ctl* get_fs_ctl();
 
 
-#endif  // include guard
+#endif  // CORE_FS_CTL_HH_
 

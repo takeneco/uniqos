@@ -1,15 +1,15 @@
 /// @file  fs_ctl.cc
-/// @brief filesystem controller.
+/// @brief Filesystem controller.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -20,12 +20,15 @@
 #include <core/fs_ctl.hh>
 
 #include <core/global_vars.hh>
+#include <core/log.hh>
 #include <core/mempool.hh>
 #include <core/setup.hh>
 #include <util/string.hh>
 
 
 namespace {
+
+const char* driver_name_rootfs = "rootfs";
 
 uptr nodename_length(const char* path)
 {
@@ -98,25 +101,29 @@ void fs_driver::interfaces::init()
 }
 
 
-fs_ctl* get_fs_ctl()
+// fs_driver
+
+fs_driver::fs_driver(interfaces* _ifs, const char* name) :
+	ifs(_ifs),
+	fs_driver_name(name)
 {
-	return global_vars::core.fs_ctl_obj;
 }
 
 // fs_mount::interfaces
 
 void fs_mount::interfaces::init()
 {
-	CreateNode   = fs_mount::nofunc_CreateNode;
-	GetChildNode = fs_mount::nofunc_GetChildNode;
-	OpenNode     = fs_mount::nofunc_OpenNode;
-	CloseNode    = fs_mount::nofunc_CloseNode;
+	CreateNode     = fs_mount::nofunc_CreateNode;
+	CreateDevNode  = fs_mount::nofunc_CreateDevNode;
+	GetChildNode   = fs_mount::nofunc_GetChildNode;
+	OpenNode       = fs_mount::nofunc_OpenNode;
+	CloseNode      = fs_mount::nofunc_CloseNode;
 }
 
 
-// mount_info
+// fs_mount_info
 
-mount_info::mount_info(const char* src, const char* tgt) :
+fs_mount_info::fs_mount_info(const char* src, const char* tgt) :
 	mount_obj(nullptr)
 {
 	source_char_cn = str_length(src);
@@ -132,23 +139,23 @@ mount_info::mount_info(const char* src, const char* tgt) :
 	target = tgt ? &buf[src_len] : nullptr;
 }
 
-cause::pair<mount_info*> mount_info::create(
+cause::pair<fs_mount_info*> fs_mount_info::create(
     const char* source, const char* target)
 {
-	uptr size = sizeof (mount_info);
+	uptr size = sizeof (fs_mount_info);
 	size += source ? str_length(source) + 1 : 0;
 	size += target ? str_length(target) + 1 : 0;
 
-	mount_info* mp = new (mem_alloc(size)) mount_info(source, target);
+	fs_mount_info* mp = new (mem_alloc(size)) fs_mount_info(source, target);
 	if (!mp)
 		return null_pair(cause::NOMEM);
 
 	return make_pair(cause::OK, mp);
 }
 
-cause::t mount_info::destroy(mount_info* mp)
+cause::t fs_mount_info::destroy(fs_mount_info* mp)
 {
-	mp->~mount_info();
+	mp->~fs_mount_info();
 	operator delete (mp, mp);
 	mem_dealloc(mp);
 
@@ -157,7 +164,6 @@ cause::t mount_info::destroy(mount_info* mp)
 
 // fs_node
 
-#include <core/log.hh>
 fs_node::fs_node(fs_mount* mount_owner, u32 _mode) :
 	owner(mount_owner),
 	mode(_mode)
@@ -174,14 +180,14 @@ bool fs_node::is_regular() const
 	return mode == fs_ctl::NODE_REG;
 }
 
-void fs_node::insert_mount(mount_info* mi)
+void fs_node::insert_mount(fs_mount_info* mi)
 {
 	spin_wlock_section _sws(mounts_lock);
 
 	mounts.push_front(mi);
 }
 
-void fs_node::remove_mount(mount_info* mi)
+void fs_node::remove_mount(fs_mount_info* mi)
 {
 	spin_wlock_section _sws(mounts_lock);
 
@@ -194,7 +200,7 @@ fs_node* fs_node::get_mounted_node()
 	// 必要がある。
 	spin_rlock_section _srs(mounts_lock);
 
-	mount_info* mnt = mounts.front();
+	fs_mount_info* mnt = mounts.front();
 	if (mnt)
 		return mnt->mount_obj->get_root_node();
 
@@ -266,10 +272,27 @@ uptr fs_node::child_node::calc_size(const char* name)
 }
 
 
+// fs_dir_node
+
+fs_dir_node::fs_dir_node(fs_mount* owner) :
+	fs_node(owner, fs_ctl::NODE_DIR)
+{
+}
+
+
+// fs_dev_node
+
+fs_dev_node::fs_dev_node(fs_mount* owner, devnode_no no) :
+	fs_node(owner, fs_ctl::NODE_DEV),
+	node_no(no)
+{
+}
+
+
 // fs_rootfs_drv
 
 fs_rootfs_drv::fs_rootfs_drv() :
-	fs_driver(&fs_driver_ops)
+	fs_driver(&fs_driver_ops, driver_name_rootfs)
 {
 	fs_driver_ops.init();
 }
@@ -299,6 +322,28 @@ cause::t fs_ctl::setup()
 	root = rootfs_mnt.get_root_node();
 
 	return cause::OK;
+}
+
+cause::t fs_ctl::register_fs_driver(fs_driver* drv)
+{
+	auto r = get_fs_driver(drv->get_name());
+	// 同名のドライバは登録禁止
+	if (is_ok(r))
+		return cause::FAIL;
+
+	fs_driver_chain.push_front(drv);
+
+	return cause::OK;
+}
+
+cause::pair<fs_driver*> fs_ctl::get_fs_driver(const char* name)
+{
+	for (auto drv : fs_driver_chain) {
+		if (str_compare(name, drv->get_name()) == 0)
+			return make_pair(cause::OK, drv);
+	}
+
+	return null_pair(cause::NODEV);
 }
 
 cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
@@ -334,47 +379,54 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 
 cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
 {
-	if (str_compare(32, "ramfs", type) == 0) {
-		auto target_node = get_fs_node(nullptr, target, 0);
-		if (is_fail(target_node))
-			return target_node.cause();
+	auto fs_drv = get_fs_driver(type);
+	if (is_fail(fs_drv))
+		return fs_drv.cause();
 
-		auto r1 = mount_info::create(source, target);
-		if (is_fail(r1))
-			return r1.cause();
+	auto target_node = get_fs_node(nullptr, target, 0);
+	if (is_fail(target_node))
+		return target_node.cause();
 
-		mount_info* mp = r1.data();
+	cause::t r = cause::FAIL;
 
-		auto r2 = ramfs_driver->mount(source);
-		if (is_fail(r2)) {
-			auto r3 = mount_info::destroy(mp);
-			if (is_fail(r3)) {
-				// TODO:multierror
-			}
-			return r2.cause();
+	auto r1 = fs_mount_info::create(source, target);
+	if (is_ok(r1)) {
+		fs_mount_info* mnt_info = r1.data();
+
+		auto r2 = fs_drv.data()->mount(source);
+		if (is_ok(r2)) {
+			mnt_info->mount_obj = r2.data();
+
+			target_node.data()->insert_mount(mnt_info);
+
+			mountpoints_lock.wlock();
+			mountpoints.push_front(mnt_info);
+			mountpoints_lock.un_wlock();
+
+			return cause::OK;
 		}
 
-		mp->mount_obj = r2.data();
+		r = r2.cause();
 
-		target_node.data()->insert_mount(mp);
-
-		mountpoints_lock.wlock();
-		mountpoints.push_front(mp);
-		mountpoints_lock.un_wlock();
-
-		return cause::OK;
+		cause::t r3 = fs_mount_info::destroy(mnt_info);
+		if (is_fail(r3)) {
+			log()(SRCPOS)
+			     (": fs_mount_info::destroy() failed. r=")
+			   .u(r3)();
+		}
+	} else {
+		r = r1.cause();
 	}
-	else {
-		return cause::NODEV;
-	}
+
+	return r;
 }
 
 cause::t fs_ctl::unmount(const char* target, u64 flags)
 {
 	spin_wlock_section _sws(mountpoints_lock);
 	
-	mount_info* target_mp = nullptr;
-	for (mount_info* mp = mountpoints.front();
+	fs_mount_info* target_mp = nullptr;
+	for (fs_mount_info* mp = mountpoints.front();
 	     mp;
 	     mp = mountpoints.next(mp))
 	{
@@ -398,7 +450,7 @@ cause::t fs_ctl::unmount(const char* target, u64 flags)
 	auto r = target_mp->mount_obj->get_driver()->unmount(
 	    target_mp->mount_obj, target_mp->target, flags);
 
-	mount_info::destroy(target_mp);
+	fs_mount_info::destroy(target_mp);
 
 	return r;
 }
@@ -429,6 +481,11 @@ cause::pair<fs_node*> fs_ctl::get_fs_node(
 	}
 
 	return make_pair(cause::OK, cur);
+}
+
+fs_ctl* get_fs_ctl()
+{
+	return global_vars::core.fs_ctl_obj;
 }
 
 

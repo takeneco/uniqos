@@ -1,8 +1,21 @@
 /// @file native_ops.hh
 /// @brief  C++ から呼び出すアセンブラ命令
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2010 KATO Takeshi
 //
-// (C) 2010-2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
 #define ARCH_X86_64_INCLUDE_NATIVE_OPS_HH_
@@ -14,30 +27,6 @@ namespace native {
 
 inline void hlt() {
 	asm volatile ("hlt");
-}
-inline void outb(u8 data, u16 port) {
-	asm volatile ("outb %0,%1" : : "a" (data), "dN" (port));
-}
-inline void outw(u16 data, u16 port) {
-	asm volatile ("outw %0,%1" : : "a" (data), "dN" (port));
-}
-inline void outl(u32 data, u16 port) {
-	asm volatile ("outl %0,%1" : : "a" (data), "dN" (port));
-}
-inline u8 inb(u16 port) {
-	u8 data;
-	asm volatile ("inb %1,%0" : "=a" (data) : "dN" (port));
-	return data;
-}
-inline u16 inw(u16 port) {
-	u16 data;
-	asm volatile ("inw %1,%0" : "=a" (data) : "dN" (port));
-	return data;
-}
-inline u32 inl(u16 port) {
-	u32 data;
-	asm volatile ("inl %1,%0" : "=a" (data) : "dN" (port));
-	return data;
 }
 inline void cli() {
 	asm volatile ("cli");

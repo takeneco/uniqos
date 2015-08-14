@@ -7,7 +7,7 @@
 #define CORE_LOG_TARGET_HH_
 
 #include <core/io_node.hh>
-#include <spinlock.hh>
+#include <core/spinlock.hh>
 
 
 class log_target : public io_node
@@ -30,5 +30,5 @@ private:
 };
 
 
-#endif  // include guard
+#endif  // CORE_LOG_TARGET_HH_
 

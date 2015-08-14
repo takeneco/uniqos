@@ -1,15 +1,15 @@
-/// @file   kernel/mem_io.cc
+/// @file   mem_io.cc
 /// @brief  mem_io class implements.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2012-2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -23,13 +23,13 @@
 
 
 //TODO
-io_node::operations mem_io_node_ops;
-io_node::operations ringed_mem_io_node_ops;
+io_node::interfaces mem_io_node_ifs;
+io_node::interfaces ringed_mem_io_node_ifs;
 
 // mem_io
 
 mem_io::mem_io(void* _contents, uptr bytes) :
-	io_node(&mem_io_node_ops),
+	io_node(&mem_io_node_ifs),
 	contents(static_cast<u8*>(_contents)),
 	capacity_bytes(bytes)
 {
@@ -96,12 +96,12 @@ cause::t mem_io::on_io_node_write(
 
 cause::t mem_io::setup()
 {
-	mem_io_node_ops.init();
-	mem_io_node_ops.seek = call_on_io_node_seek<mem_io>;
-	mem_io_node_ops.Read   = call_on_Read<mem_io>;
-	mem_io_node_ops.Write  = call_on_Write<mem_io>;
-	mem_io_node_ops.read = call_on_io_node_read<mem_io>;
-	mem_io_node_ops.write  = call_on_io_node_write<mem_io>;
+	mem_io_node_ifs.init();
+	mem_io_node_ifs.seek = call_on_io_node_seek<mem_io>;
+	mem_io_node_ifs.Read   = call_on_Read<mem_io>;
+	mem_io_node_ifs.Write  = call_on_Write<mem_io>;
+	mem_io_node_ifs.read = call_on_io_node_read<mem_io>;
+	mem_io_node_ifs.write  = call_on_io_node_write<mem_io>;
 
 	return cause::OK;
 }
@@ -110,7 +110,7 @@ cause::t mem_io::setup()
 // ringed_mem_io
 
 ringed_mem_io::ringed_mem_io(void* _contents, uptr bytes) :
-	io_node(&ringed_mem_io_node_ops),
+	io_node(&ringed_mem_io_node_ifs),
 	contents(static_cast<u8*>(_contents)),
 	capacity_bytes(bytes)
 {
@@ -209,11 +209,11 @@ io_node::uoffset ringed_mem_io::offset_normalize(offset off)
 
 cause::t ringed_mem_io::setup()
 {
-	ringed_mem_io_node_ops.init();
-	ringed_mem_io_node_ops.Read   = call_on_Read<ringed_mem_io>;
-	ringed_mem_io_node_ops.Write  = call_on_Write<ringed_mem_io>;
-	ringed_mem_io_node_ops.read  = call_on_io_node_read<ringed_mem_io>;
-	ringed_mem_io_node_ops.write = call_on_io_node_write<ringed_mem_io>;
+	ringed_mem_io_node_ifs.init();
+	ringed_mem_io_node_ifs.Read   = call_on_Read<ringed_mem_io>;
+	ringed_mem_io_node_ifs.Write  = call_on_Write<ringed_mem_io>;
+	ringed_mem_io_node_ifs.read  = call_on_io_node_read<ringed_mem_io>;
+	ringed_mem_io_node_ifs.write = call_on_io_node_write<ringed_mem_io>;
 
 	return cause::OK;
 }
