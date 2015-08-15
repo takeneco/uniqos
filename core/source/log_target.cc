@@ -4,18 +4,18 @@
 // (C) 2009-2014 KATO Takeshi
 //
 
-#include <log_target.hh>
+#include <core/log_target.hh>
 
 
 //TODO
-io_node::operations log_target_io_node_ops;
+io_node::interfaces log_target_io_node_ifs;
 
 cause::t log_target::setup()
 {
-	log_target_io_node_ops.init();
+	log_target_io_node_ifs.init();
 
-	log_target_io_node_ops.Write = call_on_Write<log_target>;
-	log_target_io_node_ops.write = call_on_io_node_write<log_target>;
+	log_target_io_node_ifs.Write = call_on_Write<log_target>;
+	log_target_io_node_ifs.write = call_on_io_node_write<log_target>;
 
 	return cause::OK;
 }
@@ -27,7 +27,7 @@ log_target::log_target() :
 
 void log_target::install(io_node* target, offset off)
 {
-	ops = &log_target_io_node_ops;
+	ifs = &log_target_io_node_ifs;
 
 	target_node = target;
 	target_off = off;

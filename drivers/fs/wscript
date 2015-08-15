@@ -1,19 +1,24 @@
+# Build script of filesystem driver.
 #
 # (C) 2014 KATO Takeshi
 #
 
 
-ramfs_name = 'ramfs'
+name = 'fs_drivers'
+
 
 def configure(x):
-	if x.env['CONFIG_RAMFS']:
-		x.env.append_value('KERNEL_LINK_USE', ramfs_name)
+	x.env.append_value('KERNEL_LINK_USE', name)
+
 
 def build(x):
-	if x.env['CONFIG_RAMFS']:
-		x.objects(
-		    target   = ramfs_name,
-		    source   = 'ramfs.cc',
-		    use      = ['KERNEL'],
-		)
+	sources = ['devfs.cc']
+
+	sources.append('ramfs.cc')
+
+	x.objects(
+		target   = name,
+		source   = sources,
+		use      = ['KERNEL'],
+	)
 

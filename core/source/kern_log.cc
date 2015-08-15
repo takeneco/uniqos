@@ -6,12 +6,11 @@
 /// @todo log を生成するときに offset を読み出し、破棄するときに
 ///       offset を書き出しているので、並列出力すると offset が壊れる。
 
-#include <log.hh>
+#include <core/log.hh>
 
 #include <core/global_vars.hh>
 #include <core/mempool.hh>
-#include <log_target.hh>
-#include <new_ops.hh>
+#include <core/log_target.hh>
 
 
 /// @pre mem_alloc() が使用できること。つまり mempool_init() が済んでいること。
@@ -23,9 +22,9 @@ cause::t log_init()
 	if (is_fail(r))
 		return r;
 
-	void* mem = mem_alloc(sizeof (log_target[obj_cnt]));
+//	void* mem = mem_alloc(sizeof (log_target[obj_cnt]));
 
-	log_target* objs = new (mem) log_target[obj_cnt];
+	log_target* objs = new (generic_mem()) log_target[obj_cnt];
 
 	if (!objs)
 		return cause::NOMEM;
