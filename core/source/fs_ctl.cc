@@ -114,10 +114,24 @@ fs_driver::fs_driver(interfaces* _ifs, const char* name) :
 void fs_mount::interfaces::init()
 {
 	CreateNode     = fs_mount::nofunc_CreateNode;
+	CreateDirNode  = fs_mount::nofunc_CreateDirNode;
 	CreateDevNode  = fs_mount::nofunc_CreateDevNode;
 	GetChildNode   = fs_mount::nofunc_GetChildNode;
 	OpenNode       = fs_mount::nofunc_OpenNode;
 	CloseNode      = fs_mount::nofunc_CloseNode;
+}
+
+cause::t fs_mount::create_dir_node(fs_node* parent, const char* name)
+{
+	auto child = ifs->CreateDirNode(this, parent, name);
+	if (is_fail(child))
+		return child.cause();
+
+	cause::t r = parent->append_child_node(child.data(), name);
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
 }
 
 
@@ -192,6 +206,23 @@ void fs_node::remove_mount(fs_mount_info* mi)
 	spin_wlock_section _sws(mounts_lock);
 
 	mounts.remove(mi);
+}
+
+cause::t fs_node::append_child_node(fs_node* child, const char* name)
+{
+	child_node* cn =
+	    new (mem_alloc(child_node::calc_size(name))) child_node;
+	if (!child)
+		return cause::NOMEM;
+
+	cn->node = child;
+	str_copy(name, cn->name);
+
+	child_nodes_lock.wlock();
+	child_nodes.push_front(cn);
+	child_nodes_lock.un_wlock();
+
+	return cause::OK;
 }
 
 fs_node* fs_node::get_mounted_node()
@@ -350,6 +381,7 @@ cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
 {
 	fs_node* cur = root;
 
+	// TODO:mkdirと同じ処理。関数にしたい
 	while (*path) {
 		fs_node* cur2 = cur->get_mounted_node();
 		if (cur2)
@@ -453,6 +485,38 @@ cause::t fs_ctl::unmount(const char* target, u64 flags)
 	fs_mount_info::destroy(target_mp);
 
 	return r;
+}
+
+cause::t fs_ctl::mkdir(const char* path)
+{
+	// TODO:openと同じ処理。関数にしたい
+	fs_node* cur = root;
+
+	while (*path) {
+		fs_node* cur2 = cur->get_mounted_node();
+		if (cur2)
+			cur = cur2;
+
+		while (*path == '/')
+			++path;
+
+		if (nodename_is_end(path))
+			break;
+
+		auto child = cur->get_child_node(path, 0);
+		if (is_fail(child))
+			return child.cause();
+		cur = child.data();
+
+		uptr len = nodename_length(path);
+		path += len;
+	}
+
+	// TODO:make dir
+	fs_mount* mnt = cur->get_owner();
+	//mnt->create_dir_node(cur, );
+
+	return cause::NOFUNC;
 }
 
 // TODO:ファイル名の手前のディレクトリまでを返す関数を作れば使える

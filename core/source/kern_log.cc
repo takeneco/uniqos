@@ -1,7 +1,20 @@
 /// @file  kern_log.cc
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2011 KATO Takeshi
 //
-// (C) 2011-2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 /// @todo log を生成するときに offset を読み出し、破棄するときに
 ///       offset を書き出しているので、並列出力すると offset が壊れる。
@@ -21,8 +34,6 @@ cause::t log_init()
 	cause::t r = log_target::setup();
 	if (is_fail(r))
 		return r;
-
-//	void* mem = mem_alloc(sizeof (log_target[obj_cnt]));
 
 	log_target* objs = new (generic_mem()) log_target[obj_cnt];
 
@@ -50,28 +61,5 @@ log::log(u32 target) :
 log::~log()
 {
 	flush();
-}
-
-// obj_edge
-
-void obj_edge::print(output_buffer& ob, const char* type) const
-{
-	if (parent) {
-		parent->dump(ob);
-		ob(">");
-	}
-
-	ob(name);
-
-	if (type) {
-		ob("#")(type);
-	}
-}
-
-// obj_node
-
-void obj_node::dump(output_buffer& ob) const
-{
-	parent->print(ob, type);
 }
 

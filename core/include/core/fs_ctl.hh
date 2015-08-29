@@ -28,6 +28,7 @@
 class fs_driver;
 class fs_mount;
 class fs_node;
+class fs_dir_node;
 class fs_dev_node;
 class io_node;
 
@@ -124,6 +125,12 @@ public:
 		    u32 flags);
 		CreateNodeIF CreateNode;
 
+		typedef cause::pair<fs_dir_node*> (*CreateDirNodeIF)(
+		    fs_mount* x,
+		    fs_node* parent,
+		    const char* name);
+		CreateDirNodeIF CreateDirNode;
+
 		typedef cause::pair<fs_dev_node*> (*CreateDevNodeIF)(
 		    fs_mount* x,
 		    fs_node* parent,
@@ -154,6 +161,19 @@ public:
 	}
 	static cause::pair<fs_node*> nofunc_CreateNode(
 	    fs_mount*, fs_node*, const char*, u32) {
+		return null_pair(cause::NOFUNC);
+	}
+
+	// CreateDirNode
+	template <class T>
+	static cause::pair<fs_dir_node*> call_on_CreateDirNode(
+	    fs_mount* x,
+	    fs_node* parent, const char* name) {
+		return static_cast<T*>(x)->
+		    on_CreateDirNode(parent, name);
+	}
+	static cause::pair<fs_dir_node*> nofunc_CreateDirNode(
+	    fs_mount*, fs_node*, const char*) {
 		return null_pair(cause::NOFUNC);
 	}
 
@@ -209,6 +229,7 @@ public:
 	cause::pair<io_node*> open_node(fs_node* node, u32 flags) {
 		return ifs->OpenNode(this, node, flags);
 	}
+	cause::t create_dir_node(fs_node* parent, const char* name);
 
 	fs_driver* get_driver() { return driver; }
 
@@ -266,13 +287,9 @@ class fs_node
 	public:
 		child_node() {}
 
-		forward_chain_node<child_node> _child_chain_node;
-		forward_chain_node<child_node>& child_chain_hook() {
-			return _child_chain_node;
-		}
-
 		static uptr calc_size(const char* name);
 
+		chain_node<child_node> fs_node_chain_node;
 		fs_node* node;
 		char name[0];
 	};
@@ -290,6 +307,7 @@ public:
 	cause::pair<io_node*> open(u32 flags) {
 		return owner->open_node(this, flags);
 	}
+	cause::t append_child_node(fs_node* child, const char* name);
 
 	fs_node* get_mounted_node();
 	cause::pair<fs_node*> get_child_node(const char* name, u32 flags);
@@ -302,8 +320,9 @@ private:
 	fs_mount* owner;
 	u32 mode;
 
-	front_chain<fs_mount_info, &fs_mount_info::fs_node_chain_node> mounts;
-	front_forward_fchain<child_node, &child_node::child_chain_hook>
+	front_chain<fs_mount_info, &fs_mount_info::fs_node_chain_node>
+	    mounts;
+	front_chain<child_node, &child_node::fs_node_chain_node>
 	    child_nodes;
 
 	spin_rwlock mounts_lock;
@@ -386,6 +405,7 @@ public:
 	    const char* source, const char* target, const char* type);
 	cause::t unmount(
 	    const char* target, u64 flags);
+	cause::t mkdir(const char* path);
 
 private:
 	cause::pair<fs_node*> get_fs_node(
