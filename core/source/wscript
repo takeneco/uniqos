@@ -10,6 +10,7 @@ kern_sources = [
  'cpu_node.cc',
  'ctype.cc',
  'device_ctl.cc',
+ 'devnode.cc',
  'driver_ctl.cc',
  'fs_ctl.cc',
  'intr_ctl.cc',

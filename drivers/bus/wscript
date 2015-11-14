@@ -13,7 +13,7 @@ def build(x):
 	#if x.env['CONFIG_PCI']:
 	x.objects(
 		    target   = pci_name,
-		    source   = 'pci.cc',
+		    source   = ('pci.cc', 'pci3.cc'),
 		    use      = ['KERNEL'],
 		)
 

@@ -18,9 +18,9 @@
 
 #include "native_process.hh"
 
-#include <arch/native_ops.hh>
 #include <core/cpu_node.hh>
-#include <core/string.hh>
+#include <util/string.hh>
+#include <x86/native_ops.hh>
 
 
 namespace x86 {
@@ -43,6 +43,8 @@ cause::t native_process::setup(thread* entry_thread, int iod_nr)
 
 	u8* top = static_cast<u8*>(
 	    arch::map_phys_adr(top_padr, arch::page::PHYS_L1_SIZE));
+
+	mem_fill(0, top, 2048);
 
 	u8* cr3 = reinterpret_cast<u8*>(native::get_cr3());
 

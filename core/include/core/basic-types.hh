@@ -397,24 +397,24 @@ namespace cause
 	{
 		pair() :
 			r(FAIL),
-			value(T())
+			_val(T())
 		{}
-		pair(type _r, const T& _value) :
+		pair(type _r, const T& val) :
 			r(_r),
-			value(_value)
+			_val(val)
 		{}
 
 		pair<T>& operator = (const pair<T>& x) {
 			r = x.r;
-			value = x.value;
+			_val = x._val;
 			return *this;
 		}
 
 		operator T& () {
-			return value;
+			return _val;
 		}
 		operator const T& () const {
-			return value;
+			return _val;
 		}
 
 		void set_cause(type _r) { r = _r; }
@@ -423,14 +423,15 @@ namespace cause
 		bool is_ok() const { return cause::is_ok(r); }
 		bool is_fail() const { return cause::is_fail(r); }
 
-		void set_data(const T& _v) { value = _v; }
-		T    get_data() { return value; }
-		const T& data() { return value; }
-		void set_value(T _v) { value = _v; }
-		T    get_value() { return value; }
+		void set_data(const T& val) { _val = val; }
+		T    get_data() { return _val; }
+		const T& data() { return _val; }
+		void set_value(T val) { _val = val; }
+		T    get_value() { return _val; }
+		const T& value() const { return _val; }
 
 		type r;      ///< Result.
-		T    value;  ///< Additional result value.
+		T    _val;  ///< Additional result value.
 	};
 
 	template<class T> inline bool is_ok(T x) {

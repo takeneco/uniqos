@@ -36,9 +36,7 @@
 
 #include <page_ctl.hh>
 
-#include <arch/native_ops.hh>
 #include <bootinfo.hh>
-#include <cheap_alloc.hh>
 #include <config.h>
 #include <core/log.hh>
 #include <core/page.hh>
@@ -47,6 +45,8 @@
 #include <mpspec.hh>
 #include <native_cpu_node.hh>
 #include "native_pagetbl.hh"
+#include <util/cheap_alloc.hh>
+#include <x86/native_ops.hh>
 
 #if CONFIG_ACPI
 # include <core/acpi_ctl.hh>

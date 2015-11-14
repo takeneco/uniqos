@@ -10,7 +10,8 @@
 #include <core/io_node.hh>
 
 
-extern io_node::operations mem_io_node_ops;
+//TODO:dynamic
+extern io_node::interfaces mem_io_node_ifs;
 
 /// @brief  On memory io_node.
 class mem_io : public io_node
@@ -23,7 +24,7 @@ public:
 	mem_io(void* _contents, uptr bytes);
 
 	template<offset BYTES> mem_io(char (&_contents)[BYTES]) :
-		io_node(&mem_io_node_ops),
+		io_node(&mem_io_node_ifs),
 		contents(reinterpret_cast<u8*>(_contents)),
 		capacity_bytes(BYTES)
 	{}

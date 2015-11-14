@@ -17,16 +17,16 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <timer_ctl.hh>
+#include <core/timer_ctl.hh>
 
-#include <bitops.hh>
 #include <core/clock_src.hh>
 #include <core/cpu_node.hh>
 #include <core/global_vars.hh>
 #include <core/mempool.hh>
 #include <core/timer.hh>
-#include <log.hh>
-#include <thread.hh>
+#include <core/log.hh>
+#include <core/thread.hh>
+#include <util/bitops.hh>
 
 
 cause::t hpet_setup(clock_source** clksrc);
@@ -105,14 +105,14 @@ cause::t timer_ctl::set_timer(timer_message* msg)
 	auto delay_clk = clk_src->nanosec_to_clock(msg->nanosec_delay);
 
 	// いつまで待つか
-	tick_time exp_clk = now_clk.value + delay_clk.value;
+	tick_time exp_clk = now_clk.value() + delay_clk.value();
 
 	msg->expires_clock = exp_clk;
 
 	lock.lock();
 
 	// TODO:ここでOUTOFRANGEが帰らないようにする
-	const cause::t r = _set_timer(msg, now_clk.value);
+	const cause::t r = _set_timer(msg, now_clk.value());
 
 	lock.unlock();
 
@@ -136,7 +136,7 @@ void timer_ctl::on_timer_message()
 		auto next_clock = store->next_clock();
 		if (is_ok(next_clock)) {
 			const cause::t r =
-			    clk_src->set_timer(next_clock.value, &timer_msg);
+			    clk_src->set_timer(next_clock.value(), &timer_msg);
 			if (r == cause::OUTOFRANGE)
 				continue;
 		}
@@ -166,7 +166,7 @@ void timer_ctl::dump(output_buffer& ob)
 {
 }
 
-#include <timer_liner_q.hh>
+#include <core/timer_liner_q.hh>
 
 cause::t timer_setup()
 {

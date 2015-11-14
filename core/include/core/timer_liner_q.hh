@@ -7,7 +7,7 @@
 #ifndef INCLUDE_TIMER_LINER_Q_HH_
 #define INCLUDE_TIMER_LINER_Q_HH_
 
-#include <timer_ctl.hh>
+#include <core/timer_ctl.hh>
 
 
 class timer_liner_store : public timer_store
@@ -24,7 +24,7 @@ public:
 	cause::type on_timer_store_Post(tick_time clock);
 
 private:
-	typedef bibochain<timer_message, &timer_message::chain_hook>
+	typedef chain<timer_message, &timer_message::timer_store_chain_node>
 	    message_chain;
 
 	message_chain msg_chain;

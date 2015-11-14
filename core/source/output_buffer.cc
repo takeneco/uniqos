@@ -20,8 +20,8 @@
 #include <core/output_buffer.hh>
 
 #include <arch.hh>
-#include <core/bitops.hh>
-#include <core/string.hh>
+#include <util/bitops.hh>
+#include <util/string.hh>
 
 
 namespace {

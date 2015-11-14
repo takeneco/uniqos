@@ -21,14 +21,14 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <arch.hh>
-#include <core/string.hh>
+#include <util/string.hh>
 
 
 #ifdef ARCH_PROVIDES_MEM_FILL
 
 void mem_fill(u8 c, void* dest, uptr bytes)
 {
-	asm volatile ("rep stosb" : : "c"(bytes), "a"(c), "D"(dest));
+	asm volatile ("rep stosb" : : "c"(bytes), "a"(c), "D"(dest) : "memory");
 }
 
 #endif  // ARCH_PROVIDES_MEM_FILL

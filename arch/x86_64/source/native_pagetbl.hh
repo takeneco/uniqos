@@ -7,6 +7,7 @@
 #define ARCH_X86_64_SOURCE_NATIVE_PAGETBL_HH_
 
 #include <arch/pagetbl.hh>
+#include <pagetable.hh>
 
 
 namespace x86 {

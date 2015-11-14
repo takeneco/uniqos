@@ -107,10 +107,10 @@ public:
 		val = x;
 		return *this;
 	}
-	own_t operator + (const own_t& x) {
+	own_t operator + (const own_t& x) const {
 		return own_t(val + x.val);
 	}
-	own_t operator + (TYPE x) {
+	own_t operator + (TYPE x) const {
 		return own_t(val + x);
 	}
 	bool operator < (const own_t& x) const {

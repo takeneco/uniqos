@@ -17,7 +17,7 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <arch/native_ops.hh>
+#include <arch/native_io.hh>
 #include <irq_ctl.hh>
 #include <core/cpu_node.hh>
 #include <core/global_vars.hh>
@@ -206,29 +206,29 @@ cause::t serial_ctl::configure()
 	intr_posted = false;
 
 	// 通信スピード設定開始
-	native::outb(0x80, base_port + LINE_CTRL);
+	arch::ioport_out8(0x80, base_port + LINE_CTRL);
 
 	// 通信スピードの指定 600[bps]
-	native::outb(0xc0, base_port + BAUDRATE_LSB);
-	native::outb(0x00, base_port + BAUDRATE_MSB);
+	arch::ioport_out8(0xc0, base_port + BAUDRATE_LSB);
+	arch::ioport_out8(0x00, base_port + BAUDRATE_MSB);
 
 	// fastest
-	native::outb(0x01, base_port + BAUDRATE_LSB);
-	native::outb(0x00, base_port + BAUDRATE_MSB);
+	arch::ioport_out8(0x01, base_port + BAUDRATE_LSB);
+	arch::ioport_out8(0x00, base_port + BAUDRATE_MSB);
 
 	// 通信スピード設定終了(送受信開始)
-	native::outb(0x03, base_port + LINE_CTRL);
+	arch::ioport_out8(0x03, base_port + LINE_CTRL);
 
 	// 制御ピン設定
-	native::outb(0x0b, base_port + MODEM_CTRL);
+	arch::ioport_out8(0x0b, base_port + MODEM_CTRL);
 
 	// 16550互換モードに設定
 	// FIFOが14bytesになる。
 	// FIFOをクリアする。
-	native::outb(0xcf, base_port + FIFO_CTRL);
+	arch::ioport_out8(0xcf, base_port + FIFO_CTRL);
 
 	// 割り込みを有効化
-	native::outb(0x03, base_port + INTR_ENABLE);
+	arch::ioport_out8(0x03, base_port + INTR_ENABLE);
 	// 無効化
 	//native::outb(0x00, base_port + INTR_ENABLE);
 
@@ -253,7 +253,7 @@ buf_entry* serial_ctl::get_next_buf()
 
 bool serial_ctl::is_txfifo_empty() const
 {
-	const u8 line_status = native::inb(base_port + LINE_STATUS);
+	const u8 line_status = arch::ioport_in8(base_port + LINE_STATUS);
 
 	return (line_status & 0x20) != 0;
 }
@@ -441,7 +441,7 @@ void serial_ctl::on_intr_msg()
 
 	intr_pending = false;
 
-	const u8 intr_id = native::inb(base_port + INTR_ID);
+	const u8 intr_id = arch::ioport_in8(base_port + INTR_ID);
 
 	switch (intr_id & 0x0e) {
 	// priority order
@@ -506,7 +506,7 @@ void serial_ctl::transmit()
 		if (buf_is_last && next_write == next_read)
 			break;
 
-		native::outb(buf->read(next_read++), base_port + TRANSMIT_DATA);
+		arch::ioport_out8(buf->read(next_read++), base_port + TRANSMIT_DATA);
 
 		if (next_read == buf->get_bufsize()) {
 

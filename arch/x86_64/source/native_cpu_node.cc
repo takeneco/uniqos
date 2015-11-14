@@ -21,15 +21,15 @@
 #include "cpu_ctl.hh"
 #include "flags.hh"
 #include "native_thread.hh"
-#include "page_table.hh"
+#include "native_pagetbl.hh"
 #include "pagetable.hh"
 #include "bootinfo.hh"
-#include <arch/native_ops.hh>
 #include <core/log.hh>
 #include <core/mempool.hh>
 #include <core/new_ops.hh>
 #include <core/page.hh>
 #include <global_vars.hh>
+#include <x86/native_ops.hh>
 
 
 extern char on_syscall[];
@@ -148,9 +148,9 @@ cause::t native_cpu_node::setup_tss()
 	auto ist_trap = ist_mp->acquire();
 	if (is_fail(ist_intr) || is_fail(ist_trap)) {
 		if (is_ok(ist_intr))
-			ist_mp->release(ist_intr.value);
+			ist_mp->release(ist_intr.value());
 		if (is_ok(ist_trap))
-			ist_mp->release(ist_trap.value);
+			ist_mp->release(ist_trap.value());
 
 		mempool::release_shared(ist_mp);
 
@@ -159,8 +159,8 @@ cause::t native_cpu_node::setup_tss()
 
 	mempool::release_shared(ist_mp);
 
-	tss.set_ist(ist_layout(ist_intr.value), IST_INTR);
-	tss.set_ist(ist_layout(ist_trap.value), IST_TRAP);
+	tss.set_ist(ist_layout(ist_intr.value()), IST_INTR);
+	tss.set_ist(ist_layout(ist_trap.value()), IST_TRAP);
 
 	return cause::OK;
 }
@@ -399,8 +399,8 @@ void exit_boot_thread_handler(message* m)
 
 	arch::pte* pt = static_cast<arch::pte*>(
 	    arch::map_phys_adr(boot_thr->rs.cr3, 0x1000));
-	page_table tbl(pt);
-	page_table::page_enum pe;
+	native_page_table tbl(pt);
+	native_page_table::page_enum pe;
 	r = tbl.unset_page_start(0, UPTR(0x00007fffffffffff), &pe);
 	if (is_fail(r)) {
 		log()("unset_page_start = ").u(r)();
@@ -426,7 +426,6 @@ void exit_boot_thread_handler(message* m)
 /// Must to be call from boot thread.
 void native_cpu_node::exit_boot_thread()
 {
-get_cpu_node()->get_thread_ctl().dump();
 	arch::intr_disable();
 
 	// dec_preempt_disable() に対応して使用する。
@@ -448,7 +447,6 @@ get_cpu_node()->get_thread_ctl().dump();
 	etm->data = boot_thr;
 	post_soft_message(etm);
 
-get_cpu_node()->get_thread_ctl().dump();
 	// この後、コンテキストスイッチするので、preempt_disable を解除し
 	// なければならない。
 	// しかし、割込みが発生するとスレッドが切り替わってスレッドが開放

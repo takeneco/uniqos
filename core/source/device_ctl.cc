@@ -21,7 +21,6 @@
 #include <core/global_vars.hh>
 #include <core/new_ops.hh>
 #include <core/setup.hh>
-#include <core/spinlock.hh>
 #include <util/string.hh>
 
 
@@ -37,27 +36,12 @@ device::device(const char* device_name) :
 
 // device_ctl class
 
-class device_ctl
-{
-public:
-	device_ctl();
-
-	cause::t append_bus(bus_device* dev);
-	cause::t remove_bus(bus_device* dev);
-	locked_chain_iterator<device::iterative_chain, bus_device>
-	    iterate_bus();
-
-private:
-	device::iterative_chain bus_chain;
-	spin_rwlock bus_chain_lock;
-};
-
 device_ctl::device_ctl()
 {
 }
 
 /// device::name で昇順に並ぶように追加する。
-cause::t device_ctl::append_bus(bus_device* dev)
+cause::t device_ctl::append_bus_device(bus_device* dev)
 {
 	spin_wlock_section bcl(bus_chain_lock);
 
@@ -85,7 +69,7 @@ cause::t device_ctl::append_bus(bus_device* dev)
 	return cause::OK;
 }
 
-cause::t device_ctl::remove_bus(bus_device* dev)
+cause::t device_ctl::remove_bus_device(bus_device* dev)
 {
 	bus_chain_lock.wlock();
 
@@ -97,7 +81,7 @@ cause::t device_ctl::remove_bus(bus_device* dev)
 }
 
 locked_chain_iterator<device::iterative_chain, bus_device>
-device_ctl::iterate_bus()
+device_ctl::each_bus_devices()
 {
 	return locked_chain_iterator<device::iterative_chain, bus_device>(
 	    bus_chain.front(),
@@ -120,21 +104,5 @@ cause::t device_ctl_setup()
 device_ctl* get_device_ctl()
 {
 	return global_vars::core.device_ctl_obj;
-}
-
-cause::t bus_device_append(bus_device* dev)
-{
-	return get_device_ctl()->append_bus(dev);
-}
-
-cause::t bus_device_remove(bus_device* dev)
-{
-	return get_device_ctl()->remove_bus(dev);
-}
-
-locked_chain_iterator<device::iterative_chain, bus_device>
-bus_device_iterate()
-{
-	return get_device_ctl()->iterate_bus();
 }
 

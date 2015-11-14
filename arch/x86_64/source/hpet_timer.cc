@@ -6,7 +6,7 @@
 //
 
 #include "arch.hh"
-#include <log.hh>
+#include <core/log.hh>
 #include "mpspec.hh"
 #include "native_ops.hh"
 

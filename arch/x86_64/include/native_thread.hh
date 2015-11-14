@@ -7,7 +7,7 @@
 #define ARCH_X86_64_INCLUDE_NATIVE_THREAD_HH_
 
 #include <regset.hh>
-#include <thread.hh>
+#include <core/thread.hh>
 
 
 class cpu_node;

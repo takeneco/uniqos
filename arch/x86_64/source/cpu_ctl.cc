@@ -23,8 +23,8 @@
 #include <core/cpu_node.hh>
 #include <core/mempool.hh>
 #include "kerninit.hh"
-#include <arch/native_ops.hh>
 #include <regset.hh>
+#include <x86/native_ops.hh>
 
 
 extern char on_syscall[];

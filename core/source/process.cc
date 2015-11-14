@@ -19,6 +19,7 @@
 
 #include <core/process.hh>
 
+#include <core/fs.hh>
 #include <core/new_ops.hh>
 #include <core/process_ctl.hh>
 #include <core/thread.hh>
@@ -143,7 +144,7 @@ cause::pair<uptr> sys_open(const char* path, u32 flags)
 {
 	fs_ctl* fsctl = get_fs_ctl();
 
-	auto ion = fsctl->open(path, flags);
+	auto ion = fsctl->open_node(path, flags);
 	if (is_fail(ion)) {
 		return zero_pair(ion.cause());
 	}
@@ -203,5 +204,10 @@ cause::pair<uptr> sys_read(int iod, void* buf, uptr bytes)
 	target->off += off.data();
 
 	return off;
+}
+
+cause::t sys_mkdir(const char* path)
+{
+	return fs_mkdir(path);
 }
 

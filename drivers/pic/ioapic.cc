@@ -1,15 +1,15 @@
 /// @file  drivers/pic/ioapic.cc
 /// @brief I/O APIC driver.
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2013-2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
-//  (at your option) any later version.
+//  any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -19,13 +19,12 @@
 
 #include <arch.hh>
 #include <arch/mem_ops.hh>
+#include <core/mempool.hh>
+#include <core/pic_dev.hh>
+#include <core/spinlock.hh>
 #include <cpu_ctl.hh>
 #include <global_vars.hh>
-#include <core/mempool.hh>
 #include <mpspec.hh>
-#include <new_ops.hh>
-#include <pic_dev.hh>
-#include <spinlock.hh>
 
 
 void lapic_eoi();

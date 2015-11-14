@@ -119,8 +119,11 @@ namespace x86 {
 
 cause::pair<uptr> page_table_traits::acquire_page(native_page_table*)
 {
+	//TODO: page_allocはpadrを戻り値として返してほしい
+	uptr padr;
 	cause::pair<uptr> r;
-	r.r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &r.value);
+	r.r = get_cpu_node()->page_alloc(arch::page::PHYS_L1, &padr);
+	r.set_value(padr);
 	return r;
 }
 

@@ -6,7 +6,7 @@
 
 #include <pagetable.hh>
 
-#include <log.hh>
+#include <core/output_buffer.hh>
 
 
 namespace arch {

@@ -230,7 +230,7 @@ cause::pair<pte*> page_table_tmpl<page_table_traits>::declare_table(
 
 			pte_init(static_cast<pte*>(
 			    page_table_traits::phys_to_virt(r)));
-			table[index].set(r.value,
+			table[index].set(r.value(),
 			    pte::P | pte::RW | pte::US | pte::A);
 		}
 
@@ -254,7 +254,7 @@ cause::t page_table_tmpl<page_table_traits>::set_page(
 	if (is_fail(r))
 		return r.r;
 
-	pte* table = r.value;
+	pte* table = r.value();
 
 	if (pt != page::PHYS_L1)
 		flags |= pte::PS;

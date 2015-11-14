@@ -8,7 +8,7 @@
 #define CORE_INCLUDE_INT_BITSET_HH_
 
 #include <arch.hh>
-#include <bitops.hh>
+#include <util/bitops.hh>
 
 
 template<class TYPE>

@@ -6,8 +6,8 @@
 
 #include "kerninit.hh"
 #include "cpu_idte.hh"
-#include <intr_ctl.hh>
-#include <log.hh>
+#include <core/intr_ctl.hh>
+#include <core/log.hh>
 #include <native_cpu_node.hh>
 #include <native_ops.hh>
 

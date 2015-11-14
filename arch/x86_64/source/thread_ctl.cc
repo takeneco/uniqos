@@ -21,9 +21,11 @@
 #include "native_cpu_node.hh"
 #include "native_thread.hh"
 #include <arch/global_vars.hh>
-#include <arch/native_ops.hh>
 #include <core/mempool.hh>
 #include <core/new_ops.hh>
+#include <x86/native_ops.hh>
+
+#include <core/log.hh>
 
 
 namespace {
@@ -39,6 +41,12 @@ const uptr THREAD_SIZE_SHIFTS = 13;
 namespace x86 {
 
 // native_thread class
+
+native_thread::native_thread(thread_id tid) :
+	thread(tid),
+	stack_bytes(1 << THREAD_SIZE_SHIFTS)
+{
+}
 
 native_thread::native_thread(
     thread_id tid,
@@ -101,14 +109,18 @@ cause::t thread_ctl::setup()
 /// 終了するために thread のインスタンスが必要なため。
 cause::t thread_ctl::create_boot_thread()
 {
+	void* context = get_current_thread();
+	native_thread* t = new (context) native_thread(get_next_tid());
+
 	native_cpu_node* cn = get_native_cpu_node();
-	native_thread* t = new (*thread_mp)
-	    native_thread(get_next_tid(), 0, 0, 1 << THREAD_SIZE_SHIFTS);
+	//native_thread* t = new (*thread_mp)
+	//    native_thread(get_next_tid(), 0, 0, 1 << THREAD_SIZE_SHIFTS);
 
 	cn->attach_boot_thread(t);
 
 	cn->load_running_thread(t);
 
+log()("boot thread=")(t)();
 	return cause::OK;
 }
 
@@ -125,13 +137,22 @@ cause::pair<native_thread*> thread_ctl::create_thread(
 
 	owner_cpu->attach_thread(t);
 
+log()("thread=")(t)();
 	return make_pair(cause::OK, t);
 }
 
 /// @param[in] t  cpu から detach() された native_thread.
 cause::t thread_ctl::destroy_thread(native_thread* t)
 {
-	new_destroy(t, *thread_mp);
+	auto cn = t->get_owner_cpu();
+
+	cause::t r = cn->detach_thread(t);
+	if (is_fail(r))
+		return r;
+
+	r = new_destroy(t, *thread_mp);
+	if (is_fail(r))
+		return r;
 
 	return cause::OK;
 }
@@ -210,10 +231,20 @@ thread* get_current_thread()
 
 	return t;
 }
-
+/*
+cpu_id get_cpu_node_id()
+{
+	return get_current_thread()->get_owner_cpu_node_id();
+}
+*/
 void sleep_current_thread()
 {
 	x86::get_native_cpu_node()->sleep_current_thread();
+}
+
+void imitate_thread()
+{
+	get_current_thread()->imitate_owner_cpu();
 }
 
 }  // namespace arch

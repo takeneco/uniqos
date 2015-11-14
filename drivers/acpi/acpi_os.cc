@@ -18,14 +18,14 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <cstdarg>
+#include <arch/native_io.hh>
 #include <config.h>
 #include <core/global_vars.hh>
 #include <core/intr_ctl.hh>
 #include <core/log.hh>
 #include <core/mempool.hh>
 #include <core/new_ops.hh>
-#include <core/string.hh>
-#include <arch/native_ops.hh>
+#include <util/string.hh>
 
 #define UNUSE(a) a=a
 
@@ -677,14 +677,17 @@ AcpiOsReadPort (
 
 	switch (Width) {
 	case 8:
-		*Value = native::inb(Address);
+		*Value = arch::ioport_in8(Address);
 		break;
 	case 16:
-		*Value = native::inw(Address);
+		*Value = arch::ioport_in16(Address);
 		break;
 	case 32:
-		*Value = native::inl(Address);
+		*Value = arch::ioport_in32(Address);
 		break;
+	default:
+		log()("!!!")(SRCPOS)(" Unexpected. Width=").u(Width)();
+		return AE_ERROR;
 	}
 
 	if (CONFIG_DEBUG_VERBOSE >= 1) {
@@ -710,14 +713,17 @@ AcpiOsWritePort (
 
 	switch (Width) {
 	case 8:
-		native::outb(Value, Address);
+		arch::ioport_out8(Value, Address);
 		break;
 	case 16:
-		native::outw(Value, Address);
+		arch::ioport_out16(Value, Address);
 		break;
 	case 32:
-		native::outl(Value, Address);
+		arch::ioport_out32(Value, Address);
 		break;
+	default:
+		log()("!!!")(SRCPOS)(" Unexpected. Width=").u(Width)();
+		return AE_ERROR;
 	}
 
 	return AE_OK;
@@ -769,13 +775,52 @@ AcpiOsReadPciConfiguration (
     UINT64                  *Value,
     UINT32                  Width)
 {
-	//TODO
-	UNUSE(PciId);
-	UNUSE(Reg);
-	UNUSE(Value);
-	UNUSE(Width);
+	//TODO:delete
 	log()(SRCPOS)("() called")();
-	return AE_ERROR;
+	log()("Seg=").x(PciId->Segment)
+	(" Bus=").x(PciId->Bus)
+	(" Dev=").x(PciId->Device)
+	(" Fuc=").x(PciId->Function)
+	(" Reg=").x(Reg)
+	(" Width=").u(Width);
+
+	if (CONFIG_DEBUG_VALIDATE >= 1) {
+		if (PciId->Bus >= 256 ||
+		    PciId->Device > 32 ||
+		    PciId->Function >= 8)
+		{
+			return AE_BAD_PARAMETER;
+		}
+	}
+
+	u32 config_address = U32(0x80000000) |
+	    (static_cast<u32>(PciId->Bus) << 16) |
+	    (static_cast<u32>(PciId->Device) << 11) |
+	    (static_cast<u32>(PciId->Function) << 8) |
+	    (static_cast<u32>(Reg) & ~3);
+
+
+	if (Width <= 32) {
+		arch::ioport_out32(config_address, 0xcf8);
+		u32 val = arch::ioport_in32(0xcfc);
+		log()(" Val=").x(val);
+		val >>= (Reg & 3) * 8;
+		val &= (1 << Width) - 1;
+		*Value = val;
+	} else if (Width == 64) {
+		arch::ioport_out32(config_address, 0xcf8);
+		u64 val = arch::ioport_in32(0xcfc);
+		log()(" Val=").x(val);
+		arch::ioport_out32(config_address + 4, 0xcf8);
+		val |= static_cast<u64>(arch::ioport_in32(0xcfc)) << 32;
+		*Value = val;
+	} else {
+		return AE_BAD_PARAMETER;
+	}
+
+	log()("(").x(*Value)(")")();
+
+	return AE_OK;
 }
 
 
@@ -792,6 +837,11 @@ AcpiOsWritePciConfiguration (
 	UNUSE(Value);
 	UNUSE(Width);
 	log()(SRCPOS)("() called")();
+	log()("Seg=").x(PciId->Segment)
+	(" Bus=").x(PciId->Bus)
+	(" Dev=").x(PciId->Device)
+	(" Fuc=").x(PciId->Function)();
+	log()("Reg=").x(Reg)(" Val=").x(Value)(" Width=").u(Width)();
 	return AE_ERROR;
 }
 

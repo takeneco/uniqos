@@ -21,6 +21,7 @@
 #include <core/log.hh>
 #include <core/timer.hh>
 
+#include <core/process.hh>
 
 cause::t sys_mount(
     const char* source,
@@ -28,6 +29,21 @@ cause::t sys_mount(
     const char* type,
     u64 flags,
     const void* data);
+cause::pair<uptr> sys_read(
+    int iod,
+    void* buf,
+    uptr bytes);
+cause::pair<uptr> sys_write(
+    int iod,
+    const void* buf,
+    uptr bytes);
+cause::pair<uptr> sys_open(
+    const char* path,
+    u32 flags);
+cause::pair<uptr> sys_close(
+    u32 iod);
+cause::t sys_mkdir(
+    const char* path);
 
 cause::pair<uptr> test_string(const char* str)
 {
@@ -51,16 +67,14 @@ extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 	 * data[7] : %r10(4th param)
 	 * data[8] : %eflags
 	 */
-	log()('#');
-
 	if (data[0] == 100) { // timer
 		wakeup_thread_timer_message wttm;
 		cpu_node* cn = get_cpu_node();
-		thread_queue& tq = cn->get_thread_ctl();
-		wttm.thr = tq.get_running_thread();
-		wttm.nanosec_delay = 100000000;
+		wttm.thr = get_current_thread();
+		wttm.nanosec_delay = 1000000000L;
 		timer_set(&wttm);
 		sleep_current_thread();
+		log()("s");
 	}
 	else if (data[0] == 101) { // mount
 		const char* _src = (const char*)data[4];
@@ -70,11 +84,26 @@ extern "C" cause::pair<uptr> syscall_entry(const ucpu* data)
 		const void* _data = (const void*)data[5];
 		uptr val = (uptr)data[6];
 
-		log()("mount():src=")(_src)(", tgt=")(_tgt)(", typ=")(_typ)
-		    (", flg=").x(_flg)(", data=").p(_data);
 		cause::t r = sys_mount(_src, _tgt, _typ, _flg, _data);
 		ret.set_cause(r);
-		log()(", ret=").u(r)();
+		ret.set_data(0);
+	}
+	else if (data[0] == 102) {
+		ret = sys_read(data[4], (void*)data[3], data[2]);
+	}
+	else if (data[0] == 103) { // write
+		ret = sys_write(data[4], (const void*)data[3], data[2]);
+	}
+	else if (data[0] == 104) { // open
+		ret = sys_open((const char*)data[4], data[3]);
+	}
+	else if (data[0] == 105) { // close
+		ret = sys_close(data[4]);
+	}
+	else if (data[0] == 106) { // mkdir
+		cause::t r = sys_mkdir((const char*)data[4]);
+		ret.set_cause(r);
+		ret.set_data(0);
 	}
 
 	return ret;

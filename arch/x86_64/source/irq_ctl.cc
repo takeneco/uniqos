@@ -21,8 +21,8 @@
 #include <irq_ctl.hh>
 
 #include <arch/global_vars.hh>
-#include <intr_ctl.hh>
 #include <core/global_vars.hh>
+#include <core/intr_ctl.hh>
 #include <core/mempool.hh>
 
 

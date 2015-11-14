@@ -7,7 +7,7 @@
 #ifndef ARCH_X86_64_INCLUDE_IRQ_CTL_HH_
 #define ARCH_X86_64_INCLUDE_IRQ_CTL_HH_
 
-#include <pic_dev.hh>
+#include <core/pic_dev.hh>
 
 
 class irq_ctl
