@@ -104,12 +104,12 @@ struct Elf64_Phdr
 {
 	Elf64_Word  p_type;
 	Elf64_Word  p_flags;
-	Elf64_Off   p_offset;  // Segment file offset
+	Elf64_Off   p_offset;  /// Segment file offset
 	Elf64_Addr  p_vaddr;
 	Elf64_Addr  p_paddr;
-	Elf64_Xword p_filesz;  // Segment size in file
-	Elf64_Xword p_memsz;   // Segment size in memory
-	Elf64_Xword p_align;   // Segment alignment
+	Elf64_Xword p_filesz;  /// Segment size in file
+	Elf64_Xword p_memsz;   /// Segment size in memory
+	Elf64_Xword p_align;   /// Segment alignment
 };
 
 enum {

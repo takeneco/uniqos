@@ -3,7 +3,7 @@
 #
 
 
-dirs = ('ata', 'acpi', 'block', 'char', 'clock', 'fs', 'bus', 'pic')
+dirs = ('ata', 'acpi', 'char', 'clock', 'fs', 'bus', 'pic')
 
 def configure(x):
 	x.recurse(dirs)

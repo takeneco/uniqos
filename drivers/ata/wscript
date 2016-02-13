@@ -1,0 +1,13 @@
+#
+# (C) 2014 KATO Takeshi
+#
+
+
+dirs = ('ahci',)
+
+def configure(x):
+	x.recurse(dirs)
+
+def build(x):
+	x.recurse(dirs)
+

@@ -1,0 +1,19 @@
+#
+# (C) 2014 KATO Takeshi
+#
+
+
+serial_name = 'serial'
+
+def configure(x):
+	#if x.env['CONFIG_SERIAL']:
+	x.env.append_value('KERNEL_LINK_USE', serial_name)
+
+def build(x):
+	#if x.env['CONFIG_SERIAL']:
+	x.objects(
+		    target   = serial_name,
+		    source   = 'serial.cc',
+		    use      = ['KERNEL'],
+		)
+

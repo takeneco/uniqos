@@ -1,0 +1,19 @@
+#
+# (C) 2015 KATO Takeshi
+#
+
+
+ahci_name = 'ahci'
+
+def configure(x):
+	if x.env['CONFIG_AHCI']:
+		x.env.append_value('KERNEL_LINK_USE', ahci_name)
+
+def build(x):
+	if x.env['CONFIG_AHCI']:
+		x.objects(
+		    target   = ahci_name,
+		    source   = 'ahci.cc',
+		    use      = ['KERNEL'],
+		)
+
