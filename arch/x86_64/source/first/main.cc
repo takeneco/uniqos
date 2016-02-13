@@ -61,9 +61,15 @@ syscall_r close(int iod)
 	return syscall1(iod, 105);
 }
 
+syscall_r mkdir(const char* path)
+{
+	return syscall1((uptr)path, 106);
+}
+
 extern "C" int main()
 {
 	mount(0, "/", "ramfs", 0, 0);
+	mkdir("/dev");
 	for (;;) {
 		syscall_r iod = open("/test", 0x01/*create*/|0x02/*write*/);
 

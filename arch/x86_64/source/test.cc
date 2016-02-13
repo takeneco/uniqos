@@ -3,11 +3,11 @@
 #include <core/cpu_node.hh>
 #include <global_vars.hh>
 #include <core/log.hh>
-#include <core/mempool_ctl.hh>
-#include <arch/native_ops.hh>
+#include <core/mempool.hh>
 #include <core/new_ops.hh>
 #include <core/page_pool.hh>
 #include <core/timer_ctl.hh>
+#include <x86/native_ops.hh>
 
 
 void event_drive();
@@ -91,13 +91,6 @@ void wakeup_handler(message* msg)
 
 void mempool_test()
 {
-	obj_edge oe1("obj1");
-	obj_node on1("type1", oe1);
-	obj_edge oe2("obj2", on1);
-	obj_node on2("type2", oe2);
-	obj_edge oe3("obj3", on2);
-	obj_node on3("type2", oe3);
-
 	thread* th = get_current_thread();
 
 	wakeup wakeupme;
@@ -105,10 +98,6 @@ void mempool_test()
 	//wakeupme.data = th;
 	wakeupme.data = 0;
 	wakeupme.nanosec_delay = 1000000000;
-
-	log lg;
-	on3.dump(lg);
-	lg();
 
 	test_number_lock->lock();
 	const u64 tn = test_number;
@@ -128,6 +117,8 @@ void mempool_test()
 
 	preempt_disable();
 
+	log lg;
+
 	lg.p(th)("|T0:").u(tn)("|seed:");
 	rnd.dump(lg);
 	lg();
@@ -136,7 +127,7 @@ void mempool_test()
 		global_vars::core.page_pool_objs[i]->dump(lg, 1);
 	}
 
-	global_vars::core.mempool_ctl_obj->dump(lg);
+	//global_vars::core.mempool_ctl_obj->dump(lg);
 
 	mp[0]->dump(lg, 1);
 	mp[1]->dump(lg, 1);

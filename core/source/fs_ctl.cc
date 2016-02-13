@@ -115,13 +115,14 @@ void fs_mount::interfaces::init()
 {
 	CreateNode     = fs_mount::nofunc_CreateNode;
 	CreateDirNode  = fs_mount::nofunc_CreateDirNode;
+	CreateRegNode  = fs_mount::nofunc_CreateRegNode;
 	CreateDevNode  = fs_mount::nofunc_CreateDevNode;
 	GetChildNode   = fs_mount::nofunc_GetChildNode;
 	OpenNode       = fs_mount::nofunc_OpenNode;
 	CloseNode      = fs_mount::nofunc_CloseNode;
 }
 
-cause::t fs_mount::create_dir_node(fs_node* parent, const char* name)
+cause::t fs_mount::create_dir_node(fs_dir_node* parent, const char* name)
 {
 	auto child = ifs->CreateDirNode(this, parent, name);
 	if (is_fail(child))
@@ -132,6 +133,21 @@ cause::t fs_mount::create_dir_node(fs_node* parent, const char* name)
 		return r;
 
 	return cause::OK;
+}
+
+cause::pair<fs_reg_node*> fs_mount::create_reg_node(
+    fs_dir_node* parent,
+    const char* name)
+{
+	auto child = ifs->CreateRegNode(this, parent, name);
+	if (is_fail(child))
+		return child;
+
+	cause::t r = parent->append_child_node(child.value(), name);
+	if (is_fail(r))
+		return null_pair(r);
+
+	return child;
 }
 
 
@@ -178,20 +194,20 @@ cause::t fs_mount_info::destroy(fs_mount_info* mp)
 
 // fs_node
 
-fs_node::fs_node(fs_mount* mount_owner, u32 _mode) :
+fs_node::fs_node(fs_mount* mount_owner, u32 type) :
 	owner(mount_owner),
-	mode(_mode)
+	node_type(type)
 {
 }
 
 bool fs_node::is_dir() const
 {
-	return mode == fs_ctl::NODE_DIR;
+	return node_type == fs::NODETYPE_DIR;
 }
 
 bool fs_node::is_regular() const
 {
-	return mode == fs_ctl::NODE_REG;
+	return node_type == fs::NODETYPE_REG;
 }
 
 void fs_node::insert_mount(fs_mount_info* mi)
@@ -208,7 +224,28 @@ void fs_node::remove_mount(fs_mount_info* mi)
 	mounts.remove(mi);
 }
 
-cause::t fs_node::append_child_node(fs_node* child, const char* name)
+fs_node* fs_node::get_mounted_node()
+{
+	// TODO:返した値が解放されないように、関数の外までロック範囲を広げる
+	// 必要がある。
+	spin_rlock_section _srs(mounts_lock);
+
+	fs_mount_info* mnt = mounts.front();
+	if (mnt)
+		return mnt->mount_obj->get_root_node();
+
+	return nullptr;
+}
+
+
+// fs_dir_node
+
+fs_dir_node::fs_dir_node(fs_mount* owner) :
+	fs_node(owner, fs::NODETYPE_DIR)
+{
+}
+
+cause::t fs_dir_node::append_child_node(fs_node* child, const char* name)
 {
 	child_node* cn =
 	    new (mem_alloc(child_node::calc_size(name))) child_node;
@@ -225,36 +262,33 @@ cause::t fs_node::append_child_node(fs_node* child, const char* name)
 	return cause::OK;
 }
 
-fs_node* fs_node::get_mounted_node()
-{
-	// TODO:返した値が解放されないように、関数の外までロック範囲を広げる
-	// 必要がある。
-	spin_rlock_section _srs(mounts_lock);
-
-	fs_mount_info* mnt = mounts.front();
-	if (mnt)
-		return mnt->mount_obj->get_root_node();
-
-	return nullptr;
-}
-
-cause::pair<fs_node*> fs_node::get_child_node(const char* name, u32 flags)
+// TODO:この関数は指定した名前のファイルがなければファイルを作成して返すが、
+// ファイルは作成しない仕様に変更したい。
+/// 新しい仕様：
+/// 指定した名前のファイルがあれば、そのファイルの fs_node を返す。
+/// 指定した名前のファイルがなければ、失敗する。
+cause::pair<fs_node*> fs_dir_node::get_child_node(const char* name)
 {
 	// TODO:返した値が解放されないように、関数の外までロック範囲を広げる
 	// 必要がある。
 
-	auto child = search_child_node(name);
+	auto child = search_cached_child_node(name);
 
-	if (child.cause() == cause::NOENT &&
-	   (flags & fs_ctl::OPEN_CREATE))
-	{
-		child = create_child_node(name, flags);
-	}
+	if (child.cause() == cause::NOENT)
+		child = create_child_node(name, 0);
 
 	return child;
 }
 
-cause::pair<fs_node*> fs_node::search_child_node(const char* name)
+/// fs_reg_node を作成して子ノードにする。
+/// まだ同じ名前のファイルがないことを呼び出し元が保証する必要がある。
+cause::pair<fs_reg_node*> fs_dir_node::create_child_reg_node(const char* name)
+{
+	return get_owner()->create_reg_node(this, name);
+}
+
+/// child_nodes から fs_node を探す。
+cause::pair<fs_node*> fs_dir_node::search_cached_child_node(const char* name)
 {
 	spin_rlock_section _srs(child_nodes_lock);
 
@@ -271,9 +305,16 @@ cause::pair<fs_node*> fs_node::search_child_node(const char* name)
 }
 
 /// @brief create child_node instance and set its members.
-cause::pair<fs_node*> fs_node::create_child_node(const char* name, u32 flags)
+/// 子ノード（ファイル）に対応する fs_node を作成する。
+/// 子ノードが存在しなければ失敗する。
+/// 子ノード自体を作成するわけではない。
+/// この関数は作成した fs_node を child_nodes へ追加する。
+/// 呼び出し元で、すでに子ノードに対応する fs_node が child_nodes に
+/// 追加されていないことを保証しなければならない。
+cause::pair<fs_node*> fs_dir_node::create_child_node(
+    const char* name, u32 flags)
 {
-	auto child_fsn = owner->create_node(this, name, flags);
+	auto child_fsn = get_owner()->create_node(this, name, flags);
 	if (is_fail(child_fsn))
 		return child_fsn;
 
@@ -294,22 +335,18 @@ cause::pair<fs_node*> fs_node::create_child_node(const char* name, u32 flags)
 	return child_fsn;
 }
 
+// fs_dir_node::child_node
 
-// fs_node::child_node
-
-uptr fs_node::child_node::calc_size(const char* name)
+uptr fs_dir_node::child_node::calc_size(const char* name)
 {
 	return sizeof (child_node) + str_length(name) + 1;
 }
 
-
-// fs_dir_node
-
-fs_dir_node::fs_dir_node(fs_mount* owner) :
-	fs_node(owner, fs_ctl::NODE_DIR)
+// fs_reg_node
+fs_reg_node::fs_reg_node(fs_mount* owner) :
+	fs_node(owner, fs::NODETYPE_REG)
 {
 }
-
 
 // fs_dev_node
 
@@ -333,7 +370,7 @@ fs_rootfs_drv::fs_rootfs_drv() :
 
 fs_rootfs_mnt::fs_rootfs_mnt(fs_rootfs_drv* drv) :
 	fs_mount(drv, &fs_mount_ops),
-	root_node(this, fs_ctl::NODE_DIR)
+	root_node(this)
 {
 	fs_mount_ops.init();
 
@@ -350,7 +387,12 @@ fs_ctl::fs_ctl() :
 
 cause::t fs_ctl::setup()
 {
-	root = rootfs_mnt.get_root_node();
+	fs_node* _root = rootfs_mnt.get_root_node();
+
+	if (!_root->is_dir())
+		return cause::FAIL;
+
+	root = static_cast<fs_dir_node*>(_root);
 
 	return cause::OK;
 }
@@ -377,32 +419,11 @@ cause::pair<fs_driver*> fs_ctl::get_fs_driver(const char* name)
 	return null_pair(cause::NODEV);
 }
 
-cause::pair<io_node*> fs_ctl::open(const char* path, u32 flags)
+cause::pair<io_node*> fs_ctl::open_node(const char* path, u32 flags)
 {
-	fs_node* cur = root;
+	fs_dir_node* parent = get_parent_node(root, path);
 
-	// TODO:mkdirと同じ処理。関数にしたい
-	while (*path) {
-		fs_node* cur2 = cur->get_mounted_node();
-		if (cur2)
-			cur = cur2;
-
-		while (*path == '/')
-			++path;
-
-		if (nodename_is_end(path))
-			break;
-
-		auto child = cur->get_child_node(path, 0);
-		if (is_fail(child))
-			return null_pair(child.cause());
-		cur = child.data();
-
-		uptr len = nodename_length(path);
-		path += len;
-	}
-
-	auto target_node = cur->get_child_node(path, flags);
+	auto target_node = parent->create_child_reg_node(path);
 	if (is_fail(target_node))
 		return null_pair(target_node.cause());
 
@@ -489,13 +510,58 @@ cause::t fs_ctl::unmount(const char* target, u64 flags)
 
 cause::t fs_ctl::mkdir(const char* path)
 {
-	// TODO:openと同じ処理。関数にしたい
-	fs_node* cur = root;
+	fs_node* parent = get_parent_node(root, path);
+
+	// TODO:make dir
+	fs_mount* mnt = parent->get_owner();
+	//mnt->create_dir_node(cur, );
+
+	return cause::NOFUNC;
+}
+
+cause::pair<fs_node*> fs_ctl::get_fs_node(
+    fs_node* base, const char* path, u32 flags)
+{
+	fs_node* cur = (*path == '/' ? root : base);
+
+	for (;;) {
+		if (*path == '/' && !cur->is_dir())
+			return null_pair(cause::NOENT);
+
+		while (*path == '/')
+			++path;
+
+		if (*path == '\0')
+			break;
+
+		if (!cur->is_dir())
+			return null_pair(cause::NOENT);
+
+		auto child =
+		    static_cast<fs_dir_node*>(cur)->get_child_node(path);
+		if (is_fail(child))
+			return null_pair(child.cause());
+
+		cur = child.value();
+
+		uptr len = nodename_length(path);
+		path += len;
+	}
+
+	return make_pair(cause::OK, cur);
+}
+
+/// 指定したパスの親ディレクトリの fs_dir_node を返す。
+/// @TODO:相対パスを考慮する。
+cause::pair<fs_dir_node*> fs_ctl::get_parent_node(
+    fs_dir_node* base, const char* path)
+{
+	fs_dir_node* cur = (*path == '/' ? root : base);
 
 	while (*path) {
 		fs_node* cur2 = cur->get_mounted_node();
-		if (cur2)
-			cur = cur2;
+		if (cur2 && cur2->is_dir())
+			cur = static_cast<fs_dir_node*>(cur2);
 
 		while (*path == '/')
 			++path;
@@ -503,43 +569,15 @@ cause::t fs_ctl::mkdir(const char* path)
 		if (nodename_is_end(path))
 			break;
 
-		auto child = cur->get_child_node(path, 0);
-		if (is_fail(child))
-			return child.cause();
-		cur = child.data();
-
-		uptr len = nodename_length(path);
-		path += len;
-	}
-
-	// TODO:make dir
-	fs_mount* mnt = cur->get_owner();
-	//mnt->create_dir_node(cur, );
-
-	return cause::NOFUNC;
-}
-
-// TODO:ファイル名の手前のディレクトリまでを返す関数を作れば使える
-
-cause::pair<fs_node*> fs_ctl::get_fs_node(
-    fs_node* base, const char* path, u32 flags)
-{
-	fs_node* cur = base;
-	if (cur == nullptr)
-		cur = root;
-
-	for (;;) {
-		while (*path == '/')
-			++path;
-
-		if (*path == '\0')
-			break;
-
-		auto child = cur->get_child_node(path, 0);
+		auto child = cur->get_child_node(path);
 		if (is_fail(child))
 			return null_pair(child.cause());
 
-		cur = child.data();
+		if (!child.value()->is_dir())
+			return null_pair(cause::NOENT);
+
+		cur = static_cast<fs_dir_node*>(child.value());
+
 		uptr len = nodename_length(path);
 		path += len;
 	}
@@ -586,5 +624,10 @@ cause::t sys_unmount(
     u64 flags)
 {
 	return get_fs_ctl()->unmount(target, flags);
+}
+
+cause::t fs_mkdir(const char* path)
+{
+	return get_fs_ctl()->mkdir(path);
 }
 

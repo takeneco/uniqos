@@ -25,7 +25,7 @@ namespace {
 
 const char driver_name_ramfs[] = "ramfs";
 
-class ramfs_node;
+class ramfs_reg_node;
 class ramfs_io_node;
 
 class ramfs_driver : public fs_driver
@@ -42,14 +42,17 @@ public:
 	const fs_mount::interfaces* get_fs_mount_ifs() { return &mount_ifs; }
 	const io_node::interfaces* ref_io_node_ifs() { return &io_node_ifs; }
 
-	mempool* get_fs_node_mp() { return fs_node_mp; }
+	mempool* get_fs_reg_node_mp() { return fs_reg_node_mp; }
+	mempool* get_fs_dir_node_mp() { return fs_dir_node_mp; }
 	mempool* get_fs_dev_node_mp() { return fs_dev_node_mp; }
 
 private:
 	interfaces self_ifs;
 	fs_mount::interfaces mount_ifs;
 	io_node::interfaces io_node_ifs;
-	mempool* fs_node_mp;
+
+	mempool* fs_reg_node_mp;
+	mempool* fs_dir_node_mp;
 	mempool* fs_dev_node_mp;
 };
 
@@ -67,18 +70,22 @@ public:
 	cause::t mount(const char* dev);
 
 	cause::pair<fs_node*> on_CreateNode(
-	    fs_node* parent, const char* name, u32 flags);
+	    fs_dir_node* parent, const char* name, u32 flags);
+	cause::pair<fs_dir_node*> on_CreateDirNode(
+	    fs_dir_node* parent, const char* name);
+	cause::pair<fs_reg_node*> on_CreateRegNode(
+	    fs_dir_node* parent, const char* name);
 	cause::pair<fs_dev_node*> on_CreateDevNode(
-	    fs_node* parent, const char* name, devnode_no no, u32 flags);
+	    fs_dir_node* parent, const char* name, devnode_no no, u32 flags);
 	cause::pair<fs_node*> on_GetChildNode(
-	    fs_node* parent, const char* childname);
+	    fs_dir_node* parent, const char* childname);
 	cause::pair<io_node*> on_OpenNode(
 	    fs_node* node, u32 flags);
 	cause::t on_CloseNode(
 	    io_node* ion);
 
 private:
-	cause::pair<io_node*> create_io_node(ramfs_node* fsn);
+	cause::pair<io_node*> create_io_node(ramfs_reg_node* fsn);
 	cause::t destroy_io_node(ramfs_io_node* ion);
 
 private:
@@ -106,12 +113,12 @@ private:
 };
 
 /// file node
-class ramfs_node : public fs_node
+class ramfs_reg_node : public fs_reg_node
 {
 	friend class ramfs_io_node;
 
 public:
-	ramfs_node(ramfs_mount* owner, u32 flags);
+	ramfs_reg_node(ramfs_mount* owner);
 
 	ramfs_mount* get_owner() {
 		return static_cast<ramfs_mount*>(fs_node::get_owner());
@@ -153,7 +160,8 @@ private:
 
 ramfs_driver::ramfs_driver() :
 	fs_driver(&self_ifs, driver_name_ramfs),
-	fs_node_mp(nullptr),
+	fs_reg_node_mp(nullptr),
+	fs_dir_node_mp(nullptr),
 	fs_dev_node_mp(nullptr)
 {
 	self_ifs.init();
@@ -164,6 +172,7 @@ ramfs_driver::ramfs_driver() :
 	mount_ifs.init();
 
 	mount_ifs.CreateNode    = fs_mount::call_on_CreateNode<ramfs_mount>;
+	mount_ifs.CreateDirNode = fs_mount::call_on_CreateDirNode<ramfs_mount>;
 	mount_ifs.CreateDevNode = fs_mount::call_on_CreateDevNode<ramfs_mount>;
 	mount_ifs.OpenNode      = fs_mount::call_on_OpenNode<ramfs_mount>;
 	mount_ifs.CloseNode     = fs_mount::call_on_CloseNode<ramfs_mount>;
@@ -179,13 +188,19 @@ ramfs_driver::ramfs_driver() :
 cause::t ramfs_driver::setup()
 {
 	auto mp = mempool::create_exclusive(
-	    sizeof (ramfs_node),
+	    sizeof (ramfs_reg_node),
 	    arch::page::INVALID,
 	    mempool::ENTRUST);
 	if (is_fail(mp))
 		return mp.cause();
 
-	fs_node_mp = mp.data();
+	fs_reg_node_mp = mp.data();
+
+	mp = mempool::acquire_shared(sizeof (fs_dir_node));
+	if (is_fail(mp))
+		return mp.cause();
+
+	fs_dir_node_mp = mp.data();
 
 	mp = mempool::acquire_shared(sizeof (fs_dev_node));
 	if (is_fail(mp))
@@ -198,7 +213,7 @@ cause::t ramfs_driver::setup()
 
 cause::t ramfs_driver::unsetup()
 {
-	// TODO:release fs_node_mp,ionode_mp
+	// TODO:release fs_reg_node_mp,ionode_mp
 	return cause::NOFUNC;
 }
 
@@ -234,7 +249,7 @@ ramfs_mount::ramfs_mount(ramfs_driver* drv) :
 
 cause::t ramfs_mount::mount(const char*)
 {
-	root = new (*get_driver()->get_fs_node_mp())
+	root = new (*get_driver()->get_fs_dir_node_mp())
 	           ramfs_dir_node(this);
 	if (!root)
 		return cause::NOMEM;
@@ -248,24 +263,46 @@ cause::t ramfs_mount::mount(const char*)
 	return cause::OK;
 }
 
+/// この関数は存在しないファイルを指定された場合は失敗するべきだが、
+/// ramfs の場合はすべてのファイルがキャッシュとして保存されているため
+/// キャッシュを検索した結果をそのまま返せばよい。
+/// しかし、呼び出し元はキャッシュを検索してファイルが見つからなかった
+/// ときだけこの関数を呼び出すので、ramfsの場合のこの関数の動作は常に
+/// 失敗するだけでもよい。
 cause::pair<fs_node*> ramfs_mount::on_CreateNode(
-    fs_node* /*parent*/,
-    const char* /*name*/,
-    u32 flags)
+    fs_dir_node* parent,
+    const char* name,
+    u32 /*flags*/)
 {
-	if ((flags & fs_ctl::OPEN_CREATE) == 0)
-		return null_pair(cause::NOENT);
+	return parent->get_child_node(name);
+}
 
-	fs_node* fsn = new (*get_driver()->get_fs_node_mp())
-	                   ramfs_node(this, /*flags*/fs_ctl::NODE_REG);
+cause::pair<fs_dir_node*> ramfs_mount::on_CreateDirNode(
+    fs_dir_node* /*parent*/,
+    const char* /*name*/)
+{
+	fs_dir_node* fsdn = new (*get_driver()->get_fs_dir_node_mp())
+	                        ramfs_dir_node(this);
+	if (!fsdn)
+		return null_pair(cause::NOMEM);
+
+	return make_pair(cause::OK, fsdn);
+}
+
+cause::pair<fs_reg_node*> ramfs_mount::on_CreateRegNode(
+    fs_dir_node* /*parent*/,
+    const char* /*name*/)
+{
+	ramfs_reg_node* fsn = new (*get_driver()->get_fs_reg_node_mp())
+	                          ramfs_reg_node(this);
 	if (!fsn)
 		return null_pair(cause::NOMEM);
 
-	return make_pair(cause::OK, fsn);
+	return cause::make_pair<fs_reg_node*>(cause::OK, fsn);
 }
 
 cause::pair<fs_dev_node*> ramfs_mount::on_CreateDevNode(
-    fs_node* parent,
+    fs_dir_node* parent,
     const char*,
     devnode_no no,
     u32 flags)
@@ -279,15 +316,16 @@ cause::pair<fs_dev_node*> ramfs_mount::on_CreateDevNode(
 }
 
 cause::pair<fs_node*> ramfs_mount::on_GetChildNode(
-    fs_node* parent,
+    fs_dir_node* parent,
     const char* childname)
 {
+	return null_pair(cause::NOFUNC);
 }
 
 cause::pair<io_node*> ramfs_mount::on_OpenNode(
     fs_node* fsn, u32 flags)
 {
-	ramfs_node* ramfsn = static_cast<ramfs_node*>(fsn);
+	ramfs_reg_node* ramfsn = static_cast<ramfs_reg_node*>(fsn);
 
 	return cause::pair<io_node*>(cause::OK, ramfsn->get_io_node());
 }
@@ -316,7 +354,7 @@ cause::pair<uptr> ramfs_io_node::on_Read(
     io_node::offset off, void* data, uptr bytes)
 {
 	if (fsnode->is_regular()) {
-		return static_cast<ramfs_node*>(fsnode)->
+		return static_cast<ramfs_reg_node*>(fsnode)->
 		       read(off, data, bytes);
 	} else {
 		return zero_pair(cause::FAIL);
@@ -327,7 +365,7 @@ cause::pair<uptr> ramfs_io_node::on_Write(
     io_node::offset off, const void* data, uptr bytes)
 {
 	if (fsnode->is_regular()) {
-		return static_cast<ramfs_node*>(fsnode)->
+		return static_cast<ramfs_reg_node*>(fsnode)->
 		       write(off, data, bytes);
 	} else {
 		return zero_pair(cause::FAIL);
@@ -341,22 +379,22 @@ cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
 }
 
 
-// ramfs_node
+// ramfs_reg_node
 
-ramfs_node::ramfs_node(ramfs_mount* owner, u32 flags) :
-	fs_node(owner, flags),
+ramfs_reg_node::ramfs_reg_node(ramfs_mount* owner) :
+	fs_reg_node(owner),
 	ramfs_ion(owner->get_driver()->ref_io_node_ifs(), this),
 	size_bytes(0)
 {
-	for (int i = 0; i < num_of_array(blocks); ++i)
+	for (uint i = 0; i < num_of_array(blocks); ++i)
 		blocks[i] = nullptr;
 }
 
-cause::t ramfs_node::destroy()
+cause::t ramfs_reg_node::destroy()
 {
 	mempool* block_mp = get_owner()->get_block_mp();
 
-	for (int i = 0; i < num_of_array(blocks); ++i) {
+	for (uint i = 0; i < num_of_array(blocks); ++i) {
 		if (blocks[i]) {
 			auto r = block_mp->release(blocks[i]);
 		}
@@ -365,7 +403,7 @@ cause::t ramfs_node::destroy()
 	return cause::OK;
 }
 
-cause::pair<uptr> ramfs_node::read(uptr off, void* data, uptr bytes)
+cause::pair<uptr> ramfs_reg_node::read(uptr off, void* data, uptr bytes)
 {
 	mempool* block_mp = get_owner()->get_block_mp();
 	const uptr block_size = block_mp->get_obj_size();
@@ -401,7 +439,7 @@ cause::pair<uptr> ramfs_node::read(uptr off, void* data, uptr bytes)
 	return make_pair(cause::OK, read_bytes);
 }
 
-cause::pair<uptr> ramfs_node::write(uptr off, const void* data, uptr bytes)
+cause::pair<uptr> ramfs_reg_node::write(uptr off, const void* data, uptr bytes)
 {
 	mempool* block_mp = get_owner()->get_block_mp();
 	const uptr block_size = block_mp->get_obj_size();

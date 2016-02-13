@@ -61,7 +61,8 @@ public:
 
 struct dir_entry
 {
-	u16  rec_len;
+	u32  record_bytes;
+	u32  name_bytes;
 	char name[];
 };
 

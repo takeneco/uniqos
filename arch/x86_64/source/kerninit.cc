@@ -23,18 +23,19 @@
 #include "native_cpu_node.hh"
 #include "native_process.hh"
 #include "native_thread.hh"
-#include <arch/native_ops.hh>
-#include <arch/vga.hh>
+#include <arch/native_io.hh>
 #include <core/acpi_ctl.hh>
 #include <core/clock_src.hh>
 #include <core/intr_ctl.hh>
 #include <core/log.hh>
+#include <core/mempool.hh>
 #include <core/mem_io.hh>
-#include <core/mempool_ctl.hh>
 #include <core/new_ops.hh>
-#include <core/string.hh>
 #include <core/timer_ctl.hh>
 #include <global_vars.hh>
+#include <util/string.hh>
+#include <vga.hh>
+#include <x86/native_ops.hh>
 
 
 using namespace x86;
@@ -49,6 +50,7 @@ io_node* create_serial();
 u64 get_clock();
 u64 usecs_to_count(u64 usecs);
 cause::t ramfs_init();
+cause::t devfs_init();
 void kern_init2(void* context);
 
 namespace arch {
@@ -70,21 +72,22 @@ void disable_intr_from_8259A()
 		PIC1_ICW4 = 0xa1,
 	};
 
-	native::outb(0xff, PIC0_OCW1);
-	native::outb(0xff, PIC1_OCW1);
+	arch::ioport_out8(0xff, PIC0_OCW1);
+	arch::ioport_out8(0xff, PIC1_OCW1);
 
-	native::outb(0x11, PIC0_ICW1);
-	native::outb(0xf8, PIC0_ICW2); // 使わなさそうなベクタにマップしておく
-	native::outb(1<<2, PIC0_ICW3);
-	native::outb(0x01, PIC0_ICW4);
+	arch::ioport_out8(0x11, PIC0_ICW1);
+	// 使わなさそうなベクタにマップしておく
+	arch::ioport_out8(0xf8, PIC0_ICW2);
+	arch::ioport_out8(1<<2, PIC0_ICW3);
+	arch::ioport_out8(0x01, PIC0_ICW4);
 
-	native::outb(0x11, PIC1_ICW1);
-	native::outb(0xf8, PIC1_ICW2);
-	native::outb(2   , PIC1_ICW3);
-	native::outb(0x01, PIC1_ICW4);
+	arch::ioport_out8(0x11, PIC1_ICW1);
+	arch::ioport_out8(0xf8, PIC1_ICW2);
+	arch::ioport_out8(2   , PIC1_ICW3);
+	arch::ioport_out8(0x01, PIC1_ICW4);
 
-	native::outb(0xff, PIC0_OCW1);
-	native::outb(0xff, PIC1_OCW1);
+	arch::ioport_out8(0xff, PIC0_OCW1);
+	arch::ioport_out8(0xff, PIC1_OCW1);
 }
 
 namespace {
@@ -119,7 +122,7 @@ cause::t create_first_process(io_node* out1)
 	if (is_fail(tr)) {
 		return tr.r;
 	}
-	native_thread* t = tr.value;
+	native_thread* t = tr.value();
 
 	cause::t r = pr->setup(t, 10);
 	if (is_fail(r)) {
@@ -261,9 +264,9 @@ extern "C" cause::t kern_init(u64 bootinfo_adr)
 	if (is_fail(boot_thr2))
 		return fail_msg(__func__, __LINE__, boot_thr2.cause());
 
-	bc->first_thr = first_thr.data();
+	bc->first_thr = first_thr.value();
 
-	boot_thr2.data()->ready();
+	boot_thr2.value()->ready();
 
 	return x86::get_native_cpu_node()->start_thread_sched();
 }
@@ -280,7 +283,11 @@ cause::t kern_setup(void* context)
 	// メモリ空間が違うので解放方法も特殊
 	//destroy_thread(bc->boot_thr);
 
-	cause::t r = intr_setup();
+	cause::t r = vadr_pool_setup();
+	if (is_fail(r))
+		return r;
+
+	r = intr_setup();
 	if (is_fail(r))
 		return r;
 
@@ -288,7 +295,15 @@ cause::t kern_setup(void* context)
 	if (is_fail(r))
 		return r;
 
-	r = device_ctl_init();
+	r = driver_ctl_setup();
+	if (is_fail(r))
+		return r;
+
+	r = device_ctl_setup();
+	if (is_fail(r))
+		return r;
+
+	r = devnode_setup();
 	if (is_fail(r))
 		return r;
 
@@ -469,10 +484,12 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE)();
 		log()(SRCPOS)("create_thread() failed");
 		return thr.r;
 	}
-	native_thread* t = thr.value;
+	native_thread* t = thr.value();
 	t->ready();
 
 	ramfs_init();
+
+	devfs_init();
 
 	r = x86::native_process_init();
 	if (is_fail(r))
@@ -487,7 +504,10 @@ log(1)("memlog:")(memlog_buffer)(" size:0x").x(MEMLOG_SIZE)();
 	pci_setup();
 	//ata_setup();
 
-for(;;)asm("hlt");
+	r = ahci_setup();
+	if (is_fail(r))
+		return r;
+
 	get_native_cpu_node()->exit_boot_thread();
 	sleep_current_thread();
 
