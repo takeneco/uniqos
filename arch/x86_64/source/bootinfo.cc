@@ -44,5 +44,45 @@ const tag* get_info(u16 type)
 	return 0;
 }
 
+// multiboot.hとmultiboot2.hは同時にincludeできないのでmultiboot.hに対応する
+// ときにここから先を別ファイルにする必要がある。
+#include <multiboot2.h>
+
+/// @return This function returns boot command line string with null terminated.
+///         If no boot command line, this function returns nullptr.
+const char* get_cmdline()
+{
+	const multiboot* mb =
+	    static_cast<const multiboot*>(get_info(TYPE_MULTIBOOT));
+	if (!mb)
+		return nullptr;
+
+	const u8* p = mb->info;
+	u32 read = 0;
+
+	const u32 total_size = *reinterpret_cast<const u32*>(p);
+	read += 8;
+	p += 8;
+
+	while (read < total_size) {
+		const multiboot_tag* mbtag =
+		     reinterpret_cast<const multiboot_tag*>(p);
+		if (mbtag->type == MULTIBOOT_TAG_TYPE_CMDLINE) {
+			const multiboot_tag_string* mb_cmdline =
+			    reinterpret_cast<const multiboot_tag_string*>(p);
+			return mb_cmdline->string;
+		}
+		else if (mbtag->type == MULTIBOOT_TAG_TYPE_END) {
+			break;
+		}
+
+		const u32 sz = up_align<u32>(mbtag->size, MULTIBOOT_TAG_ALIGN);
+		read += sz;
+		p += sz;
+	}
+
+	return nullptr;
+}
+
 }  // namespace bootinfo
 

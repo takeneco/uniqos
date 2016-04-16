@@ -72,6 +72,7 @@ def build(x):
 	    features      = 'asm c cxx linker_opts',
 	    target        = kern_target,
 	    source        = kern_sources,
+	    includes      = '#external/multiboot/include',
 	    use           = kernel_link_use,
 	    linkflags     = kern_linkflags,
 	    linker_script = 'kernel.lds',

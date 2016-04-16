@@ -419,8 +419,8 @@ void acpi_log()
 			("ProximityDomainHi: ")
 			.u(_e->ProximityDomainHi[0])(' ')
 			.u(_e->ProximityDomainHi[1])(' ')
-			.u(_e->ProximityDomainHi[2])()
-			("Reserved :").u(_e->Reserved)();
+			.u(_e->ProximityDomainHi[2])();
+			//("Reserved :").u(_e->Reserved)();
 		}
 			break;
 		case ACPI_SRAT_TYPE_MEMORY_AFFINITY: {

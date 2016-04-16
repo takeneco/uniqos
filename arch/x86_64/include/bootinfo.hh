@@ -149,6 +149,7 @@ enum {
 };
 
 const tag* get_info(u16 type);
+const char* get_cmdline();
 
 }  // namespace bootinfo
 
