@@ -30,7 +30,10 @@ class pci_driver;
 class pci3_device : public pci_device
 {
 public:
-	pci3_device(pci_device::interfaces* _ifs, void* pci_config_space);
+	pci3_device(
+	    pci_device::interfaces* _ifs,
+	    const pci_bsf& bsf,
+	    void* pci_config_space);
 
 	static void init_ifs(pci_device::interfaces* ops);
 
@@ -92,7 +95,8 @@ public:
 public:
 	cause::t setup();
 
-	cause::pair<pci3_device*> create_pci3_device(void* pci_config_space);
+	cause::pair<pci3_device*> create_pci3_device(
+	    void* pci_config_space, const pci_bsf& bsf);
 
 private:
 	void init_ifs();

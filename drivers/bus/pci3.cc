@@ -33,8 +33,11 @@ enum {
 
 // pci3_device
 
-pci3_device::pci3_device(pci_device::interfaces* _ifs, void* pci_config_space) :
-	pci_device(_ifs),
+pci3_device::pci3_device(
+    pci_device::interfaces* _ifs,
+    const pci_bsf& bsf,
+    void* pci_config_space) :
+	pci_device(_ifs, bsf),
 	config_space(pci_config_space)
 {
 }
@@ -128,7 +131,7 @@ cause::t pci3_bus_device::setup_by_acpi(ACPI_TABLE_MCFG* acpi_mcfg)
 
 	u8 start_bus = acpi_mcfg_alloc->StartBusNumber;
 	u8 end_bus = acpi_mcfg_alloc->EndBusNumber;
-	for (u8 bus = start_bus; bus <= end_bus; ++bus) {
+	for (u16 bus = start_bus; bus <= end_bus; ++bus) {
 		for (u8 slot = 0; slot < 32; ++slot) {
 			auto dev = load_config(bus, slot, 0);
 			if (dev.cause() == cause::NODEV)
@@ -139,8 +142,9 @@ cause::t pci3_bus_device::setup_by_acpi(ACPI_TABLE_MCFG* acpi_mcfg)
 			if ((dev.data()->get_header_type() & 0x80) == 0)
 				continue;
 
-			for (u8 func = 1; func < 8; ++func)
+			for (u8 func = 1; func < 8; ++func) {
 				load_config(bus, slot, func);
+			}
 		}
 	}
 
@@ -207,7 +211,8 @@ pci3_bus_device::load_config(u8 bus, u8 slot, u8 func)
 		return null_pair(cause::NODEV);
 	}
 
-	auto dev = owner->create_pci3_device(conf_reg);
+	auto dev = owner->create_pci3_device(conf_reg,
+	                                     pci_bsf(bus, slot, func));
 	if (is_fail(dev))
 		return dev;
 

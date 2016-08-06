@@ -2,7 +2,7 @@
 /// @brief PCI driver.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2014-2015 KATO Takeshi
+//  (C) 2014 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -107,7 +107,7 @@ cause::t pci_driver::setup()
 	auto mp = mempool::acquire_shared(sizeof (pci3_device));
 	if (is_fail(mp))
 		return mp.cause();
-	pci3_device_mp = mp.data();
+	pci3_device_mp = mp.value();
 
 	cause::t r = setup_by_acpi();
 	if (is_ok(r) || r != cause::NODEV)
@@ -116,10 +116,11 @@ cause::t pci_driver::setup()
 	return r;
 }
 
-cause::pair<pci3_device*> pci_driver::create_pci3_device(void* pci_config_space)
+cause::pair<pci3_device*> pci_driver::create_pci3_device(
+    void* pci_config_space, const pci_bsf& bsf)
 {
 	pci3_device* dev = new (*pci3_device_mp) pci3_device(
-	    &pci3_device_ifs, pci_config_space);
+	    &pci3_device_ifs, bsf, pci_config_space);
 	if (!dev)
 		return null_pair(cause::NOMEM);
 

@@ -58,6 +58,27 @@ enum PCI_CLASS {
 	PCI_CLASS_STORAGE_SATA = 0x0106,
 };
 
+/// PCIのbus, slot, funcを１つの型にまとめる。
+union pci_bsf
+{
+	u32 bsf;
+
+	struct path
+	{
+		u8 bus;
+		u8 slot;
+		u8 func;
+		u8 reserved;
+		path(u8 _bus, u8 _slot, u8 _func) :
+			bus(_bus), slot(_slot), func(_func), reserved(0)
+		{}
+	} pci;
+
+	pci_bsf() {}
+	explicit pci_bsf(const pci_bsf& x) : bsf(x.bsf) {}
+	explicit pci_bsf(u8 bus, u8 slot, u8 func) : pci(bus, slot, func) {}
+};
+
 /// device on PCI
 class pci_device
 {
@@ -94,7 +115,10 @@ public:
 	}
 
 public:
-	pci_device(interfaces* _ifs) : ifs(_ifs) {}
+	pci_device(interfaces* _ifs, const pci_bsf& bsf) :
+		ifs(_ifs),
+		bus(bsf.pci.bus), slot(bsf.pci.slot), func(bsf.pci.func)
+	{}
 
 public:
 	// Read interfaces
@@ -104,7 +128,11 @@ public:
 	cause::pair<_UINT> read(u16 offset)
 	{
 		cause::pair<u32> r = read(offset, sizeof (_UINT));
-		return cause::pair<_UINT>(r.cause(), r.data());
+		return cause::pair<_UINT>(r.cause(), r.value());
+	}
+
+	void get_bsf(pci_bsf* bsf) {
+		*bsf = pci_bsf(bus, slot, func);
 	}
 
 	cause::pair<u16> get_vendor_id();
@@ -128,6 +156,9 @@ public:
 
 private:
 	interfaces* ifs;
+	u8 bus;
+	u8 slot;
+	u8 func;
 };
 
 inline cause::pair<u16> pci_device::get_vendor_id() {

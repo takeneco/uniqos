@@ -2,7 +2,7 @@
 /// @brief  mempool interface declaration.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2011-2015 KATO Takeshi
+//  (C) 2011 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -159,6 +159,7 @@ public:
 	sptr get_shared_count() const { return shared_count.load(); }
 
 	void set_obj_name(const char* name);
+	const char* get_obj_name() const { return obj_name; }
 
 	void dump(output_buffer& ob, uint level);
 	void dump_table(output_buffer& ob);

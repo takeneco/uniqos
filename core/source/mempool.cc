@@ -2,7 +2,7 @@
 /// @brief Memory pooler.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2011-2015 KATO Takeshi
+//  (C) 2011 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -610,9 +610,9 @@ cause::pair<void*> mempool::mp_mem_allocator::on_Allocate(uptr bytes)
 {
 	if (CONFIG_DEBUG_VALIDATE >= 1) {
 		if (mp->obj_size < bytes) {
-			log()(SRCPOS)(" !!!").
+			log()(SRCPOS)(" !!!")(mp->get_obj_name())(":").
 			    u(bytes)("(required size) > ").
-			    u(mp->obj_size)("(object size)");
+			    u(mp->obj_size)("(object size)\n");
 			return null_pair(cause::BADARG);
 		}
 	}
