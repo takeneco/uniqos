@@ -62,13 +62,14 @@ cause::t devfs_driver::setup()
 	if (is_fail(r1))
 		return r1.cause();
 
-	fs_driver* ramfs_drv = r1.data();
+	fs_driver* ramfs_drv = r1.value();
 
 	auto r2 = ramfs_drv->mount(nullptr);
-	if (is_fail(r2))
+	if (is_fail(r2)) {
 		return r2.cause();
+	}
 
-	devfs_mnt = r2.data();
+	devfs_mnt = r2.value();
 
 	return cause::OK;
 }

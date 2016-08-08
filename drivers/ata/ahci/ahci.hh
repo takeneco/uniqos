@@ -22,6 +22,8 @@
 
 #include <core/device.hh>
 #include <core/driver.hh>
+#include <core/io_node.hh>
+#include <core/mempool.hh>
 #include <core/pci.hh>
 #include <core/spinlock.hh>
 #include <util/chain.hh>
@@ -249,14 +251,27 @@ struct COMMAND_TABLE
 
 using table_alloc = cheap_alloc<TABLE_ALLOC_ENTS>;
 
+class ahci_device_io_node;
 class ahci_device;
 class ahci_hba;
 class ahci_driver;
 
+class ahci_device_io_node : public io_node
+{
+public:
+	ahci_device_io_node(ahci_device* owner);
+
+	cause::pair<uptr> on_Write(
+	    offset off, const void* data, uptr bytes);
+
+private:
+	ahci_device* dev;
+};
+
 class ahci_device : public device
 {
 public:
-	ahci_device(ahci_hba* _hba, int port);
+	ahci_device(ahci_driver* ahcidriver, ahci_hba* ahcihba, int hbaport);
 	~ahci_device();
 
 public:
@@ -264,7 +279,7 @@ public:
 	cause::t start();
 	cause::t stop();
 
-	cause::pair<uptr> _read(uptr seg, void* data, uptr bytes);
+	u16 get_segment_bits() const { return segment_bits; }
 
 private:
 	uptr calc_setup_size();
@@ -276,10 +291,15 @@ private:
 	cause::pair<int> acquire_slot();
 	void release_slot(int slot);
 
+	cause::pair<uptr> read_atapi(uptr start, uptr bytes, void* data);
+	cause::pair<uptr> read_atapi_cmd(
+	    u32 seg_start, u8 seg_count, int slot);
+
 public:
 	chain_node<ahci_device> ahci_hba_chain_node;
 
 private:
+	ahci_driver*        driver;
 	ahci_hba*           hba;
 	HBA_MEM_REGS::PORT* hba_port_regs;
 	COMMAND_HEADER*     cmd_list;
@@ -291,13 +311,21 @@ private:
 	u32  reg_sig;
 
 	int                 hba_port;
+
+	bool                is_atapi;
+	u16                 segment_bits;
+
+	ahci_device_io_node ion;
 };
 
 /// @brief AHCI host bus adapter
 class ahci_hba : public bus_device
 {
 public:
-	ahci_hba(ahci_driver* _driver, uptr base_address);
+	ahci_hba(
+	    const char* device_name,
+	    ahci_driver* _driver,
+	    uptr base_address);
 	~ahci_hba() {}
 
 public:
@@ -339,22 +367,30 @@ public:
 	~ahci_driver() {}
 
 public:
+	mempool* get_mp2048() { return mp2048; }
+
+public:
 	cause::t setup();
 	cause::t scan();
 
-public:
 	cause::pair<table_alloc*> acquire_table_alloc(uptr bytes);
 	void release_table_alloc();
 
 private:
+	cause::t setup_ion();
+	cause::t setup_mp();
 	cause::t scan_pci(pci_bus_device* pci);
 
 private:
 	ahci_hba_chain hba_chain;
 	table_alloc tbl_alloc;
 
+	mempool* mp2048;
+
 	spin_rwlock hba_chain_lock;
 	spin_lock tbl_alloc_lock;
+
+	io_node::interfaces ion_ifs;
 };
 
 }  // namespace ahci

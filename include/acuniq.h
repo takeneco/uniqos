@@ -1,7 +1,7 @@
 /// @file  include/acuniq.h
 /// @brief used by ACPICA
 //
-// (C) 2012-2013 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
 #ifndef INCLUDE_ACUNIQ_H_
@@ -20,6 +20,7 @@
 
 #if CONFIG_DEBUG_ACPI_VERBOSE >= 2
 # define ACPI_DEBUG_OUTPUT
+//# define ACPI_DEBUGGER
 #endif  // CONFIG_DEBUG_ACPI_VERBOSE >= 2
 
 #define ACPI_USE_SYSTEM_CLIBRARY

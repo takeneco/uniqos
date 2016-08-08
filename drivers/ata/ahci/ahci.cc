@@ -23,6 +23,7 @@
 #include <core/global_vars.hh>
 #include <core/int_bitset.hh>
 #include <core/log.hh>
+#include <core/mem_io.hh>
 #include <core/new_ops.hh>
 #include <core/page.hh>
 #include <core/vadr_pool.hh>
@@ -40,28 +41,41 @@ enum GHC_FLAGS {
 }  // namespace
 
 namespace {
-class ahci_driver; // for friend declaration.
-}
-
-namespace {
 
 const char driver_name_ahci[] = "ahci";
-const char device_name_ahci_hba[] = "ahci-hba";
 const char device_name_ahci_dev[] = "ahci-dev";
 
 }  // namespace
 
 namespace ahci {
 
+// ahci_device_io_node
+
+ahci_device_io_node::ahci_device_io_node(ahci_device* owner) :
+	dev(owner)
+{}
+
+cause::pair<uptr> ahci_device_io_node::on_Write(
+    offset off,
+    const void* data,
+    uptr bytes)
+{
+}
+
 // ahci_device
 
-ahci_device::ahci_device(ahci_hba* _hba, int port) :
+ahci_device::ahci_device(
+    ahci_driver* ahcidriver,
+    ahci_hba* ahcihba,
+    int hbaport) :
 	device(device_name_ahci_dev),
-	hba(_hba),
-	hba_port_regs(_hba->ref_port_regs(port)),
+	driver(ahcidriver),
+	hba(ahcihba),
+	hba_port_regs(ahcihba->ref_port_regs(hbaport)),
 	cmd_list(nullptr),
 	rx_fis(nullptr),
-	hba_port(port)
+	hba_port(hbaport),
+	ion(this)
 {
 	for (uint i = 0; i < CMD_HDR_NR; ++i)
 		cmd_table[i] = nullptr;
@@ -87,16 +101,16 @@ cause::t ahci_device::setup()
 		if (is_fail(r2))
 			return r2.cause();
 
-		table_alloc* tbl_alloc = r2.data();
+		table_alloc* tbl_alloc = r2.value();
 		cause::pair<uptr> r3 = setup_hba(tbl_alloc);
 
-		// If r3.cause() == NOMEM, r3.data() indicates required
+		// If r3.cause() == NOMEM, r3.value() indicates required
 		// memory size in tbl_alloc.
 
 		drv->release_table_alloc();
 
 		if (r3.cause() == cause::NOMEM)
-			bytes = r3.data();
+			bytes = r3.value();
 		else if (is_ok(r3))
 			break;
 		else
@@ -108,13 +122,23 @@ cause::t ahci_device::setup()
 		return r;
 
 	if (reg_sig == 0xeb140101) { // atapi
-		void* mem = new (generic_mem()) char[4096];
-		mem_fill(0xff, mem, 4096);
-		auto r2 = _read(0, mem, 4096);
+		uint sz = 4096;
+		void* mem = new (generic_mem()) char[sz];
+		mem_fill(0xff, mem, sz);
+		auto r2 = read_atapi(0x8001, sz, mem);
 		log()("--- read ---r2:").u(r2.cause())();
-		log().x(4096, mem, 1, 16)();
+		log().x(sz, mem, 1, 16)();
 		generic_mem().deallocate(mem);
+
+		is_atapi = true;
+	} else {
+		is_atapi = false;
 	}
+
+	if (is_atapi)
+		segment_bits = 11;
+	else
+		segment_bits = 9;
 
 	return cause::OK;
 }
@@ -139,97 +163,6 @@ cause::t ahci_device::stop()
 	while (hba_port_regs->cmd & PxCMD_FR);
 
 	return cause::OK;
-}
-
-cause::pair<uptr> ahci_device::_read(uptr seg, void* data, uptr bytes)
-{
-	auto _slot = acquire_slot();
-	if (is_fail(_slot)) {
-#warning no impl:acquire_slot() failed.
-		return zero_pair(_slot.cause());
-	}
-	int slot = _slot.data();
-
-	hba_port_regs->is = 0xffffffff;
-
-	COMMAND_HEADER* cmdhdr = &cmd_list[slot];
-	COMMAND_TABLE* cmdtbl = cmd_table[slot];
-
-	cmdhdr->cfl = sizeof (FIS_H2D) / sizeof (u32);
-	cmdhdr->w = 0;
-	cmdhdr->prdtl = 1;
-
-	uptr dba = arch::unmap_phys_adr(data, bytes);
-	cmdtbl->prdt[0].dba = (u32)dba;
-	cmdtbl->prdt[0].dbau = (u32)(dba >> 32);
-	cmdtbl->prdt[0].dbc = (bytes - 1) | 0x1;
-	cmdtbl->prdt[0].i = 1;
-
-	FIS_H2D* cmdfis = reinterpret_cast<FIS_H2D*>(cmdtbl->cfis);
-	cmdfis->fis_type = 0x27;  // FIS_TYPE_REG_H2D
-	cmdfis->c = 1;  // Command
-	// IF AHCI
-	// cmdfis->command = 0x25;  // ATA_CMD_READ_DMA_EX
-	// IF ATAPI
-	cmdhdr->a = 1;
-	cmdfis->command = 0xa0;  // ATA_PACKET
-	//
-	cmdfis->lba0 = (u8)seg;
-	cmdfis->lba1 = (u8)(seg >> 8);
-	cmdfis->lba2 = (u8)(seg >> 16);
-	cmdfis->device = 1<<6; // LBA device
-	cmdfis->lba3 = (u8)(seg >> 24);
-	cmdfis->lba4 = (u8)(seg >> 32);
-	cmdfis->lba5 = (u8)(seg >> 40);
-
-	cmdfis->countl = bytes >> 8;
-	cmdfis->counth = bytes >> 16;
-
-	//IF ATAPI
-	cmdtbl->acmd[ 0] = 0xa8;
-	cmdtbl->acmd[ 1] = 0;
-	cmdtbl->acmd[ 2] = 0;
-	cmdtbl->acmd[ 3] = 0;
-	cmdtbl->acmd[ 4] = 0;
-	cmdtbl->acmd[ 5] = 0100000 / 2048;
-	cmdtbl->acmd[ 6] = 0;
-	cmdtbl->acmd[ 7] = 0;
-	cmdtbl->acmd[ 8] = 0;
-	cmdtbl->acmd[ 9] = 2;
-	cmdtbl->acmd[10] = 0;
-	cmdtbl->acmd[11] = 0;
-	//
-
-	enum {
-		ATA_DEV_BUSY = 0x80,
-		ATA_DEV_DRQ = 0x80,
-	};
-	int spin;
-	for (spin = 0;
-	     spin < 1000000 && (hba_port_regs->tfd & (ATA_DEV_BUSY|ATA_DEV_DRQ));
-	     ++spin)
-	{
-	}
-	if (spin == 1000000) {
-		log()("Port is hung")();
-		return zero_pair(cause::FAIL);
-	}
-
-	hba_port_regs->ci = 1 << 0;
-
-	enum {
-		HBA_PxIS_TFES = 0x40000000,
-	};
-	for (int i = 0; ; ++i) {
-		if ((hba_port_regs->ci & (1 << 0)) == 0)
-			break;
-		if (hba_port_regs->is & HBA_PxIS_TFES) {
-			log()("Read disk error|is = ").x(hba_port_regs->is)();
-			return zero_pair(cause::FAIL);
-		}
-	}
-
-	return cause::pair<uptr>(cause::OK, 0);
 }
 
 /// setup()によって割り当てられるAHCIレジスタ用のメモリサイズを計算する。
@@ -410,11 +343,206 @@ void ahci_device::release_slot(int slot)
 	cmd_table_lock[slot].unlock_np();
 }
 
+/// ATAPI の read コマンドを1回発行する。
+cause::pair<uptr> ahci_device::read_atapi(
+    u64 start,
+    u64 bytes,
+    void* data)  ///< data は物理メモリ上の連続領域でなければならない。
+{
+	const u16 SEG_SHIFT = 11;
+	const u16 SEG_BYTES = 1 << SEG_SHIFT; // = 2048;
+
+	auto _slot = acquire_slot();
+	if (is_fail(_slot)) {
+		// TODO: acquire_slot() が失敗したら成功するまで待つ。
+		return zero_pair(_slot.cause());
+	}
+	int slot = _slot.value();
+
+	// このフラグは割り込みの直後に確認してクリア(-1)すべき。
+	hba_port_regs->is = 0xffffffff;
+
+	COMMAND_HEADER* cmdhdr = &cmd_list[slot];
+	COMMAND_TABLE* cmdtbl = cmd_table[slot];
+
+	cmdhdr->cfl = sizeof (FIS_H2D) / sizeof (u32);
+	cmdhdr->w = 0;
+
+	u16 prdtl = 0;
+
+	const u64 start1 = down_align<u64>(start, SEG_BYTES);
+	const u64 end1 = up_align<u64>(start, SEG_BYTES);
+	const u64 start2 = end1;
+	const u64 end2 = down_align<u64>(start + bytes, SEG_BYTES);
+	const u64 start3 = end2;
+	const u64 end3 = up_align<u64>(start + bytes, SEG_BYTES);
+
+	u32 seg_start = start1 >> SEG_SHIFT;
+	u64 seg_cnt = (end3 - start1) >> SEG_SHIFT;
+
+	u8* buf1 = nullptr;
+	if (start1 != end1) {
+		// 開始アドレスがセグメント境界ではないため、開始アドレスを
+		// 含むセグメントを別のバッファへ読み込む。
+		auto buf = driver->get_mp2048()->acquire();
+		if (is_fail(buf))
+			return cause::zero_pair(buf.cause());
+		u8* start1_buf = static_cast<u8*>(buf.value());
+		uptr start1_buf_padr =
+		    arch::unmap_phys_adr(start1_buf, SEG_BYTES);
+		cmdtbl->prdt[prdtl].dba =
+		     static_cast<u32>(start1_buf_padr & 0xffffffff);
+		cmdtbl->prdt[prdtl].dbau =
+		    static_cast<u32>((start1_buf_padr >> 32) & 0xffffffff);
+		cmdtbl->prdt[prdtl].dbc = (SEG_BYTES - 1) | 0x1;
+		cmdtbl->prdt[prdtl].i = 1;
+
+		buf1 = static_cast<u8*>(buf.value());
+		++prdtl;
+	}
+
+	if (start2 != end2) {
+		// prdtあたり4MiBしか読めないので、分割する。
+		//TODO: 実は255セグメントしか読めないので510KiBしか読めない。
+		//      510KiB毎にコマンドを発行する必要がある。
+		u8* start2_buf = static_cast<u8*>(data) + (start2 - start);
+		uptr start2_buf_padr =
+		    arch::unmap_phys_adr(start2_buf, end2 - start2);
+		uptr left = end2 - start2;
+		while (left > 0) {
+			auto size = min<u64>(left, 0x400000);
+			cmdtbl->prdt[prdtl].dba = static_cast<u32>(
+			    start2_buf_padr & 0xffffffff);
+			cmdtbl->prdt[prdtl].dbau = static_cast<u32>(
+			    (start2_buf_padr >> 32) & 0xffffffff);
+			cmdtbl->prdt[prdtl].dbc = (size - 1) | 0x1;
+			cmdtbl->prdt[prdtl].i = 1;
+
+			start2_buf_padr += size;
+			left -= size;
+
+			++prdtl;
+		}
+	}
+
+	u8* buf3 = nullptr;
+	if (start3 != end3) {
+		// 終了アドレスがセグメント境界ではないため、終了アドレスを
+		// 含むセグメントを別のバッファへ読み込む。
+		auto buf = driver->get_mp2048()->acquire();
+		if (is_fail(buf))
+			return cause::zero_pair(buf.cause());
+		u8* start3_buf = static_cast<u8*>(buf.value());
+		uptr start3_buf_padr =
+		    arch::unmap_phys_adr(start3_buf, SEG_BYTES);
+		cmdtbl->prdt[prdtl].dba =
+		    static_cast<u32>(start3_buf_padr & 0xffffffff);
+		cmdtbl->prdt[prdtl].dbau =
+		    static_cast<u32>((start3_buf_padr >> 32) & 0xffffffff);
+		cmdtbl->prdt[prdtl].dbc = (SEG_BYTES - 1) | 0x1;
+		cmdtbl->prdt[prdtl].i = 1;
+
+		buf3 = static_cast<u8*>(buf.value());
+		++prdtl;
+	}
+	cmdhdr->prdtl = prdtl;
+
+	auto r = read_atapi_cmd(seg_start, seg_cnt, slot);
+
+	if (is_ok(r)) {
+		u8* dest = static_cast<u8*>(data);
+		if (buf1) {
+			mem_copy(buf1 + (start - start1),
+			         dest,
+			         end1 - start);
+		}
+		if (buf3) {
+			mem_copy(buf3,
+			         dest + (start3 - start),
+			         (start + bytes) - start3);
+		}
+	}
+
+	if (buf1)
+		driver->get_mp2048()->release(buf1);
+
+	if (buf3)
+		driver->get_mp2048()->release(buf3);
+
+	return r;
+}
+
+/// Read コマンドを１回発行する。
+/// 読み込むアドレスはセグメント単位で指定する。
+/// 読み込み先として padr を設定した slot を指定する。
+cause::pair<uptr> ahci_device::read_atapi_cmd(
+    u32 seg_start,  ///< Start segment.
+    u8  seg_count,  ///< Segment count.
+    int slot)       ///< Destination slot.
+{
+	COMMAND_HEADER* cmdhdr = &cmd_list[slot];
+	COMMAND_TABLE* cmdtbl = cmd_table[slot];
+	FIS_H2D* cmdfis = reinterpret_cast<FIS_H2D*>(cmdtbl->cfis);
+
+	cmdfis->fis_type = 0x27;  // FIS_TYPE_REG_H2D
+	cmdfis->c = 1;  // Command
+	cmdhdr->a = 1;  // ATAPI
+	cmdfis->command = 0xa0;  // ATA_PACKET
+
+	cmdtbl->acmd[ 0] = 0xa8;
+	cmdtbl->acmd[ 1] = 0;
+	cmdtbl->acmd[ 2] = static_cast<u8>((seg_start >> 24) & 0xff);
+	cmdtbl->acmd[ 3] = static_cast<u8>((seg_start >> 16) & 0xff);
+	cmdtbl->acmd[ 4] = static_cast<u8>((seg_start >>  8) & 0xff);
+	cmdtbl->acmd[ 5] = static_cast<u8>(seg_start & 0xff);
+	cmdtbl->acmd[ 6] = 0;
+	cmdtbl->acmd[ 7] = 0;
+	cmdtbl->acmd[ 8] = 0;
+	cmdtbl->acmd[ 9] = static_cast<u8>(seg_count);
+	cmdtbl->acmd[10] = 0;
+	cmdtbl->acmd[11] = 0;
+
+
+	enum {
+		ATA_DEV_BUSY = 0x80,
+		ATA_DEV_DRQ = 0x80,
+	};
+	int spin;
+	for (spin = 0;
+	     spin < 1000000 && (hba_port_regs->tfd & (ATA_DEV_BUSY|ATA_DEV_DRQ));
+	     ++spin)
+	{
+	}
+	if (spin == 1000000) {
+		log()("Port is hung")();
+		return zero_pair(cause::FAIL);
+	}
+
+	hba_port_regs->ci = 1 << slot;
+
+	enum {
+		HBA_PxIS_TFES = 0x40000000,
+	};
+	for (int i = 0; ; ++i) {
+		if ((hba_port_regs->ci & (1 << slot)) == 0)
+			break;
+		if (hba_port_regs->is & HBA_PxIS_TFES) {
+			log()("Read disk error|is = ").x(hba_port_regs->is)();
+			return zero_pair(cause::FAIL);
+		}
+	}
+
+	return cause::pair<uptr>(cause::OK, 0);
+}
+
 
 // ahci_hba
 
-ahci_hba::ahci_hba(ahci_driver* _driver, uptr base_address) :
-	bus_device(device_name_ahci_hba),
+ahci_hba::ahci_hba(
+    const char* device_name,
+    ahci_driver* _driver,
+    uptr base_address) :
+	bus_device(device_name),
 	driver(_driver),
 	hba_mem_padr(base_address)
 {
@@ -433,7 +561,7 @@ cause::t ahci_hba::setup()
 	if (is_fail(mem))
 		return mem.cause();
 
-	hba_regs = static_cast<HBA_MEM_REGS*>(mem.data());
+	hba_regs = static_cast<HBA_MEM_REGS*>(mem.value());
 
 	// Initialization of HBA
 
@@ -513,7 +641,7 @@ cause::t ahci_hba::detect_devices()
 
 cause::t ahci_hba::append_devices(int port)
 {
-	ahci_device* dev = new (generic_mem()) ahci_device(this, port);
+	ahci_device* dev = new (generic_mem()) ahci_device(driver, this, port);
 
 	devices.push_back(dev);
 
@@ -529,12 +657,21 @@ cause::t ahci_hba::append_devices(int port)
 // ahci_driver
 
 ahci_driver::ahci_driver() :
-	driver(driver_name_ahci)
+	driver(driver_name_ahci),
+	mp2048(nullptr)
 {
 }
 
 cause::t ahci_driver::setup()
 {
+	auto r = setup_ion();
+	if (is_fail(r))
+		return r;
+
+	r = setup_mp();
+	if (is_fail(r))
+		return r;
+
 	return cause::OK;
 }
 
@@ -598,7 +735,8 @@ auto ahci_driver::acquire_table_alloc(uptr bytes)
 			return null_pair(padr.cause());
 		}
 
-		bool r = tbl_alloc.add_free(TABLE_ALLOC_SLOT, padr.data(), pg_sz);
+		bool r = tbl_alloc.add_free(
+		    TABLE_ALLOC_SLOT, padr.value(), pg_sz);
 		if (!r) {
 			tbl_alloc_lock.unlock();
 			log()(SRCPOS)(":add_free() failed.")();
@@ -616,16 +754,42 @@ void ahci_driver::release_table_alloc()
 	tbl_alloc_lock.unlock();
 }
 
+cause::t ahci_driver::setup_ion()
+{
+	ion_ifs.init();
+
+	return cause::OK;
+}
+
+cause::t ahci_driver::setup_mp()
+{
+	auto mp = mempool::acquire_shared(2048);
+	if (is_fail(mp))
+		return mp.cause();
+	mp2048 = mp.value();
+
+	return cause::OK;
+}
+
 cause::t ahci_driver::scan_pci(pci_bus_device* pci)
 {
 	for (pci_device* dev : pci->each_devices()) {
-		if (dev->get_class().data() == PCI_CLASS_STORAGE_SATA) {
+		if (dev->get_class().value() == PCI_CLASS_STORAGE_SATA) {
 			// BAR#5 is base_address of AHCI
 			auto ba = dev->get_base_address(5);
 			if (is_fail(ba))
 				return ba.cause();
-			ahci_hba* ahci =
-			    new (generic_mem()) ahci_hba(this, ba.data());
+			char name[device::NAME_NR];
+			mem_io name_io(name);
+			output_buffer name_buf(&name_io, 0);
+			pci_bsf bsf;
+			dev->get_bsf(&bsf);
+			name_buf("ahci-hba").
+			    x(bsf.pci.bus, 2).
+			    x(bsf.pci.slot, 2).
+			    x(bsf.pci.func, 1);
+			ahci_hba* ahci = new (generic_mem())
+			     ahci_hba(name, this, ba.value());
 			if (!ahci)
 				return cause::NOMEM;
 
@@ -639,347 +803,6 @@ cause::t ahci_driver::scan_pci(pci_bus_device* pci)
 
 }  // namespace ahci
 
-
-void dump_ahci(int port, volatile HBA_MEM_REGS::PORT* port_reg)
-{
-	enum {
-		HBA_PxCMD_ST  = 0x00000001,
-		HBA_PxCMD_FRE = 0x00000010,
-		HBA_PxCMD_FR  = U32(1) << 14,
-		HBA_PxCMD_CR  = U32(1) << 15,
-	};
-
-	u32 ssts = port_reg->ssts;
-	u8 ipm = (ssts >> 8) & 0x0f;
-	u8 det = ssts & 0x0f;
-	log()("ipm:").u(ipm)(" det:").u(det)();
-
-	// init
-
-	//   stop
-	log()("AHCI stop|cmd = ").x(port_reg->cmd)();
-	port_reg->cmd &= ~HBA_PxCMD_ST;
-	uint i;
-	for (i = 0; port_reg->cmd & HBA_PxCMD_CR; ++i);
-	log()("i=").u(i);
-
-	port_reg->cmd &= ~HBA_PxCMD_FRE;
-	for (i = 0; port_reg->cmd & HBA_PxCMD_FR; ++i);
-	log()(" i=").u(i)();
-
-	//    rebase
-	log()("AHCI rebase")();
-	uptr padr;
-	page_alloc(arch::page::PHYS_L1, &padr);
-	log()("AHCI command list = ").x(padr)();
-	COMMAND_HEADER* cl = (COMMAND_HEADER*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0, cl, 4096);
-
-	port_reg->clb = (u32)padr;
-	port_reg->clbu = 0;
-
-	page_alloc(arch::page::PHYS_L1, &padr);
-	mem_fill(0, arch::map_phys_adr(padr, 4096), 4096);
-
-	log()("AHCI port fis base = ").x(padr)();
-	port_reg->fb = (u32)padr;
-	port_reg->fbu = 0;
-
-	page_alloc(arch::page::PHYS_L1, &padr);
-	COMMAND_TABLE* cmdtbl = (COMMAND_TABLE*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0, cmdtbl, 4096);
-	log()("AHCI command table = ").x(padr)();
-	cl->prdtl = 8;
-	cl->ctba = padr;
-	cl->ctbau0 = 0;
-
-	//    start
-	log()("AHCI start")();
-	while (port_reg->cmd & HBA_PxCMD_CR);
-
-	port_reg->cmd |= HBA_PxCMD_FRE;
-	port_reg->cmd |= HBA_PxCMD_ST;
-
-	//read
-	u32 slots = port_reg->sact | port_reg->ci;
-	int slot = 0;
-	for (int i = 0; slots; ++i) {
-		if ((slots & 1) == 0)
-			slot = i;
-		slots >>= 1;
-	}
-	log()("Port slot = ").u(slot)();
-
-	FIS_H2D* cmdfis = (FIS_H2D*)&cmdtbl->cfis;
-
-	port_reg->is = 0xffffffff;
-
-	cl->cfl = sizeof (FIS_H2D) / sizeof (u32);
-	cl->w = 0;
-	cl->prdtl =  1;
-
-	page_alloc(arch::page::PHYS_L1, &padr);
-	u8* buf = (u8*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0xff, buf, 4096);
-	log()("AHCI buf = ").x(padr)();
-	cmdtbl->prdt[0].dba = padr; //buf;
-	cmdtbl->prdt[0].dbc = 4 * 1024;
-	cmdtbl->prdt[0].i = 1; // intr completion
-
-	cmdfis->fis_type = 0x27;  // FIS_TYPE_REG_H2D
-	cmdfis->c = 1; // Command
-	cmdfis->command = 0x25; // ATA_CMD_READ_DMA_EX;
-
-	cmdfis->lba0 = 1;
-	cmdfis->lba1 = 0;
-	cmdfis->lba2 = 0;
-	cmdfis->device = 1<<6;//LBA mode
-	cmdfis->lba3 = 0;
-	cmdfis->lba4 = 0;
-	cmdfis->lba5 = 0;
-
-	cmdfis->countl = 8;
-	cmdfis->counth = 0;
-
-	enum {
-		ATA_DEV_BUSY = 0x80,
-		ATA_DEV_DRQ = 0x08
-	};
-	int spin;
-	for (spin = 0;
-	     spin < 1000000 && (port_reg->tfd & (ATA_DEV_BUSY|ATA_DEV_DRQ));
-	     ++spin)
-	{
-	}
-	if (spin == 1000000) {
-		log()("Port is hung")();
-		return;
-	}
-	log()("Port is ready")();
-
-	port_reg->ci = 1 << 0;
-
-	enum {
-		HBA_PxIS_TFES = 0x40000000,
-	};
-	for (int i = 0;; ++i) {
-		if ((port_reg->ci & (1 << 0)) == 0)
-			break;
-		if (port_reg->is & HBA_PxIS_TFES) {
-			log()("Read disk error|is = ").x(port_reg->is)();
-			return;
-		}
-		if ((i & 0xffff) == 0xffff)
-			log()("|ci=").x(port_reg->ci)(":is=").x(port_reg->is);
-	}
-
-	if (port_reg->is & HBA_PxIS_TFES) {
-		log()("Read disk error|is = ").x(port_reg->is)();
-		return;
-	}
-
-	log()("Read disk success")();
-	return;
-}
-
-
-void dump_atapi(int port, volatile HBA_MEM_REGS::PORT* port_reg)
-{
-	enum {
-		HBA_PxCMD_ST  = 0x00000001,
-		HBA_PxCMD_FRE = 0x00000010,
-		HBA_PxCMD_FR  = U32(1) << 14,
-		HBA_PxCMD_CR  = U32(1) << 15,
-	};
-
-	u32 ssts = port_reg->ssts;
-	u8 ipm = (ssts >> 8) & 0x0f;
-	u8 det = ssts & 0x0f;
-	log()("ipm:").u(ipm)(" det:").u(det)();
-
-	// init
-
-	//   stop
-	log()("AHCI stop|cmd = ").x(port_reg->cmd)();
-	port_reg->cmd &= ~HBA_PxCMD_ST;
-	while (port_reg->cmd & HBA_PxCMD_CR);
-
-	port_reg->cmd &= ~HBA_PxCMD_FRE;
-	while (port_reg->cmd & HBA_PxCMD_FR);
-
-	//    rebase
-	log()("AHCI rebase")();
-	uptr padr;
-	page_alloc(arch::page::PHYS_L1, &padr);
-	log()("AHCI command list = ").x(padr)();
-	COMMAND_HEADER* cl = (COMMAND_HEADER*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0, cl, 4096);
-
-	port_reg->clb = (u32)padr;
-	port_reg->clbu = 0;
-
-	page_alloc(arch::page::PHYS_L1, &padr);
-	mem_fill(0, arch::map_phys_adr(padr, 4096), 4096);
-
-	log()("AHCI port fis base = ").x(padr)();
-	port_reg->fb = (u32)padr;
-	port_reg->fbu = 0;
-
-	page_alloc(arch::page::PHYS_L1, &padr);
-	COMMAND_TABLE* cmdtbl = (COMMAND_TABLE*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0, cmdtbl, 4096);
-	log()("AHCI command table = ").x(padr)();
-	cl->prdtl = 8;
-	cl->ctba = padr;
-	cl->ctbau0 = 0;
-
-	//    start
-	log()("AHCI start")();
-	while (port_reg->cmd & HBA_PxCMD_CR);
-
-	port_reg->cmd |= HBA_PxCMD_FRE;
-	port_reg->cmd |= HBA_PxCMD_ST;
-
-	//read
-	u32 slots = port_reg->sact | port_reg->ci;
-	int slot = 0;
-	for (int i = 0; slots; ++i) {
-		if ((slots & 1) == 0)
-			slot = i;
-		slots >>= 1;
-	}
-	log()("Port slot = ").u(slot)();
-
-	FIS_H2D* cmdfis = (FIS_H2D*)&cmdtbl->cfis;
-
-	port_reg->is = 0xffffffff;
-
-	cl->cfl = sizeof (FIS_H2D) / sizeof (u32);
-	cl->w = 0;
-	cl->prdtl =  1;
-
-	page_alloc(arch::page::PHYS_L2, &padr);
-	u8* buf = (u8*)arch::map_phys_adr(padr, 4096);
-	mem_fill(0xff, buf, 2 * 1024 * 1024);
-	log()("AHCI buf = ").x(padr)();
-	cmdtbl->prdt[0].dba = padr; //buf;
-	//cmdtbl->prdt[0].dbc = 4 * 1024;
-	cmdtbl->prdt[0].dbc = 2 * 1024 * 1024;
-	cmdtbl->prdt[0].i = 1; // intr completion
-
-	cmdfis->fis_type = 0x27;  // FIS_TYPE_REG_H2D
-	cmdfis->c = 1; // Command
-	// IF AHCI
-	//cmdfis->command = 0x25; // ATA_CMD_READ_DMA_EX;
-	// IF ATAPI
-	cl->a = 1;
-	cmdfis->command = 0xa0; // ATA_PACKET
-	//
-
-	cmdfis->lba0 = 1;
-	cmdfis->lba1 = 0;
-	cmdfis->lba2 = 0;
-	cmdfis->device = 1<<6;//LBA mode
-	cmdfis->lba3 = 0;
-	cmdfis->lba4 = 0;
-	cmdfis->lba5 = 0;
-
-	cmdfis->countl = 8;
-	cmdfis->counth = 0;
-
-	// IF ATAPI
-	cmdtbl->acmd[ 0] = 0xa8;
-	cmdtbl->acmd[ 1] = 0;
-	cmdtbl->acmd[ 2] = 0;
-	cmdtbl->acmd[ 3] = 0;
-	cmdtbl->acmd[ 4] = 0;
-	cmdtbl->acmd[ 5] = 0;
-	cmdtbl->acmd[ 6] = 0;
-	cmdtbl->acmd[ 7] = 0;
-	cmdtbl->acmd[ 8] = 0;
-	cmdtbl->acmd[ 9] = 100;
-	cmdtbl->acmd[10] = 0;
-	cmdtbl->acmd[11] = 0;
-	//
-
-	enum {
-		ATA_DEV_BUSY = 0x80,
-		ATA_DEV_DRQ = 0x08
-	};
-	int spin;
-	for (spin = 0;
-	     spin < 1000000 && (port_reg->tfd & (ATA_DEV_BUSY|ATA_DEV_DRQ));
-	     ++spin)
-	{
-	}
-	if (spin == 1000000) {
-		log()("Port is hung")();
-		return;
-	}
-	log()("Port is ready")();
-
-	port_reg->ci = 1 << 0;
-
-	enum {
-		HBA_PxIS_TFES = 0x40000000,
-	};
-	for (int i = 0;; ++i) {
-		if ((port_reg->ci & (1 << 0)) == 0)
-			break;
-		if (port_reg->is & HBA_PxIS_TFES) {
-			log()("Read disk error|is = ").x(port_reg->is)();
-			return;
-		}
-		if ((i & 0xffff) == 0xffff)
-			log()("|ci=").x(port_reg->ci)(":is=").x(port_reg->is);
-	}
-
-	if (port_reg->is & HBA_PxIS_TFES) {
-		log()("Read disk error|is = ").x(port_reg->is)();
-		return;
-	}
-
-	log()("Read disk success")();
-	return;
-}
-
-cause::t setup_ahci_(uptr base_address)
-{
-	HBA_MEM_REGS* hba_mem = (HBA_MEM_REGS*)arch::map_phys_adr(
-	    base_address, sizeof (HBA_MEM_REGS));
-
-	log()("---- AHCI ----")()
-	("   cap:").x(hba_mem->cap, 8)
-	("    ghc:").x(hba_mem->ghc, 8)
-	("     is:").x(hba_mem->is, 8)
-	("     pi:").x(hba_mem->pi, 8)()
-	("    vs:").x(hba_mem->vs, 8)
-	(" cccctl:").x(hba_mem->ccc_ctl, 8)
-	(" cccpts:").x(hba_mem->ccc_ports, 8)
-	("  emloc:").x(hba_mem->em_loc, 8)()
-	(" emctl:").x(hba_mem->em_ctl, 8)
-	("   cap2:").x(hba_mem->cap2, 8)
-	("   bohc:").x(hba_mem->bohc, 8)()
-	;
-
-	u32 pi = hba_mem->pi;
-
-	for (int i = 0; pi; ++i) {
-		if (pi & 1) {
-			auto port = &hba_mem->port[i];
-			log()("port:").u(i)(" sig:").x(port->sig)();
-			if (port->sig == 0x101) {
-				dump_ahci(i, port);
-			//} else if (port->sig == 0xeb140101) {
-			} else if ((port->sig&0xffff0000) == 0xeb140000) {
-				dump_atapi(i, port);
-			}
-		}
-		pi >>= 1;
-	}
-
-	return cause::OK;
-}
 
 cause::t ahci_setup()
 {

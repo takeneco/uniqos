@@ -194,19 +194,19 @@ cause::t ramfs_driver::setup()
 	if (is_fail(mp))
 		return mp.cause();
 
-	fs_reg_node_mp = mp.data();
+	fs_reg_node_mp = mp.value();
 
-	mp = mempool::acquire_shared(sizeof (fs_dir_node));
+	mp = mempool::acquire_shared(sizeof (ramfs_dir_node));
 	if (is_fail(mp))
 		return mp.cause();
 
-	fs_dir_node_mp = mp.data();
+	fs_dir_node_mp = mp.value();
 
 	mp = mempool::acquire_shared(sizeof (fs_dev_node));
 	if (is_fail(mp))
 		return mp.cause();
 
-	fs_dev_node_mp = mp.data();
+	fs_dev_node_mp = mp.value();
 
 	return cause::OK;
 }
@@ -258,7 +258,7 @@ cause::t ramfs_mount::mount(const char*)
 	if (is_fail(mp))
 		return mp.cause();
 
-	block_mp = mp.data();
+	block_mp = mp.value();
 
 	return cause::OK;
 }
@@ -458,7 +458,7 @@ cause::pair<uptr> ramfs_reg_node::write(uptr off, const void* data, uptr bytes)
 			if (is_fail(b))
 				return make_pair(cause::NOMEM, write_bytes);
 
-			blocks[blk] = static_cast<u8*>(b.data());
+			blocks[blk] = static_cast<u8*>(b.value());
 			mem_fill(0, blocks[blk], block_size);
 		}
 		block = blocks[blk];

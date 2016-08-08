@@ -11,9 +11,11 @@ out = 'build'
 import os.path
 
 def options(x):
+	x.load('clang')
+	x.load('clangxx')
 	x.load('compiler_c')
 	x.load('compiler_cxx')
-	x.load('gcc gas')
+	#x.load('gcc gas')
 
 	conf_opt = x.get_option_group('configure options')
 	conf_opt.add_option('--compiler',
@@ -29,26 +31,29 @@ def configure(x):
 
 	if x.options.compiler == 'clang':
 		x.env.C_COMPILER = 'clang'
+		x.load('clang')
+		x.load('clangxx')
 		x.find_program('clang', var='AS')
-		x.find_program('clang', var='CC')
-		x.find_program('clang++', var='CXX')
+		#x.find_program('clang', var='CC')
+		#x.find_program('clang++', var='CXX')
+		#x.find_program('clang++', var='LD')
+		#x.env.append_unique('CXXFLAGS', '-emit-llvm')
+		#x.env.append_unique('CFLAGS', '-emit-llvm')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++11')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-compat')
 		x.env.append_unique('CXXFLAGS_KERNEL', '-Wc++11-extensions')
-
+		if x.env.PCH:
+			x.env.append_value('CXXFLAGS_KERNEL',
+			                   '-include''core/basic.hh')
 	elif x.options.compiler == 'gnu':
 		x.env.C_COMPILER = 'gcc'
-		x.find_program('gcc', var='AS')
-		x.find_program('gcc', var='CC')
-		x.find_program('g++', var='CXX')
-		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++0x')
+		x.load('gcc')
+		x.load('gxx')
+		x.env.append_unique('CXXFLAGS_KERNEL', '-std=c++11')
 
-	if x.env.PCH:
-		x.env.append_value('CXXFLAGS_KERNEL', '-include''core/basic.hh')
-
+	x.load('gas')
 	x.load('compiler_c')
 	x.load('compiler_cxx')
-	x.load('gcc gas')
 
 	x.recurse('arch')
 	x.recurse('drivers')
