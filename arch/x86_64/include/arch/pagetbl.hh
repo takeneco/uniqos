@@ -24,7 +24,13 @@
 #include <arch.hh>
 
 
-struct page_table;
+namespace arch {
+
+class pte;
+
+}  // namespace arch
+
+using page_table = arch::pte;
 struct PAGE_TRAITS_ARRAY;
 
 namespace arch {
@@ -81,6 +87,10 @@ enum {
 	L5_SIZE      = U64(1) << L5_SIZE_BITS, // 1GiB
 };
 
+enum {
+	TABLE_SIZE  = 8 * 512,  ///< Page table size
+};
+
 using page_flags = u16;
 enum PAGE_FLAGS : page_flags
 {
@@ -126,6 +136,7 @@ u64        decode_flags(page_flags flags);
 page_flags encode_flags(u64 native_flags);
 
 page_table* get_table();
+void unget_table(page_table*);
 
 cause::t map(
     page_table* tbl, uptr vadr, uptr padr, LEVEL page_type, page_flags flags);
@@ -139,5 +150,5 @@ void clear_tlb(void* vadr);
 }  // namespace arch
 
 
-#endif  // include guard
+#endif  // ARCH_PAGETBL_HH_
 

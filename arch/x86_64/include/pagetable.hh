@@ -2,7 +2,7 @@
 /// @brief  64bit paging table ops.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2010-2015 KATO Takeshi
+//  (C) 2010 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include <core/basic.hh>
 
 
-class log_target;
+class output_buffer;
 
 namespace arch {
 
@@ -112,7 +112,7 @@ public:
 };
 
 
-void dump_pte(log_target& x, pte* table, int level);
+void dump_pte(output_buffer& ob, pte* table, int depth);
 
 class page_table_base
 {
@@ -134,7 +134,7 @@ public:
 
 	pte* get_toptable() { return top; }
 
-	void dump(log_target& x) {
+	void dump(output_buffer& x) {
 		dump_pte(x, top, 4);
 	}
 
@@ -163,7 +163,6 @@ class page_table_tmpl : public page_table_base
 {
 public:
 	page_table_tmpl(pte* top);
-	page_table_tmpl() {}
 
 	cause::pair<pte*> declare_table(u64 vadr, page::TYPE pt);
 
@@ -356,5 +355,5 @@ cause::t page_table_tmpl<page_table_traits>::unset_page_end(page_enum* pe)
 }  // namespace arch
 
 
-#endif  // include guard
+#endif  // ARCH_X86_64_INCLUDE_PAGETABLE_HH_
 

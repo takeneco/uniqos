@@ -62,6 +62,9 @@ inline void* map_phys_adr(void* padr, uptr size) {
 inline uptr unmap_phys_adr(const void* vadr, uptr /* size */) {
 	return reinterpret_cast<uptr>(vadr) - PHYS_MAP_ADR;
 }
+inline uptr map_virt_adr(const void* vadr) {
+	return reinterpret_cast<uptr>(vadr) - PHYS_MAP_ADR;
+}
 
 _cpu_id get_cpu_node_id();
 _cpu_id get_cpu_lapic_id();
@@ -79,5 +82,5 @@ typedef arch::_cpu_word cpu_word;
 typedef arch::_cpu_word cpu_word_t;
 
 
-#endif  // include guard
+#endif  // ARCH_X86_64_INCLUDE_ARCH_HH_
 

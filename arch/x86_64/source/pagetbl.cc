@@ -49,7 +49,15 @@ const PAGE_TRAITS_ARRAY get_page_traits()
 
 page_table* get_table()
 {
-	return reinterpret_cast<page_table*>(native::get_cr3());
+	void* ptbl = arch::map_phys_adr(
+	    native::get_cr3(), arch::page::TABLE_SIZE);
+
+	return static_cast<page_table*>(ptbl);
+}
+
+void unget_table(page_table* ptbl)
+{
+	arch::unmap_phys_adr(ptbl, arch::page::TABLE_SIZE);
 }
 
 /// @brief page_flagsをCPUのページフラグへ変換する。
@@ -109,7 +117,7 @@ cause::t unmap(
 /// 指定したvadrのTLBをクリアする
 void clear_tlb(void* vadr)
 {
-	asm volatile ("invlpg %0" : : "m"(*vadr));
+	asm volatile ("invlpg %0" : : "m"(*static_cast<u8*>(vadr)));
 }
 
 }  // namespace page

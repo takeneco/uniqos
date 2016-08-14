@@ -63,6 +63,9 @@ cause::t page_map(
 	if (!pgtbl || (flags & PAGE_GLOBAL))
 		arch::page::clear_tlb(reinterpret_cast<void*>(vadr));
 
+	if (!pgtbl)
+		arch::page::unget_table(_pgtbl);
+
 	return r;
 }
 
@@ -81,6 +84,9 @@ cause::t page_unmap(
 
 	if (!pgtbl)
 		arch::page::clear_tlb(reinterpret_cast<void*>(vadr));
+
+	if (!pgtbl)
+		arch::page::unget_table(_pgtbl);
 
 	return r;
 }
