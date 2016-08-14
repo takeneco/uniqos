@@ -19,6 +19,8 @@ class native_process : public process
 public:
 	native_process();
 
+	cause::t setup_self();
+
 	cause::t setup(thread* entry_thread, int iod_nr);
 
 	native_page_table& ref_ptbl() { return ptbl; }
@@ -26,6 +28,8 @@ public:
 private:
 	native_page_table ptbl;
 };
+
+native_process* get_current_native_process();
 
 }  // namespace x86
 

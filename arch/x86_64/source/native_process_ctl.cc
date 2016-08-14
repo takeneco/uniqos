@@ -1,15 +1,15 @@
 /// @file   native_process_ctl.cc
 /// @brief  process_ctl implementation for x86_64
 
-//  UNIQOS  --  Unique Operating System
+//  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -19,6 +19,7 @@
 
 #include <core/process_ctl.hh>
 
+#include "native_process.hh"
 #include <core/global_vars.hh>
 #include <core/new_ops.hh>
 
@@ -33,6 +34,7 @@ public:
 	cause::t setup();
 
 private:
+	cause::t setup_self_process();
 };
 
 
@@ -42,11 +44,35 @@ native_process_ctl::native_process_ctl()
 
 cause::t native_process_ctl::setup()
 {
-	return process_ctl::setup();
+	cause::t r = process_ctl::setup();
+	if (is_fail(r))
+		return r;
+
+	r = setup_self_process();
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
+}
+
+cause::t native_process_ctl::setup_self_process()
+{
+	native_process* self_prc = new (generic_mem()) native_process;
+
+	cause::t r = self_prc->setup_self();
+	if (is_fail(r))
+		return r;
+
+	r = process_ctl::add(self_prc);
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
 }
 
 /// @brief Initialize native_process_ctl.
 /// @pre mempool_init() was successful.
+/// @pre get_current_native_thread() is available.
 cause::t native_process_init()
 {
 	native_process_ctl* obj = new (generic_mem()) native_process_ctl;

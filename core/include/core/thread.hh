@@ -1,7 +1,7 @@
 /// @file  thread.hh
 /// @brief thread class declaration.
 //
-// (C) 2012-2015 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
 #ifndef CORE_THREAD_HH_
@@ -52,6 +52,7 @@ private:
 	enum STATE {
 		READY,
 		SLEEPING,
+		EXIT,
 	} state;
 
 	/// locked by thread_queue::thread_state_lock

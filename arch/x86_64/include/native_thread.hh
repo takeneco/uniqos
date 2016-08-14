@@ -44,6 +44,8 @@ cause::pair<native_thread*> create_thread(
 
 cause::t destroy_thread(native_thread* t);
 
+native_thread* get_current_native_thread();
+
 }  // namespace x86
 
 

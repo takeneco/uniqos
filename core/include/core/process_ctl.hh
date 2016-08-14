@@ -24,8 +24,6 @@
 #include <core/process.hh>
 
 
-class mempool;
-
 class process_ctl
 {
 	typedef numeric_map<
@@ -40,6 +38,9 @@ public:
 	~process_ctl();
 
 	cause::t setup();
+	cause::t unsetup();
+
+	cause::t add(process* prc);
 
 	mempool* io_desc_pool() { return io_desc_mp; } 
 
@@ -51,5 +52,5 @@ private:
 process_ctl* get_process_ctl();
 
 
-#endif  // include guard
+#endif  // CORE_PROCESS_CTL_HH_
 

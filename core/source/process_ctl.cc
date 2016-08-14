@@ -25,7 +25,8 @@
 #include <core/setup.hh>
 
 
-process_ctl::process_ctl()
+process_ctl::process_ctl() :
+	io_desc_mp(nullptr)
 {
 }
 
@@ -45,6 +46,25 @@ cause::t process_ctl::setup()
 	return process_id_map.init(10);
 }
 
+cause::t process_ctl::unsetup()
+{
+	if (io_desc_mp) {
+		auto r = mempool::destroy_exclusive(io_desc_mp);
+		if (is_fail(r))
+			return r;
+	}
+
+	return cause::OK;
+}
+
+cause::t process_ctl::add(process* prc)
+{
+	cause::t r = process_id_map.insert(prc);
+	if (is_fail(r))
+		return r;
+
+	return cause::OK;
+}
 
 process_ctl* get_process_ctl()
 {

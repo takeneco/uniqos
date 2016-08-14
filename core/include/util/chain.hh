@@ -379,6 +379,18 @@ public:
 				chain_end.set_back(p);
 		}
 	}
+	// 1end, 2end & dir, bidir
+	// low performance for long chain.
+	void find_and_remove(DATA* p) {
+		if (front() == p) {
+			pop_front();
+		} else {
+			for (DATA* t = front(); t; t = next(t)) {
+				if (next(t) == p)
+					remove_next(t);
+			}
+		}
+	}
 };
 
 /// Directional one side chain
@@ -461,5 +473,5 @@ using chain = chain_impl_<
     LINK>;
 
 
-#endif  // include guard
+#endif  // UTIL_CHAIN_HH_
 

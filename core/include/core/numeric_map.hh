@@ -56,14 +56,14 @@ public:
 	}
 
 	cause::t insert(VAL_TYPE* val) {
-		dict_ent* d = dict[val->*KEY() & dict_mask];
-		d->insert_head(val);
+		dict_ent* d = &dict[(val->*KEY)() & dict_mask];
+		d->push_front(val);
 		return cause::OK;
 	}
 
 	cause::t erase(VAL_TYPE* val) {
-		dict_ent* d = dict[val->*KEY() & dict_mask];
-		d->remove(val);
+		dict_ent* d = &dict[(val->*KEY)() & dict_mask];
+		d->find_and_remove(val);
 		return cause::OK;
 	}
 
@@ -113,5 +113,5 @@ cause::t numeric_map<KEY_TYPE, VAL_TYPE, KEY, CHAIN_NODE>::uninit()
 }
 
 
-#endif  // include guard
+#endif  // CORE_NUMERIC_MAP_HH_
 

@@ -204,6 +204,9 @@ u8* bootinfo_alloc()
 	    bootinfo::ALIGN,
 	    false);
 
+	// カーネルは bootinfo が SLOTM_CONVENTIONAL にあると想定して
+	// 移動せずに使っているので、SLOTM_BOOTHEAP には置けない。
+	/*
 	if (!p) {
 		p = get_alloc()->alloc(
 		    SLOTM_BOOTHEAP,
@@ -211,6 +214,7 @@ u8* bootinfo_alloc()
 		    bootinfo::ALIGN,
 		    false);
 	}
+	*/
 
 	return reinterpret_cast<u8*>(p);
 }
