@@ -2,7 +2,7 @@
 /// @brief device controller.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2014-2015 KATO Takeshi
+//  (C) 2014 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,8 @@
 
 // device class
 
-device::device(const char* device_name) :
-	ref_cnt(0)
+device::device(TYPE dev_type, const char* device_name) :
+	type(dev_type)
 {
 	str_copy(device_name, name, sizeof name - 1);
 	name[sizeof name - 1] = '\0';
@@ -41,13 +41,15 @@ device_ctl::device_ctl()
 }
 
 /// device::name で昇順に並ぶように追加する。
-cause::t device_ctl::append_bus_device(bus_device* dev)
+/// @retval cause::OK  Succeeded.
+/// @retval cause::FAIL  Device name already exists.
+cause::t device_ctl::append_device(device* dev)
 {
-	spin_wlock_section bcl(bus_chain_lock);
+	spin_wlock_section bcl(dev_chain_lock);
 
 	device* insert_before = nullptr;
 
-	for (device* cur_dev : bus_chain) {
+	for (device* cur_dev : dev_chain) {
 		const sint comp = str_compare(
 		    cur_dev->get_name(), dev->get_name(), device::NAME_NR);
 
@@ -62,20 +64,20 @@ cause::t device_ctl::append_bus_device(bus_device* dev)
 	}
 
 	if (insert_before)
-		bus_chain.insert_before(insert_before, dev);
+		dev_chain.insert_before(insert_before, dev);
 	else
-		bus_chain.push_back(dev);
+		dev_chain.push_back(dev);
 
 	return cause::OK;
 }
 
-cause::t device_ctl::remove_bus_device(bus_device* dev)
+cause::t device_ctl::remove_device(device* dev)
 {
-	bus_chain_lock.wlock();
+	dev_chain_lock.wlock();
 
-	bus_chain.remove(dev);
+	dev_chain.remove(dev);
 
-	bus_chain_lock.un_wlock();
+	dev_chain_lock.un_wlock();
 
 	return cause::OK;
 }

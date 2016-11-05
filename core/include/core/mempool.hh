@@ -79,9 +79,9 @@ private:
 		u8* memory;
 
 	public:
-		chain_node<page> chain_node;
+		chain_node<page> mempool_node;
 	};
-	typedef front_chain<page, &page::chain_node> page_bichain;
+	typedef front_chain<page, &page::mempool_node> page_bichain;
 
 	class node
 	{
@@ -191,7 +191,7 @@ private:
 
 	mempool* const page_pool;
 
-	chain_node<mempool> chain_node;
+	chain_node<mempool> mempool_ctl_node;
 
 	node* mempool_nodes[CONFIG_MAX_CPUS];
 
@@ -225,5 +225,5 @@ void* mem_alloc(u32 bytes);
 void mem_dealloc(void* mem);
 
 
-#endif  // include guard
+#endif  // CORE_MEMPOOL_HH_
 

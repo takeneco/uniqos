@@ -68,7 +68,7 @@ ahci_device::ahci_device(
     ahci_driver* ahcidriver,
     ahci_hba* ahcihba,
     int hbaport) :
-	device(device_name_ahci_dev),
+	block_device(device_name_ahci_dev),
 	driver(ahcidriver),
 	hba(ahcihba),
 	hba_port_regs(ahcihba->ref_port_regs(hbaport)),
@@ -693,7 +693,7 @@ cause::t ahci_driver::scan()
 	}
 
 	for (ahci_hba* hba : hba_chain) {
-		cause::t r = get_device_ctl()->append_bus_device(hba);
+		cause::t r = get_device_ctl()->append_device(hba);
 		if (is_fail(r))
 			log()(SRCPOS)("!!! r=").u(r)();
 

@@ -2,7 +2,7 @@
 /// @brief  cheap address allocation implement.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2011-2015 KATO Takeshi
+//  (C) 2011 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -99,10 +99,10 @@ private:
 		uptr adr;
 		uptr bytes;  ///< unused if bytes == 0.
 
-		chain_node<range> chain_node;
+		chain_node<range> cheap_alloc_node;
 	};
 
-	typedef front_chain<range, &range::chain_node> range_chain;
+	typedef front_chain<range, &range::cheap_alloc_node> range_chain;
 
 	struct adr_slot
 	{
@@ -749,5 +749,5 @@ bool cheap_alloc_separator<CHEAP_ALLOC>::_add_free_range(
 }
 
 
-#endif  // include guard
+#endif  // UTIL_CHEAP_ALLOC_HH_
 

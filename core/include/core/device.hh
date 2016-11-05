@@ -29,21 +29,28 @@
 class device
 {
 public:
+	enum TYPE {
+		TYPE_BUS = 0,
+		TYPE_BLOCK = 1,
+		TYPE_NR,
+	};
 	enum {
-		NAME_NR = 32 - sizeof (atomic<u16>),
+		NAME_NR = 12,
 	};
 
-public:
-	device(const char* device_name);
+protected:
+	device(TYPE dev_type, const char* device_name);
 
 public:
+	TYPE get_type() const { return type; }
 	const char* get_name() const { return name; }
 	void inc_ref() { ref_cnt.inc(); }
 	void dec_ref() { ref_cnt.dec(); }
 
 private:
 	atomic<u16> ref_cnt;  ///< referentce counter
-	char name[NAME_NR];   ///< device name
+	TYPE type;
+	char name[NAME_NR + 1];   ///< device name
 	chain_node<device> device_ctl_chain_node;
 
 public:
@@ -54,12 +61,20 @@ public:
 /// @brief Bus device base class
 class bus_device : public device
 {
-public:
+protected:
 	bus_device(const char* device_name) :
-		device(device_name)
+		device(TYPE_BUS, device_name)
 	{}
 };
 
+/// @brief Block device base class
+class block_device : public device
+{
+protected:
+	block_device(const char* device_name) :
+		device(TYPE_BLOCK, device_name)
+	{}
+};
 
 class device_ctl
 {
@@ -69,18 +84,22 @@ private:
 	device_ctl();
 
 public:
-	cause::t append_bus_device(bus_device* dev);
-	cause::t remove_bus_device(bus_device* dev);
+	//cause::t append_bus_device(bus_device* dev);
+	cause::t append_device(device* dev);
+	//cause::t remove_bus_device(bus_device* dev);
+	cause::t remove_device(device* dev);
 	locked_chain_iterator<device::iterative_chain, bus_device>
 	    each_bus_devices();
 
 private:
 	device::iterative_chain bus_chain;
+	device::iterative_chain dev_chain;
 	spin_rwlock bus_chain_lock;
+	spin_rwlock dev_chain_lock;
 };
 
 device_ctl* get_device_ctl();
 
 
-#endif  // include guard
+#endif  // CORE_DEVICE_HH_
 

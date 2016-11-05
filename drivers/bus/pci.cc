@@ -160,7 +160,7 @@ cause::t pci_driver::setup_by_acpi()
 		return r;
 	}
 
-	r = get_device_ctl()->append_bus_device(d);
+	r = get_device_ctl()->append_device(d);
 	if (is_fail(r)) {
 		new_destroy(d, generic_mem());
 		return r;

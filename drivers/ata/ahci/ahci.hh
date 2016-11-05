@@ -268,7 +268,7 @@ private:
 	ahci_device* dev;
 };
 
-class ahci_device : public device
+class ahci_device : public block_device
 {
 public:
 	ahci_device(ahci_driver* ahcidriver, ahci_hba* ahcihba, int hbaport);
@@ -396,5 +396,5 @@ private:
 }  // namespace ahci
 
 
-#endif  // include guard
+#endif  // AHCI_HH_
 

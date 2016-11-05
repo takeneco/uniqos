@@ -2,7 +2,7 @@
 /// @brief Physical memory management.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2011-2015 KATO Takeshi
+//  (C) 2011 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -97,7 +97,7 @@ private:
 		/// 予約ページのビットは false
 		int_bitset<CELLTYPE> table;
 
-		chain_node<cell> chain_node;
+		chain_node<cell> memcell_node;
 	};
 	enum {
 		BITMAP_BITS = int_bitset<CELLTYPE>::BITS,
@@ -114,7 +114,7 @@ private:
 		    (CELLTYPE(-1) >> (BITMAP_BITS - pages_in_cell()));
 	}
 
-	typedef front_chain<cell, &cell::chain_node> cell_chain;
+	typedef front_chain<cell, &cell::memcell_node> cell_chain;
 
 	/// 空きページを含む cell
 	cell_chain free_chain;
