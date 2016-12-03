@@ -39,19 +39,24 @@ public:
 	};
 
 protected:
-	device(TYPE dev_type, const char* device_name);
+	device(TYPE dev_type);
 
 public:
 	TYPE get_type() const { return type; }
-	const char* get_name() const { return name; }
+	void set_name(const char* device_name);
+	const char* get_name() const;
+	const char* get_class() const;
 	void inc_ref() { ref_cnt.inc(); }
 	void dec_ref() { ref_cnt.dec(); }
 
 private:
 	atomic<u16> ref_cnt;  ///< referentce counter
 	TYPE type;
-	char name[NAME_NR + 1];   ///< device name
+	char name[NAME_NR + 1];   ///< device name for identify
 	chain_node<device> device_ctl_chain_node;
+
+protected:
+	const char* dev_class;          ///< device class
 
 public:
 	using iterative_chain = chain<device, &device::device_ctl_chain_node>;
@@ -62,8 +67,8 @@ public:
 class bus_device : public device
 {
 protected:
-	bus_device(const char* device_name) :
-		device(TYPE_BUS, device_name)
+	bus_device() :
+		device(TYPE_BUS)
 	{}
 };
 
@@ -71,8 +76,8 @@ protected:
 class block_device : public device
 {
 protected:
-	block_device(const char* device_name) :
-		device(TYPE_BLOCK, device_name)
+	block_device() :
+		device(TYPE_BLOCK)
 	{}
 };
 
@@ -88,13 +93,11 @@ public:
 	cause::t append_device(device* dev);
 	//cause::t remove_bus_device(bus_device* dev);
 	cause::t remove_device(device* dev);
-	locked_chain_iterator<device::iterative_chain, bus_device>
-	    each_bus_devices();
+	locked_chain_iterator<device::iterative_chain, device>
+	    each_devices();
 
 private:
-	device::iterative_chain bus_chain;
 	device::iterative_chain dev_chain;
-	spin_rwlock bus_chain_lock;
 	spin_rwlock dev_chain_lock;
 };
 

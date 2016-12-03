@@ -1,7 +1,7 @@
 /// @file  basic-types.hh
 /// @brief 共通で使う型・関数など。
 //
-// (C) 2008-2014 KATO Takeshi
+// (C) 2008 KATO Takeshi
 //
 
 #ifndef CORE_BASIC_TYPES_HH_
@@ -374,6 +374,10 @@ namespace cause
 		NODEV = 10,
 		/// No such file or directory
 		NOENT = 11,
+		/// Not directory
+		NOTDIR = 12,
+		/// Same name exist.
+		EXIST = 13,
 
 		/// メモリが割り当てられていない。
 		NOT_ALLOCED,

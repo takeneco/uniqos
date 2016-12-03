@@ -26,11 +26,27 @@
 
 // device class
 
-device::device(TYPE dev_type, const char* device_name) :
-	type(dev_type)
+device::device(TYPE dev_type) :
+	type(dev_type),
+	dev_class(nullptr)
+{
+	name[0] = '\0';
+}
+
+void device::set_name(const char* device_name)
 {
 	str_copy(device_name, name, sizeof name - 1);
 	name[sizeof name - 1] = '\0';
+}
+
+const char* device::get_name() const
+{
+	return name;
+}
+
+const char* device::get_class() const
+{
+	return dev_class;
 }
 
 
@@ -56,7 +72,7 @@ cause::t device_ctl::append_device(device* dev)
 		if (comp < 0)
 			continue;
 		else if (comp == 0)
-			return cause::FAIL;
+			return cause::EXIST;
 		else { //if (comp > 0)
 			insert_before = cur_dev;
 			break;
@@ -82,13 +98,14 @@ cause::t device_ctl::remove_device(device* dev)
 	return cause::OK;
 }
 
-locked_chain_iterator<device::iterative_chain, bus_device>
-device_ctl::each_bus_devices()
+locked_chain_iterator<device::iterative_chain, device>
+device_ctl::each_devices()
 {
-	return locked_chain_iterator<device::iterative_chain, bus_device>(
-	    bus_chain.front(),
-	    &bus_chain_lock);
+	return locked_chain_iterator<device::iterative_chain, device>(
+	    dev_chain.front(),
+	    &dev_chain_lock);
 }
+
 
 // global functions
 

@@ -21,6 +21,7 @@
 
 #include <arch/native_io.hh>
 #include <config.h>
+#include <core/mem_io.hh>
 #include <core/new_ops.hh>
 #include <core/log.hh>
 
@@ -79,7 +80,7 @@ void pci_bus_device::interfaces::init()
 // pci_bus_device
 
 pci_bus_device::pci_bus_device(interfaces* ifs) :
-	bus_device(device_name_pci),
+	bus_device(),
 	_ifs(ifs)
 {
 }
@@ -160,10 +161,24 @@ cause::t pci_driver::setup_by_acpi()
 		return r;
 	}
 
-	r = get_device_ctl()->append_device(d);
-	if (is_fail(r)) {
-		new_destroy(d, generic_mem());
-		return r;
+	for (int number = 0; ; ++number) {
+		char name[device::NAME_NR];
+		mem_io name_io(name);
+		output_buffer name_buf(&name_io, 0);
+
+		name_buf("pci")(number);
+
+		d->set_name(name);
+
+		r = get_device_ctl()->append_device(d);
+		if (r == cause::EXIST) {
+			continue;
+		} else if (is_fail(r)) {
+			log()(SRCPOS)("!!! r=").u(r)();
+			new_destroy(d, generic_mem());
+			return r;
+		}
+		break;
 	}
 
 	return cause::OK;

@@ -31,6 +31,12 @@ enum {
 	PCI_CONFIG_SPACE_SZ = 0x1000,
 };
 
+namespace {
+
+const char pci_dev_class[] = "pci";
+
+}  // namespace
+
 // pci3_device
 
 pci3_device::pci3_device(
@@ -99,6 +105,7 @@ pci3_bus_device::pci3_bus_device(
 	each_devices_ifs(each_dev_ifs),
 	owner(_owner)
 {
+	dev_class = pci_dev_class;
 }
 
 void pci3_bus_device::init_ifs(

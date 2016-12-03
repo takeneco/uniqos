@@ -32,7 +32,7 @@ public:
 	cause::t unsetup();
 	cause::t post_setup();
 
-	typedef chain<mempool, &mempool::chain_node> mempool_chain;
+	typedef chain<mempool, &mempool::mempool_ctl_node> mempool_chain;
 
 public:
 	cause::pair<mempool*> acquire_shared_mempool(u32 objsize);
