@@ -1,7 +1,7 @@
 // @file   core/string.hh
 // @brief  Memory ops.
 //
-// (C) 2010-2014 KATO Takeshi
+// (C) 2010 KATO Takeshi
 //
 
 #ifndef CORE_STRING_HH_
@@ -23,6 +23,7 @@ int str_length(const char* str);
 sint str_compare(uptr max, const char* str1, const char* str2);  // OBSOLETED
 sint str_compare(const char* str1, const char* str2, uptr max);
 sint str_compare(const char* str1, const char* str2);
+bool str_startswith(const char* str, const char* prefix);
 void str_copy(const char* src, char* dest);
 void str_copy(uptr max, const char* src, char* dest);  // OBSOLETED
 void str_copy(const char* src, char* dest, uptr max);
@@ -41,5 +42,5 @@ int u_to_binstr(umax n, char s[sizeof n * 8]);
 int u_to_decstr(umax n, char s[sizeof n * 3]);
 
 
-#endif  // include guard
+#endif  // CORE_STRING_HH_
 

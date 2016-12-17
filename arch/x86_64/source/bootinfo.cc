@@ -19,7 +19,9 @@
 
 #include <bootinfo.hh>
 
+#include <core/ctype.hh>
 #include <global_vars.hh>
+#include <util/string.hh>
 
 
 namespace bootinfo {
@@ -82,6 +84,49 @@ const char* get_cmdline()
 	}
 
 	return nullptr;
+}
+
+/// @brief  Search "key=value" from kernel command line.
+/// @param[in] key  Null terminated string of key.
+/// @param[in] value_bytes  Byte size of value.
+/// @param[out] value  Null terminated value destination if "key=value" found.
+/// @return  This function returns byte size without '\0' of value as
+///   pair::value.
+///   pair::cause is cause::OK if key is found and is cause::FAIL if key is
+///   not found.
+cause::pair<uptr> get_cmdline_value(
+    const char* key, uptr value_bytes, char* value)
+{
+	const char* cmd = get_cmdline();
+	int cmdlen = str_length(cmd);
+	int keylen = str_length(key);
+
+	for (;;) {
+		if (str_startswith(cmd, key) && cmd[keylen] == '=') {
+			cmd += keylen + 1;
+			break;
+		}
+		while (*cmd && !ctype::is_space(*cmd))
+			++cmd;
+		while (*cmd && ctype::is_space(*cmd))
+			++cmd;
+		if (!*cmd)
+			return zero_pair(cause::FAIL);
+	}
+
+	uptr vallen;
+	for (vallen = 0; vallen < value_bytes; ++vallen) {
+		if (!cmd[vallen] || ctype::is_space(cmd[vallen])) {
+			value[vallen] = '\0';
+			break;
+		}
+		value[vallen] = cmd[vallen];
+	}
+
+	while (cmd[vallen] && !ctype::is_space(cmd[vallen]))
+		++vallen;
+
+	return make_pair(cause::OK, vallen);
 }
 
 }  // namespace bootinfo

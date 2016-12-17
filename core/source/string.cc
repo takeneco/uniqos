@@ -2,7 +2,7 @@
 /// @brief  Memory ops.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2010-2015 KATO Takeshi
+//  (C) 2010 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -135,6 +135,17 @@ sint str_compare(const char* str1, const char* str2)
 	}
 
 	return 0;
+}
+
+bool str_startswith(const char* str, const char* prefix)
+{
+	for (; *prefix; ++prefix) {
+		if (!*str || *str != *prefix)
+			return false;
+		++str;
+	}
+
+	return true;
 }
 
 void str_copy(const char* src, char* dest)

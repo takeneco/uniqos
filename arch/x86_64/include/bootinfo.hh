@@ -1,14 +1,14 @@
 /// @file  bootinfo.hh
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2011 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -150,9 +150,11 @@ enum {
 
 const tag* get_info(u16 type);
 const char* get_cmdline();
+cause::pair<uptr> get_cmdline_value(
+    const char* key, uptr value_bytes, char* value);
 
 }  // namespace bootinfo
 
 
-#endif  // include guard
+#endif  // ARCH_X86_64_INCLUDE_BOOTINFO_HH_
 
