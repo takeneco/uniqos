@@ -27,7 +27,8 @@
 
 // driver
 
-driver::driver(const char* driver_name)
+driver::driver(TYPE driver_type, const char* driver_name) :
+	type(driver_type)
 {
 	str_copy(driver_name, name, sizeof name - 1);
 	name[sizeof name - 1] = '\0';
@@ -46,7 +47,7 @@ driver_ctl::driver_ctl()
 
 /// @retval cause::OK Succeeded.
 /// @retval cause::FAIL Same name driver already exits.
-cause::t driver_ctl::append_driver(driver* drv)
+cause::t driver_ctl::register_driver(driver* drv)
 {
 	spin_lock_section dll(driver_chain_lock);
 
@@ -73,7 +74,7 @@ cause::t driver_ctl::append_driver(driver* drv)
 	return cause::OK;
 }
 
-cause::t driver_ctl::remove_driver(driver* drv)
+cause::t driver_ctl::unregister_driver(driver* drv)
 {
 	driver_chain_lock.lock();
 
@@ -84,10 +85,10 @@ cause::t driver_ctl::remove_driver(driver* drv)
 	return cause::OK;
 }
 
-/// @brief Search driver by name.
+/// @brief Find driver by name.
 /// @retval cause::OK   Driver found. cause::data() is matched driver.
 /// @retval cause::FAIL Driver not found.
-cause::pair<driver*> driver_ctl::search_driver(const char* name)
+cause::pair<driver*> driver_ctl::get_driver_by_name(const char* name)
 {
 	spin_lock_section _sls(driver_chain_lock);
 
@@ -105,7 +106,6 @@ cause::pair<driver*> driver_ctl::search_driver(const char* name)
 
 	return null_pair(cause::FAIL);
 }
-
 
 cause::t driver_ctl_setup()
 {

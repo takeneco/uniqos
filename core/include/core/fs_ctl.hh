@@ -22,6 +22,7 @@
 #define CORE_FS_CTL_HH_
 
 #include <core/devnode.hh>
+#include <core/driver.hh>
 #include <core/spinlock.hh>
 
 
@@ -47,9 +48,14 @@ enum NODETYPE
 	NODETYPE_DEV,
 };
 
+enum FLAGS
+{
+	OP_CREATE = 0x1,
 };
 
-class fs_driver
+};
+
+class fs_driver : public driver
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_driver);
 
@@ -57,6 +63,14 @@ public:
 	struct interfaces
 	{
 		void init();
+
+		using DetectLabelIF = cause::pair<uptr> (*)(
+		    fs_driver* x, io_node* dev, char* label, uptr bytes);
+		DetectLabelIF DetectLabel;
+
+		typedef cause::t (*MountableIF)(
+		    fs_driver* x, const char* dev);
+		MountableIF Mountable;
 
 		typedef cause::pair<fs_mount*> (*MountIF)(
 		    fs_driver* x, const char* dev);
@@ -68,7 +82,27 @@ public:
 		UnmountIF Unmount;
 	};
 
-	// mount
+	// DetectLabel
+	template<class T> static cause::pair<uptr> call_on_DetectLabel(
+	    fs_driver* x, io_node* dev, char* label, uptr bytes) {
+		return static_cast<T*>(x)->on_DetectLabel(dev, label, bytes);
+	}
+	static cause::pair<uptr> nofunc_DetectLabel(
+	    fs_driver*, io_node* /*dev*/, char* /*label*/, uptr /*bytes*/) {
+		return zero_pair(cause::NOFUNC);
+	}
+
+	// Mountable
+	template<class T> static cause::t call_on_Mountable(
+	    fs_driver* x, const char* dev) {
+		return static_cast<T*>(x)->on_Mountable(dev);
+	}
+	static cause::t nofunc_Mountable(
+	    fs_driver*, const char* /*dev*/) {
+		return cause::NOFUNC;
+	}
+
+	// Mount
 	template<class T> static cause::pair<fs_mount*> call_on_Mount(
 	    fs_driver* x, const char* dev) {
 		return static_cast<T*>(x)->on_Mount(dev);
@@ -89,8 +123,8 @@ public:
 	}
 
 public:
-	const char* get_name() const {
-		return fs_driver_name;
+	cause::t mountable(const char* dev) {
+		return ifs->Mountable(this, dev);
 	}
 	cause::pair<fs_mount*> mount(const char* dev) {
 		return ifs->Mount(this, dev);
@@ -107,9 +141,6 @@ public:
 
 protected:
 	const interfaces* ifs;
-
-private:
-	const char* fs_driver_name;
 };
 
 
@@ -120,7 +151,6 @@ class fs_mount
 	friend class fs_node;
 
 public:
-
 	chain_node<fs_mount>& chain_hook() { return _chain_node; }
 
 	fs_node* get_root_node() { return root; }
@@ -140,7 +170,8 @@ public:
 		typedef cause::pair<fs_dir_node*> (*CreateDirNodeIF)(
 		    fs_mount* x,
 		    fs_dir_node* parent,
-		    const char* name);
+		    const char* name,
+		    u32 flags);
 		CreateDirNodeIF CreateDirNode;
 
 		typedef cause::pair<fs_reg_node*> (*CreateRegNodeIF)(
@@ -186,12 +217,12 @@ public:
 	template <class T>
 	static cause::pair<fs_dir_node*> call_on_CreateDirNode(
 	    fs_mount* x,
-	    fs_dir_node* parent, const char* name) {
+	    fs_dir_node* parent, const char* name, u32 flags) {
 		return static_cast<T*>(x)->
-		    on_CreateDirNode(parent, name);
+		    on_CreateDirNode(parent, name, flags);
 	}
 	static cause::pair<fs_dir_node*> nofunc_CreateDirNode(
-	    fs_mount*, fs_dir_node*, const char*) {
+	    fs_mount*, fs_dir_node*, const char*, u32) {
 		return null_pair(cause::NOFUNC);
 	}
 
@@ -260,7 +291,8 @@ public:
 	cause::pair<io_node*> open_node(fs_node* node, u32 flags) {
 		return ifs->OpenNode(this, node, flags);
 	}
-	cause::t create_dir_node(fs_dir_node* parent, const char* name);
+	cause::t create_dir_node(
+	    fs_dir_node* parent, const char* name, u32 flags);
 	cause::pair<fs_reg_node*> create_reg_node(
 	    fs_dir_node* parent, const char* name);
 
@@ -439,8 +471,8 @@ public:
 public:
 	cause::t setup();
 
-	cause::t register_fs_driver(fs_driver* drv);
-	cause::pair<fs_driver*> get_fs_driver(const char* driver_name);
+	cause::pair<fs_driver*> detect_fs_driver(
+	    const char* source, const char* type);
 
 	cause::pair<io_node*> open_node(const char* path, u32 flags);
 	cause::t close(io_node* ion);
