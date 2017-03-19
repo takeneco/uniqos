@@ -49,7 +49,7 @@ driver_ctl::driver_ctl()
 /// @retval cause::FAIL Same name driver already exits.
 cause::t driver_ctl::register_driver(driver* drv)
 {
-	spin_lock_section dll(driver_chain_lock);
+	spin_wlock_section _sws(driver_chain_lock);
 
 	driver* insert_before = nullptr;
 
@@ -76,11 +76,11 @@ cause::t driver_ctl::register_driver(driver* drv)
 
 cause::t driver_ctl::unregister_driver(driver* drv)
 {
-	driver_chain_lock.lock();
+	driver_chain_lock.wlock();
 
 	driver_chain.remove(drv);
 
-	driver_chain_lock.unlock();
+	driver_chain_lock.un_wlock();
 
 	return cause::OK;
 }
@@ -90,7 +90,7 @@ cause::t driver_ctl::unregister_driver(driver* drv)
 /// @retval cause::FAIL Driver not found.
 cause::pair<driver*> driver_ctl::get_driver_by_name(const char* name)
 {
-	spin_lock_section _sls(driver_chain_lock);
+	spin_rlock_section _srs(driver_chain_lock);
 
 	for (driver* drv : driver_chain) {
 		const sint comp = str_compare(

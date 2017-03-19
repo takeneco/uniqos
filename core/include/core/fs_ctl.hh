@@ -491,10 +491,6 @@ private:
 private:
 	/// mount point list
 	chain<fs_mount_info, &fs_mount_info::fs_ctl_chain_node> mountpoints;
-
-	/// driver list
-	front_chain<fs_driver, &fs_driver::_fs_ctl_chain_node> fs_driver_chain;
-
 	spin_rwlock mountpoints_lock;
 
 	fs_dir_node* root;

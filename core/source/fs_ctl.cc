@@ -433,6 +433,15 @@ cause::t fs_ctl::setup()
 	return cause::OK;
 }
 
+/// @brief ファイルシステムのドライバを検出する。
+/// @param[in] source ファイルシステムの場所を示す文字列。
+/// @param[in] type   ファイルシステム名。
+/// @return ファイルシステムのドライバが見つかれば cause::OK を返す。
+///         ドライバが見つからない場合は cause::NODEV を返す。
+//
+/// type をそのままドライバ名と解釈してファイルシステムドライバを探す。
+/// type が nullptr の場合はファイルシステムのドライバへ source の文字列を
+/// を渡してマウント可能か検証させ、マウントできるドライバを探す。
 cause::pair<fs_driver*> fs_ctl::detect_fs_driver(
     const char* source,
     const char* type)
@@ -443,11 +452,14 @@ cause::pair<fs_driver*> fs_ctl::detect_fs_driver(
 
 		if (is_ok(type_drv) && tmp->get_type() == driver::TYPE_FS)
 			return make_pair(cause::OK, tmp);
-	}
-
-	for (auto drv : fs_driver_chain) {
-		if (drv->mountable(source)) {
-			return make_pair(cause::OK, drv);
+	} else {
+		for (auto drv :
+		     get_driver_ctl()->enum_by_type(driver::TYPE_FS))
+		{
+			fs_driver* fsdrv = static_cast<fs_driver*>(drv);
+			if (fsdrv->mountable(source)) {
+				return make_pair(cause::OK, fsdrv);
+			}
 		}
 	}
 
