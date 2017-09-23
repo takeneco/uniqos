@@ -1,5 +1,5 @@
 #
-# (C) 2011-2014 KATO Takeshi
+# (C) 2017 KATO Takeshi
 #
 
 VERSION = '0.0.1.0'
@@ -58,6 +58,7 @@ def configure(x):
 	x.recurse('arch')
 	x.recurse('drivers')
 	x.recurse('external')
+	x.recurse('core/source')
 
 
 def build(x):

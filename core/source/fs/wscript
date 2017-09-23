@@ -1,0 +1,22 @@
+# filesystem core sources.
+#
+# (C) 2017 KATO Takeshi
+#
+
+NAME = 'core_fs'
+
+kern_sources = [
+ 'name_ops.cc',
+ 'path_parser.cc',
+]
+
+def configure(x):
+	x.env.append_value('KERNEL_LINK_USE', NAME)
+
+def build(x):
+	x.objects(
+	    target   = NAME,
+	    source   = kern_sources,
+	    use      = 'KERNEL',
+	)
+

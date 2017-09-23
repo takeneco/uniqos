@@ -2,7 +2,7 @@
 /// @brief  Memory ops.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2010 KATO Takeshi
+//  (C) 2017 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -102,6 +102,18 @@ int str_length(const char* str)
 		return 0;
 
 	int len = 0;
+	while (str[len])
+		len++;
+
+	return len;
+}
+
+int str_length1(const char* str)
+{
+	if (!str)
+		return 1;
+
+	int len = 1;
 	while (str[len])
 		len++;
 

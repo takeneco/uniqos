@@ -1,8 +1,21 @@
 /// @file  basic-types.hh
 /// @brief 共通で使う型・関数など。
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2017 KATO Takeshi
 //
-// (C) 2008 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #ifndef CORE_BASIC_TYPES_HH_
 #define CORE_BASIC_TYPES_HH_
@@ -69,6 +82,14 @@ template<> struct harf_of<u64> { typedef u32 t; };
 template<> struct harf_of<s16> { typedef  s8 t; };
 template<> struct harf_of<s32> { typedef s16 t; };
 template<> struct harf_of<s64> { typedef s32 t; };
+
+template<class TYPE> struct quarter_of;
+template<> struct quarter_of<u16> { typedef u8 t; };/// no type smaller than u8
+template<> struct quarter_of<u32> { typedef u8 t; };
+template<> struct quarter_of<u64> { typedef u16 t; };
+template<> struct quarter_of<s16> { typedef s8 t; };/// no type smaller than s8
+template<> struct quarter_of<s32> { typedef s8 t; };
+template<> struct quarter_of<s64> { typedef s16 t; };
 
 /// @struct unsigned_of
 /// signed 型に対応する unsigned 型
@@ -347,10 +368,6 @@ template <> inline int int_size_bits<u32>() { return 5; }
 template <> inline int int_size_bits<u64>() { return 6; }
 
 
-/*-------------------------------------------------------------------
- * エラーコード
- *-------------------------------------------------------------------*/
-
 /// @brief  Cause of error identification.
 namespace cause
 {
@@ -554,5 +571,5 @@ namespace log
 #define TOSTR(x) TOSTR_(x)
 
 
-#endif  // include guard
+#endif  // CORE_BASIC_TYPES_HH_
 
