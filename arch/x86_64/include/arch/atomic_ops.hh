@@ -1,14 +1,14 @@
 /// @file atomic_ops.hh
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2012 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -140,7 +140,8 @@ inline void atomic64_sub(u64 sub_val, volatile u64* atom) {
 	              : "ir" (sub_val));
 }
 
-inline int atomic8_sub_and_test(u8 sub_val, volatile u8* atom) {
+// atomic_sub_and_test0
+inline int atomic8_sub_and_test0(u8 sub_val, volatile u8* atom) {
 	u8 r;
 	asm volatile ("lock subb %2, %0; setz %1"
 	              : "+m" (*atom), "=qm" (r)
@@ -148,7 +149,7 @@ inline int atomic8_sub_and_test(u8 sub_val, volatile u8* atom) {
 	              : "memory");
 	return r;
 }
-inline int atomic16_sub_and_test(u16 sub_val, volatile u16* atom) {
+inline int atomic16_sub_and_test0(u16 sub_val, volatile u16* atom) {
 	u8 r;
 	asm volatile ("lock subw %2, %0; setz %1"
 	              : "+m" (*atom), "=qm" (r)
@@ -156,7 +157,7 @@ inline int atomic16_sub_and_test(u16 sub_val, volatile u16* atom) {
 	              : "memory");
 	return r;
 }
-inline int atomic32_sub_and_test(u32 sub_val, volatile u32* atom) {
+inline int atomic32_sub_and_test0(u32 sub_val, volatile u32* atom) {
 	u8 r;
 	asm volatile ("lock subl %2, %0; setz %1"
 	              : "+m" (*atom), "=qm" (r)
@@ -164,7 +165,7 @@ inline int atomic32_sub_and_test(u32 sub_val, volatile u32* atom) {
 	              : "memory");
 	return r;
 }
-inline int atomic64_sub_and_test(u64 sub_val, volatile u64* atom) {
+inline int atomic64_sub_and_test0(u64 sub_val, volatile u64* atom) {
 	u8 r;
 	asm volatile ("lock subq %2, %0; setz %1"
 	              : "+m" (*atom), "=qm" (r)
@@ -176,5 +177,5 @@ inline int atomic64_sub_and_test(u64 sub_val, volatile u64* atom) {
 }  // namespace arch
 
 
-#endif  // include guard
+#endif  // ARCH_ATOMIC_OPS_HH_
 

@@ -2,7 +2,7 @@
 /// @brief Link list structure.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2010-2015 KATO Takeshi
+//  (C) 2010 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -140,11 +140,11 @@ public:
 			data = it.data;
 			return *this;
 		}
-		bool operator == (const iterator& it) const {
-			return data == it.data;
+		bool operator == (const iterator& other) const {
+			return data == other.data;
 		}
-		bool operator != (const iterator& it) const {
-			return data != it.data;
+		bool operator != (const iterator& other) const {
+			return data != other.data;
 		}
 		iterator& operator ++ () {
 			data = node().get_next();
@@ -202,11 +202,11 @@ public:
 			data = it.data;
 			return *this;
 		}
-		bool operator == (const const_iterator& it) const {
-			return data == it.data;
+		bool operator == (const const_iterator& other) const {
+			return data == other.data;
 		}
-		bool operator != (const const_iterator& it) const {
-			return data != it.data;
+		bool operator != (const const_iterator& other) const {
+			return data != other.data;
 		}
 		const_iterator& operator ++ () {
 			data = node().get_next();
@@ -390,6 +390,100 @@ public:
 					remove_next(t);
 			}
 		}
+	}
+};
+
+template<class CHAIN, class FILTER>
+class chain_filter
+{
+	using data_t = typename CHAIN::data_t;
+
+	CHAIN* _chain;
+	FILTER _filter;
+
+	chain_filter(const chain_filter&) = delete;
+	chain_filter& operator = (const chain_filter&) = delete;
+
+public:
+	class iter
+	{
+		chain_filter<CHAIN, FILTER>* _cf;
+		data_t* _value;
+	public:
+		iter(chain_filter<CHAIN, FILTER>* cf, data_t* value) :
+			_cf(cf),
+			_value(value)
+		{}
+		~iter() {}
+
+	public:
+		data_t* operator * () {
+			return _value;
+		}
+		data_t* operator -> () {
+			return _value;
+		}
+		bool operator == (const iter& other) const {
+			return _value == other._value;
+		}
+		bool operator != (const iter& other) const {
+			return _value != other._value;
+		}
+		iter& operator ++ () {
+			_value = _cf->find_next(CHAIN::next(_value));
+			return *this;
+		}
+		iter operator ++ (int) {
+			iter copy(_cf, _value);
+			_value = _cf->find_next(CHAIN::next(_value));
+			return copy;
+		}
+		iter& operator -- () {
+			_value = _cf->find_prev(CHAIN::prev(_value));
+			return *this;
+		}
+		iter operator -- (int) {
+			iter copy(_cf, _value);
+			_value = _cf->find_prev(CHAIN::prev(_value));
+			return copy;
+		}
+	};
+
+public:
+	chain_filter(chain_filter&& other) :
+		_chain(other._chain),
+		_filter(other._filter)
+	{}
+	chain_filter(CHAIN* chain, FILTER&& filter) :
+		_chain(chain),
+		_filter(filter)
+	{}
+	~chain_filter() {}
+
+public:
+	iter begin() {
+		return iter(this, find_next(_chain->front()));
+	}
+	iter end() {
+		return iter(this, nullptr);
+	}
+	iter rbegin() {
+		return iter(this, find_next(_chain->back()));
+	}
+	iter rend() {
+		return iter(this, nullptr);
+	}
+
+private:
+	data_t* find_next(data_t* next) {
+		while (next && !_filter.filter(next))
+			next = _chain->next(next);
+		return next;
+	}
+	data_t* find_prev(data_t* prev) {
+		while (prev && !_filter.filter(prev))
+			prev = _chain->prev(prev);
+		return prev;
 	}
 };
 

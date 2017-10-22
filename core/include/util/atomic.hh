@@ -1,14 +1,14 @@
 /// @file util/atomic.hh
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2012-2014 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2012 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -144,6 +144,20 @@ inline void atomic_sub(s64 sub_val, volatile s64* atom) {
 	atomic64_sub(sub_val, reinterpret_cast<volatile u64*>(atom));
 }
 
+// atomic_sub_and_test0
+inline u8 atomic_sub_and_test0(u8 sub_val, volatile u8* atom) {
+	return atomic8_sub_and_test0(sub_val, atom);
+}
+inline u8 atomic_sub_and_test0(u16 sub_val, volatile u16* atom) {
+	return atomic16_sub_and_test0(sub_val, atom);
+}
+inline u8 atomic_sub_and_test0(u32 sub_val, volatile u32* atom) {
+	return atomic32_sub_and_test0(sub_val, atom);
+}
+inline u8 atomic_sub_and_test0(u64 sub_val, volatile u64* atom) {
+	return atomic64_sub_and_test0(sub_val, atom);
+}
+
 }  // namespace arch
 
 
@@ -180,11 +194,14 @@ public:
 	void dec() {
 		arch::atomic_sub(1, &val);
 	}
+	void dec_and_test0() {
+		arch::atomic_sub_and_test0(1, &val);
+	}
 
 private:
 	volatile T val;
 };
 
 
-#endif  // include guard
+#endif  // UTIL_ATOMIC_HH_
 
