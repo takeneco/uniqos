@@ -2,7 +2,7 @@
 /// @brief  カーネルへ渡すパラメータを作成する。
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2011-2014 KATO Takeshi
+//  (C) 2011 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -67,9 +67,9 @@ uptr store_multiboot(const u32* mb_info, u8* store, uptr store_bytes)
 	mbtag->info_flags = bootinfo::multiboot::FLAG_2;
 	mbtag->info_bytes = total_bytes;
 
-	mem_move(mb_bytes, mb_info, mbtag->info);
+	mem_move(mb_info, mbtag->info, mb_bytes);
 
-	mem_fill(total_bytes - info_bytes, 0, &store[info_bytes]);
+	mem_fill(0, &store[info_bytes], total_bytes - info_bytes);
 
 	return total_bytes;
 }

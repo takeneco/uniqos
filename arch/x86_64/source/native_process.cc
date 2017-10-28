@@ -68,9 +68,9 @@ cause::t native_process::setup(thread* entry_thread, int iod_nr)
 	// アドレス空間の後半をカーネル用としている。
 	// ページテーブルは 4096 byte で、その後半の 2048 byte を
 	// コピーすることで、カーネル用アドレス空間を共有する。
-	mem_copy(arch::page::TABLE_SIZE / 2,
-	         &parent_pml4[256],
-	         &my_pml4[256]);
+	mem_copy(&parent_pml4[256],
+	         &my_pml4[256],
+	         arch::page::TABLE_SIZE / 2);
 
 	arch::page::unget_table(parent_pml4);
 
