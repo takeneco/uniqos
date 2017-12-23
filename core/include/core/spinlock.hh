@@ -25,7 +25,7 @@
 
 class spin_lock
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_lock);
+	NONCOPYABLE(spin_lock);
 
 	enum {
 		UNLOCKED = 0,
@@ -60,45 +60,57 @@ private:
 
 class spin_lock_section
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_lock_section);
+	NONCOPYABLE(spin_lock_section);
 
 public:
+	// OBSOLATED
 	spin_lock_section(spin_lock& lock) :
+		_lock(&lock)
+	{
+		_lock->lock();
+	}
+	spin_lock_section(spin_lock* lock) :
 		_lock(lock)
 	{
-		_lock.lock();
+		_lock->lock();
 	}
 	~spin_lock_section()
 	{
-		_lock.unlock();
+		_lock->unlock();
 	}
 
 private:
-	spin_lock& _lock;
+	spin_lock* _lock;
 };
 
 class spin_lock_section_np
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_lock_section_np);
+	NONCOPYABLE(spin_lock_section_np);
 
 public:
+	// OBSOLATED
 	spin_lock_section_np(spin_lock& lock) :
+		_lock(&lock)
+	{
+		_lock->lock_np();
+	}
+	spin_lock_section_np(spin_lock* lock) :
 		_lock(lock)
 	{
-		_lock.lock_np();
+		_lock->lock_np();
 	}
 	~spin_lock_section_np()
 	{
-		_lock.unlock_np();
+		_lock->unlock_np();
 	}
 
 private:
-	spin_lock& _lock;
+	spin_lock* _lock;
 };
 
 class spin_rwlock : public arch::spin_rwlock_ops
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_rwlock);
+	NONCOPYABLE(spin_rwlock);
 
 public:
 	spin_rwlock() {}
@@ -126,76 +138,101 @@ public:
 
 class spin_rlock_section
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_rlock_section);
+	NONCOPYABLE(spin_rlock_section);
 
 public:
+	// OBSOLATED
 	spin_rlock_section(spin_rwlock& lock) :
+		_lock(&lock)
+	{
+		_lock->rlock();
+	}
+	spin_rlock_section(spin_rwlock* lock) :
 		_lock(lock)
 	{
-		_lock.rlock();
+		_lock->rlock();
 	}
-	~spin_rlock_section() {
-		_lock.un_rlock();
+	~spin_rlock_section()
+	{
+		_lock->un_rlock();
 	}
 
 private:
-	spin_rwlock& _lock;
+	spin_rwlock* _lock;
 };
 
 class spin_rlock_section_np
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_rlock_section_np);
+	NONCOPYABLE(spin_rlock_section_np);
 
 public:
+	// OBSOLATED
 	spin_rlock_section_np(spin_rwlock& lock) :
+		_lock(&lock)
+	{
+		_lock->rlock_np();
+	}
+	spin_rlock_section_np(spin_rwlock* lock) :
 		_lock(lock)
 	{
-		_lock.rlock_np();
+		_lock->rlock_np();
 	}
 	~spin_rlock_section_np()
 	{
-		_lock.un_rlock_np();
+		_lock->un_rlock_np();
 	}
 
 private:
-	spin_rwlock& _lock;
+	spin_rwlock* _lock;
 };
 
 class spin_wlock_section
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_wlock_section);
+	NONCOPYABLE(spin_wlock_section);
 
 public:
+	// OBSOLATED
 	spin_wlock_section(spin_rwlock& lock) :
+		_lock(&lock)
+	{
+		_lock->wlock();
+	}
+	spin_wlock_section(spin_rwlock* lock) :
 		_lock(lock)
 	{
-		_lock.wlock();
+		_lock->wlock();
 	}
-	~spin_wlock_section() {
-		_lock.un_wlock();
+	~spin_wlock_section()
+	{
+		_lock->un_wlock();
 	}
 
 private:
-	spin_rwlock& _lock;
+	spin_rwlock* _lock;
 };
 
 class spin_wlock_section_np
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_wlock_section_np);
+	NONCOPYABLE(spin_wlock_section_np);
 
 public:
 	spin_wlock_section_np(spin_rwlock& lock) :
+		_lock(&lock)
+	{
+		_lock->wlock_np();
+	}
+	spin_wlock_section_np(spin_rwlock* lock) :
 		_lock(lock)
 	{
-		_lock.wlock_np();
+		_lock->wlock_np();
 	}
 	~spin_wlock_section_np()
 	{
-		_lock.un_wlock_np();
+		_lock->un_wlock_np();
 	}
 
 private:
-	spin_rwlock& _lock;
+	spin_rwlock* _lock;
 };
 
 /** @defgroup spin_locked
@@ -217,7 +254,7 @@ private:
        // x1.self_lock will be rlock() by constructor.
        return create_spin_rlocked(&x1);
    }
-   spin_wlocked<X2> get_w_X1() {
+   spin_wlocked<X1> get_w_X1() {
        // x1.self_lock will be wlock() by constructor.
        return create_spin_wlocked(&x1);
    }
@@ -235,11 +272,11 @@ private:
    @code
    struct X2 {} x2;
    spin_rwlock x2_lock;
-   spin_rlocked_pair<X2> get_w_X2() {
+   spin_rlocked_pair<X2> get_r_X2() {
        // x2_lock will be rlock() by constructor.
        return create_spin_rlocked_pair(&x2, &x2_lock);
    }
-   spin_rlocked_pair<X2> get_w_X2() {
+   spin_wlocked_pair<X2> get_w_X2() {
        // x2_lock will be wlock() by constructor.
        return create_spin_wlocked_pair(&x2, &x2_lock);
    }
@@ -257,7 +294,7 @@ private:
 template<class TYPE, bool NP=false>
 class spin_rlocked
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_rlocked);
+	NONCOPYABLE(spin_rlocked);
 
 public:
 	spin_rlocked(TYPE* value) :
@@ -318,7 +355,7 @@ create_spin_rlocked(TYPE* value)
 template<class TYPE, bool NP=false>
 class spin_wlocked
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_wlocked);
+	NONCOPYABLE(spin_wlocked);
 
 public:
 	spin_wlocked(TYPE* value) :
@@ -375,10 +412,10 @@ create_spin_wlocked(TYPE* value)
 template<class TYPE, bool NP=false>
 class spin_rlocked_pair
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_rlocked_pair);
+	NONCOPYABLE(spin_rlocked_pair);
 
 public:
-	spin_rlocked_pair(TYPE* value, spin_rwlock* lock) :
+	spin_rlocked_pair(const TYPE& value, spin_rwlock* lock) :
 		_value(value),
 		_lock(lock)
 	{
@@ -389,7 +426,7 @@ public:
 		_value(other._value),
 		_lock(other._lock)
 	{
-		other._value = nullptr;
+		other._lock = nullptr;
 	}
 
 	~spin_rlocked_pair()
@@ -397,36 +434,44 @@ public:
 		_un_rlock();
 	}
 
-	TYPE* value() { return _value; }
-	operator TYPE* () { return _value; }
-	TYPE* operator -> () { return _value; }
+	TYPE& value() { return _value; }
+	operator TYPE& () { return _value; }
+	TYPE operator -> () { return _value; }
 
 	void un_rlock()
 	{
 		_un_rlock();
-		_value = nullptr;
+		_lock = nullptr;
 	}
 
 private:
 	void _rlock() {
-		if (_value)
+		if (_lock)
 			_lock->rlock(NP);
 	}
 	void _un_rlock() {
-		if (_value)
+		if (_lock)
 			_lock->un_rlock(NP);
 	}
 
 private:
-	TYPE* _value;
+	TYPE _value;
 	spin_rwlock* _lock;
+
+public:
+	auto begin() {
+		return _value.begin();
+	}
+	auto end() {
+		return _value.end();
+	}
 };
 
 /// @brief Creates spin_rlocked_pair instance.
 template<class TYPE, bool NP=false>
 inline
 spin_rlocked_pair<TYPE, NP>
-create_spin_rlocked_pair(TYPE* value, spin_rwlock* lock)
+create_spin_rlocked_pair(TYPE& value, spin_rwlock* lock)
 {
 	return spin_rlocked_pair<TYPE, NP>(value, lock);
 }
@@ -434,10 +479,10 @@ create_spin_rlocked_pair(TYPE* value, spin_rwlock* lock)
 template<class TYPE, bool NP=false>
 class spin_wlocked_pair
 {
-	DISALLOW_COPY_AND_ASSIGN(spin_wlocked_pair);
+	NONCOPYABLE(spin_wlocked_pair);
 
 public:
-	spin_wlocked_pair(TYPE* value, spin_rwlock* lock) :
+	spin_wlocked_pair(const TYPE& value, spin_rwlock* lock) :
 		_value(value),
 		_lock(lock)
 	{
@@ -448,7 +493,7 @@ public:
 		_value(other._value),
 		_lock(other._lock)
 	{
-		other._value = nullptr;
+		other._lock = nullptr;
 	}
 
 	~spin_wlocked_pair()
@@ -456,28 +501,31 @@ public:
 		_un_wlock();
 	}
 
-	TYPE* value() { return _value; }
-	operator TYPE* () { return _value; }
-	TYPE* operator -> () { return _value; }
+	TYPE& value() { return _value; }
+	operator TYPE& () { return _value; }
+	TYPE operator -> () { return _value; }
 
 	void un_wlock()
 	{
 		_un_wlock();
-		_value = nullptr;
+		_lock = nullptr;
 	}
+
+	auto begin() -> decltype(TYPE::begin()) { return _value.begin(); }
+	auto end() -> decltype(TYPE::end()) { return _value.end(); }
 
 private:
 	void _wlock() {
-		if (_value)
+		if (_lock)
 			_lock->wlock(NP);
 	}
 	void _un_wlock() {
-		if (_value)
+		if (_lock)
 			_lock->un_wlock(NP);
 	}
 
 private:
-	TYPE* _value;
+	TYPE _value;
 	spin_rwlock* _lock;
 };
 
@@ -485,7 +533,7 @@ private:
 template<class TYPE, bool NP=false>
 inline
 spin_wlocked_pair<TYPE, NP>
-create_spin_wlocked_pair(TYPE* value, spin_rwlock* lock)
+create_spin_wlocked_pair(TYPE value, spin_rwlock* lock)
 {
 	return spin_wlocked_pair<TYPE, NP>(value, lock);
 }

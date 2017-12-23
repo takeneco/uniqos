@@ -19,6 +19,7 @@
 
 #include <core/fs_ctl.hh>
 
+#include <core/process.hh>
 #include <util/string.hh>
 
 
@@ -57,7 +58,8 @@ void cnt_nodes_and_len(const char* path, int* nodes, int* len)
 namespace fs {
 
 /// @class path_parser
-/// path_parser::create() へパス名を渡すと、解析結果が返される。
+/// path_parser::create() へパス名を渡すと、解析結果が path_parser のインス
+/// タンスとして返される。
 /// パス名の最後に存在しないノードがある場合は、get_edge_node()->fsnode が
 /// nullptr になる。
 /// 存在しないノードの先を参照しようとすると（それが親ノードであっても）
@@ -73,7 +75,7 @@ path_parser::path_parser(generic_ns* fsns, node_off node_nr) :
 	node_use_nr(0),
 	path_end(get_path_buffer())
 {
-	fs_node* root = static_cast<fs_ns*>(ns)->get_root();
+	fs_node* root = static_cast<fs_ns*>(ns)->ref_root();
 	nodes[0].fsnode = root;
 	nodes[0].name = path_end;
 	*path_end++ = SPLITTER;
@@ -109,23 +111,23 @@ cause::pair<path_parser*> path_parser::_create(
     const char* cwd,
     const char* path)
 {
-	node_off nodes = 1;  // for root node.
+	node_off node_cnt = 1;  // for root node.
 	u16 path_len = 0;
 
 	int _nodes, _len;
 	if (path_is_relative(path)) {
 		// count cwd.
 		cnt_nodes_and_len(cwd, &_nodes, &_len);
-		nodes    += _nodes;
+		node_cnt += _nodes;
 		path_len += _len;
 	}
 
 	// count path.
 	cnt_nodes_and_len(path, &_nodes, &_len);
-	nodes    += _nodes;
+	node_cnt += _nodes;
 	path_len += _len;
 
-	auto _obj = _create(ns, nodes, path_len);
+	auto _obj = _create(ns, node_cnt, path_len);
 	if (is_fail(_obj))
 		return null_pair(cause::NOMEM);
 
@@ -142,14 +144,16 @@ cause::pair<path_parser*> path_parser::_create(
 
 	// follow path.
 	cause::t r = obj->follow_path(path);
-	if (is_fail(r)) {
+	if (r == cause::NOENT) {
+		// do nothing. same as cause::OK.
+	} if (is_fail(r)) {
 		destroy(obj);
 		return null_pair(r);
 	}
 
 	*obj->path_end = '\0';
 
-	return make_pair(cause::OK, obj);
+	return make_pair(r, obj);
 }
 
 cause::pair<path_parser*> path_parser::optimize()
@@ -211,6 +215,19 @@ cause::pair<path_parser*> path_parser::create(
 	return r;
 }
 
+cause::pair<path_parser*> path_parser::create(
+    process* proc,
+    const char* path)
+{
+	spin_rlock_section ns_lock_sec(proc->ref_ns_lock());
+	spin_rlock_section cwd_lock_sec(proc->ref_cwd_lock());
+
+	generic_ns* proc_ns = proc->get_ns_fs();
+	const char* proc_cwd = proc->get_cwd_path();
+
+	return path_parser::create(proc_ns, proc_cwd, path);
+}
+
 void path_parser::destroy(path_parser* x)
 {
 	x->~path_parser();
@@ -230,6 +247,11 @@ const path_parser::node* path_parser::get_node(node_off i)
 const path_parser::node* path_parser::get_edge_node()
 {
 	return edge_node();
+}
+
+fs_node* path_parser::get_edge_fsnode()
+{
+	return edge_node()->fsnode;
 }
 
 /// @param path  Relative path. Head splitter will be ignored.
@@ -255,13 +277,13 @@ cause::t path_parser::follow_path(const char* path)
 			continue;
 		}
 
-		auto child = fsnode->get_child_node(path);
+		auto child = fsnode->ref_child_node(path);
 		if (child.cause() == cause::NOENT) {
 			fsnode = nullptr;
 		} if (is_fail(child)) {
 			return child.cause();
 		} else {
-			fsnode = child.value()->into_ns(ns);
+			fsnode = child.value()->ref_into_ns(ns);
 		}
 		push_node(fsnode, path);
 	}

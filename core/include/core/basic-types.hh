@@ -1,5 +1,5 @@
 /// @file  basic-types.hh
-/// @brief 共通で使う型・関数など。
+/// @brief Common types, functions, etc.
 
 //  Uniqos  --  Unique Operating System
 //  (C) 2017 KATO Takeshi
@@ -66,15 +66,15 @@ typedef   signed int sint;
 
 
 /// @struct harf_of
-/// @brief サイズが半分の整数型
+/// @brief  An integer type of harf width.
 //
-/// harf_of<uptr> のようにして使う。
-/// - harf_of<u16>:: : u8
-/// - harf_of<u32>:: : u16
-/// - harf_of<u64>:: : u32
-/// - harf_of<s16>:: : s8
-/// - harf_of<s32>:: : s16
-/// - harf_of<s64>:: : s32
+/// ex. harf_of<uptr>::t
+/// - harf_of<u16>::t : u8
+/// - harf_of<u32>::t : u16
+/// - harf_of<u64>::t : u32
+/// - harf_of<s16>::t : s8
+/// - harf_of<s32>::t : s16
+/// - harf_of<s64>::t : s32
 template<class TYPE> struct harf_of;
 template<> struct harf_of<u16> { typedef  u8 t; };
 template<> struct harf_of<u32> { typedef u16 t; };
@@ -83,6 +83,14 @@ template<> struct harf_of<s16> { typedef  s8 t; };
 template<> struct harf_of<s32> { typedef s16 t; };
 template<> struct harf_of<s64> { typedef s32 t; };
 
+/// @struct quarter_of
+/// @brief  An integer type of quarter width.
+/// - harf_of<u16>::t : u8
+/// - harf_of<u32>::t : u8
+/// - harf_of<u64>::t : u16
+/// - harf_of<s16>::t : s8
+/// - harf_of<s32>::t : s8
+/// - harf_of<s64>::t : s16
 template<class TYPE> struct quarter_of;
 template<> struct quarter_of<u16> { typedef u8 t; };/// no type smaller than u8
 template<> struct quarter_of<u32> { typedef u8 t; };
@@ -92,7 +100,7 @@ template<> struct quarter_of<s32> { typedef s8 t; };
 template<> struct quarter_of<s64> { typedef s16 t; };
 
 /// @struct unsigned_of
-/// signed 型に対応する unsigned 型
+/// @brief Unsigned type corresponding to signed type
 /// - unsigned_of<s8>::t  : u8
 /// - unsigned_of<s16>::t : u16
 /// - unsigned_of<s32>::t : u32
@@ -104,7 +112,7 @@ template<> struct unsigned_of<s32> { typedef u32 t; };
 template<> struct unsigned_of<s64> { typedef u64 t; };
 
 /// @struct signed_of
-/// unsigned 型に対応する signed 型
+/// @brief Signed type corresponding to unsigned type
 /// - signed_of<u8>::t  : s8
 /// - signed_of<u16>::t : s16
 /// - signed_of<u32>::t : s32
@@ -437,6 +445,9 @@ namespace cause
 		operator const T& () const {
 			return _val;
 		}
+		T operator -> () {
+			return _val;
+		}
 
 		void set_cause(type _r) { r = _r; }
 		type get_cause() const { return r; }
@@ -451,7 +462,7 @@ namespace cause
 		T    get_value() { return _val; }
 		const T& value() const { return _val; }
 
-		type r;      ///< Result.
+		type r;     ///< Result.
 		T    _val;  ///< Additional result value.
 	};
 

@@ -1,4 +1,4 @@
-/// @file   core/driver_ctl.hh
+/// @file   core/driver.hh
 /// @brief  driver management interface declaration.
 
 //  Uniqos  --  Unique Operating System
@@ -22,14 +22,14 @@
 
 #include <core/basic.hh>
 #include <core/spinlock.hh>
-#include <util/atomic.hh>
+#include <core/refcnt.hh>
 
-
-class fs_driver;
 
 /// Driver base class
 class driver
 {
+	DISALLOW_COPY_AND_ASSIGN(driver);
+
 public:
 	enum {
 		NAME_NR = 31,
@@ -50,6 +50,7 @@ public:
 
 public:
 	chain_node<driver> driver_ctl_chain_node;
+	refcnt<> refs;
 private:
 	TYPE type;
 	char name[NAME_NR + 1];  ///< driver name
@@ -60,12 +61,12 @@ class driver_ctl
 {
 	DISALLOW_COPY_AND_ASSIGN(driver_ctl);
 
-public:
+	friend cause::t driver_ctl_setup();
+
 	driver_ctl();
 
-	cause::t append_driver(driver* drv) { return register_driver(drv); }
+public:
 	cause::t register_driver(driver* drv);
-	cause::t remove_driver(driver* drv) { return unregister_driver(drv); }
 	cause::t unregister_driver(driver* drv);
 	cause::pair<driver*> get_driver_by_name(const char* name);
 
@@ -76,42 +77,26 @@ private:
 public:
 	class type_filter
 	{
-		driver_ctl* owner;
 		const driver::TYPE type;
 
 	public:
-		type_filter(type_filter& other) :
-			owner(other.owner),
+		type_filter(const type_filter& other) :
 			type(other.type)
 		{
-			other.owner = nullptr;
 		}
-		type_filter(type_filter&& other) :
-			owner(other.owner),
-			type(other.type)
-		{
-			other.owner = nullptr;
-		}
-		type_filter(driver_ctl* drvctl, driver::TYPE filter_type) :
-			owner(drvctl),
+		type_filter(driver::TYPE filter_type) :
 			type(filter_type)
 		{
-			owner->driver_chain_lock.rlock();
-		}
-		~type_filter() {
-			if (owner)
-				owner->driver_chain_lock.un_rlock();
 		}
 
 		bool filter(driver* drv) const {
 			return drv->get_type() == type;
 		}
 	};
-	chain_filter<decltype (driver_chain), type_filter>
-	filter_by_type(driver::TYPE type) {
-		return chain_filter<decltype (driver_chain), type_filter>(
-		    &driver_chain, type_filter(this, type));
-	}
+	using driver_type_filter_t =
+	    chain_filter<decltype (driver_chain), type_filter>;
+	spin_rlocked_pair<driver_type_filter_t, false>
+	    filter_by_type(driver::TYPE type);
 };
 
 driver_ctl* get_driver_ctl();

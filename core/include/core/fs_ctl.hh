@@ -1,6 +1,6 @@
 /// @file   core/fs_ctl.hh
 /// @brief  filesystem interface declaration.
-/// ファイルシステムのドライバはこのヘッダファイルをincludeする必要がある。
+/// Filesystem driver must include this headder file.
 
 //  Uniqos  --  Unique Operating System
 //  (C) 2014 KATO Takeshi
@@ -23,16 +23,23 @@
 
 #include <core/devnode.hh>
 #include <core/driver.hh>
+#include <core/fs.hh>
+#include <core/ns.hh>
+#include <core/refcnt.hh>
 #include <core/spinlock.hh>
 
 
 class fs_driver;
 class fs_mount;
+class fs_mount_info;
 class fs_node;
 class fs_dir_node;
 class fs_reg_node;
 class fs_dev_node;
+class fs_ns;
+
 class io_node;
+class process;
 
 typedef u16 pathname_cn_t;  ///< pathname char count type.
 const pathname_cn_t PATHNAME_MAX = 0xffff;
@@ -55,6 +62,9 @@ enum FLAGS
 
 };
 
+/// @brief  Base class of filesystem drivers.
+//
+/// Filesystem driver must implement this interface.
 class fs_driver : public driver
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_driver);
@@ -65,7 +75,7 @@ public:
 		void init();
 
 		using DetectLabelIF = cause::pair<uptr> (*)(
-		    fs_driver* x, io_node* dev, char* label, uptr bytes);
+		    fs_driver* x, io_node* dev);
 		DetectLabelIF DetectLabel;
 
 		typedef cause::t (*MountableIF)(
@@ -84,11 +94,11 @@ public:
 
 	// DetectLabel
 	template<class T> static cause::pair<uptr> call_on_DetectLabel(
-	    fs_driver* x, io_node* dev, char* label, uptr bytes) {
-		return static_cast<T*>(x)->on_DetectLabel(dev, label, bytes);
+	    fs_driver* x, io_node* dev) {
+		return static_cast<T*>(x)->on_DetectLabel(dev);
 	}
 	static cause::pair<uptr> nofunc_DetectLabel(
-	    fs_driver*, io_node* /*dev*/, char* /*label*/, uptr /*bytes*/) {
+	    fs_driver*, io_node* /*dev*/) {
 		return zero_pair(cause::NOFUNC);
 	}
 
@@ -144,6 +154,9 @@ protected:
 };
 
 
+/// @brief  Base class of Mount points interface.
+//
+/// Filesystem driver must implement this interface.
 class fs_mount
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_mount);
@@ -153,7 +166,7 @@ class fs_mount
 public:
 	chain_node<fs_mount>& chain_hook() { return _chain_node; }
 
-	fs_node* get_root_node() { return root; }
+	fs_dir_node* get_root_node() { return root; }
 
 public:
 	struct interfaces
@@ -314,7 +327,7 @@ private:
 protected:
 	const interfaces* ifs;
 	fs_driver* driver;
-	fs_node* root;
+	fs_dir_node* root;
 };
 
 class fs_mount_info
@@ -329,19 +342,22 @@ public:
 	    const char* source, const char* target);
 	static cause::t destroy(fs_mount_info* mp);
 
+	fs_ns*      ns;
 	fs_mount*   mount_obj;
+	fs_node*    mount_fsnode;
 	const char* source;
 	const char* target;
 
 	pathname_cn_t source_char_cn;  ///< source char count.
 	pathname_cn_t target_char_cn;  ///< target char count.
 
-	chain_node<fs_mount_info> fs_ctl_chain_node;
+	chain_node<fs_mount_info> fs_ns_chain_node;
 	chain_node<fs_mount_info> fs_node_chain_node;
 
 	char buf[0];
 };
 
+/// @brief  Base class of file nodes interface.
 class fs_node
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_node);
@@ -354,14 +370,20 @@ public:
 	bool is_dir() const;
 	bool is_regular() const;
 
-	void insert_mount(fs_mount_info* mi);
+	fs_node* into_ns(generic_ns* ns);
+	fs_node* ref_into_ns(generic_ns* ns);
+	void append_mount(fs_mount_info* mi);
 	void remove_mount(fs_mount_info* mi);
 
 	cause::pair<io_node*> open(u32 flags) {
 		return owner->open_node(this, flags);
 	}
 
+	cause::pair<fs_node*> get_child_node(const char* name);
+	cause::pair<fs_node*> ref_child_node(const char* name);
 	fs_node* get_mounted_node();
+
+	refcnt<> refs;
 
 private:
 	fs_mount* owner;
@@ -373,6 +395,7 @@ private:
 	spin_rwlock mounts_lock;
 };
 
+/// @brief  Directory node interface.
 class fs_dir_node : public fs_node
 {
 	class child_node
@@ -393,6 +416,7 @@ public:
 public:
 	cause::t append_child_node(fs_node* child, const char* name);
 	cause::pair<fs_node*> get_child_node(const char* name);
+	cause::pair<fs_node*> ref_child_node(const char* name);
 	cause::pair<fs_reg_node*> create_child_reg_node(const char* name);
 
 private:
@@ -406,12 +430,14 @@ private:
 	spin_rwlock child_nodes_lock;
 };
 
+/// @brief  Regular file node interface.
 class fs_reg_node : public fs_node
 {
 public:
 	fs_reg_node(fs_mount* owner);
 };
 
+/// @brief  Device file node interface.
 class fs_dev_node : public fs_node
 {
 public:
@@ -423,6 +449,7 @@ private:
 	devnode_no node_no;
 };
 
+/// @brief  rootfs driver.
 class fs_rootfs_drv : public fs_driver
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_rootfs_drv);
@@ -434,10 +461,9 @@ private:
 	fs_driver::interfaces fs_driver_ops;
 };
 
+/// @brief  Mount point interface of rootfs.
 class fs_rootfs_mnt : public fs_mount
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_rootfs_mnt);
-
 public:
 	fs_rootfs_mnt(fs_rootfs_drv* drv);
 
@@ -447,6 +473,31 @@ private:
 	fs_dir_node root_node;
 };
 
+/// @brief Namespace of filesystem.
+class fs_ns : public generic_ns
+{
+public:
+	fs_ns();
+
+public:
+	void     add_mount_info(fs_mount_info* mnt_info);
+	cause::t set_root_mount_info(fs_mount_info* mnt_info);
+
+public:
+	fs_dir_node* get_root();
+	fs_dir_node* ref_root();
+
+private:
+	/// mount point list
+	chain<fs_mount_info, &fs_mount_info::fs_ns_chain_node> mountpoints;
+	spin_rwlock mountpoints_lock;
+
+	fs_dir_node* root;
+public:
+	chain_node<fs_ns> fs_ctl_chainnode;
+};
+
+/// @brief  Filesystem controller.
 class fs_ctl
 {
 	DISALLOW_COPY_AND_ASSIGN(fs_ctl);
@@ -474,23 +525,40 @@ public:
 	cause::pair<fs_driver*> detect_fs_driver(
 	    const char* source, const char* type);
 
-	cause::pair<io_node*> open_node(const char* path, u32 flags);
+	cause::pair<io_node*> open_node(generic_ns* fsns, const char* cwd,
+	    const char* path, u32 flags);
 	cause::t close(io_node* ion);
 	cause::t mount(
-	    const char* source, const char* target, const char* type);
+	    process*    proc,
+	    const char* source,
+	    const char* target,
+	    const char* type,
+	    u64         flags,
+            const void* data);
 	cause::t unmount(
-	    const char* target, u64 flags);
+	    process*    proc,
+	    const char* target,
+	    u64         flags);
 	cause::t mkdir(const char* path);
 
 private:
+	cause::t _mount(
+	    const char* source,
+	    const char* target,
+	    fs_node*    target_fsnode,
+	    fs_driver*  drv,
+	    u64         flags,
+	    const void* data);
 	cause::pair<fs_node*> get_fs_node(
 	    fs_node* base, const char* path, u32 flags);
 	cause::pair<fs_dir_node*> get_parent_node(
 	    fs_dir_node* base, const char* path);
 
 private:
+	chain<fs_ns, &fs_ns::fs_ctl_chainnode> ns_chain;
+
 	/// mount point list
-	chain<fs_mount_info, &fs_mount_info::fs_ctl_chain_node> mountpoints;
+	chain<fs_mount_info, &fs_mount_info::fs_ns_chain_node> mountpoints;
 	spin_rwlock mountpoints_lock;
 
 	fs_dir_node* root;

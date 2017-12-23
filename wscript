@@ -39,9 +39,9 @@ def configure(x):
 		#x.find_program('clang++', var='LD')
 		#x.env.append_unique('CXXFLAGS', '-emit-llvm')
 		#x.env.append_unique('CFLAGS', '-emit-llvm')
-		x.env.append_unique('CXXFLAGS', '-std=c++11')
-		x.env.append_unique('CXXFLAGS', '-Wc++11-compat')
-		x.env.append_unique('CXXFLAGS', '-Wc++11-extensions')
+		x.env.append_unique('CXXFLAGS', '-std=c++14')
+		x.env.append_unique('CXXFLAGS', '-Wc++14-compat')
+		x.env.append_unique('CXXFLAGS', '-Wc++14-extensions')
 		if x.env.PCH:
 			x.env.append_value('CXXFLAGS_KERNEL',
 			                   '-include''core/basic.hh')
@@ -69,7 +69,8 @@ def build(x):
 	x.env.append_value('INCLUDES', '#arch/'+x.env.CONFIG_ARCH+'/include')
 
 	if x.env.PCH:
-		x(features='cxx', source='core/include/core/basic.hh', use='KERNEL')
+		x(features='cxx', source='core/include/core/basic.hh',
+		  use='KERNEL')
 
 	x.recurse('arch')
 	x.recurse('drivers')

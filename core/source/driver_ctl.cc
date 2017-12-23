@@ -88,6 +88,8 @@ cause::t driver_ctl::unregister_driver(driver* drv)
 /// @brief Find driver by name.
 /// @retval cause::OK   Driver found. cause::data() is matched driver.
 /// @retval cause::FAIL Driver not found.
+//
+/// Caller must call driver::refs.dec() after use.
 cause::pair<driver*> driver_ctl::get_driver_by_name(const char* name)
 {
 	spin_rlock_section _srs(driver_chain_lock);
@@ -96,15 +98,33 @@ cause::pair<driver*> driver_ctl::get_driver_by_name(const char* name)
 		const sint comp = str_compare(
 		    name, drv->get_name(), driver::NAME_NR);
 
-		if (comp < 0)
+		if (comp > 0) {
 			continue;
-		else if (comp == 0)
+		} else if (comp == 0) {
+			drv->refs.inc();
 			return make_pair(cause::OK, drv);
-		else //if (com > 0)
+		} else { //if (com > 0)
 			break;
+		}
 	}
 
 	return null_pair(cause::FAIL);
+}
+
+/// @brief  driver type filter.
+/// @param[in] type  driver type.
+/// @return  This function returns driver chain iterator filtered by driver
+///          type. The return value rlocking driver chain and will be un_rlock
+///          by destructor.
+spin_rlocked_pair<
+    chain_filter<decltype (driver_ctl::driver_chain), driver_ctl::type_filter>,
+    false>
+driver_ctl::filter_by_type(driver::TYPE type)
+{
+	chain_filter<decltype (driver_chain), type_filter> filter(
+	    &driver_chain, type_filter(type));
+
+	return create_spin_rlocked_pair(filter, &driver_chain_lock);
 }
 
 cause::t driver_ctl_setup()

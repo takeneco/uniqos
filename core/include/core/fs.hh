@@ -23,6 +23,8 @@
 #include <core/ns.hh>
 
 
+class process;
+
 class fs_node;
 
 namespace fs {
@@ -33,6 +35,8 @@ const char ESCAPE = '\\';
 const char CURRENT[] = ".";
 const char PARENT[] = "..";
 
+bool        path_is_relative(const char* path);
+bool        path_is_absolute(const char* path);
 bool        path_is_splitter(const char* path);
 const char* path_skip_splitter(const char* path);
 const char* path_rskip_splitter(const char* path);
@@ -45,14 +49,12 @@ uint        name_normalize(const char* src, char* dest);
 bool nodename_is_last(const char* path);
 const char* nodename_get_last(const char* path);
 
-void        path_destroy(const char* path);
-// TODO:obsolated
-const char* path_create_normalize(const char* src);
-
 cause::pair<generic_ns*> create_initial_ns();
 
 class path_parser
 {
+	DISALLOW_COPY_AND_ASSIGN(path_parser);
+
 public:
 	using node_off = u16;
 
@@ -73,12 +75,15 @@ private:
 public:
 	static cause::pair<path_parser*> create(
 	    generic_ns* ns, const char* cwd, const char* path);
+	static cause::pair<path_parser*> create(
+	    process* proc, const char* path);
 	static void destroy(path_parser* x);
 
 	const char* get_path() const;
 	generic_ns* get_ns() { return ns; }
 	const node* get_node(node_off i);
 	const node* get_edge_node();
+	fs_node*    get_edge_fsnode();
 
 private:
 	cause::t follow_path(const char* path);

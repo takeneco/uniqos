@@ -1,13 +1,15 @@
-# filesystem core sources.
+# Build script for filesystem core sources.
 #
 # (C) 2017 KATO Takeshi
 #
 
 NAME = 'core_fs'
 
-kern_sources = [
+CORE_FS_SOURCES = [
+ 'fs_ctl.cc',
  'name_ops.cc',
  'path_parser.cc',
+ 'sys_fs.cc',
 ]
 
 def configure(x):
@@ -16,7 +18,7 @@ def configure(x):
 def build(x):
 	x.objects(
 	    target   = NAME,
-	    source   = kern_sources,
+	    source   = CORE_FS_SOURCES,
 	    use      = 'KERNEL',
 	)
 
