@@ -30,100 +30,9 @@ namespace {
 
 const char* driver_name_rootfs = "rootfs";
 
-bool nodename_is_splitter(const char* path)
-{
-	return *path == '/';
-}
-
-const char* nodename_pass_splitter(const char* path)
-{
-	if (*path == '/')
-		++path;
-
-	return path;
-}
-
-uptr nodename_length(const char* path)
-{
-	uptr r = 0;
-	while (*path) {
-		if (*path == '/')
-			break;
-		++path;
-	}
-
-	return r;
-}
-
-int nodename_compare(const char* name1, const char* name2)
-{
-	for (;;) {
-		if (*name1 != *name2) {
-			if ((*name1 == '\0' || *name1 == '/') &&
-			    (*name2 == '\0' || *name2 == '/'))
-				return 0;
-			return *name1 - *name2;
-		}
-		if (*name1 == '\0' || *name1 == '/')
-			return 0;
-
-		++name1;
-		++name2;
-	}
-}
-
-bool nodename_is_not_dir(const char* path)
-{
-	if (!*path)
-		return false;
-
-	for (;; ++path) {
-		if (*path == '\0')
-			return true;
-		if (*path == '/')
-			return false;
-	}
-}
-
-bool nodename_is_last(const char* path)
-{
-	if (!*path)
-		return false;
-
-	for (;; ++path) {
-		if (*path == '\0')
-			return true;
-		if (*path == '/')
-			break;
-	}
-
-	while (*path == '/')
-		++path;
-
-	return *path == '\0';
-}
-
-const char* nodename_get_last(const char* path)
-{
-	const char* nodename = nodename_pass_splitter(path);
-	for (;;) {
-		const char* p = nodename;
-		for (;; ++p) {
-			if (nodename_is_splitter(p))
-				break;
-			if (*p == '\0')
-				return nodename;
-		}
-
-		p = nodename_pass_splitter(p);
-		if (*p == '\0')
-			return nodename;
-		else
-			nodename = p;
-	}
-}
-
 }  // namespace
+
+using namespace fs;
 
 // fs_driver::interfaces
 
@@ -152,6 +61,7 @@ void fs_mount::interfaces::init()
 	CreateDirNode  = fs_mount::nofunc_CreateDirNode;
 	CreateRegNode  = fs_mount::nofunc_CreateRegNode;
 	CreateDevNode  = fs_mount::nofunc_CreateDevNode;
+	ReleaseNode    = fs_mount::nofunc_ReleaseNode;
 	GetChildNode   = fs_mount::nofunc_GetChildNode;
 	OpenNode       = fs_mount::nofunc_OpenNode;
 	CloseNode      = fs_mount::nofunc_CloseNode;
@@ -179,9 +89,17 @@ cause::pair<fs_reg_node*> fs_mount::create_reg_node(
 	if (is_fail(child))
 		return child;
 
+	child->refs.inc();
+
 	cause::t r = parent->append_child_node(child.value(), name);
-	if (is_fail(r))
+	if (is_fail(r)) {
+		child->refs.dec();
+		cause::t r2 = ifs->ReleaseNode(this, child, parent, name);
+		if (is_fail(r2)) {
+			log()(SRCPOS)(": ReleaseNode() failed\n");
+		}
 		return null_pair(r);
+	}
 
 	return child;
 }
@@ -246,18 +164,63 @@ bool fs_node::is_regular() const
 	return node_type == fs::NODETYPE_REG;
 }
 
-void fs_node::insert_mount(fs_mount_info* mi)
+bool fs_node::is_device() const
 {
-	spin_wlock_section _sws(mounts_lock);
-
-	mounts.push_front(mi);
+	return  node_type == fs::NODETYPE_DEV;
 }
 
-void fs_node::remove_mount(fs_mount_info* mi)
+fs_node* fs_node::into_ns(generic_ns* ns)
+{
+	for (auto minfo : mounts) {
+		if (minfo->ns == ns)
+			return minfo->mount_obj->get_root_node();
+	}
+
+	return this;
+}
+
+fs_node* fs_node::ref_into_ns(generic_ns* ns)
+{
+	for (auto minfo : mounts) {
+		if (minfo->ns == ns) {
+			fs_node* fsn = minfo->mount_obj->get_root_node();
+			fsn->refs.inc();
+			this->refs.dec();
+			return fsn;
+		}
+	}
+
+	return this;
+}
+
+void fs_node::append_mount(fs_mount_info* minfo)
 {
 	spin_wlock_section _sws(mounts_lock);
 
-	mounts.remove(mi);
+	mounts.push_front(minfo);
+}
+
+void fs_node::remove_mount(fs_mount_info* minfo)
+{
+	spin_wlock_section _sws(mounts_lock);
+
+	mounts.remove(minfo);
+}
+
+cause::pair<fs_node*> fs_node::get_child_node(const char* name)
+{
+	if (is_dir())
+		return static_cast<fs_dir_node*>(this)->get_child_node(name);
+	else
+		return null_pair(cause::NOTDIR);
+}
+
+cause::pair<fs_node*> fs_node::ref_child_node(const char* name)
+{
+	if (is_dir())
+		return static_cast<fs_dir_node*>(this)->ref_child_node(name);
+	else
+		return null_pair(cause::NOTDIR);
 }
 
 fs_node* fs_node::get_mounted_node()
@@ -316,6 +279,19 @@ cause::pair<fs_node*> fs_dir_node::get_child_node(const char* name)
 	return child;
 }
 
+cause::pair<fs_node*> fs_dir_node::ref_child_node(const char* name)
+{
+	auto child = search_cached_child_node(name);
+
+	if (child.cause() == cause::NOENT)
+		child = create_child_node(name, 0);
+
+	if (is_ok(child))
+		child->refs.inc();
+
+	return child;
+}
+
 /// fs_reg_node を作成して子ノードにする。
 /// まだ同じ名前のファイルがないことを呼び出し元が保証する必要がある。
 cause::pair<fs_reg_node*> fs_dir_node::create_child_reg_node(const char* name)
@@ -333,7 +309,7 @@ cause::pair<fs_node*> fs_dir_node::search_cached_child_node(const char* name)
 	     child;
 	     child = child_nodes.next(child))
 	{
-		if (0 == nodename_compare(child->name, name))
+		if (0 == fs::name_compare(child->name, name))
 			return cause::make_pair(cause::OK, child->node);
 	}
 
@@ -361,7 +337,7 @@ cause::pair<fs_node*> fs_dir_node::create_child_node(
 		return null_pair(cause::NOMEM);
 	}
 
-	child->node = child_fsn.data();
+	child->node = child_fsn.value();
 	str_copy(name, child->name);
 
 	child_nodes_lock.wlock();
@@ -387,7 +363,7 @@ fs_reg_node::fs_reg_node(fs_mount* owner) :
 // fs_dev_node
 
 fs_dev_node::fs_dev_node(fs_mount* owner, devnode_no no) :
-	fs_node(owner, fs_ctl::NODE_DEV),
+	fs_node(owner, fs::NODETYPE_DEV),
 	node_no(no)
 {
 }
@@ -414,269 +390,48 @@ fs_rootfs_mnt::fs_rootfs_mnt(fs_rootfs_drv* drv) :
 }
 
 
-// fs_ctl
+// fs_ns
 
-fs_ctl::fs_ctl() :
-	rootfs_mnt(&rootfs_drv)
+fs_ns::fs_ns() :
+	generic_ns(TYPE_FS)
 {
 }
 
-cause::t fs_ctl::setup()
+void fs_ns::add_mount_info(fs_mount_info* mnt_info)
 {
-	fs_node* _root = rootfs_mnt.get_root_node();
+	mountpoints_lock.wlock();
 
-	if (!_root->is_dir())
-		return cause::FAIL;
+	mountpoints.push_back(mnt_info);
 
-	root = static_cast<fs_dir_node*>(_root);
+	mountpoints_lock.un_wlock();
 
-	return cause::OK;
+	mnt_info->ns = this;
 }
 
-/// @brief ファイルシステムのドライバを検出する。
-/// @param[in] source ファイルシステムの場所を示す文字列。
-/// @param[in] type   ファイルシステム名。
-/// @return ファイルシステムのドライバが見つかれば cause::OK を返す。
-///         ドライバが見つからない場合は cause::NODEV を返す。
+/// @brief  Set root mount info.
 //
-/// type をそのままドライバ名と解釈してファイルシステムドライバを探す。
-/// type が nullptr の場合はファイルシステムのドライバへ source の文字列を
-/// を渡してマウント可能か検証させ、マウントできるドライバを探す。
-cause::pair<fs_driver*> fs_ctl::detect_fs_driver(
-    const char* source,
-    const char* type)
+/// @param[in] mnt_info  Mount info of root.
+cause::t fs_ns::set_root_mount_info(fs_mount_info* root_mnt_info)
 {
-	if (type) {
-		auto type_drv = get_driver_ctl()->get_driver_by_name(type);
-		fs_driver* tmp = static_cast<fs_driver*>(type_drv.value());
-
-		if (is_ok(type_drv) && tmp->get_type() == driver::TYPE_FS)
-			return make_pair(cause::OK, tmp);
-	} else {
-		for (auto drv :
-		     get_driver_ctl()->enum_by_type(driver::TYPE_FS))
-		{
-			fs_driver* fsdrv = static_cast<fs_driver*>(drv);
-			if (fsdrv->mountable(source)) {
-				return make_pair(cause::OK, fsdrv);
-			}
-		}
-	}
-
-	return null_pair(cause::NODEV);
-}
-
-cause::pair<io_node*> fs_ctl::open_node(const char* path, u32 flags)
-{
-	fs_dir_node* parent = get_parent_node(root, path);
-
-	auto target_node = parent->create_child_reg_node(path);
-	if (is_fail(target_node))
-		return null_pair(target_node.cause());
-
-	return target_node.data()->open(flags);
-}
-
-cause::t fs_ctl::mount(const char* source, const char* target, const char* type)
-{
-	cause::pair<fs_driver*> fs_drv;
-	fs_drv = detect_fs_driver(source, type);
-	if (is_fail(fs_drv))
-		return fs_drv.cause();
-
-	auto target_node = get_fs_node(nullptr, target, 0);
-	if (is_fail(target_node))
-		return target_node.cause();
-
-	cause::t r = cause::FAIL;
-
-	auto r1 = fs_mount_info::create(source, target);
-	if (is_ok(r1)) {
-		fs_mount_info* mnt_info = r1.data();
-
-		auto r2 = fs_drv.value()->mount(source);
-		if (is_ok(r2)) {
-			mnt_info->mount_obj = r2.value();
-
-			target_node.data()->insert_mount(mnt_info);
-
-			mountpoints_lock.wlock();
-			mountpoints.push_front(mnt_info);
-			mountpoints_lock.un_wlock();
-
-			return cause::OK;
-		}
-
-		r = r2.cause();
-
-		cause::t r3 = fs_mount_info::destroy(mnt_info);
-		if (is_fail(r3)) {
-			log()(SRCPOS)
-			     (": fs_mount_info::destroy() failed. r=")
-			   .u(r3)();
-		}
-	} else {
-		r = r1.cause();
-	}
-
-	return r;
-}
-
-cause::t fs_ctl::unmount(const char* target, u64 flags)
-{
-	spin_wlock_section _sws(mountpoints_lock);
-	
-	fs_mount_info* target_mp = nullptr;
-	for (fs_mount_info* mp = mountpoints.front();
-	     mp;
-	     mp = mountpoints.next(mp))
-	{
-		if (str_compare(target, mp->target) == 0) {
-			target_mp = mp;
-			break;
-		}
-	}
-
-	if (!target_mp)
+	if (root_mnt_info->ns != this)
 		return cause::BADARG;
 
-	auto target_node = get_fs_node(nullptr, target, 0);
-	if (is_fail(target_node))
-		return target_node.cause();
-
-	mountpoints.remove(target_mp);
-
-	target_node.data()->remove_mount(target_mp);
-
-	auto r = target_mp->mount_obj->get_driver()->unmount(
-	    target_mp->mount_obj, target_mp->target, flags);
-
-	fs_mount_info::destroy(target_mp);
-
-	return r;
-}
-
-cause::t fs_ctl::mkdir(const char* path)
-{
-	fs_node* _parent = get_parent_node(root, path);
-	if (!_parent->is_dir())
-		return cause::NOTDIR;
-	fs_dir_node* parent = static_cast<fs_dir_node*>(_parent);
-
-	// TODO:make dir
-	fs_mount* mnt = parent->get_owner();
-
-	const char* name = nodename_get_last(path);
-
-	return mnt->create_dir_node(parent, name, fs::OP_CREATE);
-}
-
-cause::pair<fs_node*> fs_ctl::get_fs_node(
-    fs_node* base, const char* path, u32 flags)
-{
-	fs_node* cur = (*path == '/' ? root : base);
-
-	for (;;) {
-		if (*path == '/' && !cur->is_dir())
-			return null_pair(cause::NOENT);
-
-		while (*path == '/')
-			++path;
-
-		if (*path == '\0')
-			break;
-
-		if (!cur->is_dir())
-			return null_pair(cause::NOENT);
-
-		auto child =
-		    static_cast<fs_dir_node*>(cur)->get_child_node(path);
-		if (is_fail(child))
-			return null_pair(child.cause());
-
-		cur = child.value();
-
-		uptr len = nodename_length(path);
-		path += len;
-	}
-
-	return make_pair(cause::OK, cur);
-}
-
-/// 指定したパスの親ディレクトリの fs_dir_node を返す。
-/// @TODO:相対パスを考慮する。
-cause::pair<fs_dir_node*> fs_ctl::get_parent_node(
-    fs_dir_node* base, const char* path)
-{
-	fs_dir_node* cur = (*path == '/' ? root : base);
-
-	while (*path) {
-		fs_node* cur2 = cur->get_mounted_node();
-		if (cur2 && cur2->is_dir())
-			cur = static_cast<fs_dir_node*>(cur2);
-
-		while (*path == '/')
-			++path;
-
-		if (nodename_is_last(path))
-			break;
-
-		auto child = cur->get_child_node(path);
-		if (is_fail(child))
-			return null_pair(child.cause());
-
-		if (!child.value()->is_dir())
-			return null_pair(cause::NOENT);
-
-		cur = static_cast<fs_dir_node*>(child.value());
-
-		uptr len = nodename_length(path);
-		path += len;
-	}
-
-	return make_pair(cause::OK, cur);
-}
-
-fs_ctl* get_fs_ctl()
-{
-	return global_vars::core.fs_ctl_obj;
-}
-
-
-cause::t fs_ctl_init()
-{
-	fs_ctl* fsctl = new (generic_mem()) fs_ctl;
-	if (!fsctl)
-		return cause::NOMEM;
-
-	auto r = fsctl->setup();
-	if (is_fail(r)) {
-		// TODO:logging return value
-		new_destroy(fsctl, generic_mem());
-		return r;
-	}
-
-	global_vars::core.fs_ctl_obj = fsctl;
+	root = root_mnt_info->mount_obj->get_root_node();
 
 	return cause::OK;
 }
 
-cause::t sys_mount(
-    const char* source,  ///< source device path
-    const char* target,  ///< mount target path
-    const char* type,    ///< fs type name
-    u64 flags,           ///< mount flags
-    const void* data)    ///< optional data
+fs_dir_node* fs_ns::get_root()
 {
-	return get_fs_ctl()->mount(source, target, type);
+	return root;
 }
 
-cause::t sys_unmount(
-    const char* target,  ///< unmount taget path
-    u64 flags)
+fs_dir_node* fs_ns::ref_root()
 {
-	return get_fs_ctl()->unmount(target, flags);
+	root->refs.inc();
+	return root;
 }
+
 
 cause::t fs_mkdir(const char* path)
 {

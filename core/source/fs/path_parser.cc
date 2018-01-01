@@ -244,14 +244,32 @@ const path_parser::node* path_parser::get_node(node_off i)
 	return i < node_use_nr ? &nodes[i] : nullptr;
 }
 
+fs_node* path_parser::get_fsnode(node_off i)
+{
+	return i < node_use_nr ? nodes[i].fsnode : nullptr;
+}
+
+const char* path_parser::get_name(node_off i)
+{
+	return i < node_use_nr ? nodes[i].name : nullptr;
+}
+
+/// Same as path_parser::get_node(path_parser::get_node_nr() - 1)
 const path_parser::node* path_parser::get_edge_node()
 {
 	return edge_node();
 }
 
+/// Same as path_parser::get_fsnode(path_parser::get_node_nr() - 1)
 fs_node* path_parser::get_edge_fsnode()
 {
 	return edge_node()->fsnode;
+}
+
+/// Same as path_parser::get_name(path_parser::get_node_nr() - 1)
+const char* path_parser::get_edge_name()
+{
+	return edge_node()->name;
 }
 
 /// @param path  Relative path. Head splitter will be ignored.

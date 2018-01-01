@@ -1,7 +1,7 @@
 /// @file  core/global_vars.hh
 /// @brief Global variables declaration.
 //
-// (C) 2013-2015 KATO Takeshi
+// (C) 2013 KATO Takeshi
 //
 
 #ifndef CORE_GLOBAL_VARS_HH_
@@ -12,6 +12,7 @@
 
 
 class cpu_node;
+class ns_ctl;
 class device_ctl;
 class dev_node_ctl;
 class driver_ctl;
@@ -44,9 +45,11 @@ struct _core
 
 	cpu_node*          cpu_node_objs[CONFIG_MAX_CPUS];
 
+	ns_ctl*            ns_ctl_obj;
+
 	device_ctl*        device_ctl_obj;
 
-	dev_node_ctl*     dev_node_ctl_obj;
+	dev_node_ctl*      dev_node_ctl_obj;
 
 	driver_ctl*        driver_ctl_obj;
 

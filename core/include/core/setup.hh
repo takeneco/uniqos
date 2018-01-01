@@ -1,6 +1,6 @@
 /// @file  core/setup.hh
 //
-// (C) 2012-2015 KATO Takeshi
+// (C) 2012 KATO Takeshi
 //
 
 #ifndef CORE_SETUP_HH_
@@ -14,6 +14,7 @@ cause::t mempool_post_setup();
 cause::t log_init();
 cause::t mem_io_setup();
 cause::t intr_setup();
+cause::t ns_setup();
 cause::t device_ctl_setup();
 cause::t devnode_setup();
 cause::t driver_ctl_setup();
@@ -26,5 +27,5 @@ cause::t ahci_setup();
 cause::t pci_setup();
 
 
-#endif  // include guard
+#endif  // CORE_SETUP_HH_
 

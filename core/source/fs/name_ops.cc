@@ -26,6 +26,16 @@
 
 namespace fs {
 
+bool path_is_absolute(const char* path)
+{
+	return *path == SPLITTER;
+}
+
+bool path_is_relative(const char* path)
+{
+	return *path != SPLITTER;
+}
+
 bool path_is_splitter(const char* name)
 {
 	return *name == SPLITTER;
@@ -202,61 +212,6 @@ const char* nodename_get_last(const char* path)
 		else
 			nodename = p;
 	}
-}
-
-void path_destroy(const char* path)
-{
-	operator delete[] (const_cast<char*>(path), generic_mem());
-}
-
-/// TODO: obsolated
-const char* path_create_normalize(const char* src)
-{
-	pathname_cn_t src_len = str_length(src);
-	if (src_len == 0 || !path_is_splitter(src))
-		return nullptr;
-
-	char* path = new (generic_mem()) char[src_len + 1];
-	char* dst = path;
-
-	*dst++ = '/';
-	src = path_skip_splitter(src);
-
-	int deps = 0;
-
-	while (*src) {
-		if (name_compare(src, ".")) {
-			src += 1;
-			src = path_skip_splitter(src);
-			continue;
-		} else if (name_compare(src, "..")) {
-			if (deps <= 0) {
-				path_destroy(path);
-				return nullptr;
-			} else {
-				--deps;
-				--dst;  // '/'
-				while (*dst != '/')
-					--dst;
-				if (nodename_is_last(src) && deps > 0)
-					--dst;
-			}
-		} else {
-			pathname_cn_t len = name_length(src);
-			mem_copy(src, dst, len);
-			src += len;
-			dst += len;
-			++deps;
-			if (!nodename_is_last(src))
-				*dst++ = '/';
-			else
-				break;
-		}
-	}
-
-	*dst = '\0';
-
-	return path;
 }
 
 }  // namespace fs

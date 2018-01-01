@@ -53,7 +53,7 @@ cause::pair<generic_ns*> create_initial_ns();
 
 class path_parser
 {
-	DISALLOW_COPY_AND_ASSIGN(path_parser);
+	NONCOPYABLE(path_parser);
 
 public:
 	using node_off = u16;
@@ -79,11 +79,15 @@ public:
 	    process* proc, const char* path);
 	static void destroy(path_parser* x);
 
+	node_off    get_node_nr() { return node_use_nr; }
 	const char* get_path() const;
 	generic_ns* get_ns() { return ns; }
 	const node* get_node(node_off i);
+	fs_node*    get_fsnode(node_off i);
+	const char* get_name(node_off i);
 	const node* get_edge_node();
 	fs_node*    get_edge_fsnode();
+	const char* get_edge_name();
 
 private:
 	cause::t follow_path(const char* path);

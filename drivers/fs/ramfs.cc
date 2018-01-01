@@ -18,6 +18,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <core/fs_ctl.hh>
+#include <core/log.hh>
 #include <util/string.hh>
 
 
@@ -34,13 +35,13 @@ public:
 	ramfs_driver();
 
 	cause::t setup();
-	cause::t unsetup();
+	cause::t teardown();
 
 	cause::pair<fs_mount*> on_Mount(const char* dev);
 	cause::t on_Unmount(fs_mount* mount, const char* target, u64 flags);
 
 	const fs_mount::interfaces* get_fs_mount_ifs() { return &mount_ifs; }
-	const io_node::interfaces* ref_io_node_ifs() { return &io_node_ifs; }
+	const io_node::interfaces* get_io_node_ifs() { return &io_node_ifs; }
 
 	mempool* get_fs_reg_node_mp() { return fs_reg_node_mp; }
 	mempool* get_fs_dir_node_mp() { return fs_dir_node_mp; }
@@ -72,11 +73,13 @@ public:
 	cause::pair<fs_node*> on_CreateNode(
 	    fs_dir_node* parent, const char* name, u32 flags);
 	cause::pair<fs_dir_node*> on_CreateDirNode(
-	    fs_dir_node* parent, const char* name);
+	    fs_dir_node* parent, const char* name, u32 flags);
 	cause::pair<fs_reg_node*> on_CreateRegNode(
 	    fs_dir_node* parent, const char* name);
 	cause::pair<fs_dev_node*> on_CreateDevNode(
 	    fs_dir_node* parent, const char* name, devnode_no no, u32 flags);
+	cause::t on_ReleaseNode(
+	    fs_node* release_node, fs_dir_node* parent, const char* name);
 	cause::pair<fs_node*> on_GetChildNode(
 	    fs_dir_node* parent, const char* childname);
 	cause::pair<io_node*> on_OpenNode(
@@ -173,7 +176,9 @@ ramfs_driver::ramfs_driver() :
 
 	mount_ifs.CreateNode    = fs_mount::call_on_CreateNode<ramfs_mount>;
 	mount_ifs.CreateDirNode = fs_mount::call_on_CreateDirNode<ramfs_mount>;
+	//mount_ifs.CreateRegNode = fs_mount::call_on_CreateRegNode<ramfs_mount>;
 	mount_ifs.CreateDevNode = fs_mount::call_on_CreateDevNode<ramfs_mount>;
+	mount_ifs.ReleaseNode   = fs_mount::call_on_ReleaseNode<ramfs_mount>;
 	mount_ifs.OpenNode      = fs_mount::call_on_OpenNode<ramfs_mount>;
 	mount_ifs.CloseNode     = fs_mount::call_on_CloseNode<ramfs_mount>;
 
@@ -211,10 +216,23 @@ cause::t ramfs_driver::setup()
 	return cause::OK;
 }
 
-cause::t ramfs_driver::unsetup()
+cause::t ramfs_driver::teardown()
 {
-	// TODO:release fs_reg_node_mp,ionode_mp
-	return cause::NOFUNC;
+	cause::t ret = cause::OK;
+
+	if (fs_reg_node_mp) {
+		cause::t r = mempool::destroy_exclusive(fs_reg_node_mp);
+		if (is_fail(r)) {
+			ret = r;
+			log()(SRCPOS)(": mempool error. r = ").u(r)();
+		}
+	}
+
+	mempool::release_shared(fs_dir_node_mp);
+
+	mempool::release_shared(fs_dev_node_mp);
+
+	return ret;
 }
 
 cause::pair<fs_mount*> ramfs_driver::on_Mount(const char* dev)
@@ -272,14 +290,15 @@ cause::t ramfs_mount::mount(const char*)
 cause::pair<fs_node*> ramfs_mount::on_CreateNode(
     fs_dir_node* parent,
     const char* name,
-    u32 /*flags*/)
+    u32 flags)
 {
 	return parent->get_child_node(name);
 }
 
 cause::pair<fs_dir_node*> ramfs_mount::on_CreateDirNode(
     fs_dir_node* /*parent*/,
-    const char* /*name*/)
+    const char* /*name*/,
+    u32 flags)
 {
 	fs_dir_node* fsdn = new (*get_driver()->get_fs_dir_node_mp())
 	                        ramfs_dir_node(this);
@@ -313,6 +332,30 @@ cause::pair<fs_dev_node*> ramfs_mount::on_CreateDevNode(
 		return null_pair(cause::NOMEM);
 
 	return make_pair(cause::OK, node);
+}
+
+cause::t ramfs_mount::on_ReleaseNode(
+    fs_node* release_node,
+    fs_dir_node* parent,
+    const char* name)
+{
+	ramfs_driver* drv = get_driver();
+	mempool* mp;
+
+	if (release_node->is_regular()) {
+		mp = drv->get_fs_reg_node_mp();
+		static_cast<ramfs_reg_node*>(release_node)->destroy();
+	} else if (release_node->is_dir()) {
+		mp = drv->get_fs_dir_node_mp();
+	} else if (release_node->is_device()) {
+		mp = drv->get_fs_dev_node_mp();
+	} else {
+		return cause::NOFUNC;
+	}
+
+	new_destroy(release_node, *mp);
+
+	return cause::OK;
 }
 
 cause::pair<fs_node*> ramfs_mount::on_GetChildNode(
@@ -383,7 +426,7 @@ cause::pair<dir_entry*> ramfs_io_node::on_GetDirEntry(
 
 ramfs_reg_node::ramfs_reg_node(ramfs_mount* owner) :
 	fs_reg_node(owner),
-	ramfs_ion(owner->get_driver()->ref_io_node_ifs(), this),
+	ramfs_ion(owner->get_driver()->get_io_node_ifs(), this),
 	size_bytes(0)
 {
 	for (uint i = 0; i < num_of_array(blocks); ++i)
@@ -483,14 +526,14 @@ cause::pair<uptr> ramfs_reg_node::write(uptr off, const void* data, uptr bytes)
 
 ramfs_dir_node::ramfs_dir_node(ramfs_mount* owner) :
 	fs_dir_node(owner),
-	ramfs_ion(owner->get_driver()->ref_io_node_ifs(), this)
+	ramfs_ion(owner->get_driver()->get_io_node_ifs(), this)
 {
 }
 
 }  // namespace
 
 
-cause::t ramfs_init()
+cause::t ramfs_setup()
 {
 	ramfs_driver* ramfs_drv = new (generic_mem()) ramfs_driver;
 	if (!ramfs_drv)
@@ -498,12 +541,12 @@ cause::t ramfs_init()
 
 	auto r = ramfs_drv->setup();
 	if (is_fail(r)) {
-		//TODO:return code
-		ramfs_drv->unsetup();
+		// teardown() outputs error logs if failed.
+		ramfs_drv->teardown();
 		return r;
 	}
 
-	r = get_fs_ctl()->register_fs_driver(ramfs_drv);
+	r = get_driver_ctl()->register_driver(ramfs_drv);
 	if (is_fail(r))
 		new_destroy(ramfs_drv, generic_mem());
 

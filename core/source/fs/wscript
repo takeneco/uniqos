@@ -8,6 +8,7 @@ NAME = 'core_fs'
 CORE_FS_SOURCES = [
  'fs_ctl.cc',
  'name_ops.cc',
+ 'ns.cc',
  'path_parser.cc',
  'sys_fs.cc',
 ]

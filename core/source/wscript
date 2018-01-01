@@ -1,6 +1,6 @@
 # architecture independent kernel codes.
 #
-# (C) 2011-2015 KATO Takeshi
+# (C) 2011 KATO Takeshi
 #
 
 
@@ -21,6 +21,7 @@ kern_sources = [
  'mempool.cc',
  'mempool_ctl.cc',
  'message_queue.cc',
+ 'ns.cc',
  'output_buffer.cc',
  'page.cc',
  'page_pool.cc',
@@ -38,7 +39,7 @@ kern_sources = [
  'vadr_pool.cc',
 ]
 
-
+# libraries for multiboot
 mb_sources = [
  'ctype.cc',      # necessary to link with string.cc in g++.
  'io_node.cc',
@@ -48,8 +49,11 @@ mb_sources = [
  'string.cc',
 ]
 
+def configure(x):
+	x.recurse('fs')
 
 def build(x):
+	x.recurse('fs')
 	x.objects(
 	    target   = 'kernel_objs',
 	    source   = kern_sources,

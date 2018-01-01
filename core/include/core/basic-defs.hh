@@ -1,14 +1,14 @@
-/// @file  basic_defs.hh
+/// @file  basic-defs.hh
 
-//  UNIQOS  --  Unique Operating System
-//  (C) 2012-2013 KATO Takeshi
+//  Uniqos  --  Unique Operating System
+//  (C) 2012 KATO Takeshi
 //
-//  UNIQOS is free software: you can redistribute it and/or modify
+//  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
 //  the Free Software Foundation, either version 3 of the License, or
 //  (at your option) any later version.
 //
-//  UNIQOS is distributed in the hope that it will be useful,
+//  Uniqos is distributed in the hope that it will be useful,
 //  but WITHOUT ANY WARRANTY; without even the implied warranty of
 //  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 //  GNU General Public License for more details.
@@ -16,19 +16,25 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#ifndef INCLUDE_BASIC_DEFS_HH_
-#define INCLUDE_BASIC_DEFS_HH_
+#ifndef CORE_BASIC_DEFS_HH_
+#define CORE_BASIC_DEFS_HH_
 
 
-/// Disable default copy constructor and operator=.
+// OBSOLATED
+#define DISALLOW_COPY_AND_ASSIGN(T) \
+    T(const T&);void operator=(const T&)
+
+/// Disable default copy constructor and operator =.
 /// @code
 /// class example
 /// {
-///     DISALLOW_COPY_AND_ASSIGN(example);
 /// public:
+///     NONCOPYABLE(example);
+///     ...
 /// };
 /// @endcode
-#define DISALLOW_COPY_AND_ASSIGN(T)  T(const T&);void operator=(const T&)
+#define NONCOPYABLE(T) \
+    T(const T&)=delete;void operator=(const T&)=delete
 
 
 #define num_of_array(array) (sizeof array / sizeof array[0])
@@ -132,5 +138,5 @@ private:
 };
 
 
-#endif  // include guard
+#endif  // CORE_BASIC_DEFS_HH_
 

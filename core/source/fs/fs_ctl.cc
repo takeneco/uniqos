@@ -23,6 +23,7 @@
 #include <core/global_vars.hh>
 #include <core/log.hh>
 #include <core/mempool.hh>
+#include <core/process.hh>
 #include <core/setup.hh>
 #include <util/string.hh>
 
@@ -89,13 +90,42 @@ cause::pair<fs_driver*> fs_ctl::detect_fs_driver(
 cause::pair<io_node*> fs_ctl::open_node(
     generic_ns* fsns, const char* cwd, const char* path, u32 flags)
 {
-	fs_dir_node* parent = get_parent_node(root, path);
+	cause::pair<path_parser*> pathnodes =
+	    path_parser::create(fsns, cwd, path);
+	if (is_fail(pathnodes))
+		return null_pair(pathnodes.cause());
 
-	auto target_node = parent->create_child_reg_node(path);
-	if (is_fail(target_node))
-		return null_pair(target_node.cause());
+	fs_node* edge_node = pathnodes->get_edge_fsnode();
 
-	return target_node.data()->open(flags);
+	if (!edge_node) {
+		// create new node
+		fs_dir_node* parent = static_cast<fs_dir_node*>(
+		    pathnodes->get_fsnode(pathnodes->get_node_nr() - 2));
+		cause::pair<fs_reg_node*> tmp =
+		    parent->create_child_reg_node(pathnodes->get_edge_name());
+		if (is_fail(tmp)) {
+			path_parser::destroy(pathnodes);
+			return null_pair(tmp.cause());
+		}
+		edge_node = tmp.value();
+	}
+
+	edge_node->refs.inc();
+	path_parser::destroy(pathnodes);
+
+	return edge_node->open(flags);
+}
+
+cause::pair<io_node*> fs_ctl::open_node(
+    process* proc, const char* path, u32 flags)
+{
+	spin_rlock_section ns_lock_sec(proc->ref_ns_lock());
+	spin_rlock_section cwd_lock_sec(proc->ref_cwd_lock());
+
+	generic_ns* proc_ns = proc->get_ns_fs();
+	const char* proc_cwd = proc->get_cwd_path();
+
+	return open_node(proc_ns, proc_cwd, path, flags);
 }
 
 cause::t fs_ctl::mount(
@@ -131,34 +161,37 @@ cause::t fs_ctl::unmount(
     const char* target,
     u64         flags)
 {
+	cause::pair<path_parser*> tgt_path = path_parser::create(proc, target);
+	if (is_fail(tgt_path))
+		return tgt_path.cause();
+
 	spin_wlock_section _sws(mountpoints_lock);
 
-	fs_mount_info* target_mp = nullptr;
-	for (fs_mount_info* mp = mountpoints.front();
-	     mp;
-	     mp = mountpoints.next(mp))
-	{
-		if (str_compare(target, mp->target) == 0) {
-			target_mp = mp;
+	fs_mount_info* target_mi = nullptr;
+	for (fs_mount_info* mi : mountpoints) {
+		if (str_compare(tgt_path->get_path(), mi->target) == 0) {
+			target_mi = mi;
 			break;
 		}
 	}
 
-	if (!target_mp)
+	path_parser::destroy(tgt_path);
+
+	if (!target_mi)
 		return cause::BADARG;
 
 	auto target_node = get_fs_node(nullptr, target, 0);
 	if (is_fail(target_node))
 		return target_node.cause();
 
-	mountpoints.remove(target_mp);
+	mountpoints.remove(target_mi);
 
-	target_node.data()->remove_mount(target_mp);
+	target_node.value()->remove_mount(target_mi);
 
-	auto r = target_mp->mount_obj->get_driver()->unmount(
-	    target_mp->mount_obj, target_mp->target, flags);
+	auto r = target_mi->mount_obj->get_driver()->unmount(
+	    target_mi->mount_obj, target_mi->target, flags);
 
-	fs_mount_info::destroy(target_mp);
+	fs_mount_info::destroy(target_mi);
 
 	return r;
 }

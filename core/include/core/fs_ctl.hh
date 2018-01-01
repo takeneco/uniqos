@@ -67,7 +67,7 @@ enum FLAGS
 /// Filesystem driver must implement this interface.
 class fs_driver : public driver
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_driver);
+	NONCOPYABLE(fs_driver);
 
 public:
 	struct interfaces
@@ -159,7 +159,7 @@ protected:
 /// Filesystem driver must implement this interface.
 class fs_mount
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_mount);
+	NONCOPYABLE(fs_mount);
 
 	friend class fs_node;
 
@@ -200,6 +200,13 @@ public:
 		    devnode_no no,
 		    u32 flags);
 		CreateDevNodeIF CreateDevNode;
+
+		typedef cause::t (*ReleaseNodeIF)(
+		    fs_mount* x,
+		    fs_node* release_node,
+		    fs_dir_node* parent,
+		    const char* name);
+		ReleaseNodeIF ReleaseNode;
 
 		typedef cause::pair<fs_node*> (*GetChildNodeIF)(
 		    fs_mount* x, fs_dir_node* parent, const char* childname);
@@ -265,6 +272,19 @@ public:
 		return null_pair(cause::NOFUNC);
 	}
 
+	// ReleaseNode
+	template <class T>
+	static cause::t call_on_ReleaseNode(
+	    fs_mount* x,
+	    fs_node* release_node, fs_dir_node* parent, const char* name) {
+		return static_cast<T*>(x)->
+		    on_ReleaseNode(release_node, parent, name);
+	}
+	static cause::t nofunc_ReleaseNode(
+	    fs_mount*, fs_node*, fs_dir_node*, const char*) {
+		return cause::NOFUNC;
+	}
+
 	// GetChildNode
 	template <class T>
 	static cause::pair<fs_node*> call_on_GetChildNode(
@@ -309,12 +329,12 @@ public:
 	cause::pair<fs_reg_node*> create_reg_node(
 	    fs_dir_node* parent, const char* name);
 
-	fs_driver* get_driver() { return driver; }
-
 	cause::pair<fs_node*> create_node(
 	    fs_dir_node* parent, const char* name, u32 flags) {
 		return ifs->CreateNode(this, parent, name, flags);
 	}
+
+	fs_driver* get_driver() { return driver; }
 
 protected:
 	fs_mount(fs_driver* drv, const interfaces* _ifs) :
@@ -332,7 +352,7 @@ protected:
 
 class fs_mount_info
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_mount_info);
+	NONCOPYABLE(fs_mount_info);
 
 private:
 	fs_mount_info(const char* src, const char* tgt);
@@ -360,7 +380,7 @@ public:
 /// @brief  Base class of file nodes interface.
 class fs_node
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_node);
+	NONCOPYABLE(fs_node);
 
 protected:
 	fs_node(fs_mount* owner, u32 type);
@@ -369,6 +389,7 @@ public:
 	fs_mount* get_owner() { return owner; }
 	bool is_dir() const;
 	bool is_regular() const;
+	bool is_device() const;
 
 	fs_node* into_ns(generic_ns* ns);
 	fs_node* ref_into_ns(generic_ns* ns);
@@ -452,7 +473,7 @@ private:
 /// @brief  rootfs driver.
 class fs_rootfs_drv : public fs_driver
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_rootfs_drv);
+	NONCOPYABLE(fs_rootfs_drv);
 
 public:
 	fs_rootfs_drv();
@@ -500,7 +521,7 @@ public:
 /// @brief  Filesystem controller.
 class fs_ctl
 {
-	DISALLOW_COPY_AND_ASSIGN(fs_ctl);
+	NONCOPYABLE(fs_ctl);
 
 	friend class fs_node;
 
@@ -527,6 +548,10 @@ public:
 
 	cause::pair<io_node*> open_node(generic_ns* fsns, const char* cwd,
 	    const char* path, u32 flags);
+	cause::pair<io_node*> open_node(
+	    process* proc,
+	    const char* path,
+	    u32 flags);
 	cause::t close(io_node* ion);
 	cause::t mount(
 	    process*    proc,

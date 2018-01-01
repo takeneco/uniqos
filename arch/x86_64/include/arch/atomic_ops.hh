@@ -86,6 +86,7 @@ u32 atomic32_compare_exchange(u32 old_val, u32 new_val, volatile u32* atom) {
 	              : "memory");
 	return r;
 }
+#if DARCH_ADR_BITS >= 64
 inline
 u64 atomic64_compare_exchange(u64 old_val, u64 new_val, volatile u64* atom) {
 	u64 r;
@@ -95,6 +96,10 @@ u64 atomic64_compare_exchange(u64 old_val, u64 new_val, volatile u64* atom) {
 	              : "memory");
 	return r;
 }
+#else  // DARCH_ADR_BITS >= 64
+// declare only
+u64 atomic64_compare_exchange(u64 old_val, u64 new_val, volatile u64* atom);
+#endif  // DARCH_ADR_BITS >= 64
 
 // atomic_add
 inline void atomic8_add(u8 add_val, volatile u8* atom) {
