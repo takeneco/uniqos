@@ -19,10 +19,18 @@
 
 #include <core/fs.hh>
 
-#include <core/fs_ctl.hh>  // pathname_cn_t
 #include <core/new_ops.hh>
 #include <util/string.hh>
 
+
+namespace {
+
+inline bool name_is_end(bool escape, const char *name)
+{
+	return *name == '\0' || (!escape && fs::path_is_splitter(name));
+}
+
+}  // namespace
 
 namespace fs {
 
@@ -97,29 +105,45 @@ bool path_skip_parent(const char** path)
 	return false;
 }
 
-uptr name_length(const char* name)
+pathlen_t name_length(const char* name)
 {
-	uptr r = 0;
-	while (*name) {
-		if (path_is_splitter(name))
+	uint n;
+	bool escape = false;
+
+	for (n = 0; name[n]; ++n) {
+		if (name_is_end(escape, name + n))
 			break;
-		++name;
+
+		escape = name[n] == ESCAPE;
 	}
 
-	return r;
+	return n;
 }
 
+/// @brief  Compare node name.
+/// @return value < 0 if name1 less than name2,
+///         value == 0 if name1 to match name2,
+///         value > 0 if name1 greater than name2.
 int name_compare(const char* name1, const char* name2)
 {
+	bool escape = false;
+
 	for (;;) {
 		if (*name1 != *name2) {
-			if ((*name1 == '\0' || *name1 == '/') &&
-			    (*name2 == '\0' || *name2 == '/'))
+			bool name1_end = name_is_end(escape, name1);
+			bool name2_end = name_is_end(escape, name2);
+			if (name1_end && name2_end)
 				return 0;
+			if (name1_end)
+				return -*name2;
+			if (name2_end)
+				return *name1;
 			return *name1 - *name2;
 		}
-		if (*name1 == '\0' || *name1 == '/')
+		if (name_is_end(escape, name1))
 			return 0;
+
+		escape = *name1 == ESCAPE;
 
 		++name1;
 		++name2;
@@ -128,30 +152,29 @@ int name_compare(const char* name1, const char* name2)
 
 /// @brief   Copy node name.
 /// @return  Copied node name byte nums without '\0'.
-uint name_copy(const char* src, char* dest)
+pathlen_t name_copy(const char* src, char* dest)
 {
-	uint i;
-
+	uint n;
 	bool escape = false;
 
-	for (i = 0; ; ++i) {
-		if (!escape && (path_is_splitter(src + i) || src[i] == '\0'))
+	for (n = 0; ; ++n) {
+		if (name_is_end(escape, src + n))
 			break;
 
-		dest[i] = src[i];
+		dest[n] = src[n];
 
-		escape = src[i] == ESCAPE;
+		escape = src[n] == ESCAPE;
 	}
 
-	dest[i] = '\0';
+	dest[n] = '\0';
 
-	return i;
+	return n;
 }
 
 /// @brief  Normalize node name.
 /// @detail Remove meaningless escape code.
 /// @return Normalized node name byte nums without '\0'.
-uint name_normalize(const char* src, char* dest)
+pathlen_t name_normalize(const char* src, char* dest)
 {
 	uint i = 0;
 
@@ -175,43 +198,6 @@ uint name_normalize(const char* src, char* dest)
 	dest[i] = '\0';
 
 	return i;
-}
-
-bool nodename_is_last(const char* name)
-{
-	if (!*name)
-		return false;
-
-	for (;; ++name) {
-		if (*name == '\0')
-			return true;
-		if (*name == '/')
-			break;
-	}
-
-	name = path_skip_splitter(name);
-
-	return *name == '\0';
-}
-
-const char* nodename_get_last(const char* path)
-{
-	const char* nodename = path_skip_splitter(path);
-	for (;;) {
-		const char* p = nodename;
-		for (;; ++p) {
-			if (path_is_splitter(p))
-				break;
-			if (*p == '\0')
-				return nodename;
-		}
-
-		p = path_skip_splitter(p);
-		if (*p == '\0')
-			return nodename;
-		else
-			nodename = p;
-	}
 }
 
 }  // namespace fs

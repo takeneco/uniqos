@@ -17,9 +17,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-#include <core/fs.hh>
+#include <core/fs_ctl.hh>
 
-#include <core/fs_ctl.hh>  // pathname_cn_t
 #include <core/new_ops.hh>
 #include <util/string.hh>
 
@@ -65,6 +64,8 @@ cause::t _destroy_ns(fs_ns* ns)
 	// TODO: unmount all
 
 	new_destroy(ns, generic_mem());
+
+	return cause::OK;
 }
 
 cause::pair<generic_ns*> create_initial_ns()

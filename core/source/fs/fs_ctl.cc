@@ -19,7 +19,6 @@
 
 #include <core/fs_ctl.hh>
 
-#include <core/fs.hh>
 #include <core/global_vars.hh>
 #include <core/log.hh>
 #include <core/mempool.hh>
@@ -100,7 +99,7 @@ cause::pair<io_node*> fs_ctl::open_node(
 	if (!edge_node) {
 		// create new node
 		fs_dir_node* parent = static_cast<fs_dir_node*>(
-		    pathnodes->get_fsnode(pathnodes->get_node_nr() - 2));
+		    pathnodes->get_edge_parent_fsnode());
 		cause::pair<fs_reg_node*> tmp =
 		    parent->create_child_reg_node(pathnodes->get_edge_name());
 		if (is_fail(tmp)) {
@@ -196,20 +195,33 @@ cause::t fs_ctl::unmount(
 	return r;
 }
 
-cause::t fs_ctl::mkdir(const char* path)
+cause::t fs_ctl::mkdir(process* proc, const char* path)
 {
-	fs_node* _parent = get_parent_node(root, path);
+	cause::pair<path_parser*> _path = path_parser::create(proc, path);
+	if (is_fail(_path))
+		return _path.cause();
+
+	if (_path->get_edge_fsnode() != nullptr) {
+		path_parser::destroy(_path.value());
+		return cause::EXIST;
+	}
+
+	fs_node* _parent = _path->get_edge_parent_fsnode();
 	if (!_parent->is_dir()) {
+		path_parser::destroy(_path.value());
 		return cause::NOTDIR;
 	}
-	fs_dir_node* parent = static_cast<fs_dir_node*>(_parent);
 
-	// TODO:make dir
-	fs_mount* mnt = parent->get_owner();
+	fs_mount* mnt = _parent->get_owner();
 
-	const char* name = fs::nodename_get_last(path);
+	cause::t r = mnt->create_dir_node(
+	    static_cast<fs_dir_node*>(_parent),
+	    _path->get_edge_name(),
+	    fs::OP_CREATE);
 
-	return mnt->create_dir_node(parent, name, fs::OP_CREATE);
+	path_parser::destroy(_path);
+
+	return r;
 }
 
 cause::t fs_ctl::_mount(
@@ -273,40 +285,6 @@ cause::pair<fs_node*> fs_ctl::get_fs_node(
 			return null_pair(child.cause());
 
 		cur = child.value();
-
-		uptr len = fs::name_length(path);
-		path += len;
-	}
-
-	return make_pair(cause::OK, cur);
-}
-
-/// 指定したパスの親ディレクトリの fs_dir_node を返す。
-/// @TODO:相対パスを考慮する。
-cause::pair<fs_dir_node*> fs_ctl::get_parent_node(
-    fs_dir_node* base, const char* path)
-{
-	fs_dir_node* cur = (*path == '/' ? root : base);
-
-	while (*path) {
-		fs_node* cur2 = cur->get_mounted_node();
-		if (cur2 && cur2->is_dir())
-			cur = static_cast<fs_dir_node*>(cur2);
-
-		while (*path == '/')
-			++path;
-
-		if (fs::nodename_is_last(path))
-			break;
-
-		auto child = cur->get_child_node(path);
-		if (is_fail(child))
-			return null_pair(child.cause());
-
-		if (!child.value()->is_dir())
-			return null_pair(cause::NOENT);
-
-		cur = static_cast<fs_dir_node*>(child.value());
 
 		uptr len = fs::name_length(path);
 		path += len;

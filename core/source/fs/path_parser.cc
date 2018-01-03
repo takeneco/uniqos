@@ -241,17 +241,17 @@ const char* path_parser::get_path() const
 
 const path_parser::node* path_parser::get_node(node_off i)
 {
-	return i < node_use_nr ? &nodes[i] : nullptr;
+	return LIKELY(i < node_use_nr) ? &nodes[i] : nullptr;
 }
 
 fs_node* path_parser::get_fsnode(node_off i)
 {
-	return i < node_use_nr ? nodes[i].fsnode : nullptr;
+	return LIKELY(i < node_use_nr) ? nodes[i].fsnode : nullptr;
 }
 
 const char* path_parser::get_name(node_off i)
 {
-	return i < node_use_nr ? nodes[i].name : nullptr;
+	return LIKELY(i < node_use_nr) ? nodes[i].name : nullptr;
 }
 
 /// Same as path_parser::get_node(path_parser::get_node_nr() - 1)
@@ -270,6 +270,20 @@ fs_node* path_parser::get_edge_fsnode()
 const char* path_parser::get_edge_name()
 {
 	return edge_node()->name;
+}
+
+/// Same as path_parser::get_node(path_parser::get_node_nr() - 2)
+const path_parser::node* path_parser::get_edge_parent_node()
+{
+	return LIKELY(node_use_nr >= 2) ?
+	    &nodes[node_use_nr - 2] : nullptr;
+}
+
+/// Same as path_parser::get_fsnode(path_parser::get_node_nr() - 2)
+fs_node* path_parser::get_edge_parent_fsnode()
+{
+	return LIKELY(node_use_nr >= 2) ?
+	    nodes[node_use_nr - 2].fsnode : nullptr;
 }
 
 /// @param path  Relative path. Head splitter will be ignored.
@@ -322,7 +336,7 @@ void path_parser::push_node(fs_node* fsnode, const char* name)
 
 	nodes[node_use_nr].name = path_end;
 
-	path_end += name_normalize(name, path_end);
+	path_end += name_copy(name, path_end);
 
 	++node_use_nr;
 }

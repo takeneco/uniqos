@@ -41,9 +41,8 @@ class fs_ns;
 class io_node;
 class process;
 
-typedef u16 pathname_cn_t;  ///< pathname char count type.
-const pathname_cn_t PATHNAME_MAX = 0xffff;
-const pathname_cn_t NAME_MAX = 4096;
+const fs::pathlen_t PATHNAME_MAX = 0xffff;
+const fs::pathlen_t NAME_MAX = 4096;
 
 namespace fs {
 
@@ -67,8 +66,6 @@ enum FLAGS
 /// Filesystem driver must implement this interface.
 class fs_driver : public driver
 {
-	NONCOPYABLE(fs_driver);
-
 public:
 	struct interfaces
 	{
@@ -368,8 +365,8 @@ public:
 	const char* source;
 	const char* target;
 
-	pathname_cn_t source_char_cn;  ///< source char count.
-	pathname_cn_t target_char_cn;  ///< target char count.
+	fs::pathlen_t source_char_cn;  ///< source char count.
+	fs::pathlen_t target_char_cn;  ///< target char count.
 
 	chain_node<fs_mount_info> fs_ns_chain_node;
 	chain_node<fs_mount_info> fs_node_chain_node;
@@ -388,8 +385,8 @@ protected:
 public:
 	fs_mount* get_owner() { return owner; }
 	bool is_dir() const;
-	bool is_regular() const;
-	bool is_device() const;
+	bool is_reg() const;
+	bool is_dev() const;
 
 	fs_node* into_ns(generic_ns* ns);
 	fs_node* ref_into_ns(generic_ns* ns);
@@ -473,8 +470,6 @@ private:
 /// @brief  rootfs driver.
 class fs_rootfs_drv : public fs_driver
 {
-	NONCOPYABLE(fs_rootfs_drv);
-
 public:
 	fs_rootfs_drv();
 
@@ -564,7 +559,9 @@ public:
 	    process*    proc,
 	    const char* target,
 	    u64         flags);
-	cause::t mkdir(const char* path);
+	cause::t mkdir(
+	    process*    proc,
+	    const char* path);
 
 private:
 	cause::t _mount(

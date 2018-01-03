@@ -29,6 +29,8 @@ class fs_node;
 
 namespace fs {
 
+typedef u16 pathlen_t;  ///< pathname char count type.
+
 const char SPLITTER = '/';
 const char ESCAPE = '\\';
 
@@ -42,12 +44,10 @@ const char* path_skip_splitter(const char* path);
 const char* path_rskip_splitter(const char* path);
 bool        path_skip_current(const char** path);
 bool        path_skip_parent(const char** path);
-uptr        name_length(const char* path);
+pathlen_t   name_length(const char* path);
 int         name_compare(const char* name1, const char* name2);
-uint        name_copy(const char* src, char* dest);
-uint        name_normalize(const char* src, char* dest);
-bool nodename_is_last(const char* path);
-const char* nodename_get_last(const char* path);
+pathlen_t   name_copy(const char* src, char* dest);
+pathlen_t   name_normalize(const char* src, char* dest);
 
 cause::pair<generic_ns*> create_initial_ns();
 
@@ -88,6 +88,8 @@ public:
 	const node* get_edge_node();
 	fs_node*    get_edge_fsnode();
 	const char* get_edge_name();
+	const node* get_edge_parent_node();
+	fs_node*    get_edge_parent_fsnode();
 
 private:
 	cause::t follow_path(const char* path);
@@ -107,7 +109,7 @@ private:
 }  // namespace fs
 
 
-cause::t fs_mkdir(const char* path);
+cause::t fs_mkdir(process* proc, const char* path);
 
 
 #endif  // CORE_FS_HH_

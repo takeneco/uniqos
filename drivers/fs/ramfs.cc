@@ -342,12 +342,12 @@ cause::t ramfs_mount::on_ReleaseNode(
 	ramfs_driver* drv = get_driver();
 	mempool* mp;
 
-	if (release_node->is_regular()) {
+	if (release_node->is_reg()) {
 		mp = drv->get_fs_reg_node_mp();
 		static_cast<ramfs_reg_node*>(release_node)->destroy();
 	} else if (release_node->is_dir()) {
 		mp = drv->get_fs_dir_node_mp();
-	} else if (release_node->is_device()) {
+	} else if (release_node->is_dev()) {
 		mp = drv->get_fs_dev_node_mp();
 	} else {
 		return cause::NOFUNC;
@@ -396,7 +396,7 @@ cause::t ramfs_io_node::on_Close(ramfs_io_node* x)
 cause::pair<uptr> ramfs_io_node::on_Read(
     io_node::offset off, void* data, uptr bytes)
 {
-	if (fsnode->is_regular()) {
+	if (fsnode->is_reg()) {
 		return static_cast<ramfs_reg_node*>(fsnode)->
 		       read(off, data, bytes);
 	} else {
@@ -407,7 +407,7 @@ cause::pair<uptr> ramfs_io_node::on_Read(
 cause::pair<uptr> ramfs_io_node::on_Write(
     io_node::offset off, const void* data, uptr bytes)
 {
-	if (fsnode->is_regular()) {
+	if (fsnode->is_reg()) {
 		return static_cast<ramfs_reg_node*>(fsnode)->
 		       write(off, data, bytes);
 	} else {
