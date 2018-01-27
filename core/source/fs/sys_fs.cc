@@ -1,5 +1,5 @@
 /// @file   sys_fs.cc
-/// @brief  Filesystem syscalls.
+/// @brief  Filesystem system calls.
 
 //  Uniqos  --  Unique Operating System
 //  (C) 2017 KATO Takeshi
@@ -40,5 +40,55 @@ cause::t sys_unmount(
 	process* proc = get_current_process();
 
 	return get_fs_ctl()->unmount(proc, target, flags);
+}
+
+cause::pair<uptr> sys_open(
+    const char* path,
+    u32 flags)
+{
+    fs_ctl* fsctl = get_fs_ctl();
+    process* proc = get_current_process();
+    spin_wlock_section proc_lock(proc->ref_lock());
+
+    auto pathnodes = fs::path_parser::create(proc, path);
+    if (is_fail(pathnodes))
+        return zero_pair(pathnodes.cause());
+
+    fs_node* target = pathnodes->get_edge_fsnode();
+    if (!target) {
+        fs_node* _parent = pathnodes->get_edge_parent_fsnode();
+        if (!_parent->is_dir()) {
+            fs::path_parser::destroy(pathnodes);
+            return zero_pair(cause::NOTDIR);
+        }
+
+        fs_dir_node* parent = static_cast<fs_dir_node*>(_parent);
+        auto child = parent->create_child_reg_node(
+            pathnodes->get_edge_name());
+        if (is_fail(child)) {
+            fs::path_parser::destroy(pathnodes);
+            return zero_pair(child.cause());
+        }
+
+        target = child.value();
+    }
+
+    auto ion = target->open(flags);
+
+    fs::path_parser::destroy(pathnodes);
+
+    /*
+    auto ion = fsctl->open_node(fsns, cwd, path, flags);
+    */
+    if (is_fail(ion)) {
+        return zero_pair(ion.cause());
+    }
+
+    auto iod = proc->append_io_desc(ion.value(), 0);
+    if (is_fail(iod)) {
+        return zero_pair(iod.cause());
+    }
+
+    return cause::pair<uptr>(cause::OK, iod.value());
 }
 

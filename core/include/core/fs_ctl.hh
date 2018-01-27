@@ -156,195 +156,201 @@ protected:
 /// Filesystem driver must implement this interface.
 class fs_mount
 {
-	NONCOPYABLE(fs_mount);
+    NONCOPYABLE(fs_mount);
 
-	friend class fs_node;
-
-public:
-	chain_node<fs_mount>& chain_hook() { return _chain_node; }
-
-	fs_dir_node* get_root_node() { return root; }
+    friend class fs_node;
 
 public:
-	struct interfaces
-	{
-		void init();
+    chain_node<fs_mount>& chain_hook() { return _chain_node; }
 
-		typedef cause::pair<fs_node*> (*CreateNodeIF)(
-		    fs_mount* x,
-		    fs_dir_node* parent,
-		    const char* name,
-		    u32 flags);
-		CreateNodeIF CreateNode;
+    fs_dir_node* get_root_node() { return root; }
 
-		typedef cause::pair<fs_dir_node*> (*CreateDirNodeIF)(
-		    fs_mount* x,
-		    fs_dir_node* parent,
-		    const char* name,
-		    u32 flags);
-		CreateDirNodeIF CreateDirNode;
+public:
+    struct interfaces
+    {
+        void init();
 
-		typedef cause::pair<fs_reg_node*> (*CreateRegNodeIF)(
-		    fs_mount* x,
-		    fs_dir_node* parent,
-		    const char* name);
-		CreateRegNodeIF CreateRegNode;
+        typedef cause::pair<fs_node*> (*CreateNodeIF)(
+            fs_mount* x,
+            fs_dir_node* parent,
+            const char* name,
+            u32 flags);
+        CreateNodeIF CreateNode;
 
-		typedef cause::pair<fs_dev_node*> (*CreateDevNodeIF)(
-		    fs_mount* x,
-		    fs_dir_node* parent,
-		    const char* name,
-		    devnode_no no,
-		    u32 flags);
-		CreateDevNodeIF CreateDevNode;
+        typedef cause::pair<fs_dir_node*> (*CreateDirNodeIF)(
+            fs_mount* x,
+            fs_dir_node* parent,
+            const char* name,
+            u32 flags);
+        CreateDirNodeIF CreateDirNode;
 
-		typedef cause::t (*ReleaseNodeIF)(
-		    fs_mount* x,
-		    fs_node* release_node,
-		    fs_dir_node* parent,
-		    const char* name);
-		ReleaseNodeIF ReleaseNode;
+        typedef cause::pair<fs_reg_node*> (*CreateRegNodeIF)(
+            fs_mount* x,
+            fs_dir_node* parent,
+            const char* name);
+        CreateRegNodeIF CreateRegNode;
 
-		typedef cause::pair<fs_node*> (*GetChildNodeIF)(
-		    fs_mount* x, fs_dir_node* parent, const char* childname);
-		GetChildNodeIF GetChildNode;
+        typedef cause::pair<fs_dev_node*> (*CreateDevNodeIF)(
+            fs_mount* x,
+            fs_dir_node* parent,
+            const char* name,
+            devnode_no no,
+            u32 flags);
+        CreateDevNodeIF CreateDevNode;
 
-		typedef cause::pair<io_node*> (*OpenNodeIF)(
-		    fs_mount* x, fs_node* node, u32 flags);
-		OpenNodeIF OpenNode;
+        typedef cause::t (*ReleaseNodeIF)(
+            fs_mount* x,
+            fs_node* release_node,
+            fs_dir_node* parent,
+            const char* name);
+        ReleaseNodeIF ReleaseNode;
 
-		typedef cause::t (*CloseNodeIF)(
-		    fs_mount* x, io_node* ion);
-		CloseNodeIF CloseNode;
-	};
+        typedef cause::pair<fs_node*> (*AcquireNodeIF)(
+            fs_mount* x,
+            fs_dir_node* parent,
+            const char* childname);
+        AcquireNodeIF AcquireNode;
 
-	// CreateNode
-	template <class T>
-	static cause::pair<fs_node*> call_on_CreateNode(
-	    fs_mount* x, fs_dir_node* parent, const char* name, u32 flags) {
-		return static_cast<T*>(x)->
-		    on_CreateNode(parent, name, flags);
-	}
-	static cause::pair<fs_node*> nofunc_CreateNode(
-	    fs_mount*, fs_dir_node*, const char*, u32) {
-		return null_pair(cause::NOFUNC);
-	}
+        typedef cause::pair<io_node*> (*OpenNodeIF)(
+            fs_mount* x, fs_node* node, u32 flags);
+        OpenNodeIF OpenNode;
 
-	// CreateDirNode
-	template <class T>
-	static cause::pair<fs_dir_node*> call_on_CreateDirNode(
-	    fs_mount* x,
-	    fs_dir_node* parent, const char* name, u32 flags) {
-		return static_cast<T*>(x)->
-		    on_CreateDirNode(parent, name, flags);
-	}
-	static cause::pair<fs_dir_node*> nofunc_CreateDirNode(
-	    fs_mount*, fs_dir_node*, const char*, u32) {
-		return null_pair(cause::NOFUNC);
-	}
+        typedef cause::t (*CloseNodeIF)(
+            fs_mount* x, io_node* ion);
+        CloseNodeIF CloseNode;
+    };
 
-	// CreateRegNode
-	template <class T>
-	static cause::pair<fs_reg_node*> call_on_CreateRegNode(
-	    fs_mount* x,
-	    fs_dir_node* parent, const char* name) {
-		return static_cast<T*>(x)->
-		    on_CreateRegNode(parent, name);
-	}
-	static cause::pair<fs_reg_node*> nofunc_CreateRegNode(
-	    fs_mount*, fs_dir_node*, const char*) {
-		return null_pair(cause::NOFUNC);
-	}
+    // CreateNode
+    template <class T>
+    static cause::pair<fs_node*> call_on_CreateNode(
+        fs_mount* x, fs_dir_node* parent, const char* name, u32 flags) {
+        return static_cast<T*>(x)->
+            on_CreateNode(parent, name, flags);
+    }
+    static cause::pair<fs_node*> nofunc_CreateNode(
+        fs_mount*, fs_dir_node*, const char*, u32) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	// CreateDevNode
-	template <class T>
-	static cause::pair<fs_dev_node*> call_on_CreateDevNode(
-	    fs_mount* x,
-	    fs_dir_node* parent, const char* name, devnode_no no, u32 flags) {
-		return static_cast<T*>(x)->
-		    on_CreateDevNode(parent, name, no, flags);
-	}
-	static cause::pair<fs_dev_node*> nofunc_CreateDevNode(
-	    fs_mount*, fs_dir_node*, const char*, devnode_no, u32) {
-		return null_pair(cause::NOFUNC);
-	}
+    // CreateDirNode
+    template <class T>
+    static cause::pair<fs_dir_node*> call_on_CreateDirNode(
+        fs_mount* x,
+        fs_dir_node* parent, const char* name, u32 flags) {
+        return static_cast<T*>(x)->
+            on_CreateDirNode(parent, name, flags);
+    }
+    static cause::pair<fs_dir_node*> nofunc_CreateDirNode(
+        fs_mount*, fs_dir_node*, const char*, u32) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	// ReleaseNode
-	template <class T>
-	static cause::t call_on_ReleaseNode(
-	    fs_mount* x,
-	    fs_node* release_node, fs_dir_node* parent, const char* name) {
-		return static_cast<T*>(x)->
-		    on_ReleaseNode(release_node, parent, name);
-	}
-	static cause::t nofunc_ReleaseNode(
-	    fs_mount*, fs_node*, fs_dir_node*, const char*) {
-		return cause::NOFUNC;
-	}
+    // CreateRegNode
+    template <class T>
+    static cause::pair<fs_reg_node*> call_on_CreateRegNode(
+        fs_mount* x,
+        fs_dir_node* parent, const char* name) {
+        return static_cast<T*>(x)->
+            on_CreateRegNode(parent, name);
+    }
+    static cause::pair<fs_reg_node*> nofunc_CreateRegNode(
+        fs_mount*, fs_dir_node*, const char*) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	// GetChildNode
-	template <class T>
-	static cause::pair<fs_node*> call_on_GetChildNode(
-	    fs_mount* x, fs_dir_node* parent, const char* childname) {
-		return static_cast<T*>(x)->
-		    on_GetChildNode(parent, childname);
-	}
-	static cause::pair<fs_node*> nofunc_GetChildNode(
-	    fs_mount*, fs_dir_node*, const char*) {
-		return null_pair(cause::NOFUNC);
-	}
+    // CreateDevNode
+    template <class T>
+    static cause::pair<fs_dev_node*> call_on_CreateDevNode(
+        fs_mount* x,
+        fs_dir_node* parent, const char* name, devnode_no no, u32 flags) {
+        return static_cast<T*>(x)->
+            on_CreateDevNode(parent, name, no, flags);
+    }
+    static cause::pair<fs_dev_node*> nofunc_CreateDevNode(
+        fs_mount*, fs_dir_node*, const char*, devnode_no, u32) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	// OpenNode
-	template <class T>
-	static cause::pair<io_node*> call_on_OpenNode(
-	    fs_mount* x, fs_node* node, u32 flags) {
-		return static_cast<T*>(x)->
-		    on_OpenNode(node, flags);
-	}
-	static cause::pair<io_node*> nofunc_OpenNode(
-	    fs_mount*, fs_node*, u32) {
-		return null_pair(cause::NOFUNC);
-	}
+    // AcquireNode
+    template <class T>
+    static cause::pair<fs_node*> call_on_AcquireNode(
+        fs_mount* x, fs_dir_node* parent, const char* childname) {
+        return static_cast<T*>(x)->
+            on_AcquireNode(parent, childname);
+    }
+    static cause::pair<fs_node*> nofunc_AcquireNode(
+        fs_mount*, fs_dir_node*, const char*) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	// CloseNode
-	template <class T>
-	static cause::t call_on_CloseNode(
-	    fs_mount* x, io_node* ion) {
-		return static_cast<T*>(x)->
-		    on_CloseNode(ion);
-	}
-	static cause::t nofunc_CloseNode(
-	    fs_mount*, io_node*) {
-		return cause::NOFUNC;
-	}
+    // ReleaseNode
+    template <class T>
+    static cause::t call_on_ReleaseNode(
+        fs_mount* x,
+        fs_node* release_node, fs_dir_node* parent, const char* name) {
+        return static_cast<T*>(x)->
+            on_ReleaseNode(release_node, parent, name);
+    }
+    static cause::t nofunc_ReleaseNode(
+        fs_mount*, fs_node*, fs_dir_node*, const char*) {
+        return cause::NOFUNC;
+    }
 
-	cause::pair<io_node*> open_node(fs_node* node, u32 flags) {
-		return ifs->OpenNode(this, node, flags);
-	}
-	cause::t create_dir_node(
-	    fs_dir_node* parent, const char* name, u32 flags);
-	cause::pair<fs_reg_node*> create_reg_node(
-	    fs_dir_node* parent, const char* name);
+    // OpenNode
+    template <class T>
+    static cause::pair<io_node*> call_on_OpenNode(
+        fs_mount* x, fs_node* node, u32 flags) {
+        return static_cast<T*>(x)->
+            on_OpenNode(node, flags);
+    }
+    static cause::pair<io_node*> nofunc_OpenNode(
+        fs_mount*, fs_node*, u32) {
+        return null_pair(cause::NOFUNC);
+    }
 
-	cause::pair<fs_node*> create_node(
-	    fs_dir_node* parent, const char* name, u32 flags) {
-		return ifs->CreateNode(this, parent, name, flags);
-	}
+    // CloseNode
+    template <class T>
+    static cause::t call_on_CloseNode(
+        fs_mount* x, io_node* ion) {
+        return static_cast<T*>(x)->
+            on_CloseNode(ion);
+    }
+    static cause::t nofunc_CloseNode(
+        fs_mount*, io_node*) {
+        return cause::NOFUNC;
+    }
 
-	fs_driver* get_driver() { return driver; }
+    cause::pair<io_node*> open_node(fs_node* node, u32 flags) {
+        return ifs->OpenNode(this, node, flags);
+    }
+    cause::t create_dir_node(
+        fs_dir_node* parent, const char* name, u32 flags);
+    cause::pair<fs_reg_node*> create_reg_node(
+        fs_dir_node* parent, const char* name);
+
+    cause::pair<fs_node*> acquire_node(
+          fs_dir_node* parent, const char* childname) {
+        return ifs->AcquireNode(this, parent, childname);
+    }
+    cause::t release_node(
+          fs_node* node, fs_dir_node* parent, const char* name) {
+        return ifs->ReleaseNode(this, node, parent, name);
+    }
+
+    fs_driver* get_driver() { return driver; }
 
 protected:
-	fs_mount(fs_driver* drv, const interfaces* _ifs) :
-		ifs(_ifs), driver(drv)
-	{}
+    fs_mount(fs_driver* drv, const interfaces* _ifs) :
+        ifs(_ifs), driver(drv)
+    {}
 
 private:
-	chain_node<fs_mount> _chain_node;
+    chain_node<fs_mount> _chain_node;
 
 protected:
-	const interfaces* ifs;
-	fs_driver* driver;
-	fs_dir_node* root;
+    const interfaces* ifs;
+    fs_driver* driver;
+    fs_dir_node* root;
 };
 
 class fs_mount_info
@@ -433,13 +439,13 @@ public:
 
 public:
 	cause::t append_child_node(fs_node* child, const char* name);
-	cause::pair<fs_node*> get_child_node(const char* name);
 	cause::pair<fs_node*> ref_child_node(const char* name);
 	cause::pair<fs_reg_node*> create_child_reg_node(const char* name);
 
 private:
-	cause::pair<fs_node*> create_child_node(const char* name, u32 flags);
 	cause::pair<fs_node*> search_cached_child_node(const char* name);
+	cause::pair<fs_node*> _search_cached_child_node(const char* name);
+	cause::pair<fs_node*> _ref_child_node(const char* name);
 
 private:
 	front_chain<child_node, &child_node::fs_node_chain_node>
@@ -459,12 +465,10 @@ public:
 class fs_dev_node : public fs_node
 {
 public:
-	fs_dev_node(fs_mount* owner, devnode_no no);
-
-public:
+    fs_dev_node(fs_mount* owner, devnode_no no);
 
 private:
-	devnode_no node_no;
+    devnode_no node_no;
 };
 
 /// @brief  rootfs driver.
@@ -571,8 +575,6 @@ private:
 	    fs_driver*  drv,
 	    u64         flags,
 	    const void* data);
-	cause::pair<fs_node*> get_fs_node(
-	    fs_node* base, const char* path, u32 flags);
 	cause::pair<fs_dir_node*> get_parent_node(
 	    fs_dir_node* base, const char* path);
 

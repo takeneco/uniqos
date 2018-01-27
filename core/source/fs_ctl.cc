@@ -57,14 +57,14 @@ fs_driver::fs_driver(interfaces* _ifs, const char* name) :
 
 void fs_mount::interfaces::init()
 {
-	CreateNode     = fs_mount::nofunc_CreateNode;
-	CreateDirNode  = fs_mount::nofunc_CreateDirNode;
-	CreateRegNode  = fs_mount::nofunc_CreateRegNode;
-	CreateDevNode  = fs_mount::nofunc_CreateDevNode;
-	ReleaseNode    = fs_mount::nofunc_ReleaseNode;
-	GetChildNode   = fs_mount::nofunc_GetChildNode;
-	OpenNode       = fs_mount::nofunc_OpenNode;
-	CloseNode      = fs_mount::nofunc_CloseNode;
+    CreateNode     = fs_mount::nofunc_CreateNode;
+    CreateDirNode  = fs_mount::nofunc_CreateDirNode;
+    CreateRegNode  = fs_mount::nofunc_CreateRegNode;
+    CreateDevNode  = fs_mount::nofunc_CreateDevNode;
+    AcquireNode    = fs_mount::nofunc_AcquireNode;
+    ReleaseNode    = fs_mount::nofunc_ReleaseNode;
+    OpenNode       = fs_mount::nofunc_OpenNode;
+    CloseNode      = fs_mount::nofunc_CloseNode;
 }
 
 cause::t fs_mount::create_dir_node(

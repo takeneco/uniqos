@@ -111,49 +111,47 @@ cause::pair<path_parser*> path_parser::_create(
     const char* cwd,
     const char* path)
 {
-	node_off node_cnt = 1;  // for root node.
-	u16 path_len = 0;
+    node_off node_cnt = 1;  // for root node.
+    u16 path_len = 0;
 
-	int _nodes, _len;
-	if (path_is_relative(path)) {
-		// count cwd.
-		cnt_nodes_and_len(cwd, &_nodes, &_len);
-		node_cnt += _nodes;
-		path_len += _len;
-	}
+    int _nodes, _len;
+    if (path_is_relative(path)) {
+        // count cwd.
+        cnt_nodes_and_len(cwd, &_nodes, &_len);
+        node_cnt += _nodes;
+        path_len += _len;
+    }
 
-	// count path.
-	cnt_nodes_and_len(path, &_nodes, &_len);
-	node_cnt += _nodes;
-	path_len += _len;
+    // count path.
+    cnt_nodes_and_len(path, &_nodes, &_len);
+    node_cnt += _nodes;
+    path_len += _len;
 
-	auto _obj = _create(ns, node_cnt, path_len);
-	if (is_fail(_obj))
-		return null_pair(cause::NOMEM);
+    auto _obj = _create(ns, node_cnt, path_len);
+    if (is_fail(_obj))
+        return null_pair(cause::NOMEM);
 
-	path_parser* obj = _obj.value();
+    path_parser* obj = _obj.value();
 
-	if (path_is_relative(path)) {
-		// follow cwd.
-		cause::t r = obj->follow_path(cwd);
-		if (is_fail(r)) {
-			destroy(obj);
-			return null_pair(r);
-		}
-	}
+    if (path_is_relative(path)) {
+        // follow cwd.
+        cause::t r = obj->follow_path(cwd);
+        if (is_fail(r)) {
+            destroy(obj);
+            return null_pair(r);
+        }
+    }
 
-	// follow path.
-	cause::t r = obj->follow_path(path);
-	if (r == cause::NOENT) {
-		// do nothing. same as cause::OK.
-	} if (is_fail(r)) {
-		destroy(obj);
-		return null_pair(r);
-	}
+    // follow path.
+    cause::t r = obj->follow_path(path);
+    if (is_fail(r)) {
+        destroy(obj);
+        return null_pair(r);
+    }
 
-	*obj->path_end = '\0';
+    *obj->path_end = '\0';
 
-	return make_pair(r, obj);
+    return make_pair(r, obj);
 }
 
 cause::pair<path_parser*> path_parser::optimize()
@@ -289,38 +287,38 @@ fs_node* path_parser::get_edge_parent_fsnode()
 /// @param path  Relative path. Head splitter will be ignored.
 cause::t path_parser::follow_path(const char* path)
 {
-	fs_node* fsnode = edge_node()->fsnode;
+    fs_node* fsnode = edge_node()->fsnode;
 
-	for (;;) {
-		path = path_skip_splitter(path);
+    for (;;) {
+        path = path_skip_splitter(path);
 
-		if (*path == '\0')
-			break;
+        if (*path == '\0')
+            break;
 
-		if (!fsnode)
-			return cause::NOENT;
+        if (!fsnode)
+            return cause::NOENT;
 
-		if (path_skip_current(&path)) {
-			continue;
-		} else if (path_skip_parent(&path)) {
-			if (!pop_node())
-				return cause::NOENT;
-			fsnode = edge_node()->fsnode;
-			continue;
-		}
+        if (path_skip_current(&path)) {
+            continue;
+        } else if (path_skip_parent(&path)) {
+            if (!pop_node())
+                return cause::NOENT;
+            fsnode = edge_node()->fsnode;
+            continue;
+        }
 
-		auto child = fsnode->ref_child_node(path);
-		if (child.cause() == cause::NOENT) {
-			fsnode = nullptr;
-		} if (is_fail(child)) {
-			return child.cause();
-		} else {
-			fsnode = child.value()->ref_into_ns(ns);
-		}
-		push_node(fsnode, path);
-	}
+        auto child = fsnode->ref_child_node(path);
+        if (child.cause() == cause::NOENT) {
+            fsnode = nullptr;
+        } else if (is_fail(child)) {
+            return child.cause();
+        } else {
+            fsnode = child.value()->ref_into_ns(ns);
+        }
+        push_node_and_forward(fsnode, &path);
+    }
 
-	return cause::OK;
+    return cause::OK;
 }
 
 char* path_parser::get_path_buffer()
@@ -328,17 +326,20 @@ char* path_parser::get_path_buffer()
 	return reinterpret_cast<char*>(&nodes[node_buf_nr]);
 }
 
-void path_parser::push_node(fs_node* fsnode, const char* name)
+/// @brief  Push node and move name pointer to end of name.
+void path_parser::push_node_and_forward(fs_node* fsnode, const char** name)
 {
-	nodes[node_use_nr].fsnode = fsnode;
+    nodes[node_use_nr].fsnode = fsnode;
 
-	*path_end++ = SPLITTER;
+    *path_end++ = SPLITTER;
 
-	nodes[node_use_nr].name = path_end;
+    nodes[node_use_nr].name = path_end;
 
-	path_end += name_copy(name, path_end);
+    pathlen_t namelen = name_copy(*name, path_end);
+    path_end += namelen;
+    *name += namelen;
 
-	++node_use_nr;
+    ++node_use_nr;
 }
 
 bool path_parser::pop_node()

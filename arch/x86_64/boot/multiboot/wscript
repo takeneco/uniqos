@@ -1,6 +1,6 @@
 # wscript for the multiboot image.
 #
-# (C) 2011-2014 KATO Takeshi
+# (C) 2011 KATO Takeshi
 #
 
 source = (
@@ -29,14 +29,6 @@ def configure(x):
 	x.env.append_value('CXXFLAGS_MB', x.env.COMMON_CXXFLAGS)
 	x.env.append_value('DEFINES_MB', 'ARCH_LE')
 	x.env.append_value('DEFINES_MB', 'ARCH_ADR_BITS=32')
-
-	if x.options.compiler == 'clang':
-		x.env.append_value('CXXFLAGS_MB', '-std=c++11')
-		x.env.append_value('CXXFLAGS_MB', '-Wc++11-compat')
-		x.env.append_value('CXXFLAGS_MB', '-Wc++11-extensions')
-
-	elif x.options.compiler == 'gnu':
-		x.env.append_unique('CXXFLAGS_MB', '-std=c++0x')
 
 def build(x):
 	sources = list(source)

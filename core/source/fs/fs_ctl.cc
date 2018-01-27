@@ -86,47 +86,7 @@ cause::pair<fs_driver*> fs_ctl::detect_fs_driver(
 	return null_pair(cause::NODEV);
 }
 
-cause::pair<io_node*> fs_ctl::open_node(
-    generic_ns* fsns, const char* cwd, const char* path, u32 flags)
-{
-	cause::pair<path_parser*> pathnodes =
-	    path_parser::create(fsns, cwd, path);
-	if (is_fail(pathnodes))
-		return null_pair(pathnodes.cause());
-
-	fs_node* edge_node = pathnodes->get_edge_fsnode();
-
-	if (!edge_node) {
-		// create new node
-		fs_dir_node* parent = static_cast<fs_dir_node*>(
-		    pathnodes->get_edge_parent_fsnode());
-		cause::pair<fs_reg_node*> tmp =
-		    parent->create_child_reg_node(pathnodes->get_edge_name());
-		if (is_fail(tmp)) {
-			path_parser::destroy(pathnodes);
-			return null_pair(tmp.cause());
-		}
-		edge_node = tmp.value();
-	}
-
-	edge_node->refs.inc();
-	path_parser::destroy(pathnodes);
-
-	return edge_node->open(flags);
-}
-
-cause::pair<io_node*> fs_ctl::open_node(
-    process* proc, const char* path, u32 flags)
-{
-	spin_rlock_section ns_lock_sec(proc->ref_ns_lock());
-	spin_rlock_section cwd_lock_sec(proc->ref_cwd_lock());
-
-	generic_ns* proc_ns = proc->get_ns_fs();
-	const char* proc_cwd = proc->get_cwd_path();
-
-	return open_node(proc_ns, proc_cwd, path, flags);
-}
-
+/// Call from sys_mount.
 cause::t fs_ctl::mount(
     process*    proc,   ///< mounter process.
     const char* source, ///< source device.
@@ -155,44 +115,45 @@ cause::t fs_ctl::mount(
 	return r;
 }
 
+/// Call from sys_unmount.
 cause::t fs_ctl::unmount(
     process*    proc,
     const char* target,
     u64         flags)
 {
-	cause::pair<path_parser*> tgt_path = path_parser::create(proc, target);
-	if (is_fail(tgt_path))
-		return tgt_path.cause();
+    cause::pair<path_parser*> tgt_path = path_parser::create(proc, target);
+    if (is_fail(tgt_path))
+        return tgt_path.cause();
 
-	spin_wlock_section _sws(mountpoints_lock);
+    fs_node* target_node = tgt_path->get_edge_fsnode();
 
-	fs_mount_info* target_mi = nullptr;
-	for (fs_mount_info* mi : mountpoints) {
-		if (str_compare(tgt_path->get_path(), mi->target) == 0) {
-			target_mi = mi;
-			break;
-		}
-	}
+    spin_wlock_section _sws(mountpoints_lock);
 
-	path_parser::destroy(tgt_path);
+    fs_mount_info* target_mi = nullptr;
+    for (fs_mount_info* mi : mountpoints) {
+        if (target_node == mi->mount_obj->get_root_node()) {
+            target_mi = mi;
+            break;
+        }
+    }
 
-	if (!target_mi)
-		return cause::BADARG;
+    path_parser::destroy(tgt_path);
 
-	auto target_node = get_fs_node(nullptr, target, 0);
-	if (is_fail(target_node))
-		return target_node.cause();
+    if (!target_mi)
+        return cause::BADARG;
 
-	mountpoints.remove(target_mi);
+    auto r = target_mi->mount_obj->get_driver()->unmount(
+        target_mi->mount_obj, target_mi->target, flags);
 
-	target_node.value()->remove_mount(target_mi);
+    mountpoints_lock.wlock();
+    mountpoints.remove(target_mi);
+    mountpoints_lock.un_wlock();
 
-	auto r = target_mi->mount_obj->get_driver()->unmount(
-	    target_mi->mount_obj, target_mi->target, flags);
+    target_mi->mount_fsnode->remove_mount(target_mi);
 
-	fs_mount_info::destroy(target_mi);
+    fs_mount_info::destroy(target_mi);
 
-	return r;
+    return r;
 }
 
 cause::t fs_ctl::mkdir(process* proc, const char* path)
@@ -261,45 +222,13 @@ cause::t fs_ctl::_mount(
 	return mnt_obj.cause();
 }
 
-cause::pair<fs_node*> fs_ctl::get_fs_node(
-    fs_node* base, const char* path, u32 flags)
-{
-	fs_node* cur = (fs::path_is_absolute(path) ? root : base);
-
-	for (;;) {
-		if (*path == '/' && !cur->is_dir())
-			return null_pair(cause::NOENT);
-
-		while (*path == '/')
-			++path;
-
-		if (*path == '\0')
-			break;
-
-		if (!cur->is_dir())  // TODO:this check is redundancy.
-			return null_pair(cause::NOENT);
-
-		auto child =
-		    static_cast<fs_dir_node*>(cur)->get_child_node(path);
-		if (is_fail(child))
-			return null_pair(child.cause());
-
-		cur = child.value();
-
-		uptr len = fs::name_length(path);
-		path += len;
-	}
-
-	return make_pair(cause::OK, cur);
-}
-
 fs_ctl* get_fs_ctl()
 {
 	return global_vars::core.fs_ctl_obj;
 }
 
 
-cause::t fs_ctl_init()
+cause::t fs_ctl_setup()
 {
 	fs_ctl* fsctl = new (generic_mem()) fs_ctl;
 	if (!fsctl)

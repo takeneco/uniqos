@@ -20,7 +20,7 @@ cause::t devnode_setup();
 cause::t driver_ctl_setup();
 cause::t timer_setup();
 cause::t module_ctl_init();
-cause::t fs_ctl_init();
+cause::t fs_ctl_setup();
 cause::t vadr_pool_setup();
 cause::t ata_setup();
 cause::t ahci_setup();

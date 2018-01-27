@@ -87,22 +87,22 @@ const char* path_rskip_splitter(const char* path)
 
 bool path_skip_current(const char** path)
 {
-	if (name_compare(*path, CURRENT)) {
-		*path += sizeof CURRENT - 1;
-		return true;
-	}
+    if (name_compare(*path, CURRENT) == 0) {
+        *path += sizeof CURRENT - 1;
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 bool path_skip_parent(const char** path)
 {
-	if (name_compare(*path, PARENT)) {
-		*path += sizeof PARENT - 1;
-		return true;
-	}
+    if (name_compare(*path, PARENT) == 0) {
+        *path += sizeof PARENT - 1;
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
 pathlen_t name_length(const char* name)

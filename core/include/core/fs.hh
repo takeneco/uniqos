@@ -40,6 +40,7 @@ const char PARENT[] = "..";
 bool        path_is_relative(const char* path);
 bool        path_is_absolute(const char* path);
 bool        path_is_splitter(const char* path);
+bool        path_is_edge(const char* path);
 const char* path_skip_splitter(const char* path);
 const char* path_rskip_splitter(const char* path);
 bool        path_skip_current(const char** path);
@@ -53,57 +54,57 @@ cause::pair<generic_ns*> create_initial_ns();
 
 class path_parser
 {
-	NONCOPYABLE(path_parser);
+    NONCOPYABLE(path_parser);
 
 public:
-	using node_off = u16;
+    using node_off = u16;
 
-	struct node {
-		fs_node* fsnode;
-		char*    name;
-	};
+    struct node {
+        fs_node* fsnode;
+        char*    name;
+    };
 
 private:
-	path_parser(generic_ns* fsns, node_off node_nr);
-	~path_parser();
-	static cause::pair<path_parser*> _create(
-	    generic_ns* ns, node_off node_nr, u16 path_len);
-	static cause::pair<path_parser*> _create(
-	    generic_ns* ns, const char* cwd, const char* path);
-	cause::pair<path_parser*> optimize();
+    path_parser(generic_ns* fsns, node_off node_nr);
+    ~path_parser();
+    static cause::pair<path_parser*> _create(
+        generic_ns* ns, node_off node_nr, u16 path_len);
+    static cause::pair<path_parser*> _create(
+        generic_ns* ns, const char* cwd, const char* path);
+    cause::pair<path_parser*> optimize();
 
 public:
-	static cause::pair<path_parser*> create(
-	    generic_ns* ns, const char* cwd, const char* path);
-	static cause::pair<path_parser*> create(
-	    process* proc, const char* path);
-	static void destroy(path_parser* x);
+    static cause::pair<path_parser*> create(
+        generic_ns* ns, const char* cwd, const char* path);
+    static cause::pair<path_parser*> create(
+        process* proc, const char* path);
+    static void destroy(path_parser* x);
 
-	node_off    get_node_nr() { return node_use_nr; }
-	const char* get_path() const;
-	generic_ns* get_ns() { return ns; }
-	const node* get_node(node_off i);
-	fs_node*    get_fsnode(node_off i);
-	const char* get_name(node_off i);
-	const node* get_edge_node();
-	fs_node*    get_edge_fsnode();
-	const char* get_edge_name();
-	const node* get_edge_parent_node();
-	fs_node*    get_edge_parent_fsnode();
-
-private:
-	cause::t follow_path(const char* path);
-	char* get_path_buffer();
-	void push_node(fs_node* fsnode, const char* name);
-	bool pop_node();
-	node* edge_node();
+    node_off    get_node_nr() { return node_use_nr; }
+    const char* get_path() const;
+    generic_ns* get_ns() { return ns; }
+    const node* get_node(node_off i);
+    fs_node*    get_fsnode(node_off i);
+    const char* get_name(node_off i);
+    const node* get_edge_node();
+    fs_node*    get_edge_fsnode();
+    const char* get_edge_name();
+    const node* get_edge_parent_node();
+    fs_node*    get_edge_parent_fsnode();
 
 private:
-	generic_ns* const ns;
-	node_off const    node_buf_nr;
-	node_off          node_use_nr;
-	char*             path_end;
-	node              nodes[];
+    cause::t follow_path(const char* path);
+    char* get_path_buffer();
+    void push_node_and_forward(fs_node* fsnode, const char** name);
+    bool pop_node();
+    node* edge_node();
+
+private:
+    generic_ns* const ns;
+    node_off const    node_buf_nr;
+    node_off          node_use_nr;
+    char*             path_end;
+    node              nodes[];
 };
 
 }  // namespace fs
