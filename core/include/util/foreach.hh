@@ -25,170 +25,176 @@ template <class DATA, class ITERATOR = DATA>
 class foreach
 {
 public:
-	struct interfaces
-	{
-		void init() {
-			Next    = nullptr;
-			GetData = nullptr;
-			IsEqual = nullptr;
-			Dtor    = nullptr;
-		}
+    struct interfaces
+    {
+        void init() {
+            Next    = nullptr;
+            GetData = nullptr;
+            IsEqual = nullptr;
+            Dtor    = nullptr;
+        }
 
-		using NextIF = ITERATOR (*)(void* context, ITERATOR current);
-		NextIF Next;
+        using NextIF = ITERATOR (*)(void* context, ITERATOR current);
+        NextIF Next;
 
-		using GetDataIF = DATA (*)(void* context, ITERATOR current);
-		GetDataIF GetData;
+        using GetDataIF = DATA (*)(void* context, ITERATOR current);
+        GetDataIF GetData;
 
-		using IsEqualIF = bool (*)(const void* context,
-		    ITERATOR, ITERATOR);
-		IsEqualIF IsEqual;
+        using IsEqualIF = bool (*)(const void* context,
+            ITERATOR, ITERATOR);
+        IsEqualIF IsEqual;
 
-		using DtorIF = void (*)(void* context);
-		DtorIF Dtor;
-	};
+        using DtorIF = void (*)(void* context);
+        DtorIF Dtor;
+    };
 
-	class iterator
-	{
-	public:
-		iterator(foreach<DATA, ITERATOR>& owner, ITERATOR itr) :
-			_owner(owner), _itr(itr)
-		{}
-		~iterator()
-		{}
+    class iterator
+    {
+    public:
+        iterator(foreach<DATA, ITERATOR>& owner, ITERATOR itr) :
+            _owner(owner), _itr(itr)
+        {}
+        ~iterator()
+        {}
 
-		DATA operator * () {
-			return _owner.getdata(_itr);
-		}
-		void operator ++ () {
-			_itr = _owner.next(_itr);
-		}
-		bool operator != (const iterator& y) const {
-			return !_owner.isequal(_itr, y._itr);
-		}
+        DATA operator * () {
+            return _owner.getdata(_itr);
+        }
+        void operator ++ () {
+            _itr = _owner.next(_itr);
+        }
+        bool operator != (const iterator& y) const {
+            return !_owner.isequal(_itr, y._itr);
+        }
 
-	private:
-		foreach<DATA, ITERATOR>& _owner;
-		ITERATOR _itr;
-	};
+    private:
+        foreach<DATA, ITERATOR>& _owner;
+        ITERATOR _itr;
+    };
 
 public:
-	foreach(interfaces* ifs, void* context, ITERATOR begin, ITERATOR end) :
-		_ifs(ifs),
-		_context(context),
-		_begin(begin),
-		_end(end)
-	{}
+    foreach(interfaces* ifs, void* context, ITERATOR begin, ITERATOR end) :
+        _ifs(ifs),
+        _context(context),
+        _begin(begin),
+        _end(end)
+    {}
 
-	foreach(foreach<DATA, ITERATOR>&& src) :
-		_ifs(src._ifs),
-		_context(src._context),
-		_begin(src._begin),
-		_end(src._end)
-	{
-		src._ifs = nullptr;
-		src._context = nullptr;
-	}
+    foreach(foreach<DATA, ITERATOR>&& src) :
+        _ifs(src._ifs),
+        _context(src._context),
+        _begin(src._begin),
+        _end(src._end)
+    {
+        src._ifs = nullptr;
+        src._context = nullptr;
+    }
 
-	~foreach() {
-		if (_ifs)
-			_ifs->Dtor(_context);
-	}
+    ~foreach() {
+        if (_ifs)
+            _ifs->Dtor(_context);
+    }
 
-	iterator begin() {
-		return iterator(*this, _begin);
-	}
-	iterator end() {
-		return iterator(*this, _end);
-	}
+    iterator begin() {
+        return iterator(*this, _begin);
+    }
+    iterator end() {
+        return iterator(*this, _end);
+    }
 
-	ITERATOR next(ITERATOR itr) {
-		return _ifs->Next(_context, itr);
-	}
-	DATA getdata(ITERATOR itr) {
-		return _ifs->GetData(_context, itr);
-	}
-	bool isequal(const ITERATOR itr1, const ITERATOR itr2) const {
-		return _ifs->IsEqual(_context, itr1, itr2);
-	}
+    ITERATOR next(ITERATOR itr) {
+        return _ifs->Next(_context, itr);
+    }
+    DATA getdata(ITERATOR itr) {
+        return _ifs->GetData(_context, itr);
+    }
+    bool isequal(const ITERATOR itr1, const ITERATOR itr2) const {
+        return _ifs->IsEqual(_context, itr1, itr2);
+    }
 
 private:
-	interfaces* _ifs;
-	void* _context;
-	ITERATOR _begin;
-	ITERATOR _end;
+    interfaces* _ifs;
+    void* _context;
+    ITERATOR _begin;
+    ITERATOR _end;
 };
 
 
-template <class CHAIN, class EXPORT_TYPE=typename CHAIN::data_t>
+template <class CHAIN, class EXPORT_TYPE=typename CHAIN::obj_t>
 class locked_chain_iterator
 {
-	class iterator;
-	using data_t = typename CHAIN::data_t;
+    class iterator;
+    using obj_t = typename CHAIN::obj_t;
 
 public:
-	locked_chain_iterator(data_t* _start, spin_rwlock* _lock) :
-		start(_start),
-		lock(_lock)
-	{
-		if (lock)
-			lock->rlock();
-	}
-	locked_chain_iterator(locked_chain_iterator&& src) :
-		start(src.start),
-		lock(src.lock)
-	{
-		src.lock = nullptr;
-	}
+    locked_chain_iterator(CHAIN& _chain, obj_t* _start, spin_rwlock* _lock) :
+        chain(_chain),
+        start(_start),
+        lock(_lock)
+    {
+        if (lock)
+            lock->rlock();
+    }
+    locked_chain_iterator(locked_chain_iterator&& src) :
+        chain(src.chain),
+        start(src.start),
+        lock(src.lock)
+    {
+        src.lock = nullptr;
+    }
 
-	~locked_chain_iterator()
-	{
-		if (lock)
-			lock->un_rlock();
-	}
+    ~locked_chain_iterator()
+    {
+        if (lock)
+            lock->un_rlock();
+    }
 
-	iterator begin() {
-		return iterator(start);
-	}
-	iterator end() {
-		return iterator(nullptr);
-	}
+    iterator begin() {
+        return iterator(chain, start);
+    }
+    iterator end() {
+        return iterator(chain, nullptr);
+    }
 
 private:
-	data_t* start;
-	spin_rwlock* lock;
+    CHAIN& chain;
+    obj_t* start;
+    spin_rwlock* lock;
 };
 
 template <class CHAIN, class EXPORT_TYPE>
 class locked_chain_iterator<CHAIN, EXPORT_TYPE>::iterator
 {
-	using chain_t = CHAIN;
-	using export_t = EXPORT_TYPE;
+    using chain_t = CHAIN;
+    using export_t = EXPORT_TYPE;
 
 public:
-	iterator(data_t* start) :
-		current(start)
-	{}
-	iterator(iterator&& src) {
-		current = src.current;
-	}
+    iterator(CHAIN& _chain, obj_t* start) :
+        chain(_chain),
+        current(start)
+    {}
+    iterator(iterator&& src) : 
+        chain(src.chain),
+        current(src.current)
+    {}
 
-	export_t* operator * () {
-		return static_cast<export_t*>(current);
-	}
-	export_t* operator ++ () {
-		current = chain_t::next(current);
-		return static_cast<export_t*>(current);
-	}
-	bool operator == (const iterator& itr) const {
-		return current == itr.current;
-	}
-	bool operator != (const iterator& itr) const {
-		return current != itr.current;
-	}
+    export_t* operator * () {
+        return static_cast<export_t*>(current);
+    }
+    export_t* operator ++ () {
+        current = chain.next(current);
+        return static_cast<export_t*>(current);
+    }
+    bool operator == (const iterator& itr) const {
+        return current == itr.current;
+    }
+    bool operator != (const iterator& itr) const {
+        return current != itr.current;
+    }
 
 private:
-	data_t* current;
+    CHAIN& chain;
+    obj_t* current;
 };
 
 

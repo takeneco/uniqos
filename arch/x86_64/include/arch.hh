@@ -2,7 +2,7 @@
 /// @brief x86_64 hardware parameters.
 
 //  Uniqos  --  Unique Operating System
-//  (C) 2010-2015 KATO Takeshi
+//  (C) 2010 KATO Takeshi
 //
 //  Uniqos is free software: you can redistribute it and/or modify
 //  it under the terms of the GNU General Public License as published by
@@ -35,8 +35,6 @@ typedef u64 _cpu_word;
 typedef u8 intr_id;
 
 enum {
-	BITS_IN_BYTE = 8,
-
 	// alignment
 	BASIC_TYPE_ALIGN = 8,
 

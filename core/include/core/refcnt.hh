@@ -1,3 +1,6 @@
+/// @file   core/refcnt.hh
+/// @brief  Reference counter.
+
 //  Uniqos  --  Unique Operating System
 //  (C) 2017 KATO Takeshi
 //
@@ -26,41 +29,34 @@ template<class CNT=harf_of<uptr>::t>
 class refcnt
 {
 public:
-	refcnt() : cnt(0) {}
-	CNT get() { cnt.load(); }
-	void inc() { cnt.inc(); }
-	void dec() { cnt.dec(); }
+    refcnt() : cnt(0) {}
+
+    CNT get() { return cnt.load(); }
+    void inc() { cnt.inc(); }
+    void dec() { cnt.dec(); }
 
 protected:
-	atomic<CNT> cnt;
+    atomic<CNT> cnt;
 };
 
 template<class T>
 class dec_on_dtor
 {
 public:
-	dec_on_dtor(T* p) :
-		ptr(p)
-	{}
-	~dec_on_dtor()
-	{
-		if (ptr)
-			ptr->refs.dec();
-	}
+    dec_on_dtor(T* p) : ptr(p) {}
 
-	operator T* () {
-		return ptr;
-	}
-	T* operator -> () {
-		return ptr;
-	}
+    ~dec_on_dtor() {
+        if (ptr)
+            ptr->refs.dec();
+    }
 
-	void release() {
-		ptr = nullptr;
-	}
+    operator T* ()    { return ptr; }
+    T* operator -> () { return ptr; }
+
+    void release()    { ptr = nullptr; }
 
 private:
-	T* ptr;
+    T* ptr;
 };
 
 
