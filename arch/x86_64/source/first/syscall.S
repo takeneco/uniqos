@@ -1,17 +1,39 @@
 /// @file  syscall.S
-/// @brief syscall handler.
+/// @brief syscall interface.
+
+//  Uniqos  --  Unique Operating System
+//  (C) 2014 KATO Takeshi
 //
-// (C) 2014 KATO Takeshi
+//  Uniqos is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  any later version.
 //
-
-
-.section .text
-
+//  Uniqos is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define ENTRY_START(symbol) .globl symbol; symbol:
 #define ENTRY_END(symbol)   .size symbol, .-symbol
 #define LOCAL_START(symbol) symbol:
 #define LOCAL_END(symbol)   .size symbol, .-symbol
+
+
+.section .text
+
+// syscall0(syscall_id)
+ENTRY_START(syscall0)
+	// rdi -> rax
+
+	movq  %rdi, %rax
+	syscall
+	ret
+
+ENTRY_END(syscall0)
 
 // syscall1(uptr _1st, syscall_id)
 ENTRY_START(syscall1)

@@ -20,29 +20,12 @@
 #include <core/process.hh>
 #include <core/fs_ctl.hh>
 
+#include <core/sys_fs.hh>
 
-cause::t sys_mount(
-    const char* source,  ///< source device.
-    const char* target,  ///< mount target path.
-    const char* type,    ///< fs type name.
-    u64         flags,   ///< mount flags.
-    const void* data)    ///< optional data.
-{
-	process* proc = get_current_process();
 
-	return get_fs_ctl()->mount(proc, source, target, type, flags, data);
-}
+namespace uniqos {
 
-cause::t sys_unmount(
-    const char* target,  ///< unmount taget path
-    u64 flags)
-{
-	process* proc = get_current_process();
-
-	return get_fs_ctl()->unmount(proc, target, flags);
-}
-
-cause::pair<uptr> sys_open(
+cause::pair<ucpu> sys_open(
     const char* path,
     u32 flags)
 {
@@ -89,6 +72,99 @@ cause::pair<uptr> sys_open(
         return zero_pair(iod.cause());
     }
 
-    return cause::pair<uptr>(cause::OK, iod.value());
+    return cause::pair<ucpu>(cause::OK, iod.value());
 }
+
+cause::pair<ucpu> sys_close(int iod)
+{
+    process* pr = get_current_process();
+
+    auto iodesc = pr->get_io_desc(iod);
+    if (is_fail(iodesc))
+        return zero_pair(iodesc.cause());
+
+    io_node::close(iodesc.value()->io);
+
+    cause::t r = pr->clear_io_desc(iod);
+    if (is_fail(r))
+        return zero_pair(r);
+
+    return zero_pair(cause::OK);
+}
+
+cause::pair<ucpu> sys_write(int iod, const void* buf, uptr bytes)
+{
+    auto _desc = get_current_process()->get_io_desc(iod);
+    if (is_fail(_desc))
+        return zero_pair(_desc.cause());
+
+    io_desc* desc = _desc.value();
+
+    auto off = desc->io->write(desc->off, buf, bytes);
+
+    desc->off += off.value();
+
+    return off;
+}
+
+cause::pair<ucpu> sys_read(int iod, void* buf, uptr bytes)
+{
+    auto _desc = get_current_process()->get_io_desc(iod);
+    if (is_fail(_desc))
+        return zero_pair(_desc.cause());
+
+    io_desc* desc = _desc.value();
+
+    auto off = desc->io->read(desc->off, buf, bytes);
+
+    desc->off += off.value();
+
+    return off;
+}
+
+cause::pair<ucpu> sys_mkdir(const char* path)
+{
+    return zero_pair(get_fs_ctl()->mkdir(get_current_process(), path));
+}
+
+cause::pair<ucpu> sys_readents(int iod, uptr bytes, void* buf)
+{
+    process* proc = get_current_process();
+
+    auto iodesc = proc->get_io_desc(iod);
+    if (is_fail(iodesc))
+        return zero_pair(iodesc.cause());
+
+    auto r = iodesc->io->read_entry(
+        &iodesc->off, bytes, static_cast<io_node_entry*>(buf));
+
+    return cause::pair<ucpu>(r.cause(), r.value());
+}
+
+cause::pair<ucpu> sys_mount(
+    const char* source,  ///< source device.
+    const char* target,  ///< mount target path.
+    const char* type,    ///< fs type name.
+    u32         flags,   ///< mount flags.
+    const void* data)    ///< optional data.
+{
+    process* proc = get_current_process();
+
+    cause::t r = get_fs_ctl()->mount(proc, source, target, type, flags, data);
+
+    return zero_pair(r);
+}
+
+cause::pair<ucpu> sys_unmount(
+    const char* target,  ///< unmount taget path
+    u64 flags)
+{
+    process* proc = get_current_process();
+
+    cause::t r = get_fs_ctl()->unmount(proc, target, flags);
+
+    return zero_pair(r);
+}
+
+}  // namespace uniqos
 

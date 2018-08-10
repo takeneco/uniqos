@@ -32,6 +32,7 @@ kern_sources = [
  'spinlock.cc',
  'spinrwlock.cc',
  'string.cc',
+ 'syscall_entry.cc',
  'thread.cc',
  'thread_queue.cc',
  'timer_ctl.cc',
@@ -50,21 +51,20 @@ mb_sources = [
 ]
 
 def configure(x):
-	x.recurse('fs')
+    x.recurse('fs')
 
 def build(x):
-	x.recurse('fs')
-	x.objects(
-	    target   = 'kernel_objs',
-	    source   = kern_sources,
-	    use      = 'KERNEL',
-	)
+    x.recurse('fs')
+    x.objects(
+        target   = 'kernel_objs',
+        source   = kern_sources,
+        use      = 'KERNEL',
+    )
 
-	if x.env.CONFIG_MULTIBOOT or x.env.CONFIG_MULTIBOOT2:
-		x.objects(
-		    target   = 'mb_libs',
-		    source   = mb_sources,
-		    use      = 'MB',
-		)
-
+    if x.env.CONFIG_MULTIBOOT or x.env.CONFIG_MULTIBOOT2:
+        x.objects(
+            target   = 'mb_libs',
+            source   = mb_sources,
+            use      = 'MB',
+        )
 
